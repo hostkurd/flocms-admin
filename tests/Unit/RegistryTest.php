@@ -96,4 +96,38 @@ final class RegistryTest extends TestCase
         self::assertMatchesRegularExpression('#/admin/posts/edit/5$#', Admin::url('posts/edit/5'));
         self::assertStringEndsWith('/admin/posts?q=a%20b&page=2', Admin::url('posts', ['q' => 'a b', 'sort' => null, 'page' => 2]));
     }
+
+    public function testPackagePagesAreReserved(): void
+    {
+        $this->useFixtures([\FloCMS\Admin\Tests\Fixtures\Reserved\DashboardResource::class]);
+
+        self::assertStringContainsString('slug "dashboard" is reserved', implode("\n", Admin::registry()->problems()));
+        self::assertSame(\FloCMS\Admin\Http\DashboardController::class, Admin::resolve('dashboard', 'admin'));
+    }
+
+    public function testUsersAndProfileFollowTheUsersSetting(): void
+    {
+        $this->useFixtures([TagResource::class]);
+        self::assertSame(\FloCMS\Admin\Users\UsersResource::class, Admin::registry()->find('accounts'));
+        self::assertSame(ResourceController::class, Admin::resolve('accounts', 'admin'));
+        self::assertSame(\FloCMS\Admin\Http\ProfileController::class, Admin::resolve('profile', 'admin'));
+        self::assertArrayNotHasKey('accounts', Admin::registry()->all(), 'built-in resources are not listed under Content');
+
+        Admin::useConfig(['resources' => [TagResource::class], 'users' => false], true, dirname(__DIR__, 2));
+        self::assertNull(Admin::registry()->find('accounts'));
+        self::assertNull(Admin::resolve('accounts', 'admin'));
+        self::assertNull(Admin::resolve('profile', 'admin'));
+    }
+
+    public function testAdminHomeSetting(): void
+    {
+        $home = \FloCMS\Core\Config::get('admin.home');
+        self::assertIsCallable($home, 'set by bootstrap.php when Composer loads the package');
+
+        Admin::useConfig([], true, sys_get_temp_dir());
+        self::assertSame('dashboard', $home());
+
+        Admin::useConfig([], false, sys_get_temp_dir());
+        self::assertNull($home(), 'without config/admin.php the skeleton keeps its own /admin page');
+    }
 }

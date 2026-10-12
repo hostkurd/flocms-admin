@@ -53,6 +53,8 @@ final class PanelView
         }
 
         $user = (string) (Session::get('fullname') ?: Session::get('email') ?: '');
+        $registry = Admin::registry();
+        $usersEnabled = $registry->find('accounts') !== null;
 
         return [
             't' => PageView::translator(),
@@ -64,8 +66,11 @@ final class PanelView
             'user' => $user,
             'dir' => self::direction($lang),
             'lang' => $lang,
-            'dashboardUrl' => Admin::url(),
-            'usersUrl' => Auth::can('users.manage') ? Admin::url('users') : null,
+            'dashboardUrl' => Admin::url('dashboard'),
+            'dashboardActive' => $activeSlug === 'dashboard',
+            'usersUrl' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
+            'usersActive' => $activeSlug === 'accounts',
+            'profileUrl' => $usersEnabled ? Admin::url('profile') : null,
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
             'dashboardIcon' => Icons::svg('dashboard'),

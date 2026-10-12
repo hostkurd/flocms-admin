@@ -42,10 +42,11 @@ final class InstallCommand extends Command
         $this->line('Next steps:');
         $this->line('  1. php flo make:admin-resource Post --migration');
         $this->line('  2. php flo migrate');
-        $this->line('  3. Open /admin/posts (log in as an admin first)');
+        $this->line('  3. Log in, then open /admin/dashboard');
         $this->newLine();
-        $this->line('Optional: link the panel from the dashboard (views/pages/admin_index.html):');
-        $this->line('  <a href="{{ SITE_URI . \'/\' . ACTIVE_LANG . \'/admin/posts\' }}">Posts</a>');
+        $this->line('On skeleton 1.8+, /admin opens the dashboard by itself. On older skeletons, link it');
+        $this->line('from views/pages/admin_index.html:');
+        $this->line('  <a href="{{ SITE_URI . \'/\' . ACTIVE_LANG . \'/admin/dashboard\' }}">Admin panel</a>');
         $this->newLine();
         $this->line('Check the setup at any time with: php flo admin:doctor');
 

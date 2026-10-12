@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 namespace FloCMS\Admin;
 
+use FloCMS\Admin\Http\DashboardController;
+use FloCMS\Admin\Http\ProfileController;
 use FloCMS\Admin\Http\ResourceController;
 use FloCMS\Admin\Translation\Languages;
 use FloCMS\Core\App;
+use FloCMS\Core\Config;
 use FloCMS\Core\Env;
 use Throwable;
 
@@ -14,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.2.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -31,6 +34,18 @@ final class Admin
         self::$booted = true;
 
         App::resolveControllersUsing(static fn (string $controller, string $route): ?string => self::resolve($controller, $route));
+
+        // Where the skeleton's /admin page sends logged-in users (skeleton 1.8+).
+        // A site can set its own 'admin.home' in config/config.php, which runs later.
+        if (Config::get('admin.home') === null) {
+            Config::set('admin.home', static fn (): ?string => self::homePath());
+        }
+    }
+
+    /** 'dashboard' when the panel is set up (config/admin.php exists), else null. */
+    public static function homePath(): ?string
+    {
+        return self::config()->isInstalled() ? 'dashboard' : null;
     }
 
     /**
@@ -50,6 +65,13 @@ final class Admin
 
         $registry = self::registry();
         self::logProblems($registry);
+
+        if ($controller === 'dashboard') {
+            return DashboardController::class;
+        }
+        if ($controller === 'profile' && $config->usersEnabled()) {
+            return ProfileController::class;
+        }
 
         return $registry->find($controller) !== null ? ResourceController::class : null;
     }

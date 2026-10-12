@@ -26,7 +26,8 @@ final class FormRenderer
         private readonly array $state,
         private readonly array $errors,
         private readonly array $languages,
-        private readonly string $defaultLang
+        private readonly string $defaultLang,
+        private readonly bool $isEdit = false
     ) {
     }
 
@@ -62,7 +63,7 @@ final class FormRenderer
         }
 
         $label = Str::e($field->getLabel());
-        if ($field->isRequired()) {
+        if ($field->isRequired() || ($field->isRequiredOnCreate() && !$this->isEdit)) {
             $label .= ' <span class="fa-required" aria-hidden="true">*</span>';
         }
 

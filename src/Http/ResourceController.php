@@ -16,9 +16,7 @@ use FloCMS\Admin\Translation\Translations;
 use FloCMS\Admin\Validation\FormValidator;
 use FloCMS\Core\App;
 use FloCMS\Core\Auth;
-use FloCMS\Core\Controller;
 use FloCMS\Core\HttpException;
-use FloCMS\Core\Router;
 use FloCMS\Core\Session;
 
 /**
@@ -29,7 +27,7 @@ use FloCMS\Core\Session;
  * the permission of each action is set per resource in the constructor and
  * enforced by FloCMS through $actionPermissions.
  */
-final class ResourceController extends Controller
+final class ResourceController extends PanelController
 {
     private Resource $resource;
     /** @var class-string<Resource> */
@@ -81,19 +79,36 @@ final class ResourceController extends Controller
         }
 
         $view = new PageView($class);
-        $html = $view->index($table, $result, $search, $this->can('create'), $this->can('update'), $this->can('delete'), fn (object $r): bool => $this->resource->canDelete($r));
+        $html = $view->index(
+            $table,
+            $result,
+            $search,
+            $this->can('create') && $this->resource->canCreate(),
+            $this->can('update'),
+            $this->can('delete'),
+            fn (object $r): bool => $this->resource->canEdit($r),
+            fn (object $r): bool => $this->resource->canDelete($r)
+        );
 
-        return $this->panel($class::getPluralLabel(), $html);
+        return $this->panel($class::getPluralLabel(), $html, $class::getSlug());
     }
 
     public function admin_create(): string
     {
+        if (!$this->resource->canCreate()) {
+            throw new HttpException(403);
+        }
+
         return $this->handleForm(null);
     }
 
     public function admin_edit(): string
     {
         $record = $this->findRecordOr404();
+
+        if (!$this->resource->canEdit($record)) {
+            throw new HttpException(403);
+        }
 
         return $this->handleForm($record);
     }
@@ -152,14 +167,19 @@ final class ResourceController extends Controller
             $exceptId = $isEdit ? $this->recordId() : null;
             $validator = new FormValidator($languages, $default, function (Field $field, string $value) use ($exceptId): bool {
                 return $this->repository()->exists($field->getName(), $value, $exceptId);
-            });
+            }, $isEdit);
             $errors = $validator->validate($form, $state, $skip);
+            if ($errors === []) {
+                $errors = $this->resource->validate($state, $record);
+            }
 
             if ($errors === []) {
                 $id = $this->save($form, $state, $skip, $record);
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
                 $continue = $this->request->input('_continue') !== null && $this->can('update');
+                $saved = $id !== '' ? $this->repository()->find($id) : null;
+                $continue = $continue && $saved !== null && $this->resource->canEdit($saved);
                 $this->redirect($continue && $id !== '' ? Admin::url($class::getSlug() . '/edit/' . $id) : Admin::url($class::getSlug()));
             }
 
@@ -171,7 +191,7 @@ final class ResourceController extends Controller
             }
         }
 
-        $renderer = new FormRenderer($state, $errors, $languages, $default);
+        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit);
         $view = new PageView($class);
         $title = $isEdit
             ? AdminLang::get('form.edit_title', ['label' => $class::getLabel()])
@@ -184,7 +204,7 @@ final class ResourceController extends Controller
         $action = $isEdit ? Admin::url($class::getSlug() . '/edit/' . $this->recordId()) : Admin::url($class::getSlug() . '/create');
         $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== []);
 
-        return $this->panel($title, $html);
+        return $this->panel($title, $html, $class::getSlug());
     }
 
     /**
@@ -241,13 +261,6 @@ final class ResourceController extends Controller
      * Helpers
      * ------------------------------------------------------------- */
 
-    private function panel(string $title, string $html): string
-    {
-        $this->data = (new PanelView())->data($title, $html, $this->resourceClass::getSlug());
-
-        return PanelView::template();
-    }
-
     private function table(): Table
     {
         $table = $this->resource->table(new Table());
@@ -299,11 +312,6 @@ final class ResourceController extends Controller
         return Auth::can($this->resourceClass::permission($ability));
     }
 
-    private function isPost(): bool
-    {
-        return $this->request->method() === 'POST';
-    }
-
     private function query(string $key, string $default): string
     {
         $value = $this->request->queryValue($key, $default);
@@ -317,11 +325,5 @@ final class ResourceController extends Controller
         $base = Admin::url($this->resourceClass::getSlug());
 
         return $url !== '' && ($url === $base || str_starts_with($url, $base . '?')) ? $url : null;
-    }
-
-    private function redirect(string $url): never
-    {
-        Router::redirect($url);
-        exit;
     }
 }

@@ -5,7 +5,7 @@
     <aside class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
         <div class="fa-brand"><a href="{{ $dashboardUrl }}">{{ $brand }}</a></div>
         <nav class="fa-nav">
-            <a class="fa-nav-link" href="{{ $dashboardUrl }}">{!! $dashboardIcon !!}<span>{{ $t('nav.dashboard') }}</span></a>
+            <a class="fa-nav-link{{ $dashboardActive ? ' is-active' : '' }}" href="{{ $dashboardUrl }}"@if($dashboardActive) aria-current="page"@endif>{!! $dashboardIcon !!}<span>{{ $t('nav.dashboard') }}</span></a>
             @if(count($nav) > 0)
             <p class="fa-nav-heading">{{ $t('nav.resources') }}</p>
             @foreach($nav as $item)
@@ -14,7 +14,7 @@
             @endif
             @if($usersUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
-            <a class="fa-nav-link" href="{{ $usersUrl }}">{!! $usersIcon !!}<span>{{ $t('nav.users') }}</span></a>
+            <a class="fa-nav-link{{ $usersActive ? ' is-active' : '' }}" href="{{ $usersUrl }}"@if($usersActive) aria-current="page"@endif>{!! $usersIcon !!}<span>{{ $t('nav.users') }}</span></a>
             @endif
         </nav>
     </aside>
@@ -25,7 +25,9 @@
             <span class="fa-topbar-title">{{ $title }}</span>
             <span class="fa-topbar-spacer"></span>
             <a class="fa-topbar-link" href="{{ $siteUrl }}" target="_blank" rel="noopener">{{ $t('nav.view_site') }}</a>
-            @if($user !== '')
+            @if($user !== '' && $profileUrl !== null)
+            <a class="fa-topbar-link fa-topbar-user" href="{{ $profileUrl }}" title="{{ $t('nav.profile') }}">{{ $user }}</a>
+            @elseif($user !== '')
             <span class="fa-topbar-user">{{ $user }}</span>
             @endif
             <a class="fa-topbar-link" href="{{ $logoutUrl }}">{!! $logoutIcon !!}<span>{{ $t('nav.logout') }}</span></a>

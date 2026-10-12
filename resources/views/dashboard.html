@@ -1,0 +1,24 @@
+<div class="fa-page-head">
+    <div>
+        <h1 class="fa-page-title">{{ $t('nav.dashboard') }}</h1>
+        <p class="fa-muted fa-subtitle">{{ $greeting }}</p>
+    </div>
+</div>
+@if(count($cards) > 0)
+<div class="fa-cards">
+    @foreach($cards as $card)
+    <a class="fa-card fa-stat" href="{{ $card['url'] }}">
+        <span class="fa-stat-icon">{!! $card['icon'] !!}</span>
+        <span class="fa-stat-body">
+            <span class="fa-stat-label">{{ $card['label'] }}</span>
+            <span class="fa-stat-value">{{ $card['count'] }}</span>
+        </span>
+    </a>
+    @endforeach
+</div>
+@else
+<div class="fa-card fa-blank">
+    <p>{{ $t('dashboard.no_resources') }}</p>
+    <p><code>php flo make:admin-resource Post --migration</code></p>
+</div>
+@endif

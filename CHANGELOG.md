@@ -2,6 +2,23 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.2.0 - 2026-10-12
+
+The panel becomes the site's admin interface: dashboard, users and profile.
+
+### Added
+- **Dashboard** at `/admin/dashboard`: one card per resource the user may view, with its number of records. The package sets `Config 'admin.home'`, so `/admin` opens it on skeleton 1.8+; a site can override the setting in `config/config.php`.
+- **Users management** at `/admin/accounts` for the skeleton's `users` table, with the skeleton's rules: `users.manage` for every action, roles up to your own (`Auth::canAssignRole()`), only lower roles editable unless `users.manage_any` (`Auth::canManageUser()`), no deleting, demoting or suspending yourself. Passwords hashed as by `php flo user:create`.
+- **Profile** at `/admin/profile`: your own name, email, login and password; the current password is needed to change the email or the password.
+- Resource API: `canCreate()`, `canEdit($record)`, `validate($state, $record)`; fields: `->requiredOnCreate()`.
+- `'users' => true|false` in `config/admin.php`.
+- `admin:doctor` checks the panel's pages and the users table, and says whether `/admin` can open the dashboard.
+
+### Changed
+- The URLs `dashboard`, `accounts` and `profile` are reserved for the panel; a resource using one is skipped and reported.
+- The sidebar's Dashboard and Users links open the panel's pages; the user name in the top bar opens the profile.
+- Filters, uploads, bulk delete and stat widgets move to 0.3.
+
 ## 0.1.0 - 2026-10-12
 
 First release. Requires flocms-core 2.3+.

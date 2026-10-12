@@ -43,6 +43,7 @@ final class DoctorCommand extends Command
         $this->ok('Languages: ' . implode(', ', $languages) . ' (default ' . Languages::default() . ')');
 
         $this->checkLayout();
+        $this->checkPackagePages($config->usersEnabled());
 
         $registry = Admin::registry();
         foreach ($registry->problems() as $problem) {
@@ -65,8 +66,22 @@ final class DoctorCommand extends Command
             }
         }
 
+        if ($config->usersEnabled() && $db === null) {
+            try {
+                $db = $project->database();
+                $db->query('SELECT 1');
+            } catch (Throwable $e) {
+                $this->bad('Database: ' . $e->getMessage());
+                $db = null;
+            }
+        }
+
         foreach ($resources as $slug => $class) {
             $this->checkResource($slug, $class, $db);
+        }
+
+        if ($config->usersEnabled() && ($users = $registry->find('accounts')) !== null) {
+            $this->checkResource('accounts', $users, $db, ['is_verified', 'verify_type', 'token']);
         }
 
         $this->newLine();
@@ -80,8 +95,11 @@ final class DoctorCommand extends Command
         return self::SUCCESS;
     }
 
-    /** @param class-string<Resource> $class */
-    private function checkResource(string $slug, string $class, ?Database $db): void
+    /**
+     * @param class-string<Resource> $class
+     * @param list<string> $extraColumns columns written besides the form fields
+     */
+    private function checkResource(string $slug, string $class, ?Database $db, array $extraColumns = []): void
     {
         $this->section($class . '  (/admin/' . $slug . ')');
 
@@ -114,6 +132,9 @@ final class DoctorCommand extends Command
         }
         foreach ($table->getColumns() as $name => $column) {
             $needed[$name] ??= 'list column';
+        }
+        foreach ($extraColumns as $name) {
+            $needed[$name] = 'set on create';
         }
         if ($class::usesTimestamps()) {
             $needed['created_at'] = 'timestamps';
@@ -156,6 +177,27 @@ final class DoctorCommand extends Command
             return $columns;
         } catch (Throwable) {
             return null;
+        }
+    }
+
+    /** The package's own pages, and whether /admin can open the dashboard. */
+    private function checkPackagePages(bool $usersEnabled): void
+    {
+        $pages = ['dashboard' => 'Dashboard'];
+        if ($usersEnabled) {
+            $pages += ['accounts' => 'Users', 'profile' => 'Profile'];
+        }
+        foreach ($pages as $slug => $name) {
+            $controller = \FloCMS\Admin\Support\Str::appControllerClass($slug);
+            if (class_exists($controller)) {
+                $this->bad($name . ' page (/admin/' . $slug . ') is taken by the application controller ' . $controller);
+            }
+        }
+        $this->ok('Panel pages: /admin/' . implode(', /admin/', array_keys($pages)));
+
+        $pages = (string) @file_get_contents($this->project()->path('controllers/PagesController.php'));
+        if (!str_contains($pages, 'admin.home')) {
+            $this->caution('/admin shows the skeleton\'s page (skeleton 1.8+ opens the dashboard): link /admin/dashboard from views/pages/admin_index.html');
         }
     }
 
