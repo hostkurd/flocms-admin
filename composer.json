@@ -1,0 +1,68 @@
+{
+    "name": "hostkurd/flocms-admin",
+    "description": "Admin panel builder for FloCMS: resources declared in PHP, server-rendered CRUD pages, translatable fields and RTL support.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "flocms",
+        "admin",
+        "admin-panel",
+        "crud",
+        "multilingual",
+        "rtl"
+    ],
+    "homepage": "https://github.com/hostkurd/flocms-admin",
+    "authors": [
+        {
+            "name": "HostKurd"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/hostkurd/flocms-admin/issues",
+        "source": "https://github.com/hostkurd/flocms-admin",
+        "docs": "https://github.com/hostkurd/flocms-admin#readme"
+    },
+    "require": {
+        "php": "^8.1",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-pdo": "*",
+        "hostkurd/flocms-core": "^2.3"
+    },
+    "require-dev": {
+        "hostkurd/flocms-cli": "^2.0.1",
+        "phpunit/phpunit": "^10.5 || ^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "FloCMS\\Admin\\": "src/"
+        },
+        "files": [
+            "bootstrap.php",
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FloCMS\\Admin\\Tests\\": "tests/",
+            "FloCMS\\Controllers\\": "tests/Fixtures/Controllers/"
+        }
+    },
+    "extra": {
+        "flocms": {
+            "commands": [
+                "FloCMS\\Admin\\Console\\InstallCommand",
+                "FloCMS\\Admin\\Console\\MakeResourceCommand",
+                "FloCMS\\Admin\\Console\\DoctorCommand"
+            ]
+        },
+        "branch-alias": {
+            "dev-main": "0.1-dev"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

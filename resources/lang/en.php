@@ -1,0 +1,67 @@
+<?php
+// flocms-admin: English. A site can override any line with an "admin.<key>"
+// entry in its own lang/<code>.php, e.g. 'admin.actions.create' => 'Add'.
+return [
+    'nav.label' => 'Admin navigation',
+    'nav.dashboard' => 'Dashboard',
+    'nav.resources' => 'Content',
+    'nav.site' => 'Site',
+    'nav.users' => 'Users',
+    'nav.menu' => 'Menu',
+    'nav.view_site' => 'View site',
+    'nav.logout' => 'Log out',
+
+    'actions.create' => 'Create',
+    'actions.create_label' => 'New :label',
+    'actions.create_continue' => 'Create and continue editing',
+    'actions.edit' => 'Edit',
+    'actions.delete' => 'Delete',
+    'actions.save' => 'Save',
+    'actions.save_changes' => 'Save changes',
+    'actions.save_continue' => 'Save and continue editing',
+    'actions.cancel' => 'Cancel',
+
+    'table.search' => 'Search',
+    'table.search_button' => 'Search',
+    'table.clear' => 'Clear',
+    'table.actions' => 'Actions',
+    'table.summary' => ':from–:to of :total',
+    'table.pagination' => 'Pages',
+    'table.previous' => 'Previous',
+    'table.next' => 'Next',
+    'table.no_records' => 'Nothing here yet.',
+    'table.no_results' => 'No results for “:search”.',
+    'table.yes' => 'Yes',
+    'table.no' => 'No',
+
+    'form.create_title' => 'New :label',
+    'form.edit_title' => 'Edit :label',
+    'form.choose' => 'Choose…',
+
+    'translations.open' => 'Translations of :field',
+    'translations.missing' => 'Missing: :languages',
+    'translations.all_filled' => 'All languages filled',
+    'translations.default_language' => 'default language',
+
+    'delete.title' => 'Delete this record?',
+    'delete.text' => 'This cannot be undone.',
+
+    'flash.created' => ':label created.',
+    'flash.updated' => ':label saved.',
+    'flash.deleted' => ':label deleted.',
+    'flash.fix_errors' => 'Please correct the errors below.',
+
+    'validation.required' => ':attribute is required.',
+    'validation.string' => ':attribute must be text.',
+    'validation.integer' => ':attribute must be a whole number.',
+    'validation.numeric' => ':attribute must be a number.',
+    'validation.min_numeric' => ':attribute must be at least :min.',
+    'validation.min_string' => ':attribute must be at least :min characters.',
+    'validation.max_numeric' => ':attribute must not be greater than :max.',
+    'validation.max_string' => ':attribute must not exceed :max characters.',
+    'validation.in' => ':attribute must be one of the listed values.',
+    'validation.email' => ':attribute must be a valid email address.',
+    'validation.url' => ':attribute must be a valid URL starting with http:// or https://.',
+    'validation.date' => ':attribute must be a valid date.',
+    'validation.unique' => 'This :attribute is already used.',
+];
