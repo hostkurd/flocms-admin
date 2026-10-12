@@ -32,9 +32,10 @@ final class PageView
 
     /**
      * @param array{data: list<object>, pagination: array<string, mixed>, sort: ?string, dir: string} $result
+     * @param Closure(object): bool $canEditRecord
      * @param Closure(object): bool $canDeleteRecord
      */
-    public function index(Table $table, array $result, string $search, bool $canCreate, bool $canUpdate, bool $canDelete, Closure $canDeleteRecord): string
+    public function index(Table $table, array $result, string $search, bool $canCreate, bool $canUpdate, bool $canDelete, Closure $canEditRecord, Closure $canDeleteRecord): string
     {
         $class = $this->resource;
         $slug = $class::getSlug();
@@ -72,7 +73,7 @@ final class PageView
             }
             $rows[] = [
                 'cells' => $cells,
-                'editUrl' => $canUpdate && $id !== '' ? Admin::url($slug . '/edit/' . $id) : null,
+                'editUrl' => $canUpdate && $id !== '' && $canEditRecord($record) ? Admin::url($slug . '/edit/' . $id) : null,
                 'deleteUrl' => $canDelete && $id !== '' && $canDeleteRecord($record) ? Admin::url($slug . '/delete/' . $id) : null,
             ];
         }

@@ -30,6 +30,7 @@ abstract class Field
     protected bool $translatable = false;
     protected ?bool $nullable = null;
     protected bool $unique = false;
+    protected bool $requiredOnCreate = false;
     protected int $columnSpan = 1;
 
     final public function __construct(string $name)
@@ -83,6 +84,13 @@ abstract class Field
             array_unshift($this->rules, 'required');
         }
 
+        return $this;
+    }
+
+    /** Required on the create page only (a password that may stay unchanged on edit). */
+    public function requiredOnCreate(bool $required = true): static
+    {
+        $this->requiredOnCreate = $required;
         return $this;
     }
 
@@ -166,6 +174,21 @@ abstract class Field
     public function isRequired(): bool
     {
         return in_array('required', $this->rules, true);
+    }
+
+    public function isRequiredOnCreate(): bool
+    {
+        return $this->requiredOnCreate;
+    }
+
+    /** Rules for this page: 'required' is added on create for requiredOnCreate() fields. */
+    public function rulesFor(bool $isEdit): array
+    {
+        if ($this->requiredOnCreate && !$isEdit && !$this->isRequired()) {
+            return array_merge(['required'], $this->rules);
+        }
+
+        return $this->rules;
     }
 
     public function getHelp(): ?string

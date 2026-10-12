@@ -80,10 +80,35 @@ abstract class Resource
     {
     }
 
+    /** Return false to refuse creating records (the New button is hidden, the page answers 403). */
+    public function canCreate(): bool
+    {
+        return true;
+    }
+
+    /** Return false to refuse editing a record (the Edit button is hidden, the page answers 403). */
+    public function canEdit(object $record): bool
+    {
+        return true;
+    }
+
     /** Return false to refuse deleting a record (the delete button is hidden). */
     public function canDelete(object $record): bool
     {
         return true;
+    }
+
+    /**
+     * Checks after the field rules passed: return field name => message.
+     * $state holds the submitted values (translatable ones as ['en' => ...]);
+     * $record is null on create.
+     *
+     * @param array<string, string|array<string, string>> $state
+     * @return array<string, string>
+     */
+    public function validate(array $state, ?object $record): array
+    {
+        return [];
     }
 
     /* ---------------------------------------------------------------

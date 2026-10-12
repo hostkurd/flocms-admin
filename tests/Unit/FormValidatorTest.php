@@ -109,4 +109,15 @@ final class FormValidatorTest extends TestCase
         $this->expectExceptionMessage('Unknown rule "email"');
         $this->validate($form, ['email' => 'x']);
     }
+
+    public function testRequiredOnCreate(): void
+    {
+        $form = (new Form())->schema([TextInput::make('password')->password()->requiredOnCreate()->rules('min:8')]);
+
+        $create = (new FormValidator(['en'], 'en', null, false))->validate($form, ['password' => '']);
+        $edit = (new FormValidator(['en'], 'en', null, true))->validate($form, ['password' => '']);
+
+        self::assertSame(['password' => 'Password is required.'], $create);
+        self::assertSame([], $edit);
+    }
 }

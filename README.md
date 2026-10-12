@@ -1,6 +1,8 @@
 # flocms-admin
 
-An admin panel builder for [FloCMS](https://github.com/hostkurd/FloCMS). You describe a database table as a PHP class (a *resource*) and get a list page with search, sorting and pagination, plus create, edit and delete pages, under clean URLs such as `/admin/properties/edit/5`.
+The admin panel for [FloCMS](https://github.com/hostkurd/FloCMS): a dashboard, users management, a profile page, and a builder for your own content. You describe a database table as a PHP class (a *resource*) and get a list page with search, sorting and pagination, plus create, edit and delete pages, under clean URLs such as `/admin/properties/edit/5`.
+
+FloCMS provides the security (login, sessions, roles and permissions); flocms-admin provides the screens and always asks FloCMS who may do what.
 
 - Server-rendered pages, a little vanilla JavaScript, no build step: works on plain cPanel hosting.
 - **Translatable fields**: one value per site language, stored as JSON in the field's column, edited through a language badge and a dialog.
@@ -33,13 +35,38 @@ php flo make:admin-resource Property --migration
 php flo migrate
 ```
 
-Log in as an admin and open `/admin/properties`. `php flo admin:doctor` checks the setup at any time.
+Log in and you land on the dashboard (`/admin/dashboard`; on skeletons before 1.8, open it yourself or link it from `views/pages/admin_index.html`). `php flo admin:doctor` checks the setup at any time.
+
+Create the first admin with `php flo user:create` if you have not yet.
 
 ### How it plugs in
 
 FloCMS 2.3 asks *controller resolvers* for a controller when a URL has no application controller. This package registers one resolver from Composer's autoloader. It answers only for `/admin/<slug>` where `<slug>` is one of your resources, and only after FloCMS's admin login check. The skeleton's own `/admin` dashboard, `/admin/users` and the login page are untouched; **application controllers always win**.
 
 That last point has a consequence. If your site has `controllers/PropertiesController.php` (for a public `/properties` page), FloCMS uses it for `/admin/properties` too. Give the resource another slug, e.g. `protected static string $slug = 'listings';`. `admin:doctor` reports such collisions, and in debug mode they are logged to `storage/logs/app.log`.
+
+## Dashboard, users and profile
+
+| Page | URL | Who |
+| --- | --- | --- |
+| Dashboard | `/admin/dashboard` | Every logged-in admin user; one card per resource they may view, with its number of records |
+| Users | `/admin/accounts` | `users.manage` (Admins and Super Admins in the skeleton) |
+| Profile | `/admin/profile` | Every logged-in admin user, for their own account |
+
+**`/admin`** opens the dashboard on skeleton 1.8+: the package sets `Config 'admin.home'` and the skeleton's `/admin` page follows it. Set `admin.home` in your `config/config.php` to send `/admin` elsewhere, or to `null` to keep the skeleton's page.
+
+**Users** manages the skeleton's `users` table with the skeleton's own rules (`FloCMS\Core\Auth`):
+
+- a role can only be given up to your own (`Auth::canAssignRole()`);
+- only users of a lower role can be edited or deleted, unless you hold `users.manage_any` (`Auth::canManageUser()`);
+- nobody can delete themselves, change their own role or suspend themselves;
+- passwords are hashed like `php flo user:create`, never shown, and kept when left empty;
+- users created here are active and verified (no email is sent); the login defaults to the email;
+- suspending a user ends their access on their next request (core's session refresh).
+
+**Profile** edits your own name, email, login and password. Changing the email or the password asks for the current password; role and status are shown, not editable.
+
+Set `'users' => false` in `config/admin.php` to switch users management and the profile page off. The URLs `dashboard`, `accounts` and `profile` belong to the panel and cannot be used as resource slugs.
 
 ## Resources
 
@@ -114,7 +141,17 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
 
-Optional methods: `query(Database $query)` to narrow every query (e.g. `->where('site_id', '=', 1)`), `beforeSave(array $data, ?object $record): array`, `afterSave(object $record)` and `canDelete(object $record): bool`.
+Optional methods:
+
+| Method | |
+| --- | --- |
+| `query(Database $query): Database` | Narrow every query, e.g. `->where('site_id', '=', 1)` |
+| `canCreate(): bool` | False hides New and answers 403 |
+| `canEdit(object $record): bool` | False hides Edit for that record and answers 403 |
+| `canDelete(object $record): bool` | False hides Delete and answers 403 |
+| `validate(array $state, ?object $record): array` | Checks after the field rules; return `field => message` |
+| `beforeSave(array $data, ?object $record): array` | Change the values before they are written |
+| `afterSave(object $record): void` | Runs after a successful save |
 
 Only the fields declared in `form()` are ever written. The primary key, `created_at` and `updated_at` never come from the request.
 
@@ -132,7 +169,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `Hidden` | hidden | Written, not shown |
 | `Placeholder` | read-only text | `->content(fn (?object $record) => ...)`; never written |
 
-Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`.
+Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->requiredOnCreate()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`.
 
 Passwords are hashed with `password_hash()` (use `->password(false)` to store them as typed), are never sent back to the browser, and an empty password on the edit page keeps the stored one.
 
@@ -219,6 +256,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `resources_namespace` | `'App\Admin\Resources'` | Their namespace |
 | `brand` | `SITE_NAME_ADMIN` | Name at the top of the sidebar |
 | `per_page` | `25` | Rows per page |
+| `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
 
@@ -230,7 +268,7 @@ The panel is drawn inside the active template's `layouts/admin.html`, which must
 | --- | --- |
 | `php flo admin:install` | Create `config/admin.php` and `admin/Resources/` (never overwrites) |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--migration] [--force]` | Create a resource class, and optionally a migration |
-| `php flo admin:doctor` | Check config, languages, layout, slug collisions, tables and columns |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables and columns |
 
 ## Removing the package
 
@@ -242,8 +280,8 @@ Then delete `config/admin.php` and `admin/` (your own code, so the package never
 
 ## Roadmap
 
-- 0.2: filters, image and file fields (flocms-uploader), bulk delete, dashboard with stat cards, overridable views
-- 0.3: relationships, a settings page, more generators
+- 0.3: filters, image and file fields (flocms-uploader), bulk delete, stat widgets on the dashboard, overridable views
+- Later: relationships, a settings page, more generators
 
 ## Development
 

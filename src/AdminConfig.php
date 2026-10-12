@@ -72,6 +72,12 @@ final class AdminConfig
         return array_values(array_map('strval', is_array($list) ? $list : Languages::DEFAULT_RTL));
     }
 
+    /** Whether the built-in users management (/admin/accounts) and profile page are on. */
+    public function usersEnabled(): bool
+    {
+        return ($this->values['users'] ?? true) !== false;
+    }
+
     public function permissionPrefix(): string
     {
         $prefix = trim((string) ($this->values['permission_prefix'] ?? 'content'), '.');

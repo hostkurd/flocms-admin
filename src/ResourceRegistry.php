@@ -14,11 +14,17 @@ final class ResourceRegistry
     /** URL segments the skeleton's own controllers use. */
     public const RESERVED = ['users', 'pages'];
 
+    /** URL segments of this package's own pages. */
+    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile'];
+
     /** @var array<string, class-string<Resource>> slug => class */
     private array $resources = [];
 
     /** @var list<string> */
     private array $problems = [];
+
+    /** @var array<string, true> slugs of the package's built-in resources */
+    private array $builtIn = [];
 
     /** @var array<string, true> */
     private static array $autoloaders = [];
@@ -37,11 +43,15 @@ final class ResourceRegistry
             $registry->add($class);
         }
 
+        if ($config->usersEnabled()) {
+            $registry->add(\FloCMS\Admin\Users\UsersResource::class, true);
+        }
+
         return $registry;
     }
 
     /** Add a resource class; problems are collected instead of thrown. */
-    public function add(string $class): bool
+    public function add(string $class, bool $builtIn = false): bool
     {
         $class = ltrim($class, '\\');
 
@@ -70,6 +80,12 @@ final class ResourceRegistry
             return false;
         }
 
+        if (!$builtIn && in_array($slug, self::PACKAGE_PAGES, true)) {
+            $this->problems[] = $class . ': slug "' . $slug . '" is reserved for the admin panel\'s own pages ('
+                . implode(', ', self::PACKAGE_PAGES) . '); set another $slug';
+            return false;
+        }
+
         $controller = Str::appControllerClass($slug);
         if (in_array($slug, self::RESERVED, true) || class_exists($controller)) {
             $this->problems[] = $class . ': slug "' . $slug . '" is taken by the application controller '
@@ -78,6 +94,9 @@ final class ResourceRegistry
         }
 
         $this->resources[$slug] = $class;
+        if ($builtIn) {
+            $this->builtIn[$slug] = true;
+        }
 
         return true;
     }
@@ -88,14 +107,19 @@ final class ResourceRegistry
         return $this->resources[$slug] ?? null;
     }
 
+    public function isBuiltIn(string $slug): bool
+    {
+        return isset($this->builtIn[$slug]);
+    }
+
     /**
-     * Resources in navigation order.
+     * The site's own resources in navigation order (built-in ones excluded).
      *
      * @return array<string, class-string<Resource>>
      */
     public function all(): array
     {
-        $resources = $this->resources;
+        $resources = array_diff_key($this->resources, $this->builtIn);
         uasort($resources, static function (string $a, string $b): int {
             /** @var class-string<Resource> $a */
             /** @var class-string<Resource> $b */

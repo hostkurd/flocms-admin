@@ -124,7 +124,15 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('content.properties.view', $display);
         self::assertStringContainsString('Column "title" (form field) is missing', $display);
 
+        self::assertStringContainsString('Table "users" not found', $display, 'users management is on by default');
+        self::assertStringContainsString('/admin shows the skeleton\'s page', $display, 'skeleton before 1.8: no admin.home');
+
         $pdo->exec('ALTER TABLE properties ADD COLUMN title TEXT');
+        $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, full_name TEXT, email TEXT, login TEXT, password TEXT,
+            role INTEGER, status INTEGER, phone TEXT, is_verified INTEGER, verify_type INTEGER, token TEXT)');
+        // Skeleton 1.8+: the /admin page follows the admin.home setting
+        mkdir($this->root . '/controllers');
+        file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");
         $tester = $this->runCommand(new DoctorCommand());
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         self::assertStringContainsString('Everything looks good.', $tester->getDisplay());

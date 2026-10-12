@@ -157,3 +157,13 @@
   .fa-lang-badge{min-height:32px}
   .fa-page-title{font-size:21px}
 }
+
+/* Dashboard */
+.fa-subtitle{margin-block-start:4px !important}
+.fa-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.fa-panel a.fa-stat{display:flex;align-items:center;gap:14px;padding:18px;color:var(--fa-text)}
+.fa-panel a.fa-stat:hover{border-color:#9fcfe0;text-decoration:none}
+.fa-stat-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;background:var(--fa-primary-soft);color:var(--fa-primary)}
+.fa-stat-body{display:flex;flex-direction:column;min-width:0}
+.fa-stat-label{font-size:14px;color:var(--fa-muted)}
+.fa-stat-value{font-size:26px;font-weight:700;line-height:1.2}
