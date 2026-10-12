@@ -19,12 +19,12 @@ final class FormRendererTest extends TestCase
             TextInput::make('code'),
         ]);
 
-        return (new FormRenderer($state, $errors, ['en', 'ar', 'el'], 'en'))->render($form);
+        return (new FormRenderer($state, $errors, ['en', 'ar', 'ku'], 'en'))->render($form);
     }
 
     public function testTranslatableFieldShowsDefaultInputBadgeAndDialog(): void
     {
-        $html = $this->render(['title' => ['en' => 'Villa', 'ar' => 'فيلا', 'el' => ''], 'body' => [], 'code' => 'X1']);
+        $html = $this->render(['title' => ['en' => 'Villa', 'ar' => 'فيلا', 'ku' => ''], 'body' => [], 'code' => 'X1']);
 
         // Visible default-language input, submitted as title[en]
         self::assertStringContainsString('id="f-title" name="title[en]"', $html);
@@ -34,10 +34,10 @@ final class FormRendererTest extends TestCase
         self::assertDoesNotMatchRegularExpression('/id="f-title-en" name=/', $html);
         // Other languages, with their direction
         self::assertMatchesRegularExpression('/name="title\[ar\]"[^>]*dir="rtl" lang="ar"[^>]*value="فيلا"/', $html);
-        self::assertMatchesRegularExpression('/name="title\[el\]"[^>]*dir="ltr" lang="el"/', $html);
+        self::assertMatchesRegularExpression('/name="title\[ku\]"[^>]*dir="rtl" lang="ku"/', $html);
         // Badge: default, filled and empty languages
-        self::assertStringContainsString('<span class="fa-code is-default">en</span><span class="fa-code is-filled">ar</span><span class="fa-code is-empty">el</span>', $html);
-        self::assertStringContainsString('title="Missing: el"', $html);
+        self::assertStringContainsString('<span class="fa-code is-default">en</span><span class="fa-code is-filled">ar</span><span class="fa-code is-empty">ku</span>', $html);
+        self::assertStringContainsString('title="Missing: ku"', $html);
         self::assertStringContainsString('<dialog class="fa-lang-dialog" id="d-title"', $html);
         self::assertStringContainsString('default language', $html);
         // Long fields get the wide dialog

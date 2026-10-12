@@ -40,10 +40,10 @@ abstract class RepositoryTestCase extends TestCase
         }
 
         $rows = [
-            ['title' => '{"en":"Sea view villa","ar":"فيلا بإطلالة على البحر","el":"Βίλα με θέα"}', 'slug' => 'sea-view-villa'],
+            ['title' => '{"en":"Sea view villa","ar":"فيلا بإطلالة على البحر","ku":"ڤیلای ڕووەو دەریا"}', 'slug' => 'sea-view-villa'],
             ['title' => '{"en":"Mountain cabin","ar":"كوخ جبلي"}', 'slug' => 'mountain-cabin'],
             ['title' => 'Old plain title', 'slug' => 'old-plain'],
-            ['title' => '{"en":"100% sale_now","el":"Αλφα"}', 'slug' => 'sale'],
+            ['title' => '{"en":"100% sale_now","ku":"ئەلف"}', 'slug' => 'sale'],
             ['title' => null, 'slug' => 'untitled'],
         ];
         foreach ($rows as $row) {
@@ -68,7 +68,7 @@ abstract class RepositoryTestCase extends TestCase
     public function testSearchFindsAnyLanguage(): void
     {
         self::assertSame(['sea-view-villa'], $this->slugs('إطلالة'));
-        self::assertSame(['sea-view-villa'], $this->slugs('θέα'));
+        self::assertSame(['sea-view-villa'], $this->slugs('ڕووەو'));
         self::assertSame(['mountain-cabin'], $this->slugs('cabin'));
     }
 
@@ -99,9 +99,9 @@ abstract class RepositoryTestCase extends TestCase
         self::assertSame(['sale', 'mountain-cabin', 'old-plain', 'sea-view-villa'], array_values(array_diff($this->slugs('', 'title', 'asc'), ['untitled'])));
         self::assertSame(['sea-view-villa', 'old-plain', 'mountain-cabin', 'sale'], array_values(array_diff($this->slugs('', 'title', 'desc'), ['untitled'])));
 
-        // Greek: only two rows have Greek titles; the others are NULL in that language
-        $greek = array_values(array_diff($this->slugs('', 'title', 'asc', 1, 10, 'el'), ['untitled', 'mountain-cabin', 'old-plain']));
-        self::assertSame(['sale', 'sea-view-villa'], $greek);
+        // Kurdish: only two rows have Kurdish titles; the others are NULL in that language
+        $kurdish = array_values(array_diff($this->slugs('', 'title', 'asc', 1, 10, 'ku'), ['untitled', 'mountain-cabin', 'old-plain']));
+        self::assertSame(['sale', 'sea-view-villa'], $kurdish);
     }
 
     public function testUnsortableColumnsFallBackToTheDefaultSort(): void

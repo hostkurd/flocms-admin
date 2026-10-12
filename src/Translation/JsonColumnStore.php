@@ -9,7 +9,7 @@ use InvalidArgumentException;
 /**
  * One JSON object per row in the field's own column:
  *
- *     {"en":"Sea view villa","ar":"فيلا بإطلالة على البحر","el":"Βίλα με θέα στη θάλασσα"}
+ *     {"en":"Sea view villa","ar":"فيلا بإطلالة على البحر","ku":"ڤیلای ڕووەو دەریا"}
  *
  * Column type: JSON (MySQL 5.7+; on MariaDB an alias of LONGTEXT with a
  * JSON_VALID check) or any text column. Plain text already in the column

@@ -15,7 +15,7 @@ abstract class TestCase extends \PHPUnit\Framework\TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        self::languages(['en', 'ar', 'el'], 'en');
+        self::languages(['en', 'ar', 'ku'], 'en');
         Admin::reset();
         Admin::useConfig([], true, sys_get_temp_dir());
         AdminLang::reset();

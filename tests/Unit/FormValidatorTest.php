@@ -16,7 +16,7 @@ final class FormValidatorTest extends TestCase
 {
     private function validate(Form $form, array $state, ?\Closure $isTaken = null, array $skip = []): array
     {
-        return (new FormValidator(['en', 'ar', 'el'], 'en', $isTaken))->validate($form, $state, $skip);
+        return (new FormValidator(['en', 'ar', 'ku'], 'en', $isTaken))->validate($form, $state, $skip);
     }
 
     public function testRequiredOnlyAppliesToTheDefaultLanguage(): void
@@ -24,7 +24,7 @@ final class FormValidatorTest extends TestCase
         $form = (new Form())->schema([TextInput::make('title')->translatable()->rules('required|max:5')]);
 
         self::assertSame(['title' => 'Title is required.'], $this->validate($form, ['title' => ['en' => '', 'ar' => 'فيلا']]));
-        self::assertSame([], $this->validate($form, ['title' => ['en' => 'Villa', 'ar' => '', 'el' => '']]));
+        self::assertSame([], $this->validate($form, ['title' => ['en' => 'Villa', 'ar' => '', 'ku' => '']]));
     }
 
     public function testOtherRulesApplyToEveryFilledLanguage(): void
@@ -33,7 +33,7 @@ final class FormValidatorTest extends TestCase
 
         self::assertSame(
             ['title.ar' => 'Title must not exceed 5 characters.'],
-            $this->validate($form, ['title' => ['en' => 'Villa', 'ar' => 'فيلا كبيرة', 'el' => '']])
+            $this->validate($form, ['title' => ['en' => 'Villa', 'ar' => 'فيلا كبيرة', 'ku' => '']])
         );
     }
 

@@ -10,9 +10,9 @@ final class LanguagesTest extends TestCase
 {
     public function testDefaultLanguageComesFirst(): void
     {
-        self::languages(['ar', ' EL ', 'en', 'ar', 'bad code'], 'en');
+        self::languages(['ar', ' KU ', 'en', 'ar', 'bad code'], 'en');
 
-        self::assertSame(['en', 'ar', 'el'], Languages::all());
+        self::assertSame(['en', 'ar', 'ku'], Languages::all());
         self::assertSame('en', Languages::default());
     }
 
@@ -20,10 +20,10 @@ final class LanguagesTest extends TestCase
     {
         self::assertSame('rtl', Languages::direction('ar'));
         self::assertSame('rtl', Languages::direction('ku'));
-        self::assertSame('ltr', Languages::direction('el'));
+        self::assertSame('ltr', Languages::direction('en'));
 
-        Languages::setRtl(['el']);
-        self::assertSame('rtl', Languages::direction('el'));
+        Languages::setRtl(['ar']);
+        self::assertSame('ltr', Languages::direction('ku'));
     }
 
     public function testNamesUseTheSiteKeyThenTheEndonym(): void
@@ -31,7 +31,7 @@ final class LanguagesTest extends TestCase
         self::siteLang(['lng.ar' => 'عەرەبی']);
 
         self::assertSame('عەرەبی', Languages::name('ar'));
-        self::assertSame('Ελληνικά', Languages::name('el'));
+        self::assertSame('کوردی', Languages::name('ku'));
         self::assertSame('XQ', Languages::name('xq'));
     }
 }

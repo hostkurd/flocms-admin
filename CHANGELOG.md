@@ -14,5 +14,5 @@ First release. Requires flocms-core 2.3+.
 - Translatable fields stored as one JSON object per column, behind a `TranslationStore` interface; language badge and `<dialog>` editor; plain-text values already in a column are read as the default language. Website helper `localized()`.
 - Validation with FloCMS's rules, applied to the default language (`required`) and to every filled language (the other rules); field type checks; `unique`; messages in the admin's language.
 - Permissions per action (`content.<slug>.view|create|update|delete` by default) through `$actionPermissions`.
-- RTL admin (logical CSS only), `dir` per language input, admin strings in English, Arabic, Kurdish (Sorani) and Greek, overridable from the site's lang files.
+- RTL admin (logical CSS only), `dir` per language input, admin strings in English, Arabic and Kurdish (Sorani), overridable from the site's lang files.
 - Commands: `admin:install`, `make:admin-resource` (`--migration`), `admin:doctor`.

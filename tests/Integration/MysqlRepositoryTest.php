@@ -45,11 +45,12 @@ final class MysqlRepositoryTest extends RepositoryTestCase
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     }
 
-    public function testGreekSearchIgnoresCase(): void
+    public function testAccentedSearchIgnoresCase(): void
     {
-        $result = $this->repository->paginate($this->table, 'ΒΊΛΑ', null, null, 1, 10, 'en');
+        $this->repository->insert(['title' => '{"en":"Café du port"}', 'slug' => 'cafe', 'status' => 'draft', 'featured' => 0]);
+        $result = $this->repository->paginate($this->table, 'CAFÉ', null, null, 1, 10, 'en');
 
-        self::assertSame(['sea-view-villa'], array_map(static fn (object $r): string => $r->slug, $result['data']));
+        self::assertSame(['cafe'], array_map(static fn (object $r): string => $r->slug, $result['data']));
     }
 
     public function testJsonColumnsWork(): void

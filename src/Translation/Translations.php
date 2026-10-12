@@ -7,7 +7,7 @@ namespace FloCMS\Admin\Translation;
  * Reading translatable values on the website.
  *
  *     Translations::get($property->title)        // current language (ACTIVE_LANG)
- *     Translations::get($property->title, 'el')  // a given language
+ *     Translations::get($property->title, 'ar')  // a given language
  *     Translations::all($property->title)        // ['en' => ..., 'ar' => ...]
  */
 final class Translations

@@ -19,7 +19,7 @@ use LogicException;
 
 final class FieldsTest extends TestCase
 {
-    private const LANGS = ['en', 'ar', 'el'];
+    private const LANGS = ['en', 'ar', 'ku'];
 
     public function testTranslatableStateFromRecordAndInput(): void
     {
@@ -28,17 +28,17 @@ final class FieldsTest extends TestCase
 
         self::assertSame(['en' => 'Villa', 'ar' => 'فيلا'], $field->stateFromRecord($record, 'en'));
         self::assertSame(
-            ['en' => 'Villa', 'ar' => 'فيلا', 'el' => ''],
+            ['en' => 'Villa', 'ar' => 'فيلا', 'ku' => ''],
             $field->stateFromInput(['title' => ['en' => ' Villa ', 'ar' => 'فيلا', 'xx' => 'ignored']], self::LANGS)
         );
-        self::assertSame(['en' => '', 'ar' => '', 'el' => ''], $field->stateFromInput(['title' => 'not an array'], self::LANGS));
+        self::assertSame(['en' => '', 'ar' => '', 'ku' => ''], $field->stateFromInput(['title' => 'not an array'], self::LANGS));
     }
 
     public function testTranslatableDehydratesToJsonOrNull(): void
     {
         $field = TextInput::make('title')->translatable();
 
-        self::assertSame('{"en":"Villa","ar":"فيلا"}', $field->dehydrate(['en' => 'Villa', 'ar' => 'فيلا', 'el' => '']));
+        self::assertSame('{"en":"Villa","ar":"فيلا"}', $field->dehydrate(['en' => 'Villa', 'ar' => 'فيلا', 'ku' => '']));
         self::assertNull($field->dehydrate(['en' => '', 'ar' => '']));
         self::assertSame('', TextInput::make('t')->translatable()->nullable(false)->dehydrate([]));
     }

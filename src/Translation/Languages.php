@@ -12,7 +12,7 @@ use FloCMS\Core\Lang;
  */
 final class Languages
 {
-    /** Language codes accepted by the admin: "en", "el", "ckb", "pt-br". */
+    /** Language codes accepted by the admin: "en", "ar", "ckb", "pt-br". */
     public const CODE_PATTERN = '/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/';
 
     /** Written right to left unless the admin config says otherwise. */
@@ -20,7 +20,7 @@ final class Languages
 
     /** Names in their own language, used when the site's lang file has no lng.<code> key. */
     private const ENDONYMS = [
-        'ar' => 'العربية', 'ckb' => 'کوردی', 'de' => 'Deutsch', 'el' => 'Ελληνικά',
+        'ar' => 'العربية', 'ckb' => 'کوردی', 'de' => 'Deutsch',
         'en' => 'English', 'es' => 'Español', 'fa' => 'فارسی', 'fr' => 'Français',
         'he' => 'עברית', 'it' => 'Italiano', 'ku' => 'کوردی', 'nl' => 'Nederlands',
         'pt' => 'Português', 'ru' => 'Русский', 'sv' => 'Svenska', 'tr' => 'Türkçe',

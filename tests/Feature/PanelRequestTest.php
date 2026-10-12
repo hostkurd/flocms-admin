@@ -170,9 +170,9 @@ final class PanelRequestTest extends TestCase
     public function testCreate(): void
     {
         $result = self::post('/admin/posts/create', [
-            'title' => ['en' => 'Lake house', 'ar' => 'بيت البحيرة', 'el' => ''],
+            'title' => ['en' => 'Lake house', 'ar' => 'بيت البحيرة', 'ku' => ''],
             'slug' => '',
-            'body' => ['en' => 'Line 1', 'ar' => '', 'el' => 'Γραμμή'],
+            'body' => ['en' => 'Line 1', 'ar' => '', 'ku' => 'دێڕی یەک'],
             'status' => 'published',
             'views' => '12',
             'featured' => '1',
@@ -188,7 +188,7 @@ final class PanelRequestTest extends TestCase
         self::assertNotNull($row, 'the id from the input is ignored');
         self::assertSame('{"en":"Lake house","ar":"بيت البحيرة"}', $row['title']);
         self::assertSame('lake-house', $row['slug']);
-        self::assertSame('{"en":"Line 1","el":"Γραμμή"}', $row['body']);
+        self::assertSame('{"en":"Line 1","ku":"دێڕی یەک"}', $row['body']);
         self::assertSame('12', (string) $row['views']);
         self::assertSame('1', (string) $row['featured']);
         self::assertSame('2026-10-12', $row['published_on']);
@@ -199,7 +199,7 @@ final class PanelRequestTest extends TestCase
     public function testValidationErrorsRenderTheFormAgain(): void
     {
         $result = self::post('/admin/posts/create', [
-            'title' => ['en' => 'Short', 'ar' => str_repeat('ف', 30), 'el' => ''],
+            'title' => ['en' => 'Short', 'ar' => str_repeat('ف', 30), 'ku' => ''],
             'slug' => 'sea-view-villa',
             'status' => 'other',
             'views' => '-1',
@@ -226,7 +226,7 @@ final class PanelRequestTest extends TestCase
         self::assertStringContainsString('Edit Post', $body);
 
         $result = self::post('/admin/posts/edit/1', [
-            'title' => ['en' => 'Sea view villa 2', 'ar' => '', 'el' => 'Βίλα'],
+            'title' => ['en' => 'Sea view villa 2', 'ar' => '', 'ku' => 'ڤیلا'],
             'slug' => 'sea-view-villa',
             'status' => 'draft',
             '_continue' => '1',
@@ -234,7 +234,7 @@ final class PanelRequestTest extends TestCase
 
         self::assertTrue($result['redirected']);
         $row = self::row('posts', 1);
-        self::assertSame('{"en":"Sea view villa 2","el":"Βίλα"}', $row['title']);
+        self::assertSame('{"en":"Sea view villa 2","ku":"ڤیلا"}', $row['title']);
         self::assertSame('draft', $row['status']);
         self::assertSame('0', (string) $row['featured'], 'unchecked toggle saves 0');
         self::assertNotNull($row['updated_at']);
@@ -333,7 +333,7 @@ Config::set('routes', ['default' => '', 'admin' => 'admin_']);
 Config::set('default_route', 'default');
 Config::set('default_controller', 'pages');
 Config::set('default_action', 'index');
-Config::set('languages', ['en', 'ar', 'el', 'ku']);
+Config::set('languages', ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
 Config::set('permissions', $options['permissions']);
 

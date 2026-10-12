@@ -11,7 +11,7 @@ final class TranslationStoreTest extends TestCase
 {
     public function testEncodeKeepsUnicodeAndSlashesAndDropsEmptyLanguages(): void
     {
-        $json = (new JsonColumnStore())->encode(['en' => 'Sea view / villa', 'ar' => 'فيلا', 'el' => '  ', 'ku' => '']);
+        $json = (new JsonColumnStore())->encode(['en' => 'Sea view / villa', 'ar' => 'فيلا', 'ku' => '  ', 'fr' => '']);
 
         self::assertSame('{"en":"Sea view / villa","ar":"فيلا"}', $json);
     }
@@ -28,7 +28,7 @@ final class TranslationStoreTest extends TestCase
 
     public function testDecodeReadsJsonObjects(): void
     {
-        self::assertSame(['en' => 'Title', 'el' => 'Τίτλος'], (new JsonColumnStore())->decode('{"en":"Title","el":"Τίτλος"}', 'en'));
+        self::assertSame(['en' => 'Title', 'ku' => 'ناونیشان'], (new JsonColumnStore())->decode('{"en":"Title","ku":"ناونیشان"}', 'en'));
     }
 
     public function testDecodeReadsLegacyPlainTextAsTheDefaultLanguage(): void
@@ -51,11 +51,11 @@ final class TranslationStoreTest extends TestCase
 
     public function testTranslationsGetFallsBackToDefaultThenFirstFilled(): void
     {
-        $value = '{"ar":"عنوان","el":"Τίτλος"}';
+        $value = '{"ar":"عنوان","ku":"ناونیشان"}';
 
-        self::assertSame('Τίτλος', Translations::get($value, 'el'));
+        self::assertSame('ناونیشان', Translations::get($value, 'ku'));
         self::assertSame('عنوان', Translations::get($value, 'fr'), 'no fr, no en: first filled');
-        self::assertSame('Title', Translations::get('{"en":"Title","ar":"عنوان"}', 'el'), 'default language');
+        self::assertSame('Title', Translations::get('{"en":"Title","ar":"عنوان"}', 'ku'), 'default language');
         self::assertSame('', Translations::get(null));
         self::assertSame('Plain', Translations::get('Plain', 'ar'), 'legacy plain text');
     }

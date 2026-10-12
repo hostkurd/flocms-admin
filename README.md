@@ -156,7 +156,7 @@ Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($valu
 Mark a text field `->translatable()` and it gets one value per site language, from `LANGUAGES` and `DEFAULT_LANG` in `.env`:
 
 ```dotenv
-LANGUAGES=en,ar,el
+LANGUAGES=en,ar,ku
 DEFAULT_LANG=en
 ```
 
@@ -169,7 +169,7 @@ The form shows the default-language input with a language badge beside it. The b
 Each translatable field is one column holding a JSON object:
 
 ```json
-{"en":"Sea view villa","ar":"فيلا بإطلالة على البحر","el":"Βίλα με θέα στη θάλασσα"}
+{"en":"Sea view villa","ar":"فيلا بإطلالة على البحر","ku":"ڤیلای ڕووەو دەریا"}
 ```
 
 Use a `JSON` column (on MariaDB this is `LONGTEXT` with a validity check) or any text column. Empty languages are not stored; a field with no value at all is stored as `NULL`. Search looks in every language; sorting uses the admin's language.
@@ -180,7 +180,7 @@ Use a `JSON` column (on MariaDB this is `LONGTEXT` with a validity check) or any
 
 ```php
 {{ localized($property->title) }}          // current language, falls back to the default language
-{{ localized($property->title, 'el') }}    // a given language
+{{ localized($property->title, 'ar') }}    // a given language
 ```
 
 `localized()` returns the value in the requested language, else in the default language, else in the first filled language, else `''`. It accepts the raw column value, a decoded array or plain text. The same function is available as `FloCMS\Admin\Translation\Translations::get()`, plus `Translations::all()` for every language. If you later remove the package, replace these calls.
@@ -189,7 +189,7 @@ Use a `JSON` column (on MariaDB this is `LONGTEXT` with a validity check) or any
 
 - The panel's language is the language of the URL: `/ku/admin/properties` shows the panel in Kurdish.
 - Its direction comes from `lng.dir` in the site's `lang/<code>.php` (the skeleton's files have it), else from the package's list of right-to-left languages.
-- The package ships its words in English, Arabic, Kurdish (Sorani) and Greek. A site changes any of them by adding an `admin.<key>` line to its own lang file, e.g. `'admin.actions.create' => 'Add'`. See `resources/lang/en.php` for the keys.
+- The package ships its words in English, Arabic and Kurdish (Sorani), the languages of the skeleton. A site changes any of them by adding an `admin.<key>` line to its own lang file, e.g. `'admin.actions.create' => 'Add'`. See `resources/lang/en.php` for the keys.
 - Language names in the dialog come from the site's `lng.<code>` keys, else the name in that language.
 - Labels you write (`$label`, field labels, options) are shown as written, unless they are keys of the site's lang file, which are translated.
 
