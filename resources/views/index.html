@@ -1,0 +1,99 @@
+<div class="fa-page-head">
+    <h1 class="fa-page-title">{{ $title }}</h1>
+    @if($createUrl !== null)
+    <a class="fa-btn fa-btn-primary" href="{{ $createUrl }}">{!! $plusIcon !!}<span>{{ $createLabel }}</span></a>
+    @endif
+</div>
+<div class="fa-card">
+    @if($hasSearch)
+    <form class="fa-toolbar" method="get" action="{{ $listUrl }}" role="search">
+        <label class="fa-search">
+            {!! $searchIcon !!}
+            <span class="fa-sr">{{ $t('table.search') }}</span>
+            <input type="search" name="q" value="{{ $search }}" placeholder="{{ $t('table.search') }}" class="fa-input">
+        </label>
+        @if($sort !== null)
+        <input type="hidden" name="sort" value="{{ $sort }}">
+        <input type="hidden" name="dir" value="{{ $dir }}">
+        @endif
+        <button type="submit" class="fa-btn">{{ $t('table.search_button') }}</button>
+        @if($search !== '')
+        <a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('table.clear') }}</a>
+        @endif
+    </form>
+    @endif
+    @if(count($rows) > 0)
+    <div class="fa-table-wrap">
+        <table class="fa-table">
+            <thead>
+                <tr>
+                    @foreach($columns as $column)
+                    <th scope="col" class="{{ $column['class'] }}" aria-sort="{{ $column['aria'] }}">
+                        @if($column['sortUrl'] !== null)
+                        <a class="fa-sort{{ $column['sorted'] !== null ? ' is-' . $column['sorted'] : '' }}" href="{{ $column['sortUrl'] }}">{{ $column['label'] }}</a>
+                        @else
+                        {{ $column['label'] }}
+                        @endif
+                    </th>
+                    @endforeach
+                    @if($hasActions)
+                    <th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th>
+                    @endif
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($rows as $row)
+                <tr>
+                    @foreach($row['cells'] as $cell)
+                    <td class="{{ $cell['class'] }}">{!! $cell['html'] !!}</td>
+                    @endforeach
+                    @if($hasActions)
+                    <td class="fa-actions">
+                        @if($row['editUrl'] !== null)
+                        <a class="fa-btn fa-btn-sm" href="{{ $row['editUrl'] }}">{{ $t('actions.edit') }}</a>
+                        @endif
+                        @if($row['deleteUrl'] !== null)
+                        <form method="post" action="{{ $row['deleteUrl'] }}" class="fa-inline" data-confirm>
+                            {!! $csrf !!}
+                            <input type="hidden" name="_back" value="{{ $backUrl }}">
+                            <button type="submit" class="fa-btn fa-btn-sm fa-btn-danger-ghost">{{ $t('actions.delete') }}</button>
+                        </form>
+                        @endif
+                    </td>
+                    @endif
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    <div class="fa-table-foot">
+        <span class="fa-muted">{{ $summary }}</span>
+        @if(count($pages) > 0)
+        <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
+            @if($prevUrl !== null)
+            <a class="fa-page-link" href="{{ $prevUrl }}" rel="prev">{{ $t('table.previous') }}</a>
+            @endif
+            @foreach($pages as $link)
+            @if($link['current'])
+            <span class="fa-page-link is-current" aria-current="page">{{ $link['label'] }}</span>
+            @elseif($link['url'] !== null)
+            <a class="fa-page-link" href="{{ $link['url'] }}">{{ $link['label'] }}</a>
+            @else
+            <span class="fa-page-gap">{{ $link['label'] }}</span>
+            @endif
+            @endforeach
+            @if($nextUrl !== null)
+            <a class="fa-page-link" href="{{ $nextUrl }}" rel="next">{{ $t('table.next') }}</a>
+            @endif
+        </nav>
+        @endif
+    </div>
+    @else
+    <div class="fa-blank">
+        <p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : $t('table.no_records') }}</p>
+        @if($createUrl !== null && $search === '')
+        <a class="fa-btn fa-btn-primary" href="{{ $createUrl }}">{{ $createLabel }}</a>
+        @endif
+    </div>
+    @endif
+</div>

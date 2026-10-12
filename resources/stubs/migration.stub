@@ -1,0 +1,29 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * Table for {{ class }} (flocms-admin). Translatable fields are JSON columns:
+ * {"en":"...","ar":"...","el":"..."}.
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $json = $db->driver() === 'sqlite' ? 'TEXT' : 'JSON';
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
+            ' . $this->id($db) . ',
+            `title` ' . $json . ' NULL,
+            `created_at` DATETIME NULL,
+            `updated_at` DATETIME NULL
+        )' . $this->tableOptions($db));
+    }
+
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ table }}`');
+    }
+};

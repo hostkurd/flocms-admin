@@ -1,0 +1,23 @@
+<div class="fa-page-head">
+    <div>
+        <p class="fa-breadcrumb"><a href="{{ $listUrl }}">{{ $listLabel }}</a></p>
+        <h1 class="fa-page-title">{{ $title }}</h1>
+    </div>
+    @if($deleteUrl !== null)
+    <form method="post" action="{{ $deleteUrl }}" data-confirm>
+        {!! $csrf !!}
+        <button type="submit" class="fa-btn fa-btn-danger-ghost">{{ $t('actions.delete') }}</button>
+    </form>
+    @endif
+</div>
+<form method="post" action="{{ $action }}" class="fa-card fa-form" novalidate>
+    {!! $csrf !!}
+    {!! $fields !!}
+    <div class="fa-form-actions">
+        <button type="submit" class="fa-btn fa-btn-primary">{{ $isEdit ? $t('actions.save_changes') : $t('actions.create') }}</button>
+        @if($canContinue)
+        <button type="submit" name="_continue" value="1" class="fa-btn">{{ $isEdit ? $t('actions.save_continue') : $t('actions.create_continue') }}</button>
+        @endif
+        <a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('actions.cancel') }}</a>
+    </div>
+</form>
