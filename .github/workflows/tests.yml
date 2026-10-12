@@ -59,5 +59,8 @@ jobs:
       - name: Lint
         run: find src tests bootstrap.php resources/lang -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
+      - name: Report test failures as annotations
+        run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
       - name: Run tests
         run: vendor/bin/phpunit

@@ -70,7 +70,9 @@ final class JsonColumnStore implements TranslationStore
             foreach ($languages as $lang) {
                 $expression = $this->valueExpression($query, $column, $lang, $defaultLang);
                 if ($mysql) {
-                    $expression .= ' COLLATE utf8mb4_unicode_ci';
+                    // JSON_UNQUOTE() returns a binary collation on MySQL and may return
+                    // another character set on older MariaDB: compare case-insensitively
+                    $expression = 'CONVERT(' . $expression . ' USING utf8mb4) COLLATE utf8mb4_unicode_ci';
                 }
                 $group->orWhereRaw($expression . " LIKE ? ESCAPE '!'", [$like]);
             }
