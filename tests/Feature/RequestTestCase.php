@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * Whole page requests through FloCMS\Core\App::run(), each in its own PHP
  * process like a real request. The package registers itself exactly as on a
- * site (Composer autoload → bootstrap.php); the database is an SQLite file.
+ * site (Composer autoload → bootstrap.php); the database is SQLite, or the configured MySQL/MariaDB test database.
  */
 abstract class RequestTestCase extends TestCase
 {
@@ -53,10 +53,10 @@ abstract class RequestTestCase extends TestCase
         $pdo = self::pdo();
         $pdo->exec('DROP TABLE IF EXISTS posts');
         $pdo->exec('DROP TABLE IF EXISTS tags');
-        $pdo->exec('CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NULL, slug VARCHAR(190) NOT NULL DEFAULT "",
+        self::createTable($pdo, 'CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NULL, slug VARCHAR(190) NOT NULL DEFAULT "",
             body TEXT NULL, status VARCHAR(20) NOT NULL DEFAULT "draft", views INTEGER NULL, featured INTEGER NOT NULL DEFAULT 0,
             published_on DATE NULL, created_at DATETIME NULL, updated_at DATETIME NULL)');
-        $pdo->exec('CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "")');
+        self::createTable($pdo, 'CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "")');
         $pdo->exec("INSERT INTO posts (title, slug, status, featured) VALUES
             ('{\"en\":\"Sea view villa\",\"ar\":\"فيلا\"}', 'sea-view-villa', 'published', 1),
             ('{\"en\":\"Mountain cabin\"}', 'mountain-cabin', 'draft', 0)");
@@ -64,7 +64,7 @@ abstract class RequestTestCase extends TestCase
 
         // The skeleton's users table: 1 Sara (Editor), 2 Ali (Admin), 3 Root (Super Admin), 4 Dara (User)
         $pdo->exec('DROP TABLE IF EXISTS users');
-        $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name VARCHAR(190) NOT NULL DEFAULT "",
+        self::createTable($pdo, 'CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name VARCHAR(190) NOT NULL DEFAULT "",
             login VARCHAR(190) NOT NULL DEFAULT "", password VARCHAR(255) NOT NULL DEFAULT "", email VARCHAR(190) NOT NULL UNIQUE,
             image VARCHAR(255) NOT NULL DEFAULT "", address VARCHAR(255) NOT NULL DEFAULT "", phone VARCHAR(50) NOT NULL DEFAULT "",
             gender VARCHAR(20) NOT NULL DEFAULT "", role TINYINT NOT NULL DEFAULT 0, status TINYINT NOT NULL DEFAULT 2,
@@ -76,8 +76,24 @@ abstract class RequestTestCase extends TestCase
         }
     }
 
+    private static function createTable(PDO $pdo, string $sql): void
+    {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+            $sql = str_replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'INT AUTO_INCREMENT PRIMARY KEY', $sql);
+            $sql .= ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+        }
+        $pdo->exec($sql);
+    }
+
     protected static function pdo(): PDO
     {
+        if (getenv('FLO_ADMIN_TEST_DB_NAME')) {
+            return new PDO(sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                getenv('FLO_ADMIN_TEST_DB_HOST') ?: '127.0.0.1',
+                (int) (getenv('FLO_ADMIN_TEST_DB_PORT') ?: 3306), getenv('FLO_ADMIN_TEST_DB_NAME')),
+                getenv('FLO_ADMIN_TEST_DB_USER') ?: 'root', getenv('FLO_ADMIN_TEST_DB_PASS') ?: '',
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
+        }
         return new PDO('sqlite:' . self::$root . '/db.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
 
@@ -89,7 +105,9 @@ abstract class RequestTestCase extends TestCase
         exec(implode(' ', array_map('escapeshellarg', $command)) . ' 2>&1', $output, $code);
         $result = json_decode(implode("\n", $output), true);
         self::assertIsArray($result, implode("\n", $output));
-        self::assertNull($result['error'], (string) $result['error']);
+        if (!($options['expect_error'] ?? false)) {
+            self::assertNull($result['error'], (string) $result['error']);
+        }
 
         return $result;
     }
@@ -144,7 +162,7 @@ Config::set('routes', ['default' => '', 'admin' => 'admin_']);
 Config::set('default_route', 'default');
 Config::set('default_controller', 'pages');
 Config::set('default_action', 'index');
-Config::set('languages', ['en', 'ar', 'ku']);
+Config::set('languages', $options['languages'] ?? ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
 Config::set('permissions', $options['permissions']);
 Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin']);
@@ -152,7 +170,13 @@ if (isset($options['admin_config'])) {
     \FloCMS\Admin\Admin::useConfig($options['admin_config'], true, ROOT);
 }
 
-App::$db = new Database(new PDO('sqlite:' . ROOT . '/db.sqlite', null, null, [
+$mysql = getenv('FLO_ADMIN_TEST_DB_NAME');
+$dsn = $mysql ? sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+    getenv('FLO_ADMIN_TEST_DB_HOST') ?: '127.0.0.1', (int) (getenv('FLO_ADMIN_TEST_DB_PORT') ?: 3306), $mysql)
+    : 'sqlite:' . ROOT . '/db.sqlite';
+App::$db = new Database(new PDO($dsn, $mysql ? (getenv('FLO_ADMIN_TEST_DB_USER') ?: 'root') : null,
+    $mysql ? (getenv('FLO_ADMIN_TEST_DB_PASS') ?: '') : null, [
+    PDO::ATTR_EMULATE_PREPARES => false,
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]));

@@ -151,11 +151,15 @@ final class ResourceController extends PanelController
             $input = $this->request->all();
             $state = [];
             foreach ($form->fields() as $name => $field) {
-                $state[$name] = $field->stateFromInput($input, $languages);
+                $state[$name] = $field->isWritable()
+                    ? $field->stateFromInput($input, $languages)
+                    : $field->stateFromRecord($record, $default);
             }
             foreach ($form->fields() as $field) {
                 $state = $field->prepare($state, $default);
             }
+
+            $state = $this->resource->normalizeState($state, $record);
 
             $skip = [];
             foreach ($form->writableFields() as $name => $field) {
@@ -165,8 +169,8 @@ final class ResourceController extends PanelController
             }
 
             $exceptId = $isEdit ? $this->recordId() : null;
-            $validator = new FormValidator($languages, $default, function (Field $field, string $value) use ($exceptId): bool {
-                return $this->repository()->exists($field->getName(), $value, $exceptId);
+            $validator = new FormValidator($languages, $default, function (Field $field, string $value, ?string $language = null) use ($exceptId): bool {
+                return $this->repository()->exists($field->getName(), $value, $exceptId, $language);
             }, $isEdit);
             $errors = $validator->validate($form, $state, $skip);
             if ($errors === []) {
@@ -174,7 +178,7 @@ final class ResourceController extends PanelController
             }
 
             if ($errors === []) {
-                $id = $this->save($form, $state, $skip, $record);
+                $id = $this->repository()->transaction(fn (): string => $this->save($form, $state, $skip, $record));
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
                 $continue = $this->request->input('_continue') !== null && $this->can('update');
@@ -221,7 +225,18 @@ final class ResourceController extends PanelController
             if (in_array($name, $skip, true)) {
                 continue;
             }
-            $data[$name] = $field->dehydrate($state[$name]);
+            $value = $state[$name];
+            if ($record !== null && $field->isTranslatable()) {
+                // Only configured languages are editable. Retain all other stored keys.
+                $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
+                $editable = array_fill_keys(Languages::all(), true);
+                $value = array_replace(
+                    $stored,
+                    array_fill_keys(Languages::all(), ''),
+                    array_intersect_key(is_array($value) ? $value : [], $editable)
+                );
+            }
+            $data[$name] = $field->dehydrate($value);
         }
 
         // Never from input

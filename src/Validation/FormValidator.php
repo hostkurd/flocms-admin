@@ -31,7 +31,7 @@ final class FormValidator
 
     /**
      * @param list<string> $languages default language first
-     * @param Closure(Field, string): bool|null $isTaken returns true when the value exists in another row
+     * @param Closure(Field, string, ?string): bool|null $isTaken returns true when the value exists in another row
      */
     public function __construct(
         private readonly array $languages,
@@ -65,7 +65,7 @@ final class FormValidator
                     if (!$isDefault && $item === '') {
                         continue;
                     }
-                    $message = $this->check($field, $item, !$isDefault);
+                    $message = $this->check($field, $item, !$isDefault, $lang);
                     if ($message !== null) {
                         $errors[$isDefault ? $name : $name . '.' . $lang] = $message;
                     }
@@ -83,7 +83,7 @@ final class FormValidator
     }
 
     /** First failing check of one value, as a message, or null. */
-    private function check(Field $field, string $value, bool $skipRequired): ?string
+    private function check(Field $field, string $value, bool $skipRequired, ?string $language = null): ?string
     {
         $rules = $field->rulesFor($this->isEdit);
         $names = array_map(static fn (string $rule): string => explode(':', $rule, 2)[0], $rules);
@@ -127,7 +127,7 @@ final class FormValidator
             return AdminLang::get($typeError[0], ['attribute' => $label] + $typeError[1]);
         }
 
-        if ($value !== '' && $field->isUnique() && $this->isTaken !== null && ($this->isTaken)($field, $value)) {
+        if ($value !== '' && $field->isUnique() && $this->isTaken !== null && ($this->isTaken)($field, $value, $language)) {
             return AdminLang::get('validation.unique', ['attribute' => $label]);
         }
 

@@ -48,6 +48,8 @@ final class ProfileController extends PanelController
                     : $field->stateFromInput($this->request->all(), []);
             }
 
+            $state = UsersResource::normalizeLogin($state);
+
             $taken = static fn (Field $field, string $value): bool => $db->table('users')
                 ->where($field->getName(), '=', $value)->where('id', '!=', (int) $id)->count() > 0;
             $skip = $state['password'] === '' ? ['password'] : [];
@@ -122,7 +124,7 @@ final class ProfileController extends PanelController
     private function save(Database $db, int $id, array $state): void
     {
         $email = (string) $state['email'];
-        $login = (string) $state['login'] !== '' ? (string) $state['login'] : $email;
+        $login = (string) $state['login'];
         $data = ['full_name' => (string) $state['full_name'], 'email' => $email, 'login' => $login];
         if ($state['password'] !== '') {
             $data['password'] = password_hash((string) $state['password'], PASSWORD_DEFAULT);

@@ -150,8 +150,9 @@ Optional methods:
 | `canEdit(object $record): bool` | False hides Edit for that record and answers 403 |
 | `canDelete(object $record): bool` | False hides Delete and answers 403 |
 | `validate(array $state, ?object $record): array` | Checks after the field rules; return `field => message` |
-| `beforeSave(array $data, ?object $record): array` | Change the values before they are written |
-| `afterSave(object $record): void` | Runs after a successful save |
+| `normalizeState(array $state, ?object $record): array` | Normalize editable state before field/custom validation and password hashing |
+| `beforeSave(array $data, ?object $record): array` | Change dehydrated data inside the save transaction |
+| `afterSave(object $record): void` | Runs after the write, inside the transaction and before commit |
 
 Only the fields declared in `form()` are ever written. The primary key, `created_at` and `updated_at` never come from the request.
 
@@ -295,3 +296,7 @@ The MySQL / MariaDB tests run when `FLO_ADMIN_TEST_DB_NAME` (and `_HOST`, `_PORT
 ## License
 
 MIT
+
+### Upgrading to 0.2.1
+
+See [UPGRADING.md](UPGRADING.md) for normalization, transaction/hook semantics, translated uniqueness, and existing duplicate login checks.

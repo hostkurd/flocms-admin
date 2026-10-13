@@ -65,7 +65,20 @@ abstract class Resource
     }
 
     /**
-     * Change the values before they are written ($record is null on create).
+     * Normalize editable state before skip rules and all validation. No writes or
+     * password hashing here; return the complete string/translation-array state.
+     *
+     * @param array<string, string|array<string, string>> $state
+     * @return array<string, string|array<string, string>>
+     */
+    public function normalizeState(array $state, ?object $record): array
+    {
+        return $state;
+    }
+
+    /**
+     * Change dehydrated values inside the save transaction ($record is null on create).
+     * Normalize user-editable values in normalizeState() so validation sees them.
      *
      * @param array<string, mixed> $data
      * @return array<string, mixed>
@@ -75,7 +88,7 @@ abstract class Resource
         return $data;
     }
 
-    /** Runs after a successful insert or update, with the saved record. */
+    /** Runs inside the save transaction, before commit. Exceptions roll back database writes. */
     public function afterSave(object $record): void
     {
     }
