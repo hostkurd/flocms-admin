@@ -2,7 +2,23 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## 0.2.1 - Unreleased
+## 0.3.0 - Unreleased
+
+### Added
+- Reactive resource lists with live search, sorting, pagination, create/edit dialogs, translated validation, delete confirmation and success feedback. Existing PHP resource definitions use the shared adapter.
+- Panel navigation and standard/profile form submissions without full document reloads; browser history, title, language and focus follow the visible page.
+- Current permission/record-scope checks, sealed active record context, one-use dialog operations, transactional saves and atomic stale-row protection for modal updates/deletes.
+- External `admin-v0.3.0.js` / `admin-v0.3.0.css` assets, compiled with TypeScript/Vite and shipped in Composer distributions. No hosting-side Node build.
+- Keyboard mobile menu, accessible modal errors and inline translations, EN/AR/KU transport messages, browser tests including RTL/CSP, and configured database concurrency regressions.
+- [Reactive Admin guide](docs/reactive-admin.md) and [upgrade notes](UPGRADING.md).
+
+### Changed
+- Admin now requires Core `^2.3.2` and Reactive `^0.3.0`. Core and the skeleton still have no dependency on either optional package.
+- Reactive navigation is enabled by default. Set `reactive => false` for the full-page behavior; the standard resource view is also available for larger forms.
+- Forms use the same normalization/validation/transaction service in both request paths, retaining the 0.2.1 correctness fixes.
+- Filters, uploads, bulk operations and widgets remain later milestones; this release establishes the Reactive integration.
+
+## 0.2.1 - 2026-10-13
 
 ### Fixed
 - Validate email-derived login values before saving accounts or profiles; exclude the current account and preserve password validation, hashing and blank-edit behavior.

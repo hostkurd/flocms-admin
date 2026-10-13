@@ -13,3 +13,5 @@ declare(strict_types=1);
 if (class_exists(\FloCMS\Core\App::class) && method_exists(\FloCMS\Core\App::class, 'resolveControllersUsing')) {
     \FloCMS\Admin\Admin::boot();
 }
+
+\FloCMS\Reactive\Reactive::register('flo-admin-resource', \FloCMS\Admin\Reactive\ResourceComponent::class);

@@ -25,7 +25,7 @@
 .fa-panel .fa-nav-link{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;color:var(--fa-sidebar-text)}
 .fa-panel .fa-nav-link:hover{background:rgba(255,255,255,.07);color:#fff;text-decoration:none}
 .fa-panel .fa-nav-link.is-active{background:rgba(56,187,224,.18);color:var(--fa-sidebar-active)}
-.fa-nav-toggle,.fa-nav-backdrop,.fa-panel .fa-menu-btn{display:none}
+.fa-nav-backdrop,.fa-panel .fa-menu-btn{display:none}
 
 /* Main column */
 .fa-main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -67,7 +67,7 @@
 .fa-search{position:relative;flex:1;min-width:200px;max-width:420px;display:flex;align-items:center}
 .fa-search .fa-icon{position:absolute;inset-inline-start:10px;color:var(--fa-muted);pointer-events:none}
 .fa-panel .fa-search .fa-input{padding-inline-start:38px}
-.fa-table-wrap{overflow-x:auto}
+.fa-table-wrap{position:relative;overflow-x:auto}
 .fa-table{width:100%;border-collapse:collapse;font-size:14px}
 .fa-table th,.fa-table td{padding:10px 14px;text-align:start;border-block-end:1px solid var(--fa-border);vertical-align:middle}
 .fa-table th{font-size:12.5px;font-weight:600;color:var(--fa-muted);background:#fafbfc;white-space:nowrap}
@@ -141,10 +141,7 @@
 
 /* Phones and small tablets */
 @media (max-width: 900px){
-  .fa-sidebar{position:fixed;inset-block:0;inset-inline-start:0;z-index:30;transform:translateX(-100%);transition:transform .2s}
-  .fa-panel[dir="rtl"] .fa-sidebar{transform:translateX(100%)}
-  .fa-nav-toggle:checked ~ .fa-sidebar{transform:none}
-  .fa-nav-toggle:checked ~ .fa-nav-backdrop{display:block;position:fixed;inset:0;z-index:20;background:rgba(17,24,39,.45)}
+  .fa-sidebar{position:fixed;inset-block:0;inset-inline-start:0;z-index:30;visibility:hidden;}
   .fa-panel .fa-menu-btn{display:inline-flex}
   .fa-topbar{padding-inline:12px;gap:10px}
   .fa-topbar-user,.fa-topbar-link span{display:none}
@@ -167,3 +164,32 @@
 .fa-stat-body{display:flex;flex-direction:column;min-width:0}
 .fa-stat-label{font-size:14px;color:var(--fa-muted)}
 .fa-stat-value{font-size:26px;font-weight:700;line-height:1.2}
+
+/* Reactive panels: same visual language, persistent navigation and modal forms. */
+.fa-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--fa-muted);font-weight:600;margin-block-end:6px!important}
+.fa-navigation-status:empty{display:none}.fa-navigation-status{padding:10px 14px;margin-block-end:14px!important;background:var(--fa-primary-soft);border-radius:var(--fa-radius);color:var(--fa-primary)}
+.fa-panel[aria-busy="true"]{cursor:progress}.fa-panel[aria-busy="true"] .fa-main{opacity:.7}
+.fa-panel button.fa-sort{appearance:none;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:start}
+.fa-panel button:disabled{opacity:.45;cursor:not-allowed}
+.fa-panel :focus-visible{outline:3px solid #38bde5;outline-offset:3px}
+.fa-panel .fa-editor{width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--fa-border);border-radius:14px;box-shadow:0 24px 80px #10182838}
+.fa-editor .fa-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-block-end:1px solid var(--fa-border)}
+.fa-editor .fa-dialog-body{max-height:calc(100dvh - 220px)}
+.fa-editor .fa-confirm-text,.fa-editor>.fa-alert{padding:16px 22px}
+.fa-modal-status:empty{display:none}.fa-modal-status{padding:8px 22px}
+.fa-translations-inline{display:grid;gap:12px}.fa-translations-inline .fa-lang-row{min-width:0}
+.fa-panel [data-rx-loading]{display:none}.fa-panel [data-rx-component][aria-busy="true"] [data-rx-loading]{display:inline}
+@media(max-width:900px){
+ .fa-panel.is-menu-open .fa-sidebar{visibility:visible}
+ .fa-panel.is-menu-open .fa-nav-backdrop{display:block;position:fixed;inset:0;z-index:20;background:rgba(17,24,39,.45);border:0}
+}
+@media(prefers-reduced-motion:reduce){.fa-panel *{transition:none!important;scroll-behavior:auto!important}}
+
+/* Standard forms remain usable before enhancement or with JavaScript disabled. */
+.fa-panel:not([data-admin-initialized]) .fa-lang-dialog:not([open]){display:block;position:static;margin:.5rem 0 0;width:auto;max-width:none;box-shadow:none}
+.fa-panel:not([data-admin-initialized]) .fa-lang-dialog .fa-mirror-row,.fa-panel:not([data-admin-initialized]) .fa-lang-dialog .fa-dialog-foot,.fa-panel:not([data-admin-initialized]) .fa-lang-badge{display:none}
+@media(max-width:900px){
+ .fa-panel:not([data-admin-initialized]){flex-direction:column}
+ .fa-panel:not([data-admin-initialized]) .fa-sidebar{position:static;visibility:visible;width:100%;height:auto}
+ .fa-panel:not([data-admin-initialized]) .fa-menu-btn{display:none}
+}

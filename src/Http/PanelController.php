@@ -14,10 +14,15 @@ use FloCMS\Core\Router;
 abstract class PanelController extends Controller
 {
     /** Put $html in the panel shell; returns the view FloCMS renders. */
-    protected function panel(string $title, string $html, ?string $active): string
+    protected function panel(string $title, string $html, ?string $active): string|\FloCMS\Core\Http\Response
     {
         $this->data = (new PanelView())->data($title, $html, $active);
 
+        if ($this->request->header('X-Flo-Admin') === 'navigate') {
+            return \FloCMS\Core\Http\Response::html(\FloCMS\Core\TemplateEngine::renderFile(PanelView::template(), $this->data))
+                ->header('Cache-Control', 'no-store')->header('Vary', 'X-Flo-Admin');
+        }
+        header('Cache-Control: no-store');
         return PanelView::template();
     }
 

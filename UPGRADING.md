@@ -1,3 +1,37 @@
+# Upgrading to Admin 0.3.0
+
+After release, update `hostkurd/flocms-admin` with Composer and its dependencies. Admin requires Core `^2.3.2` and Reactive `^0.3.0`. No database migration is required. The dependency direction is Admin → Reactive → Core; standalone Core and the skeleton remain independent.
+
+## Deployment and configuration
+
+- Configure a stable, secret `APP_KEY` of at least 32 decoded bytes, or `Config::set('reactive.key', ...)`. Reactive also accepts `base64:` keys. All application workers must use the same key. Rotating it invalidates open component snapshots.
+- Keep the skeleton's current `auth.user_loader` configured. Reactive calls Core's `Auth::refresh()` on each update; its refresh interval determines when account/role changes are reloaded. Resource permissions, scoped queries, `canCreate()`, `canEdit()` and `canDelete()` run again during actions.
+- Allow the normal language-prefixed `/flo-reactive/update`, `/flo-reactive/asset/...` and `/flo-admin/asset/...` routes through your existing front controller. Preserve application controller precedence and do not create controllers that shadow these package routes.
+- Deploy the supplied `dist/admin-v0.3.0.js` and `dist/admin-v0.3.0.css` through Composer. Filenames retain the complete release version; immutable caching applies only to these assets. The package supplies external asset tags; no Node process or build is needed on cPanel.
+- The built-in UI works with `script-src 'self'` and `style-src 'self'`, without inline scripts or unsafe evaluation. Custom field renderers and the application's layout remain responsible for their own CSP compliance.
+
+`config/admin.php` defaults to `'reactive' => true`. Existing resource definitions need no new base class. Set `'reactive' => false` to restore full-page forms/navigation; this does not uninstall the Composer dependency. Removing Admin still leaves Core and the site's own controllers usable.
+
+## Interaction and form limits
+
+Resource search/sort/page state is namespaced in URLs (`admin-resource_q`, `_page`, `_sort`, `_dir`). Bookmarks and back/forward restore lists by fetching current server state. Old `q/page/sort/dir` links remain supported by the standard view (`?static=1`). Panel navigation covers built-in dashboard, resources, accounts and profile, including standard form submissions. Logout/login, external links and application-owned controllers retain normal navigation.
+
+Modal drafts encode declared form fields in one bounded JSON scalar, because Reactive 0.3 supports scalar state. The modal limit is 7,000 UTF-8 bytes, including field names and translations. Use **Open standard view** before editing larger records; standard form pages also submit without reloading while Reactive navigation is enabled. If a draft grows past the limit, it stays in the dialog for copying, but cannot be saved there. Standard pages remain usable with JavaScript disabled. This release does not add nested components, dependent-field RPCs, uploads or stacked dialogs.
+
+Dialog operations expire after 30 minutes, with up to 32 outstanding operations per session. Save/delete consume the operation after a successful transaction; replaying it is rejected. Cancellation discards the server draft and stays locally available after permission, CSRF or network failures. It cannot undo a save already sent. Requests are not automatically retried. After a lost save response, cancel/reopen to check the persisted result before trying again.
+
+## Concurrent edits and hooks
+
+Modal edit/delete snapshots seal a fingerprint of the complete loaded row. The action reloads the record through `Resource::query()`, checks current record policy, then conditionally writes only if all original columns still match. A deleted, changed or newly out-of-scope record cannot be overwritten. Case-only changes are detected even under case-insensitive database collations. No new version column is needed. This guard applies to modal actions; standard pages retain their existing save semantics.
+
+Keep row/tenant scope in `Resource::query()` and record rules in `canEdit()` / `canDelete()`. Snapshot state is signed, not encrypted: do not place secrets in custom component state. Password controls are blank after responses and password drafts never enter returned snapshots.
+
+Normalization, field/resource validation, dehydration and hooks are shared with standard forms. Database writes from save hooks on the same connection roll back together. `afterSave()` is still before commit. A `beforeSave()` hook must return changes for the active record rather than writing that same row itself, which would invalidate the optimistic guard. Hooks must not commit manually. External side effects and other connections cannot be rolled back; use an outbox for external deliveries.
+
+Read the [working integration guide](docs/reactive-admin.md) for development commands and a runnable resource example. The 0.2.1 upgrade details below still apply, including the limits of validation-only uniqueness.
+
+---
+
 # Upgrading to Admin 0.2.1
 
 Update `hostkurd/flocms-admin` with Composer after the release. This patch is tested with released Core 2.3.2; Core's existing `^2.3` constraint remains unchanged. No database migration, new runtime dependency or application asset build is required. Admin remains optional; Core and the skeleton do not require Admin or Reactive. Reactive integration is deferred to 0.3.0. Existing assets are unchanged; full release-version filenames remain the convention for compiled assets.

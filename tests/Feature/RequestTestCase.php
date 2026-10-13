@@ -100,6 +100,7 @@ abstract class RequestTestCase extends TestCase
     /** @return array{status: int, body: string, redirected: bool, session: array<string, mixed>, error: ?string} */
     protected static function request(string $method, string $uri, array $options = []): array
     {
+        if (isset($options['admin_config']) || is_file(self::$root . '/config/admin.php')) { $options['admin_config'] = ($options['admin_config'] ?? []) + ['reactive' => false, 'brand' => 'Test Panel', 'resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\TagResource::class]]; }
         $options += ['session' => self::EDITOR, 'permissions' => self::PERMISSIONS, 'post' => [], 'method' => $method];
         $command = [PHP_BINARY, self::$root . '/request.php', dirname(__DIR__, 2), $uri, json_encode($options)];
         exec(implode(' ', array_map('escapeshellarg', $command)) . ' 2>&1', $output, $code);
@@ -149,7 +150,9 @@ use FloCMS\Core\HttpException;
 
 $_SESSION = $options['session'];
 $_SERVER['REQUEST_METHOD'] = $options['method'];
+$_SERVER['REQUEST_URI'] = $uri;
 $_SERVER['SCRIPT_NAME'] = '/index.php';
+foreach (($options['headers'] ?? []) as $name => $value) { $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value; }
 $_POST = $options['post'];
 $query = parse_url($uri, PHP_URL_QUERY);
 $_GET = [];
@@ -164,6 +167,7 @@ Config::set('default_controller', 'pages');
 Config::set('default_action', 'index');
 Config::set('languages', $options['languages'] ?? ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
+Config::set('reactive.key', str_repeat('test-key-', 8));
 Config::set('permissions', $options['permissions']);
 Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin']);
 if (isset($options['admin_config'])) {
@@ -188,6 +192,7 @@ $error = null;
 ob_start();
 register_shutdown_function(static function () use (&$status, &$finished, &$error): void {
     $body = (string) ob_get_clean();
+    $status = http_response_code() ?: $status;
     echo json_encode(['status' => $status, 'body' => $body, 'redirected' => !$finished, 'session' => $_SESSION, 'error' => $error]);
 });
 try {

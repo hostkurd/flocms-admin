@@ -78,6 +78,9 @@ final class AdminConfig
         return ($this->values['users'] ?? true) !== false;
     }
 
+    /** Disable progressive navigation and components for a legacy application. */
+    public function reactiveEnabled(): bool { return ($this->values['reactive'] ?? true) !== false; }
+
     public function permissionPrefix(): string
     {
         $prefix = trim((string) ($this->values['permission_prefix'] ?? 'content'), '.');

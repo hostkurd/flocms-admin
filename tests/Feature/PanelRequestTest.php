@@ -27,7 +27,7 @@ final class PanelRequestTest extends RequestTestCase
 
         self::assertSame(200, $result['status']);
         $body = $result['body'];
-        self::assertStringContainsString('<div class="fa-panel" dir="ltr" lang="en">', $body);
+        self::assertStringContainsString('<div class="fa-panel" dir="ltr" lang="en"', $body);
         self::assertStringContainsString('Test Panel', $body);
         self::assertStringContainsString('Sea view villa', $body);
         self::assertStringContainsString('Mountain cabin', $body);
@@ -39,7 +39,8 @@ final class PanelRequestTest extends RequestTestCase
         // Navigation: the current page is marked; tags need taxonomy.tags.view, which editors lack
         self::assertStringContainsString('aria-current="page"', $body);
         self::assertStringNotContainsString('/en/admin/post-tags', $body);
-        self::assertStringContainsString('<style>', $body);
+        self::assertStringContainsString('admin-v0.3.0.css', $body);
+        self::assertStringNotContainsString('<style>', $body);
     }
 
     public function testSearchAndSort(): void
@@ -202,7 +203,7 @@ final class PanelRequestTest extends RequestTestCase
     {
         $body = self::request('GET', '/ku/admin/posts/create')['body'];
 
-        self::assertStringContainsString('<div class="fa-panel" dir="rtl" lang="ku">', $body);
+        self::assertStringContainsString('<div class="fa-panel" dir="rtl" lang="ku"', $body);
         self::assertStringContainsString('دروستکردن', $body);
         self::assertStringContainsString('ئینگلیزی', $body, 'language names come from the site lang file');
     }

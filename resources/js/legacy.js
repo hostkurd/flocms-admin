@@ -1,9 +1,9 @@
 /* flocms-admin: translation dialogs, slugs, delete confirmation. No dependencies. */
-(function () {
-  'use strict';
+export function initializeLegacy() {
 
   var panel = document.querySelector('.fa-panel');
-  if (!panel) { return; }
+  if (!panel || panel.dataset.adminInitialized) { return; }
+  panel.dataset.adminInitialized = 'true';
 
   function canModal(dialog) { return typeof dialog.showModal === 'function'; }
 
@@ -128,11 +128,11 @@
   if (confirmDialog) {
     confirmDialog.querySelector('[data-confirm-yes]').addEventListener('click', function () {
       confirmDialog.close();
-      if (pending) { pending._confirmed = true; pending.submit(); }
+      if (pending) { pending._confirmed = true; pending.requestSubmit(); }
     });
     confirmDialog.querySelector('[data-confirm-no]').addEventListener('click', function () {
       pending = null;
       confirmDialog.close();
     });
   }
-})();
+}

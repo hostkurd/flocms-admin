@@ -188,6 +188,57 @@ abstract class RepositoryTestCase extends TestCase
         self::assertTrue($this->repository->exists('slug', 'outer', null));
     }
 
+    public function testGuardedSaveAcceptsNoOpAndNullColumnsThenRejectsCaseOnlyChanges(): void
+    {
+        $original = $this->repository->find('1');
+        $this->repository->transaction(function () use ($original): void {
+            $this->repository->updateUnchanged('1', ['slug' => $original->slug], $original);
+            $this->repository->updateUnchanged('1', [], $original);
+        });
+        self::assertSame($original->slug, $this->repository->find('1')->slug);
+        $this->repository->update('1', ['slug' => strtoupper($original->slug)]);
+        try {
+            $this->repository->updateUnchanged('1', ['status' => 'published'], $original);
+            self::fail('Case-insensitive collations must not accept stale originals.');
+        } catch (\FloCMS\Core\ValidationException $e) {
+            self::assertArrayHasKey('_form', $e->getErrors());
+        }
+        self::assertSame('draft', $this->repository->find('1')->status);
+    }
+
+    public function testGuardedDeleteRejectsChangedOrDeletedRows(): void
+    {
+        $original = $this->repository->find('1');
+        $this->repository->update('1', ['views' => 1]);
+        try {
+            $this->repository->deleteUnchanged('1', $original);
+            self::fail('Stale deletion must fail.');
+        } catch (\FloCMS\Core\ValidationException $e) {
+            self::assertArrayHasKey('_form', $e->getErrors());
+        }
+        $current = $this->repository->find('1');
+        $this->repository->deleteUnchanged('1', $current);
+        self::assertNull($this->repository->find('1'));
+        $this->expectException(\FloCMS\Core\ValidationException::class);
+        $this->repository->updateUnchanged('1', [], $current);
+    }
+
+    public function testGuardedWriteAndRelatedWritesRollBackTogether(): void
+    {
+        $original = $this->repository->find('1');
+        try {
+            $this->repository->transaction(function () use ($original): void {
+                $this->repository->updateUnchanged('1', ['slug' => 'changed'], $original);
+                $this->repository->insert(['slug' => 'hook-write']);
+                throw new \RuntimeException('afterSave failure');
+            });
+        } catch (\RuntimeException $e) {
+            self::assertSame('afterSave failure', $e->getMessage());
+        }
+        self::assertSame($original->slug, $this->repository->find('1')->slug);
+        self::assertFalse($this->repository->exists('slug', 'hook-write', null));
+    }
+
     public function testUnicodeIsStoredReadably(): void
     {
         $id = $this->repository->insert(['title' => (new JsonColumnStore())->encode(['ar' => 'فيلا', 'en' => 'a/b']), 'slug' => 'u', 'status' => 'draft', 'featured' => 0]);

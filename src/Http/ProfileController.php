@@ -28,7 +28,7 @@ final class ProfileController extends PanelController
 {
     protected array $actionPermissions = ['admin_index' => null];
 
-    public function admin_index(): string
+    public function admin_index(): string|\FloCMS\Core\Http\Response
     {
         $db = App::db() ?? throw new \RuntimeException('flocms-admin needs a database: set DB_NAME, DB_USERNAME and DB_PASSWORD in .env.');
         $id = Session::get('user_id');
