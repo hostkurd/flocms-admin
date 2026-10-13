@@ -184,3 +184,12 @@
  .fa-panel.is-menu-open .fa-nav-backdrop{display:block;position:fixed;inset:0;z-index:20;background:rgba(17,24,39,.45);border:0}
 }
 @media(prefers-reduced-motion:reduce){.fa-panel *{transition:none!important;scroll-behavior:auto!important}}
+
+/* Standard forms remain usable before enhancement or with JavaScript disabled. */
+.fa-panel:not([data-admin-initialized]) .fa-lang-dialog:not([open]){display:block;position:static;margin:.5rem 0 0;width:auto;max-width:none;box-shadow:none}
+.fa-panel:not([data-admin-initialized]) .fa-lang-dialog .fa-mirror-row,.fa-panel:not([data-admin-initialized]) .fa-lang-dialog .fa-dialog-foot,.fa-panel:not([data-admin-initialized]) .fa-lang-badge{display:none}
+@media(max-width:900px){
+ .fa-panel:not([data-admin-initialized]){flex-direction:column}
+ .fa-panel:not([data-admin-initialized]) .fa-sidebar{position:static;visibility:visible;width:100%;height:auto}
+ .fa-panel:not([data-admin-initialized]) .fa-menu-btn{display:none}
+}

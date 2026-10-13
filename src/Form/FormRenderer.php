@@ -13,7 +13,7 @@ use FloCMS\Admin\Translation\Languages;
  * default-language input and a language badge; the badge opens a <dialog>
  * with one input per language. The dialog sits inside the <form>, so every
  * language is submitted whether or not the dialog was opened, and the page
- * works without JavaScript (the panel's <noscript> style shows the inputs).
+ * works without JavaScript (external CSS shows inputs before enhancement).
  */
 final class FormRenderer
 {

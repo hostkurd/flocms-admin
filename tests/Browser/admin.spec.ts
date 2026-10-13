@@ -197,3 +197,18 @@ test('strict CSP has no inline scripts or unsafe evaluation', async ({ page }) =
   expect(violations).toEqual([]);
   await expect(page.locator('script:not([src])')).toHaveCount(0);
 });
+
+test('standard translations and mobile navigation remain usable without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await page.goto('http://127.0.0.1:8083/en/admin/posts/edit/8');
+    await expect(page.locator('.fa-nav a[href="/en/admin/dashboard"]')).toBeVisible();
+    await expect(page.locator('[name="title[ar]"]')).toBeVisible();
+    await page.locator('[name="title[ar]"]').fill('عنوان جديد');
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await page.getByRole('link', { name: 'Open standard view' }).click();
+    await page.locator('a[href="/en/admin/posts/edit/8"]').click();
+    await expect(page.locator('[name="title[ar]"]')).toHaveValue('عنوان جديد');
+  } finally { await context.close(); }
+});
