@@ -2,6 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.2.1 - Unreleased
+
+### Fixed
+- Validate email-derived login values before saving accounts or profiles; exclude the current account and preserve password validation, hashing and blank-edit behavior.
+- Check translatable unique fields against the same stored language, with exact case-sensitive equality, bound values and legacy plain-text support.
+- Roll back resource writes and same-connection `beforeSave()` / `afterSave()` database writes when a save hook throws; nested transactions use Core savepoints.
+- Restore trusted record context for read-only fields on invalid edit submissions.
+- Preserve stored translations for languages absent from configuration; ignore submitted hidden-language keys while allowing configured languages to be cleared.
+- Skip unconfigured MySQL tests without accessing an uninitialized database during teardown.
+
+### Added
+- `Resource::normalizeState()` for editable-state normalization before validation and dehydration.
+- Request regressions for all save-path findings, shared SQLite/MySQL/MariaDB uniqueness and nested-transaction coverage, and configured-database execution of feature requests.
+- [Upgrade notes](UPGRADING.md), including hook side effects and duplicate-data checks. No schema migration or new package dependency.
+
 ## 0.2.0 - 2026-10-12
 
 The panel becomes the site's admin interface: dashboard, users and profile.

@@ -120,13 +120,22 @@ final class UsersResource extends Resource
         return $errors;
     }
 
+    public function normalizeState(array $state, ?object $record): array
+    {
+        return self::normalizeLogin($state);
+    }
+
+    /** @param array<string, string|array<string, string>> $state */
+    public static function normalizeLogin(array $state): array
+    {
+        if (($state['login'] ?? '') === '') {
+            $state['login'] = $state['email'] ?? '';
+        }
+        return $state;
+    }
+
     public function beforeSave(array $data, ?object $record): array
     {
-        // Like `php flo user:create`: the login defaults to the email
-        if (($data['login'] ?? '') === '' && isset($data['email'])) {
-            $data['login'] = $data['email'];
-        }
-
         if ($record === null) {
             // Created by an admin: no email verification (as with user:create)
             $data['is_verified'] = 1;

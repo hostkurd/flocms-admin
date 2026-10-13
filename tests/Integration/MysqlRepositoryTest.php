@@ -60,6 +60,10 @@ final class MysqlRepositoryTest extends RepositoryTestCase
         $this->db->query('ALTER TABLE posts MODIFY title JSON NULL');
         $id = $this->repository->insert(['title' => '{"en":"Json villa","ar":"فيلا"}', 'slug' => 'json', 'status' => 'draft', 'featured' => 0]);
 
+        self::assertTrue($this->repository->exists('title', 'Json villa', null, 'en'));
+        self::assertTrue($this->repository->exists('title', 'فيلا', null, 'ar'));
+        self::assertFalse($this->repository->exists('title', 'فيلا', $id, 'ar'));
+
         $result = $this->repository->paginate($this->table, 'فيلا', 'title', 'asc', 1, 10, 'ar');
         self::assertSame([$id], array_map(static fn (object $r): string => (string) $r->id, $result['data']));
     }

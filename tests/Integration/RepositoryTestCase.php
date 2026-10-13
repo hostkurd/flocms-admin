@@ -53,7 +53,9 @@ abstract class RepositoryTestCase extends TestCase
 
     protected function tearDown(): void
     {
-        $this->db->query('DROP TABLE IF EXISTS posts');
+        if (isset($this->db)) {
+            $this->db->query('DROP TABLE IF EXISTS posts');
+        }
         parent::tearDown();
     }
 
@@ -132,6 +134,58 @@ abstract class RepositoryTestCase extends TestCase
 
         $this->repository->delete($id);
         self::assertNull($this->repository->find($id));
+    }
+
+    public function testTranslatedUniquenessUsesExactLanguageAndBoundValues(): void
+    {
+        $form = (new Form())->schema([\FloCMS\Admin\Form\Fields\TextInput::make('title')->translatable()->unique()]);
+        $validator = new \FloCMS\Admin\Validation\FormValidator(['en', 'ar', 'ku'], 'en',
+            fn ($field, $value, $lang) => $this->repository->exists($field->getName(), $value, null, $lang));
+        $errors = $validator->validate($form, ['title' => ['en' => 'Sea view villa', 'ar' => 'فيلا بإطلالة على البحر']]);
+        self::assertArrayHasKey('title', $errors);
+        self::assertArrayHasKey('title.ar', $errors);
+        self::assertFalse($this->repository->exists('title', 'Sea view villa', '1', 'en'));
+        self::assertFalse($this->repository->exists('title', 'Sea view villa', null, 'ar'));
+        self::assertFalse($this->repository->exists('title', 'SEA VIEW VILLA', null, 'en'));
+        self::assertTrue($this->repository->exists('title', 'Old plain title', null, 'en'));
+        self::assertFalse($this->repository->exists('title', 'Old plain title', null, 'ar'));
+        self::assertFalse($this->repository->exists('title', "' OR 1=1 --", null, 'en'));
+        $value = "It's 100%_exact";
+        $this->repository->insert(['title' => (new JsonColumnStore())->encode(['en' => $value, 'en-us' => 'Regional'])]);
+        self::assertTrue($this->repository->exists('title', $value, null, 'en'));
+        self::assertTrue($this->repository->exists('title', 'Regional', null, 'en-us'));
+        self::assertFalse($this->repository->exists('title', '100%', null, 'en'));
+    }
+
+    public function testTranslatedUniquenessRejectsUnsafePaths(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repository->exists('title', 'value', null, "en' OR 1=1");
+    }
+
+    public function testTranslatedUniquenessRejectsUnsafeColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repository->exists('title`)', 'value', null, 'en');
+    }
+
+    public function testNestedSaveTransactionRollsBackWithoutCommittingOuterWork(): void
+    {
+        $this->db->transaction(function (): void {
+            $outer = $this->repository->insert(['slug' => 'outer']);
+            try {
+                $this->repository->transaction(function (): void {
+                    $this->repository->insert(['slug' => 'inner']);
+                    throw new \RuntimeException('rollback');
+                });
+                self::fail('Expected rollback');
+            } catch (\RuntimeException $e) {
+                self::assertSame('rollback', $e->getMessage());
+            }
+            self::assertNotNull($this->repository->find($outer));
+            self::assertFalse($this->repository->exists('slug', 'inner', null));
+        });
+        self::assertTrue($this->repository->exists('slug', 'outer', null));
     }
 
     public function testUnicodeIsStoredReadably(): void

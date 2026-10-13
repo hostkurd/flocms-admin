@@ -22,6 +22,12 @@ final class RecordRepository
     ) {
     }
 
+    /** Database writes in the callback share this connection's transaction/savepoint. */
+    public function transaction(callable $callback): mixed
+    {
+        return $this->db->transaction($callback);
+    }
+
     public function newQuery(): Database
     {
         return $this->resource->query($this->db->table($this->resource::getTable()));
@@ -118,9 +124,19 @@ final class RecordRepository
     }
 
     /** Whether $value exists in $column in a row other than $exceptId. */
-    public function exists(string $column, string $value, ?string $exceptId): bool
+    public function exists(string $column, string $value, ?string $exceptId, ?string $language = null): bool
     {
-        $query = $this->db->table($this->resource::getTable())->where($column, '=', $value);
+        $query = $this->db->table($this->resource::getTable());
+        if ($language === null) {
+            $query = $query->where($column, '=', $value);
+        } else {
+            $expression = $this->store->sortExpression($query, $column, $language, Languages::default());
+            // Exact, case-sensitive translation equality on SQLite and MySQL/MariaDB.
+            if ($query->driver() !== 'sqlite') {
+                $expression = 'CAST(' . $expression . ' AS BINARY)';
+            }
+            $query = $query->whereRaw($expression . ' = ?', [$value]);
+        }
         if ($exceptId !== null) {
             $query = $query->where($this->resource::getPrimaryKey(), '!=', $exceptId);
         }
