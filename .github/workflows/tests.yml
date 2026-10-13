@@ -62,5 +62,8 @@ jobs:
       - name: Report test failures as annotations
         run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
-      - name: Run tests
+      - name: Run configured database tests
         run: vendor/bin/phpunit
+
+      - name: Run SQLite and verify unconfigured MySQL skips
+        run: env -u FLO_ADMIN_TEST_DB_NAME vendor/bin/phpunit
