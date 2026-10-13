@@ -4,6 +4,9 @@
  * Deleting this file switches the admin panel off (the package does nothing).
  */
 return [
+    // Reactive lists/dialogs and navigation; false restores full-page behavior.
+    'reactive' => true,
+
     // Resource classes to load. Leave empty to load every *Resource.php
     // file in resources_path (namespace resources_namespace).
     'resources' => [

@@ -94,4 +94,13 @@ return [
     'profile.current_password_wrong' => 'The current password is not correct.',
     'profile.saved' => 'Profile saved.',
     'profile.new_password_help' => 'At least 8 characters. Leave empty to keep your current password.',
+    'reactive.loading' => 'Loading…',
+    'reactive.request_failed' => 'The request failed. Check your connection and try again.',
+    'reactive.conflict' => 'This record changed since you opened it. Cancel and reopen it to review the latest version.',
+    'reactive.missing' => 'This record was deleted or is no longer available.',
+    'reactive.large_form' => 'This form is too large for the dialog. Open its standard page to edit it.',
+    'reactive.standard_view' => 'Open standard view',
+    'reactive.expired' => 'This page expired. Reload the page before continuing.',
+    'reactive.forbidden' => 'You no longer have permission for this action.',
+    'reactive.operation_expired' => 'This operation expired or already completed. Cancel and reopen the dialog.',
 ];

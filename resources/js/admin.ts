@@ -1,0 +1,209 @@
+import { initializeLegacy } from './legacy.js';
+import '../assets/admin.css';
+
+let navigating = false;
+let navigation: AbortController | undefined;
+let displayedUrl = location.href;
+const panel = () => document.querySelector<HTMLElement>('.fa-panel');
+const enabled = () => panel()?.dataset.adminNavigation === 'true';
+const busy = () => Boolean(panel()?.querySelector('[data-rx-component][aria-busy="true"]'));
+
+function internal(value: string): URL | undefined {
+  const root = panel();
+  if (!root) return;
+  const url = new URL(value, location.href);
+  const base = new URL(root.dataset.adminBase!, location.href);
+  if (url.origin !== location.origin || !url.pathname.startsWith(base.pathname + '/')) return;
+  // Authentication/logout and application controllers keep ordinary navigation.
+  const route = url.pathname.slice(base.pathname.length + 1).split('/')[0];
+  const known = new Set([...root.querySelectorAll<HTMLAnchorElement>('.fa-nav a, .fa-topbar-user')]
+    .map(a => new URL(a.href).pathname.slice(base.pathname.length + 1).split('/')[0]));
+  if (!known.has(route)) return;
+  return url;
+}
+
+function status(message: string): void {
+  const element = panel()?.querySelector<HTMLElement>('[data-admin-status]');
+  if (element) { element.textContent = message; element.tabIndex = -1; element.focus(); }
+}
+
+function initialize(): void {
+  initializeLegacy();
+  const root = panel();
+  if (!root) return;
+  document.title = root.dataset.adminTitle || document.title;
+  document.documentElement.lang = root.lang;
+  document.documentElement.dir = root.dir;
+  updateMenu(false);
+}
+
+async function navigate(url: URL, options: { method?: string; body?: URLSearchParams; replace?: boolean; history?: boolean } = {}): Promise<void> {
+  if (navigating || busy()) { status(panel()?.dataset.adminBusy || 'Please wait.'); return; }
+  navigating = true;
+  navigation?.abort();
+  navigation = new AbortController();
+  const current = panel();
+  current?.setAttribute('aria-busy', 'true');
+  status(current?.dataset.adminBusy || 'Loading…');
+  if (current) current.inert = true;
+  const timeout = setTimeout(() => navigation?.abort(), 30000);
+  try {
+    const response = await fetch(url, { method: options.method || 'GET', body: options.body, credentials: 'same-origin',
+      cache: 'no-store', headers: { 'X-Flo-Admin': 'navigate' }, signal: navigation.signal });
+    const html = await response.text();
+    const documentNext = new DOMParser().parseFromString(html, 'text/html');
+    const next = documentNext.querySelector<HTMLElement>('.fa-panel');
+    if (!response.ok || !next) {
+      // A normal login redirect needs the site's login UI, outside this panel.
+      if (response.redirected && !next && new URL(response.url).origin === location.origin) { location.assign(response.url); return; }
+      throw new Error('Invalid panel response');
+    }
+    // Navigation never evaluates HTML scripts and never caches private page bodies.
+    next.querySelectorAll('script, link[rel="stylesheet"]').forEach(element => element.remove());
+    current?.replaceWith(next);
+    initialize();
+    const finalUrl = response.url || url.href;
+    if (options.history !== false) history[options.replace || options.method === 'POST' ? 'replaceState' : 'pushState'](null, '', finalUrl);
+    displayedUrl = finalUrl;
+    const invalid = next.querySelector<HTMLElement>('[aria-invalid="true"]');
+    (invalid || next.querySelector<HTMLElement>('#fa-content'))?.focus();
+    if (!invalid) window.scrollTo(0, 0);
+    document.dispatchEvent(new CustomEvent('flo-admin:navigated'));
+  } catch {
+      if (current) current.inert = false;
+      status(panel()?.dataset.adminError || 'Unable to load this page. Please try again.');
+      // A failed popstate must not show old content under a different URL.
+      if (options.history === false) history.replaceState(null, '', displayedUrl);
+  } finally {
+    clearTimeout(timeout);
+    navigating = false;
+    if (current) current.inert = false;
+    if (panel()) panel()!.inert = false;
+    panel()?.removeAttribute('aria-busy');
+  }
+}
+
+document.addEventListener('click', event => {
+  if (!(event.target instanceof Element)) return;
+  if (event.target.closest('[data-admin-menu]')) { updateMenu(!panel()?.classList.contains('is-menu-open')); return; }
+  if (event.target.closest('[data-admin-menu-close]')) { updateMenu(false); return; }
+  const anchor = event.target.closest<HTMLAnchorElement>('a[href]');
+  if (!enabled() || !anchor || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+    || anchor.target || anchor.hasAttribute('download') || anchor.hasAttribute('data-no-navigate') || anchor.hash) return;
+  const url = internal(anchor.href);
+  if (!url) return;
+  event.preventDefault();
+  void navigate(url);
+});
+
+// Capture runs before Reactive's submit handler; pack ordinary Form controls into
+// the single declared scalar draft. No arbitrary property/action names are sent.
+document.addEventListener('submit', event => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  if (form.hasAttribute('data-admin-draft')) {
+    if (navigating || busy()) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+    const values: Record<string, string | Record<string, string>> = {};
+    for (const [name, value] of new FormData(form)) {
+      if (typeof value !== 'string') continue;
+      const translated = /^([A-Za-z_][A-Za-z0-9_]*)\[([a-z0-9-]+)\]$/.exec(name);
+      if (translated) {
+        const current = values[translated[1]];
+        const languages = typeof current === 'object' ? current : {};
+        languages[translated[2]] = value; values[translated[1]] = languages;
+      } else if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) values[name] = value;
+    }
+    const input = form.querySelector<HTMLInputElement>('[data-rx-bind="draft"]')!;
+    input.value = JSON.stringify(values);
+    if (new TextEncoder().encode(input.value).length > 7000) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const message = form.closest('dialog')?.querySelector<HTMLElement>('[data-rx-status]');
+      if (message) message.textContent = panel()?.dataset.adminLargeForm || 'This form is too large for the dialog. Use the standard page.';
+    }
+    return;
+  }
+  // Legacy delete confirmation owns its initial submit, then requests a new one.
+  if (!enabled() || form.hasAttribute('data-rx-submit') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
+  const url = internal(form.action);
+  if (!url) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const values = new URLSearchParams();
+  new FormData(form).forEach((value, name) => { if (typeof value === 'string') values.append(name, value); });
+  const submitter = event.submitter as HTMLButtonElement | null;
+  if (submitter?.name) values.append(submitter.name, submitter.value);
+  if (form.method.toUpperCase() === 'GET') {
+    url.search = values.toString(); void navigate(url);
+  } else void navigate(url, { method: 'POST', body: values });
+}, true);
+
+// The panel owns its browser history; Reactive's public-page reload fallback
+// must not run here. Re-fetch on back/forward, including component query state.
+window.addEventListener('popstate', event => {
+  if (!enabled()) return;
+  event.stopImmediatePropagation();
+  const url = internal(location.href);
+  if (url) {
+    if (navigating || busy()) { history.replaceState(null, '', displayedUrl); return; }
+    void navigate(url, { history: false });
+  } else location.reload();
+}, true);
+
+// Detached component responses cannot change the URL after panel navigation.
+document.addEventListener('htmx:beforeSwap', ((event: CustomEvent) => {
+  const element = event.detail.elt as HTMLElement | undefined;
+  if (element?.hasAttribute('data-rx-component') && !element.isConnected) event.stopImmediatePropagation();
+}) as EventListener, true);
+
+function updateMenu(open: boolean): void {
+  const root = panel();
+  const button = root?.querySelector<HTMLElement>('[data-admin-menu]');
+  const sidebar = root?.querySelector<HTMLElement>('.fa-sidebar');
+  root?.classList.toggle('is-menu-open', open);
+  button?.setAttribute('aria-expanded', String(open));
+  const mobile = matchMedia('(max-width: 900px)').matches;
+  if (sidebar) sidebar.inert = mobile && !open;
+  const content = root?.querySelector<HTMLElement>('#fa-content');
+  if (content) content.inert = mobile && open;
+  if (open) sidebar?.querySelector<HTMLElement>('a')?.focus();
+}
+document.addEventListener('keydown', event => {
+  if (event.key === 'Tab' && panel()?.classList.contains('is-menu-open')) {
+    const elements = [...panel()!.querySelectorAll<HTMLElement>('.fa-sidebar a, [data-admin-menu]')];
+    const index = elements.indexOf(document.activeElement as HTMLElement);
+    if (index >= 0) { event.preventDefault(); elements[(index + (event.shiftKey ? -1 : 1) + elements.length) % elements.length].focus(); }
+  }
+  if (event.key === 'Escape' && panel()?.classList.contains('is-menu-open')) {
+    updateMenu(false); panel()?.querySelector<HTMLElement>('[data-admin-menu]')?.focus();
+  }
+});
+window.addEventListener('resize', () => updateMenu(false));
+document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
+  const root = panel();
+  if (!root || !(event.target instanceof HTMLElement) || !root.contains(event.target)) return;
+  const messages: Record<number, string | undefined> = {
+    401: root.dataset.adminExpired, 419: root.dataset.adminExpired,
+    403: root.dataset.adminForbidden, 409: root.dataset.adminOperationExpired, 404: root.dataset.adminMissing,
+  };
+  event.target.querySelectorAll<HTMLElement>('[data-rx-status]').forEach(element => {
+    element.textContent = messages[event.detail.status] || root.dataset.adminError || '';
+  });
+}) as EventListener);
+document.addEventListener('flo-reactive:updated', () => { displayedUrl = location.href; });
+
+// Ordinary modal controls have no scalar binding. Keep them inert during the
+// mutation while the request is in flight, while the Reactive adapter owns buttons.
+document.addEventListener('htmx:beforeRequest', ((event: CustomEvent) => {
+  if (!event.detail.elt?.hasAttribute('data-rx-component')) return;
+  const form = event.detail.elt.querySelector('form[data-admin-draft]');
+  if (form) form.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((control: HTMLInputElement) => {
+    control.dataset.adminWasDisabled = String(control.disabled); control.disabled = true;
+  });
+}) as EventListener);
+document.addEventListener('htmx:afterRequest', ((event: CustomEvent) => {
+  event.detail.elt?.querySelectorAll('[data-admin-was-disabled]').forEach((control: HTMLInputElement) => {
+    control.disabled = control.dataset.adminWasDisabled === 'true'; delete control.dataset.adminWasDisabled;
+  });
+}) as EventListener);
+
+initialize();

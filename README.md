@@ -4,7 +4,7 @@ The admin panel for [FloCMS](https://github.com/hostkurd/FloCMS): a dashboard, u
 
 FloCMS provides the security (login, sessions, roles and permissions); flocms-admin provides the screens and always asks FloCMS who may do what.
 
-- Server-rendered pages, a little vanilla JavaScript, no build step: works on plain cPanel hosting.
+- Server-rendered Reactive lists and dialogs, plus panel navigation without full document reloads. Compiled assets ship with Composer: no hosting-side build, including on cPanel.
 - **Translatable fields**: one value per site language, stored as JSON in the field's column, edited through a language badge and a dialog.
 - **Right-to-left** admin from the start (Arabic, Kurdish, …), with the right `dir` on every language input.
 - Uses FloCMS's own login, CSRF protection, permissions and validation rules.
@@ -13,7 +13,8 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` 2.3+ (skeleton 1.7.7+), which added controller resolvers
+- `hostkurd/flocms-core` ^2.3.2 and `hostkurd/flocms-reactive` ^0.3.0 (installed by Composer)
+- A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
 ## Installation
@@ -281,7 +282,8 @@ Then delete `config/admin.php` and `admin/` (your own code, so the package never
 
 ## Roadmap
 
-- 0.3: filters, image and file fields (flocms-uploader), bulk delete, stat widgets on the dashboard, overridable views
+- 0.3: Reactive resource dialogs and lists, shared form submission, panel navigation and browser coverage
+- Next: richer Actions/Forms/Tables, then filters, image/file fields, bulk operations, notifications and dashboard widgets
 - Later: relationships, a settings page, more generators
 
 ## Development
@@ -289,6 +291,11 @@ Then delete `config/admin.php` and `admin/` (your own code, so the package never
 ```bash
 composer install
 vendor/bin/phpunit
+npm ci
+npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:browser
 ```
 
 The MySQL / MariaDB tests run when `FLO_ADMIN_TEST_DB_NAME` (and `_HOST`, `_PORT`, `_USER`, `_PASS`) are set; the rest use SQLite.
@@ -297,6 +304,6 @@ The MySQL / MariaDB tests run when `FLO_ADMIN_TEST_DB_NAME` (and `_HOST`, `_PORT
 
 MIT
 
-### Upgrading to 0.2.1
+### Upgrading to 0.3.0
 
-See [UPGRADING.md](UPGRADING.md) for normalization, transaction/hook semantics, translated uniqueness, and existing duplicate login checks.
+See [UPGRADING.md](UPGRADING.md) for dependencies, key setup, form limits, concurrency, and retained 0.2.1 correctness fixes. See the [Reactive Admin guide](docs/reactive-admin.md) for the runnable resource example and browser checks.

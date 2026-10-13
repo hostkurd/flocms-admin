@@ -45,6 +45,23 @@ final class MysqlRepositoryTest extends RepositoryTestCase
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     }
 
+    public function testNoOpCheckUsesCurrentReadAfterConcurrentCommit(): void
+    {
+        $other = $this->connect();
+        $this->db->query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        $this->repository->transaction(function () use ($other): void {
+            $original = $this->repository->find('1'); // establishes an older snapshot
+            $other->table('posts')->where('id', '=', 1)->update(['slug' => 'concurrent']);
+            try {
+                $this->repository->updateUnchanged('1', ['slug' => $original->slug], $original);
+                self::fail('A snapshot read would incorrectly report a successful no-op.');
+            } catch (\FloCMS\Core\ValidationException $e) {
+                self::assertArrayHasKey('_form', $e->getErrors());
+            }
+        });
+        self::assertSame('concurrent', $this->repository->find('1')->slug);
+    }
+
     public function testAccentedSearchIgnoresCase(): void
     {
         $this->repository->insert(['title' => '{"en":"Café du port"}', 'slug' => 'cafe', 'status' => 'draft', 'featured' => 0]);

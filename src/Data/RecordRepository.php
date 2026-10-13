@@ -118,6 +118,66 @@ final class RecordRepository
         $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->update($data);
     }
 
+    /** A fingerprint of the complete row, sealed in the component snapshot. */
+    public static function fingerprint(object $record): string
+    {
+        $values = (array) $record;
+        ksort($values);
+        return hash('sha256', serialize($values));
+    }
+
+    /** Compare every original column in the UPDATE itself, including tenant/owner fields. */
+    public function updateUnchanged(string $id, array $data, object $original): void
+    {
+        [$where, $bindings] = $this->originalCondition($id, $original);
+        // Even an empty save must prove that the original row still exists.
+        if ($data === []) { $data = [$this->resource::getPrimaryKey() => $id]; }
+        $set = implode(', ', array_map(fn (string $column): string => self::quote($column) . ' = ?', array_keys($data)));
+        $sql = 'UPDATE ' . self::quote($this->resource::getTable()) . ' SET ' . $set . ' WHERE ' . $where;
+        $statement = $this->db->pdo()->prepare($sql);
+        $statement->execute([...array_values($data), ...$bindings]);
+        // MySQL reports zero changed rows for a genuine no-op. A matching original
+        // still counts as success; missing/changed rows are conflicts.
+        if ($statement->rowCount() === 0) {
+            $check = $this->db->pdo()->prepare('SELECT ' . self::quote($this->resource::getPrimaryKey()) . ' FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where . ($this->db->driver() === 'sqlite' ? '' : ' FOR UPDATE'));
+            $check->execute($bindings);
+            if ($check->fetchColumn() === false) { $this->conflict(); }
+        }
+    }
+
+    public function deleteUnchanged(string $id, object $original): void
+    {
+        [$where, $bindings] = $this->originalCondition($id, $original);
+        $statement = $this->db->pdo()->prepare('DELETE FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where);
+        $statement->execute($bindings);
+        if ($statement->rowCount() !== 1) { $this->conflict(); }
+    }
+
+    private function originalCondition(string $id, object $original): array
+    {
+        $where = [self::quote($this->resource::getPrimaryKey()) . ' = ?'];
+        $bindings = [$id];
+        foreach ((array) $original as $column => $value) {
+            $name = self::quote($column);
+            $where[] = $this->db->driver() === 'sqlite'
+                ? $name . ' COLLATE BINARY IS ?'
+                : 'CAST(' . $name . ' AS BINARY) <=> CAST(? AS BINARY)';
+            $bindings[] = $value;
+        }
+        return [implode(' AND ', $where), $bindings];
+    }
+
+    private static function quote(string $identifier): string
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $identifier) !== 1) { throw new \InvalidArgumentException('Invalid database identifier.'); }
+        return '`' . $identifier . '`';
+    }
+
+    private function conflict(): never
+    {
+        throw new \FloCMS\Core\ValidationException(['_form' => \FloCMS\Admin\Support\AdminLang::get('reactive.conflict')]);
+    }
+
     public function delete(string $id): void
     {
         $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->delete();

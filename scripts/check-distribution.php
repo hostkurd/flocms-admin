@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+
+$zip = new ZipArchive();
+if ($zip->open($argv[1] ?? '') !== true) { throw new RuntimeException('Cannot open distribution archive.'); }
+$version = json_decode(file_get_contents(dirname(__DIR__) . '/package.json'), true, 512, JSON_THROW_ON_ERROR)['version'];
+foreach (['dist/admin-v' . $version . '.js', 'dist/admin-v' . $version . '.css', 'bootstrap.php', 'src/Reactive/ResourceComponent.php', 'resources/views/reactive-resource.html', 'UPGRADING.md'] as $path) {
+    if ($zip->locateName($path) === false) { throw new RuntimeException('Missing ' . $path); }
+}
+for ($i = 0; $i < $zip->numFiles; $i++) {
+    $path = $zip->getNameIndex($i);
+    if (preg_match('~^(vendor|node_modules|tests|test-results|playwright-report|resources/js|resources/assets)/~', $path)
+        || in_array($path, ['package-lock.json', 'package.json', 'composer.lock'], true)) {
+        throw new RuntimeException('Development file shipped: ' . $path);
+    }
+}
+echo "Distribution includes versioned runtime assets and excludes development files.\n";

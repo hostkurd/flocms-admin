@@ -67,3 +67,28 @@ jobs:
 
       - name: Run SQLite and verify unconfigured MySQL skips
         run: env -u FLO_ADMIN_TEST_DB_NAME vendor/bin/phpunit
+
+  browser:
+    name: Browser, assets and distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Verify reproducible versioned assets
+        run: git diff --exit-code -- dist
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: composer archive --format=zip --dir=/tmp --file=flocms-admin-distribution
+      - run: php scripts/check-distribution.php /tmp/flocms-admin-distribution.zip

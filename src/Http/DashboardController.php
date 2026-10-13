@@ -24,7 +24,7 @@ final class DashboardController extends PanelController
 {
     protected array $actionPermissions = ['admin_index' => null];
 
-    public function admin_index(): string
+    public function admin_index(): string|\FloCMS\Core\Http\Response
     {
         $registry = Admin::registry();
         $resources = $registry->all();

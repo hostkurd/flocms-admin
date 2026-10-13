@@ -5,7 +5,6 @@ namespace FloCMS\Admin\Http;
 
 use FloCMS\Admin\Admin;
 use FloCMS\Admin\Data\RecordRepository;
-use FloCMS\Admin\Form\Field;
 use FloCMS\Admin\Form\Form;
 use FloCMS\Admin\Form\FormRenderer;
 use FloCMS\Admin\Resource;
@@ -13,7 +12,6 @@ use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Table\Table;
 use FloCMS\Admin\Translation\Languages;
 use FloCMS\Admin\Translation\Translations;
-use FloCMS\Admin\Validation\FormValidator;
 use FloCMS\Core\App;
 use FloCMS\Core\Auth;
 use FloCMS\Core\HttpException;
@@ -60,9 +58,15 @@ final class ResourceController extends PanelController
      * Actions
      * ------------------------------------------------------------- */
 
-    public function admin_index(): string
+    public function admin_index(): string|\FloCMS\Core\Http\Response
     {
         $class = $this->resourceClass;
+        if (Admin::config()->reactiveEnabled() && $this->query('static', '') !== '1') {
+            \FloCMS\Reactive\Reactive::register('flo-admin-resource', \FloCMS\Admin\Reactive\ResourceComponent::class);
+            return $this->panel($class::getPluralLabel(), \FloCMS\Reactive\Reactive::mount('flo-admin-resource', 'admin-resource', [
+                'resourceSlug' => $class::getSlug(), 'instanceKey' => 'admin-resource',
+            ]), $class::getSlug());
+        }
         $table = $this->table();
         $page = max(1, (int) $this->query('page', '1'));
         $search = $this->query('q', '');
@@ -93,7 +97,7 @@ final class ResourceController extends PanelController
         return $this->panel($class::getPluralLabel(), $html, $class::getSlug());
     }
 
-    public function admin_create(): string
+    public function admin_create(): string|\FloCMS\Core\Http\Response
     {
         if (!$this->resource->canCreate()) {
             throw new HttpException(403);
@@ -102,7 +106,7 @@ final class ResourceController extends PanelController
         return $this->handleForm(null);
     }
 
-    public function admin_edit(): string
+    public function admin_edit(): string|\FloCMS\Core\Http\Response
     {
         $record = $this->findRecordOr404();
 
@@ -138,7 +142,7 @@ final class ResourceController extends PanelController
      * Create and edit
      * ------------------------------------------------------------- */
 
-    private function handleForm(?object $record): string
+    private function handleForm(?object $record): string|\FloCMS\Core\Http\Response
     {
         $class = $this->resourceClass;
         $form = $this->form();
@@ -148,37 +152,12 @@ final class ResourceController extends PanelController
         $errors = [];
 
         if ($this->isPost()) {
-            $input = $this->request->all();
-            $state = [];
-            foreach ($form->fields() as $name => $field) {
-                $state[$name] = $field->isWritable()
-                    ? $field->stateFromInput($input, $languages)
-                    : $field->stateFromRecord($record, $default);
-            }
-            foreach ($form->fields() as $field) {
-                $state = $field->prepare($state, $default);
-            }
-
-            $state = $this->resource->normalizeState($state, $record);
-
-            $skip = [];
-            foreach ($form->writableFields() as $name => $field) {
-                if ($field->skipsWrite($state[$name], $isEdit)) {
-                    $skip[] = $name;
-                }
-            }
-
-            $exceptId = $isEdit ? $this->recordId() : null;
-            $validator = new FormValidator($languages, $default, function (Field $field, string $value, ?string $language = null) use ($exceptId): bool {
-                return $this->repository()->exists($field->getName(), $value, $exceptId, $language);
-            }, $isEdit);
-            $errors = $validator->validate($form, $state, $skip);
-            if ($errors === []) {
-                $errors = $this->resource->validate($state, $record);
-            }
+            $submission = new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository());
+            $state = $submission->state($form, $this->request->all(), $record);
+            $errors = $submission->errors($form, $state, $record);
 
             if ($errors === []) {
-                $id = $this->repository()->transaction(fn (): string => $this->save($form, $state, $skip, $record));
+                $id = $submission->save($form, $state, $record);
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
                 $continue = $this->request->input('_continue') !== null && $this->can('update');
@@ -209,67 +188,6 @@ final class ResourceController extends PanelController
         $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== []);
 
         return $this->panel($title, $html, $class::getSlug());
-    }
-
-    /**
-     * Write the record and return its id.
-     *
-     * @param array<string, string|array<string, string>> $state
-     * @param list<string> $skip
-     */
-    private function save(Form $form, array $state, array $skip, ?object $record): string
-    {
-        $class = $this->resourceClass;
-        $data = [];
-        foreach ($form->writableFields() as $name => $field) {
-            if (in_array($name, $skip, true)) {
-                continue;
-            }
-            $value = $state[$name];
-            if ($record !== null && $field->isTranslatable()) {
-                // Only configured languages are editable. Retain all other stored keys.
-                $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
-                $editable = array_fill_keys(Languages::all(), true);
-                $value = array_replace(
-                    $stored,
-                    array_fill_keys(Languages::all(), ''),
-                    array_intersect_key(is_array($value) ? $value : [], $editable)
-                );
-            }
-            $data[$name] = $field->dehydrate($value);
-        }
-
-        // Never from input
-        $pk = $class::getPrimaryKey();
-        if ($record !== null) {
-            unset($data[$pk]);
-        }
-        unset($data['created_at'], $data['updated_at']);
-
-        $data = $this->resource->beforeSave($data, $record);
-
-        if ($class::usesTimestamps()) {
-            $now = date('Y-m-d H:i:s');
-            if ($record === null) {
-                $data['created_at'] = $now;
-            }
-            $data['updated_at'] = $now;
-        }
-
-        $repository = $this->repository();
-        if ($record === null) {
-            $id = $repository->insert($data);
-        } else {
-            $id = $this->recordId();
-            $repository->update($id, $data);
-        }
-
-        $saved = $id !== '' ? $repository->find($id) : null;
-        if ($saved !== null) {
-            $this->resource->afterSave($saved);
-        }
-
-        return $id;
     }
 
     /* ---------------------------------------------------------------

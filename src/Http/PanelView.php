@@ -77,8 +77,9 @@ final class PanelView
             'usersIcon' => Icons::svg('users'),
             'logoutIcon' => Icons::svg('logout'),
             'menuIcon' => Icons::svg('menu'),
-            'css' => self::asset('admin.css'),
-            'js' => self::asset('admin.js'),
+            'assets' => \FloCMS\Admin\Assets::tags(),
+            'navigation' => Admin::config()->reactiveEnabled(),
+            'panelBase' => Admin::url(),
         ];
     }
 
@@ -93,11 +94,4 @@ final class PanelView
         return Languages::direction($lang);
     }
 
-    private static function asset(string $file): string
-    {
-        $content = @file_get_contents(dirname(__DIR__, 2) . '/resources/assets/' . $file);
-
-        // Printed inside <style>/<script>: make sure the content cannot close the tag
-        return $content === false ? '' : str_ireplace(['</style', '</script'], ['<\/style', '<\/script'], $content);
-    }
 }

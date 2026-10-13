@@ -1,8 +1,7 @@
-<style>{!! $css !!}</style>
-<noscript><style>.fa-lang-dialog:not([open]){display:block;position:static;margin:.5rem 0 0;width:auto;max-width:none;box-shadow:none}.fa-lang-dialog .fa-mirror-row,.fa-lang-dialog .fa-dialog-foot,.fa-lang-badge{display:none}</style></noscript>
-<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}">
-    <input type="checkbox" id="fa-nav-toggle" class="fa-nav-toggle" aria-hidden="true" tabindex="-1">
-    <aside class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
+{!! $assets !!}
+<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-busy="{{ $t('reactive.loading') }}">
+
+    <aside id="fa-sidebar" class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
         <div class="fa-brand"><a href="{{ $dashboardUrl }}">{{ $brand }}</a></div>
         <nav class="fa-nav">
             <a class="fa-nav-link{{ $dashboardActive ? ' is-active' : '' }}" href="{{ $dashboardUrl }}"@if($dashboardActive) aria-current="page"@endif>{!! $dashboardIcon !!}<span>{{ $t('nav.dashboard') }}</span></a>
@@ -18,10 +17,10 @@
             @endif
         </nav>
     </aside>
-    <label for="fa-nav-toggle" class="fa-nav-backdrop" aria-hidden="true"></label>
+    <button type="button" class="fa-nav-backdrop" data-admin-menu-close aria-label="{{ $t('actions.cancel') }}" tabindex="-1"></button>
     <div class="fa-main">
         <header class="fa-topbar">
-            <label for="fa-nav-toggle" class="fa-icon-btn fa-menu-btn" title="{{ $t('nav.menu') }}">{!! $menuIcon !!}<span class="fa-sr">{{ $t('nav.menu') }}</span></label>
+            <button type="button" class="fa-icon-btn fa-menu-btn" data-admin-menu aria-controls="fa-sidebar" aria-expanded="false" title="{{ $t('nav.menu') }}">{!! $menuIcon !!}<span class="fa-sr">{{ $t('nav.menu') }}</span></button>
             <span class="fa-topbar-title">{{ $title }}</span>
             <span class="fa-topbar-spacer"></span>
             <a class="fa-topbar-link" href="{{ $siteUrl }}" target="_blank" rel="noopener">{{ $t('nav.view_site') }}</a>
@@ -32,7 +31,8 @@
             @endif
             <a class="fa-topbar-link" href="{{ $logoutUrl }}">{!! $logoutIcon !!}<span>{{ $t('nav.logout') }}</span></a>
         </header>
-        <main class="fa-content" id="fa-content">
+        <main class="fa-content" id="fa-content" tabindex="-1">
+            <p class="fa-navigation-status" role="status" aria-live="polite" data-admin-status></p>
             @if($flash !== null)
             <div class="fa-alert fa-alert-{{ $flash['type'] }}" role="status">{{ $flash['message'] }}</div>
             @endif
@@ -48,4 +48,3 @@
         </div>
     </dialog>
 </div>
-<script>{!! $js !!}</script>
