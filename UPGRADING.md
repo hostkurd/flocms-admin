@@ -1,3 +1,15 @@
+# Upgrading to Admin 0.4.1
+
+Update Admin with Composer after release and deploy its supplied `admin-v0.4.1.js` and `admin-v0.4.1.css`. Reload already-open Admin pages to load the updated client. No database migration, application resource change, or Core/Reactive dependency upgrade is required.
+
+Create/Edit and custom action forms now show the same default-language input and language badge as full-page CRUD forms. Clicking the badge opens that field's translation editor. Save accepts the translations; Cancel/Escape restores the values from when it opened and returns focus to the badge without closing the resource editor. Secondary-language validation opens the affected translation dialog. The legacy sixth `FormRenderer` constructor argument remains accepted for compatibility but no longer selects expanded language inputs.
+
+The normal "Open standard view" link is removed. Reactive dialogs and navigation remain the default. Existing full-page CRUD/action URLs, `?static=1`, and `'reactive' => false` still work, including with JavaScript disabled. The 7,000-byte modal draft limit is unchanged: an oversized form offers **Continue on full page**. Copy unsaved text before using that link; it does not transfer the draft. With JavaScript disabled, the resource list exposes the same fallback link through `<noscript>`.
+
+Standalone FloCMS and its login page remain unchanged. This patch does not start the 0.5.0 filters/bulk-actions milestone.
+
+---
+
 # Upgrading to Admin 0.4.0
 
 Update Admin with Composer after release. Core `^2.3.2`, Reactive `^0.3.0`, PHP 8.1+ and the existing secret `APP_KEY` requirements remain unchanged. No database migration or application resource rewrite is required. Deploy the supplied `admin-v0.4.0.js` and `admin-v0.4.0.css`; filenames keep the full release version and Composer distributions include compiled assets. Core and the skeleton remain independent of optional Admin/Reactive packages.

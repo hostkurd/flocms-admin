@@ -53,7 +53,9 @@ test('modal edit, translated validation, correction and save preserve list state
   await expect(editor(page).locator('[name="title[en]"]')).toHaveAttribute('aria-invalid', 'true');
   await expect(editor(page).locator('[name="title[en]"]')).toBeFocused();
   await editor(page).locator('[name="title[en]"]').fill('Studio updated');
+  await editor(page).locator('[data-field="title"] .fa-lang-badge').click();
   await editor(page).locator('[name="title[ar]"]').fill('استوديو');
+  await editor(page).locator('[data-field="title"] [data-dialog-save]').click();
   await editor(page).getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator('[data-admin-notice]')).toContainText('saved');
@@ -137,8 +139,7 @@ test('expired CSRF never writes and Escape closes locally', async ({ page }) => 
 });
 
 test('standard large forms also save without replacing the document', async ({ page }) => {
-  await ready(page);
-  await page.getByRole('link', { name: 'Open standard view' }).click();
+  await ready(page, '/en/admin/posts?static=1');
   await page.locator('a[href="/en/admin/posts/edit/8"]').click();
   await page.locator('[name="body[en]"]').fill('x'.repeat(9000));
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
@@ -210,7 +211,7 @@ test('standard translations and mobile navigation remain usable without JavaScri
     await expect(page.locator('[name="title[ar]"]')).toBeVisible();
     await page.locator('[name="title[ar]"]').fill('عنوان جديد');
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-    await page.getByRole('link', { name: 'Open standard view' }).click();
+    await page.getByRole('link', { name: 'Continue on full page' }).click();
     await page.locator('a[href="/en/admin/posts/edit/8"]').click();
     await expect(page.locator('[name="title[ar]"]')).toHaveValue('عنوان جديد');
   } finally { await context.close(); }

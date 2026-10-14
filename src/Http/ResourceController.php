@@ -185,7 +185,7 @@ final class ResourceController extends PanelController
         $title = $action->getTitle($this->resource);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
-            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', true))->render($form),
+            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit'))->render($form),
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '')),
             'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),

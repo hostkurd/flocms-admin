@@ -1,5 +1,6 @@
 import { receiveNotifications } from './notifications';
 import { initializeLegacy } from './legacy.js';
+import { initializeTranslations } from './translations';
 import '../assets/admin.css';
 
 let navigating = false;
@@ -32,6 +33,7 @@ function initialize(): void {
   initializeLegacy();
   const root = panel();
   if (!root) return;
+  initializeTranslations(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
@@ -120,7 +122,9 @@ document.addEventListener('submit', event => {
     if (new TextEncoder().encode(input.value).length > 7000) {
       event.preventDefault(); event.stopImmediatePropagation();
       const message = form.closest('dialog')?.querySelector<HTMLElement>('[data-rx-status]');
-      if (message) message.textContent = panel()?.dataset.adminLargeForm || 'This form is too large for the dialog. Use the standard page.';
+      if (message) message.textContent = panel()?.dataset.adminLargeForm || 'This form is too large for the dialog. Copy any unsaved text before continuing on the full page.';
+      const fallback = form.closest('dialog')?.querySelector<HTMLElement>('[data-admin-full-page]');
+      if (fallback) fallback.hidden = false;
     }
     return;
   }
@@ -191,7 +195,11 @@ document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
     element.textContent = messages[event.detail.status] || root.dataset.adminError || '';
   });
 }) as EventListener);
-document.addEventListener('flo-reactive:updated', () => { displayedUrl = location.href; });
+document.addEventListener('flo-reactive:updated', () => {
+  displayedUrl = location.href;
+  const root = panel();
+  if (root) initializeTranslations(root);
+});
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the
 // mutation while the request is in flight, while the Reactive adapter owns buttons.

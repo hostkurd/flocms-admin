@@ -5,7 +5,7 @@ The admin panel for [FloCMS](https://github.com/hostkurd/FloCMS): a dashboard, u
 FloCMS provides the security (login, sessions, roles and permissions); flocms-admin provides the screens and always asks FloCMS who may do what.
 
 - Server-rendered Reactive lists and dialogs, plus panel navigation without full document reloads. Compiled assets ship with Composer: no hosting-side build, including on cPanel.
-- **Translatable fields**: one value per site language, stored as JSON in the field's column, edited through a language badge and a dialog.
+- **Translatable fields**: one value per site language, stored as JSON in the field's column, with the same default-language input, language badge and translation dialog in modal and full-page forms.
 - **Right-to-left** admin from the start (Arabic, Kurdish, …), with the right `dir` on every language input.
 - Uses FloCMS's own login, CSRF protection, permissions and validation rules.
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
@@ -311,6 +311,10 @@ The MySQL / MariaDB tests run when `FLO_ADMIN_TEST_DB_NAME` (and `_HOST`, `_PORT
 ## License
 
 MIT
+
+### Upgrading to 0.4.1
+
+Modal and full-page forms now share the same language badge and translation editor. The normal view switch is removed; existing full-page URLs and JavaScript-disabled operation remain supported. No migration or resource change is needed. See [UPGRADING.md](UPGRADING.md).
 
 ### Upgrading to 0.4.0
 
