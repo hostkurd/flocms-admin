@@ -2,7 +2,26 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## 0.3.0 - Unreleased
+## 0.4.0 - Unreleased
+
+### Added
+- PHP-defined Actions for resource page headings, table toolbars and rows, with labels/icons/colors, permissions, current-record policies, confirmation and independent validated forms.
+- Shared `CreateAction`, `EditAction`, `DeleteAction` defaults and a common renderer/executor for Reactive dialogs and standard action forms, including JavaScript-disabled operation.
+- Session-bound action operations, conditional row locks before callbacks, guarded `ActionContext` updates/deletes, and same-connection transactional execution. Record locks do not fire UPDATE triggers.
+- Text-only success, warning, danger and info Notifications, with localized accessible dismissal, response IDs, bounded delivery and persistence across panel navigation without refresh/replay duplication. Failed action transactions discard staged messages.
+- Working Publish/Unpublish example, page/toolbar examples, request/notification/record-lock regressions and browser coverage.
+- [Actions and Notifications guide](docs/actions-and-notifications.md) and 0.4 upgrade notes.
+
+### Changed
+- Core flash messages use the Notification presentation. Built-in CRUD actions retain resource normalization, validation, hooks, password handling and translation preservation.
+- Compiled assets are `admin-v0.4.0.js` and `admin-v0.4.0.css`. No hosting-side build or Core/Reactive dependency bump is needed.
+- Filters, bulk operations, richer Forms and Widgets remain later milestones.
+
+### Fixed
+- Preserve action drafts on conflicts/deleted records and keep native dialogs modal while notification deliveries are moved during DOM updates.
+- Load Core's validation exception declaration for guard paths independently of test execution order.
+
+## 0.3.0 - 2026-10-13
 
 ### Added
 - Reactive resource lists with live search, sorting, pagination, create/edit dialogs, translated validation, delete confirmation and success feedback. Existing PHP resource definitions use the shared adapter.

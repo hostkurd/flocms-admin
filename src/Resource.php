@@ -58,6 +58,12 @@ abstract class Resource
 
     abstract public function table(Table $table): Table;
 
+    /** @return list<\FloCMS\Admin\Actions\Action> Resource list page-header actions. */
+    public function headerActions(): array
+    {
+        return [\FloCMS\Admin\Actions\CreateAction::make()];
+    }
+
     /** Narrow every query of this resource, e.g. $query->where('site_id', '=', 1). */
     public function query(Database $query): Database
     {

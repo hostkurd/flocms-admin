@@ -1,10 +1,9 @@
 <div class="fa-page-head">
     <h1 class="fa-page-title">{{ $title }}</h1>
-    @if($createUrl !== null)
-    <a class="fa-btn fa-btn-primary" href="{{ $createUrl }}">{!! $plusIcon !!}<span>{{ $createLabel }}</span></a>
-    @endif
+    <div class="fa-action-group">{!! $pageActions !!}</div>
 </div>
 <div class="fa-card">
+    @if($tableActions !== '')<div class="fa-toolbar fa-action-group">{!! $tableActions !!}</div>@endif
     @if($hasSearch)
     <form class="fa-toolbar" method="get" action="{{ $listUrl }}" role="search">
         <label class="fa-search">
@@ -49,16 +48,7 @@
                     @endforeach
                     @if($hasActions)
                     <td class="fa-actions">
-                        @if($row['editUrl'] !== null)
-                        <a class="fa-btn fa-btn-sm" href="{{ $row['editUrl'] }}">{{ $t('actions.edit') }}</a>
-                        @endif
-                        @if($row['deleteUrl'] !== null)
-                        <form method="post" action="{{ $row['deleteUrl'] }}" class="fa-inline" data-confirm>
-                            {!! $csrf !!}
-                            <input type="hidden" name="_back" value="{{ $backUrl }}">
-                            <button type="submit" class="fa-btn fa-btn-sm fa-btn-danger-ghost">{{ $t('actions.delete') }}</button>
-                        </form>
-                        @endif
+                        {!! $row['actions'] !!}
                     </td>
                     @endif
                 </tr>
@@ -91,9 +81,7 @@
     @else
     <div class="fa-blank">
         <p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : $t('table.no_records') }}</p>
-        @if($createUrl !== null && $search === '')
-        <a class="fa-btn fa-btn-primary" href="{{ $createUrl }}">{{ $createLabel }}</a>
-        @endif
+        @if($search === '')<div class="fa-action-group">{!! $pageActions !!}</div>@endif
     </div>
     @endif
 </div>

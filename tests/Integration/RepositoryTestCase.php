@@ -239,6 +239,57 @@ abstract class RepositoryTestCase extends TestCase
         self::assertFalse($this->repository->exists('slug', 'hook-write', null));
     }
 
+    public function testActionLockDoesNotFireUpdateTriggersAndCommitDeliversNotification(): void
+    {
+        $previous = $_SESSION ?? [];
+        $_SESSION = ['role' => 3];
+        \FloCMS\Core\Config::set('permissions', [3 => ['*']]);
+        $this->db->query('DROP TABLE IF EXISTS action_audit');
+        $this->db->query('CREATE TABLE action_audit (message VARCHAR(40))');
+        $this->db->query($this->db->driver() === 'sqlite'
+            ? "CREATE TRIGGER action_update_audit AFTER UPDATE ON posts BEGIN INSERT INTO action_audit (message) VALUES ('changed'); END"
+            : "CREATE TRIGGER action_update_audit AFTER UPDATE ON posts FOR EACH ROW INSERT INTO action_audit (message) VALUES ('changed')");
+        try {
+            $resource = new PostResource();
+            $executor = new \FloCMS\Admin\Actions\ActionExecutor($resource, $this->repository);
+            $action = \FloCMS\Admin\Actions\Action::make('publish')->action(static function (\FloCMS\Admin\Actions\ActionContext $context): void {
+                $context->update(['status' => 'published']);
+                \FloCMS\Admin\Notifications\Notification::make()->title('Committed')->success()->send();
+            });
+            $opened = $executor->open($action, 'row', '1'); $accepted = [];
+            $executor->execute($action, 'row', '1', $opened['operation'], [], $accepted);
+            self::assertSame('published', $this->repository->find('1')->status);
+            self::assertSame(1, $this->db->table('action_audit')->count(), 'Locking must not create a second trigger delivery.');
+            self::assertSame(['Committed'], array_column(\FloCMS\Admin\Notifications\Notifications::pull(), 'title'));
+        } finally {
+            $this->db->query('DROP TRIGGER IF EXISTS action_update_audit');
+            $this->db->query('DROP TABLE IF EXISTS action_audit');
+            $_SESSION = $previous;
+        }
+    }
+
+    public function testActionDispatchRefusesAnOuterTransactionBeforeInvokingCallback(): void
+    {
+        $previous = $_SESSION ?? [];
+        $_SESSION = ['role' => 3];
+        \FloCMS\Core\Config::set('permissions', [3 => ['*']]);
+        try {
+            $executor = new \FloCMS\Admin\Actions\ActionExecutor(new PostResource(), $this->repository);
+            $ran = false;
+            $action = \FloCMS\Admin\Actions\Action::make('test')->action(static function () use (&$ran): void { $ran = true; });
+            $opened = $executor->open($action, 'row', '1'); $accepted = [];
+            $this->repository->transaction(function () use ($executor, $action, $opened, &$accepted): void {
+                try {
+                    $executor->execute($action, 'row', '1', $opened['operation'], [], $accepted);
+                    self::fail('An outer transaction would deliver notifications/consume operations before the actual commit.');
+                } catch (\LogicException $error) { self::assertStringContainsString('owns its transaction', $error->getMessage()); }
+            });
+            self::assertFalse($ran);
+            self::assertSame([], \FloCMS\Admin\Notifications\Notifications::pull());
+            self::assertNotEmpty(\FloCMS\Admin\Actions\OperationStore::get($opened['operation'], 'posts', 'row', 'test', '1'));
+        } finally { $_SESSION = $previous; }
+    }
+
     public function testUnicodeIsStoredReadably(): void
     {
         $id = $this->repository->insert(['title' => (new JsonColumnStore())->encode(['ar' => 'فيلا', 'en' => 'a/b']), 'slug' => 'u', 'status' => 'draft', 'featured' => 0]);

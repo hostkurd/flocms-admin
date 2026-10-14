@@ -15,6 +15,17 @@ final class Table
     private ?string $defaultSort = null;
     private string $defaultDirection = 'asc';
     private ?int $perPage = null;
+    private ?array $actions = null;
+    private array $headerActions = [];
+
+    /** Replace the default Edit/Delete row actions. */
+    public function actions(array $actions): self { $this->actions = $actions; return $this; }
+    public function headerActions(array $actions): self { $this->headerActions = $actions; return $this; }
+    public function getActions(): array
+    {
+        return $this->actions ?? [\FloCMS\Admin\Actions\EditAction::make(), \FloCMS\Admin\Actions\DeleteAction::make()];
+    }
+    public function getHeaderActions(): array { return $this->headerActions; }
 
     /** @param list<Column> $columns */
     public function columns(array $columns): self

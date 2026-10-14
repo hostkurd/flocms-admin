@@ -102,5 +102,8 @@ return [
     'reactive.standard_view' => 'Open standard view',
     'reactive.expired' => 'This page expired. Reload the page before continuing.',
     'reactive.forbidden' => 'You no longer have permission for this action.',
-    'reactive.operation_expired' => 'This operation expired or already completed. Cancel and reopen the dialog.',
+    'reactive.operation_expired' => 'This operation expired, completed, or the page changed. Cancel and reopen the dialog; reload the page if needed.',
+    'action.confirm_text' => 'Review this action before continuing.',
+    'notifications.dismiss' => 'Dismiss notification',
+    'notifications.label' => 'Notifications',
 ];

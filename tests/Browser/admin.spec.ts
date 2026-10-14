@@ -64,7 +64,7 @@ test('modal edit, translated validation, correction and save preserve list state
 
 test('create and delete use modal actions and no reload', async ({ page }) => {
   await ready(page);
-  await page.locator('[data-rx-action=create]').click();
+  await page.locator('[data-admin-action=create]').click();
   await editor(page).locator('[name="title[en]"]').fill('New property');
   await editor(page).locator('[name=status]').selectOption('draft');
   await editor(page).getByRole('button', { name: 'Create', exact: true }).click();
@@ -103,6 +103,9 @@ test('concurrent edit and deletion produce recoverable errors', async ({ page })
   await page.request.post('/__test/delete', { form: { id: 8 } });
   await editor(page).getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(editor(page)).toContainText('no longer available');
+  await expect(page.locator('[data-rx-component]')).toHaveAttribute('aria-busy', 'false');
+  expect(await editor(page).evaluate(dialog => dialog.matches(':modal'))).toBe(true);
+  await expect(editor(page).locator('[name="title[en]"]')).toHaveValue('Studio');
   await page.keyboard.press('Escape');
   await expect(editor(page)).not.toBeVisible();
   await stable(page);

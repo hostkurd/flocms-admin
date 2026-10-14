@@ -1,3 +1,4 @@
+import { receiveNotifications } from './notifications';
 import { initializeLegacy } from './legacy.js';
 import '../assets/admin.css';
 
@@ -35,6 +36,7 @@ function initialize(): void {
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
   updateMenu(false);
+  receiveNotifications();
 }
 
 async function navigate(url: URL, options: { method?: string; body?: URLSearchParams; replace?: boolean; history?: boolean } = {}): Promise<void> {

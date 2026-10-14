@@ -51,6 +51,7 @@ final class ResourceController extends PanelController
             'admin_create' => $class::permission('create'),
             'admin_edit' => $class::permission('update'),
             'admin_delete' => $class::permission('delete'),
+            'admin_action' => $class::permission('view'),
         ];
     }
 
@@ -99,6 +100,7 @@ final class ResourceController extends PanelController
 
     public function admin_create(): string|\FloCMS\Core\Http\Response
     {
+        $this->builtin('page', 'create', 'create')->authorizeRequest($this->resource, null);
         if (!$this->resource->canCreate()) {
             throw new HttpException(403);
         }
@@ -110,6 +112,7 @@ final class ResourceController extends PanelController
     {
         $record = $this->findRecordOr404();
 
+        $this->builtin('row', 'edit', 'edit')->authorizeRequest($this->resource, $record);
         if (!$this->resource->canEdit($record)) {
             throw new HttpException(403);
         }
@@ -127,6 +130,7 @@ final class ResourceController extends PanelController
         $class = $this->resourceClass;
         $record = $this->findRecordOr404();
 
+        $this->builtin('row', 'delete', 'delete')->authorizeRequest($this->resource, $record);
         if (!$this->resource->canDelete($record)) {
             throw new HttpException(403);
         }
@@ -136,6 +140,63 @@ final class ResourceController extends PanelController
 
         $back = $this->safeBackUrl((string) ($this->request->input('_back') ?? ''));
         $this->redirect($back ?? Admin::url($class::getSlug()));
+    }
+
+    /** Standard fallback for every declared action, also used by async navigation. */
+    public function admin_action(): string|\FloCMS\Core\Http\Response
+    {
+        if (!$this->request->isMethod('GET', 'POST')) {
+            header('Allow: GET, POST'); throw new HttpException(405);
+        }
+        $params = is_array($this->params) ? $this->params : [];
+        if (count($params) < 2 || count($params) > 3) { throw new HttpException(400); }
+        [$placement, $name] = $params;
+        $id = $params[2] ?? '';
+        \FloCMS\Admin\Actions\ActionExecutor::validContext($placement, $id);
+        $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find($placement, $name);
+        $executor = new \FloCMS\Admin\Actions\ActionExecutor($this->resource, $this->repository());
+        $form = $action->getForm($this->resource);
+        $errors = []; $state = []; $record = null;
+        if ($this->isPost()) {
+            $token = $this->request->input('_operation');
+            if (!is_string($token)) { throw new HttpException(400); }
+            \FloCMS\Admin\Actions\OperationStore::get($token, $this->resource::getSlug(), $placement, $name, $id);
+            if ($this->request->input('_cancel') !== null) {
+                \FloCMS\Admin\Actions\OperationStore::consume($token);
+                $this->redirect(Admin::url($this->resource::getSlug()));
+            }
+            $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
+            try {
+                $executor->execute($action, $placement, $id, $token, $this->request->all(), $state);
+                $this->redirect(Admin::url($this->resource::getSlug()));
+            } catch (\FloCMS\Core\ValidationException $error) {
+                foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); }
+                $record = $id !== '' ? $this->repository()->find($id) : null;
+            }
+        } else {
+            try { $opened = $executor->open($action, $placement, $id); }
+            catch (\FloCMS\Core\ValidationException) { throw new HttpException(404); }
+            $token = $opened['operation']; $state = $opened['state']; $record = $opened['record'];
+        }
+        $safe = \FloCMS\Admin\Actions\ActionForm::safe($form, $state);
+        foreach ($form->fields() as $fieldName => $field) {
+            if (!$field->isWritable()) { $safe[$fieldName] = $field->stateFromRecord($record, Languages::default()); }
+        }
+        $title = $action->getTitle($this->resource);
+        return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
+            't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
+            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', true))->render($form),
+            'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
+            'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '')),
+            'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),
+        ]), $this->resource::getSlug());
+    }
+
+    private function builtin(string $placement, string $name, string $kind): \FloCMS\Admin\Actions\Action
+    {
+        $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find($placement, $name);
+        if ($action->getKind() !== $kind) { throw new HttpException(404); }
+        return $action;
     }
 
     /* ---------------------------------------------------------------
