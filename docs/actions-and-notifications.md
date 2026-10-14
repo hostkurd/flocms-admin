@@ -57,7 +57,7 @@ Custom actions request confirmation by default. Set `modalDescription()` to expl
 
 Only declared writable fields reach the callback, after field dehydration. Password controls and response snapshots are blank after server responses, including failures. A custom action determines its own handling of blank passwords; resource edit skip rules apply to built-in Edit only. For action fields with `unique()`, provide `uniqueUsing(Closure(Field, string, ?string, ?object): bool)` returning whether the submitted value is already taken. Action fields need not correspond to resource columns, so uniqueness does not infer a database column automatically.
 
-Modal drafts retain the 0.3 limit of **7,000 UTF-8 bytes**. Open standard view and use the action's standard form for larger submissions. These forms validate the same way and use asynchronous navigation when enabled; they also work without JavaScript. The standard route is `/admin/<resource>/action/<placement>/<name>[/<id>]`. GET opens an operation; CSRF-protected POST executes or cancels it. GET never invokes a handler.
+Modal drafts retain the 0.3 limit of **7,000 UTF-8 bytes**. Oversized drafts offer Continue on full page; the action's existing full-page URL supports larger submissions. Copy unsaved text before switching, since the link does not transfer the draft. These forms validate the same way and use asynchronous navigation when enabled; they also work without JavaScript. The standard route is `/admin/<resource>/action/<placement>/<name>[/<id>]`. GET opens an operation; CSRF-protected POST executes or cancels it. GET never invokes a handler.
 
 ## Transactions and record changes
 

@@ -175,6 +175,7 @@
 .fa-panel .fa-editor{width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--fa-border);border-radius:14px;box-shadow:0 24px 80px #10182838}
 .fa-editor .fa-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-block-end:1px solid var(--fa-border)}
 .fa-editor .fa-dialog-body{max-height:calc(100dvh - 220px)}
+.fa-editor [data-admin-full-page]{padding:0 22px 14px}
 .fa-editor .fa-confirm-text,.fa-editor>.fa-alert{padding:16px 22px}
 .fa-modal-status:empty{display:none}.fa-modal-status{padding:8px 22px}
 .fa-translations-inline{display:grid;gap:12px}.fa-translations-inline .fa-lang-row{min-width:0}

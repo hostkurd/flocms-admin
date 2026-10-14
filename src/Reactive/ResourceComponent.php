@@ -165,7 +165,7 @@ final class ResourceComponent extends Component
             'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $action?->getDescription() ?? '',
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
-            'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', true, $prefix . '-'))->render($form),
+            'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-'))->render($form),
             'notifications' => NotificationView::pending($this->instanceKey),
         ]);
     }

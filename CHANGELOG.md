@@ -2,7 +2,16 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## 0.4.0 - Unreleased
+## 0.4.1 - Unreleased
+
+### Fixed
+- Modal and full-page action forms use the same default-language input and language badge, including translated textareas. Translation Save/Cancel/Escape, keyboard focus, RTL and validation work inside the resource editor and after Reactive updates.
+- Remove the normal "Open standard view" switch. Full-page URLs remain supported; a recovery link appears for oversized drafts or when JavaScript is disabled.
+
+### Changed
+- Ship full release-version assets `admin-v0.4.1.js` and `admin-v0.4.1.css`. No database migration, resource rewrite or dependency upgrade is required.
+
+## 0.4.0 - 2026-10-14
 
 ### Added
 - PHP-defined Actions for resource page headings, table toolbars and rows, with labels/icons/colors, permissions, current-record policies, confirmation and independent validated forms.

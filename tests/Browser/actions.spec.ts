@@ -157,7 +157,7 @@ test('standard custom action forms also validate and save with JavaScript disabl
     await page.locator('[name=reason]').fill('Content reviewed');
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.locator('[data-admin-notification]')).toContainText('Post published.');
-    await page.getByRole('link', { name: 'Open standard view' }).click();
+    await page.getByRole('link', { name: 'Continue on full page' }).click();
     await expect(page.locator('a[href="/en/admin/posts/action/row/unpublish/8"]')).toBeVisible();
   } finally { await context.close(); }
 });

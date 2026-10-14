@@ -2,9 +2,11 @@
     <div><p class="fa-eyebrow">{{ $t('nav.resources') }}</p><h1 class="fa-page-title">{{ $resource::getPluralLabel() }}</h1></div>
     <div class="fa-action-group">{!! $pageActions !!}</div>
 </div>
-<p class="fa-muted" id="{{ $prefix }}-standard"><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.standard_view') }}</a></p>
+<noscript><p><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.full_page') }}</a></p></noscript>
 {!! $notifications !!}
-@if($mode === '' && isset($errors['_form']))<p class="fa-alert fa-alert-danger" id="{{ $prefix }}-error" role="alert">{{ $errors['_form'] }}</p>@endif
+@if($mode === '' && isset($errors['_form']))<p class="fa-alert fa-alert-danger" id="{{ $prefix }}-error" role="alert">{{ $errors['_form'] }}</p>
+@if($errors['_form'] === $t('reactive.large_form'))<p id="{{ $prefix }}-fallback"><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.full_page') }}</a></p>@endif
+@endif
 <div class="fa-card" id="{{ $prefix }}-table">
     @if($tableActions !== '')<div class="fa-toolbar fa-action-group">{!! $tableActions !!}</div>@endif
     @if(count($table->searchableColumns()) > 0)
@@ -56,5 +58,6 @@
         <div class="fa-dialog-foot"><button type="submit" class="fa-btn{{ $submitColor === 'default' ? '' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button><button type="button" class="fa-btn" data-rx-dialog-close="editor">{{ $t('actions.cancel') }}</button><span data-rx-loading>{{ $t('reactive.loading') }}</span></div>
     </form>
     @endif
+    <p class="fa-muted" id="{{ $prefix }}-editor-fallback" data-admin-full-page hidden><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.full_page') }}</a></p>
     <p class="rx-status fa-modal-status" role="status" aria-live="polite" data-rx-status></p>
 </dialog>

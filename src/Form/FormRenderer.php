@@ -28,7 +28,8 @@ final class FormRenderer
         private readonly array $languages,
         private readonly string $defaultLang,
         private readonly bool $isEdit = false,
-        private readonly bool $inlineTranslations = false,
+        // Retained for constructor compatibility; all forms use language badges.
+        bool $inlineTranslations = false,
         private readonly string $prefix = ''
     ) {
     }
@@ -100,7 +101,6 @@ final class FormRenderer
     /** @param array<string, string> $langErrors */
     private function translatable(Field $field, string $id, array $langErrors): string
     {
-        if ($this->inlineTranslations) { return $this->inlineTranslations($field, $id); }
         $name = $field->getName();
         $values = $this->state[$name] ?? [];
         $values = is_array($values) ? $values : [];
@@ -198,30 +198,6 @@ final class FormRenderer
         }
 
         return $errors;
-    }
-
-    /** Inline languages avoid stacking translation dialogs inside a resource editor. */
-    private function inlineTranslations(Field $field, string $id): string
-    {
-        $values = $this->state[$field->getName()] ?? [];
-        $values = is_array($values) ? $values : [];
-        $html = '<div class="fa-translations-inline">';
-        foreach ($this->languages as $lang) {
-            $default = $lang === $this->defaultLang;
-            $inputId = $default ? $id : $id . '-' . $lang;
-            $key = $field->getName() . ($default ? '' : '.' . $lang);
-            $error = $this->errors[$key] ?? null;
-            $html .= '<div class="fa-lang-row"><label class="fa-lang-label" for="' . Str::e($inputId) . '">' . Str::e(Languages::name($lang)) . ' <code>' . Str::e($lang) . '</code></label>';
-            $attributes = ['dir' => Languages::direction($lang), 'lang' => $lang];
-            $described = [];
-            if ($field->getHelp() !== null) { $described[] = $id . '-help'; }
-            if ($error !== null) { $attributes['aria-invalid'] = 'true'; $described[] = $inputId . '-error'; }
-            if ($described !== []) { $attributes['aria-describedby'] = implode(' ', $described); }
-            $html .= $field->renderControl($inputId, $field->getName() . '[' . $lang . ']', $values[$lang] ?? '', $attributes);
-            if ($error !== null && !$default) { $html .= '<p class="fa-error" id="' . Str::e($inputId) . '-error" role="alert">' . Str::e($error) . '</p>'; }
-            $html .= '</div>';
-        }
-        return $html . '</div>';
     }
 
     private function stringState(Field $field): string

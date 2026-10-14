@@ -39,6 +39,8 @@ final class ReactiveResourceTest extends RequestTestCase
     {
         $opened = $this->update($this->mount(), 'edit', ['selectedId' => '1']);
         self::assertStringContainsString('data-rx-open="true"', $opened['body']);
+        self::assertStringContainsString('class="fa-lang-badge', $opened['body']);
+        self::assertStringNotContainsString('fa-translations-inline', $opened['body']);
         $invalid = $this->update($opened, 'save', ['draft' => json_encode(['title' => ['en' => ''], 'slug' => 'changed', 'status' => 'draft'])]);
         self::assertSame(422, $invalid['status']);
         self::assertStringContainsString('Title is required.', $invalid['body']);
@@ -157,7 +159,8 @@ final class ReactiveResourceTest extends RequestTestCase
         $stmt->execute([json_encode(['en' => str_repeat('x', 7100)])]);
         $large = $this->update($this->mount(), 'edit', ['selectedId' => '1']);
         self::assertSame(422, $large['status']);
-        self::assertStringContainsString('Open standard view', $large['body']);
+        self::assertStringContainsString('id="fa-admin-resource-fallback"', $large['body']);
+        self::assertStringContainsString('Continue on full page', $large['body']);
         $delete = $this->update($this->mount(), 'confirmDelete', ['selectedId' => '1']);
         self::assertSame(200, $delete['status']);
         self::assertSame(200, $this->update($delete, 'delete')['status']);
@@ -181,7 +184,7 @@ final class ReactiveResourceTest extends RequestTestCase
     {
         $result = self::request('GET', '/en/admin/dashboard', ['headers' => ['X-Flo-Admin' => 'navigate'], 'admin_config' => ['reactive' => true]]);
         self::assertStringNotContainsString('<html>', $result['body']);
-        self::assertStringContainsString('admin-v0.4.0.js', $result['body']);
+        self::assertStringContainsString('admin-v0.4.1.js', $result['body']);
         self::assertStringContainsString('reactive-v0.3.0.js', $result['body']);
         self::assertStringNotContainsString('<script>', $result['body']);
         self::assertSame(404, self::request('GET', '/en/flo-admin/asset/unknown.js')['status']);
