@@ -1,8 +1,8 @@
 # Reactive Admin integration
 
-Admin 0.3 applies its Reactive adapter to existing `Resource` classes. The list renders on the server. htmx transports component actions and Alpine CSP/Morph updates their HTML through Reactive 0.3; Admin's small navigation adapter fetches panel pages and owns browser history. There is no client-side data model or second application API.
+Admin applies its Reactive adapter to existing `Resource` classes. The list renders on the server. htmx transports component actions and Alpine CSP/Morph updates their HTML through Reactive 0.3; Admin's small navigation adapter fetches panel pages and owns browser history. There is no client-side data model or second application API.
 
-`FormSubmission` owns normalization, validation and transactional persistence for both modal and standard forms. `RecordRepository` owns scoped reads and conditional mutations. Existing `Form`, `Table` and `Resource` contracts remain the extension points. A general Action/Notification/Widget API is a later milestone.
+`FormSubmission` owns normalization, validation and transactional persistence for both modal and standard forms. `RecordRepository` owns scoped reads and conditional mutations. Existing `Form`, `Table` and `Resource` contracts remain the extension points. Admin 0.4 adds shared [Actions and Notifications](actions-and-notifications.md); Widgets remain a later milestone.
 
 ## Runnable example
 
@@ -17,7 +17,7 @@ FLO_ADMIN_TESTING=1 php -S 127.0.0.1:8083 tests/Browser/router.php
 
 Open `http://127.0.0.1:8083/en/admin/posts`. The example signs you in as a test super admin and creates isolated session SQLite data. Try live search, sort, pagination, create/edit/delete, translated required validation, accounts and profile. `/ar/admin/posts` and `/ku/admin/posts` demonstrate RTL. Use Open standard view to edit longer bodies. This fixture is local development only: it includes test-only mutation endpoints, is gated by `FLO_ADMIN_TESTING=1`, and is excluded from Composer distributions. Never route production traffic to it.
 
-The working resource is [`tests/Fixtures/Resources/PostResource.php`](../tests/Fixtures/Resources/PostResource.php), with its SQLite schema and seed data in [`tests/Browser/router.php`](../tests/Browser/router.php). It demonstrates translatable title/body, generated unique slug, status select, numeric views, featured toggle and publication date; its table has searchable/sortable columns and three-row pages. The same definition runs through both rendering paths.
+The base resource is [`tests/Fixtures/Resources/PostResource.php`](../tests/Fixtures/Resources/PostResource.php), extended by [`PostActionResource`](../tests/Fixtures/Actions/PostActionResource.php) with Publish/Unpublish Actions, with its SQLite schema and seed data in [`tests/Browser/router.php`](../tests/Browser/router.php). It demonstrates translatable title/body, generated unique slug, status select, numeric views, featured toggle and publication date; its table has searchable/sortable columns and three-row pages. The same definition runs through both rendering paths.
 
 For an application, run `php flo make:admin-resource Post --migration`, adapt the generated class and migration to that example, and run `php flo migrate`. Keep application resource classes in the configured resource directory. Authorize the resource with the usual `content.posts.view/create/update/delete` permissions. The example's seeded super user is not part of the package's installation workflow.
 

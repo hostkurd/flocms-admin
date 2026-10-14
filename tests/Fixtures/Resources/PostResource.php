@@ -17,7 +17,7 @@ use FloCMS\Admin\Table\Columns\DateColumn;
 use FloCMS\Admin\Table\Columns\TextColumn;
 use FloCMS\Admin\Table\Table;
 
-final class PostResource extends Resource
+class PostResource extends Resource
 {
     protected static string $table = 'posts';
     protected static string $slug = 'posts';

@@ -126,6 +126,31 @@ final class RecordRepository
         return hash('sha256', serialize($values));
     }
 
+    /** Whether a caller already owns a transaction on this connection. */
+    public function inTransaction(): bool { return $this->db->pdo()->inTransaction(); }
+
+    /** Lock the expected row without firing its UPDATE triggers. */
+    public function lockUnchanged(string $id, object $original): void
+    {
+        if (!$this->inTransaction()) { throw new \LogicException('Record locks require a transaction.'); }
+        [$where, $bindings] = $this->originalCondition($id, $original);
+        $table = self::quote($this->resource::getTable());
+        $pk = self::quote($this->resource::getPrimaryKey());
+        if ($this->db->driver() === 'sqlite') {
+            // SQLite has no SELECT FOR UPDATE. Acquire write intent without
+            // touching any rows, then check the original while holding it.
+            try { $this->db->pdo()->exec('UPDATE ' . $table . ' SET ' . $pk . ' = ' . $pk . ' WHERE 0'); }
+            catch (\PDOException $error) {
+                if (((int) ($error->errorInfo[1] ?? 0) & 255) === 5) { $this->conflict(); }
+                throw $error;
+            }
+        }
+        $statement = $this->db->pdo()->prepare('SELECT ' . $pk . ' FROM ' . $table . ' WHERE ' . $where
+            . ($this->db->driver() === 'sqlite' ? '' : ' FOR UPDATE'));
+        $statement->execute($bindings);
+        if ($statement->fetchColumn() === false) { $this->conflict(); }
+    }
+
     /** Compare every original column in the UPDATE itself, including tenant/owner fields. */
     public function updateUnchanged(string $id, array $data, object $original): void
     {
@@ -175,6 +200,7 @@ final class RecordRepository
 
     private function conflict(): never
     {
+        if (!class_exists(\FloCMS\Core\ValidationException::class)) { class_exists(\FloCMS\Core\Validator::class); }
         throw new \FloCMS\Core\ValidationException(['_form' => \FloCMS\Admin\Support\AdminLang::get('reactive.conflict')]);
     }
 

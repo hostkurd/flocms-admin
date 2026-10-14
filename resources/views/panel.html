@@ -1,5 +1,5 @@
 {!! $assets !!}
-<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-busy="{{ $t('reactive.loading') }}">
+<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
 
     <aside id="fa-sidebar" class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
         <div class="fa-brand"><a href="{{ $dashboardUrl }}">{{ $brand }}</a></div>
@@ -33,9 +33,7 @@
         </header>
         <main class="fa-content" id="fa-content" tabindex="-1">
             <p class="fa-navigation-status" role="status" aria-live="polite" data-admin-status></p>
-            @if($flash !== null)
-            <div class="fa-alert fa-alert-{{ $flash['type'] }}" role="status">{{ $flash['message'] }}</div>
-            @endif
+            {!! $notifications !!}
             {!! $page !!}
         </main>
     </div>

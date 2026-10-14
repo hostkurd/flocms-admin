@@ -1,3 +1,29 @@
+# Upgrading to Admin 0.4.0
+
+Update Admin with Composer after release. Core `^2.3.2`, Reactive `^0.3.0`, PHP 8.1+ and the existing secret `APP_KEY` requirements remain unchanged. No database migration or application resource rewrite is required. Deploy the supplied `admin-v0.4.0.js` and `admin-v0.4.0.css`; filenames keep the full release version and Composer distributions include compiled assets. Core and the skeleton remain independent of optional Admin/Reactive packages.
+
+## Action definitions and compatibility
+
+Existing resources receive Create, Edit and Delete definitions by default. Add custom actions through `Resource::headerActions()`, `Table::headerActions()` and `Table::actions()`. These definitions render in Reactive mode and the standard view. An overridden collection replaces the defaults, so include the built-in definitions when retaining those workflows. Removing the default Create/Edit/Delete definition also removes its standard CRUD route. Customized built-in names use the generic action route.
+
+Action `visible()` and `authorize()` callbacks are server guards, not just presentation hints. A hidden or disallowed action cannot be invoked through a crafted request. Custom actions default to `Resource::permission($name)`; apply current record policies explicitly with `authorize()`. Keep tenant/record scope in `Resource::query()`. Built-in actions retain the existing resource policies, save service and hooks. Application controllers still take precedence.
+
+Custom row, table and page actions use independent forms. Only declared writable fields reach a handler. Custom updates do not automatically run full-form `beforeSave()/afterSave()` hooks; invoke application business services explicitly where appropriate. Standard action forms have their own CSRF-protected, session-bound operation token and can be used when Reactive is disabled. Existing standard CRUD URLs retain their previous save semantics, plus guards from their default definitions.
+
+## Transactions, stale pages and notifications
+
+Action dispatch owns its request transaction. Do not wrap the dispatcher/App action request inside an already-open database transaction; it is rejected before callback execution. Use same-connection nested transactions inside an action callback when needed. This ensures successful notification delivery and operation consumption follow the actual action commit. Existing `FormSubmission` savepoint semantics remain intact.
+
+Complete-row fingerprints and locks reject stale/deleted/out-of-scope row actions before their callbacks run. `ActionContext::update()` and `delete()` provide guarded mutation helpers. Locks do not fire extra UPDATE triggers. Transactions cannot undo external deliveries, nontransactional tables or work on other connections. Existing hook/outbox guidance below still applies.
+
+Notifications sent inside action execution are staged and discarded on failure. Success/info announce politely; warning/danger announce as alerts. Messages persist through panel navigation until dismissed, with the latest 10 retained; they are not a durable inbox. Core flash messages map to the same presentation. Custom CSS selectors targeting the old flash banner or per-component success banner should migrate to `.fa-notification` / `[data-admin-notification]`; stable delivery containers must not be removed by application scripts.
+
+Reload pages left open across deployment: the component schema and operation store now include action context, so old 0.3 snapshots are rejected with 409. Renewing the CSRF session or changing the signed-in actor invalidates outstanding action operations. Operation expiry remains 30 minutes/32 outstanding operations per session. The 7,000-byte modal draft limit remains; standard action pages support larger forms and still navigate asynchronously. Active draft values are retained on validation/conflict errors, with password values scrubbed from responses. Requests do not automatically retry writes.
+
+`'reactive' => false` still restores standard forms/navigation. No nested state, upload API, bulk selection, table filters or general Widgets are introduced here. See the [Actions and Notifications guide](docs/actions-and-notifications.md) for the public API, working example and test commands.
+
+---
+
 # Upgrading to Admin 0.3.0
 
 After release, update `hostkurd/flocms-admin` with Composer and its dependencies. Admin requires Core `^2.3.2` and Reactive `^0.3.0`. No database migration is required. The dependency direction is Admin → Reactive → Core; standalone Core and the skeleton remain independent.

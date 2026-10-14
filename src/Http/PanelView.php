@@ -49,7 +49,10 @@ final class PanelView
         if ($flash !== null) {
             $type = in_array($flash['type'] ?? '', ['success', 'danger', 'warning', 'info'], true) ? $flash['type'] : 'info';
             // Messages set elsewhere in the site may contain <br>: shown as text
-            $flash = ['type' => $type, 'message' => trim(strip_tags(str_replace(['<br>', '<br/>', '<br />'], ' ', (string) $flash['message'])))];
+            $message = trim(strip_tags(str_replace(['<br>', '<br/>', '<br />'], ' ', (string) $flash['message'])));
+            if ($message !== '') {
+                \FloCMS\Admin\Notifications\Notification::make()->title($message)->{$type}()->send();
+            }
         }
 
         $user = (string) (Session::get('fullname') ?: Session::get('email') ?: '');
@@ -62,7 +65,7 @@ final class PanelView
             'brand' => AdminLang::label(Admin::config()->brand()),
             'page' => $page,
             'nav' => $nav,
-            'flash' => $flash,
+            'notifications' => \FloCMS\Admin\Notifications\NotificationView::pending(),
             'user' => $user,
             'dir' => self::direction($lang),
             'lang' => $lang,

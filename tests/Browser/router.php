@@ -11,12 +11,17 @@ define('SITE_URI', '');
 foreach (['views', 'public', 'lang', 'templates/default/layouts'] as $dir) { if (!is_dir(ROOT . '/' . $dir)) mkdir(ROOT . '/' . $dir, 0700, true); }
 file_put_contents(ROOT . '/public/conf_global.php', '<?php define("ACTIVE_LANG", \\FloCMS\\Core\\App::getRouter()->getLanguage());');
 file_put_contents(TEMPLATES_PATH . '/default/layouts/admin.html', '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin</title></head><body><?= $data["content"] ?></body></html>');
-foreach (['en', 'ar', 'ku'] as $lang) { file_put_contents(ROOT . '/lang/' . $lang . '.php', '<?php return [];'); }
+$demoLabels = [
+    'en' => ['demo.publish' => 'Publish', 'demo.unpublish' => 'Unpublish', 'demo.reason' => 'Reason', 'demo.published' => 'Post published.', 'demo.unpublished' => 'Post unpublished.', 'demo.announce' => 'Announcement', 'demo.ready' => 'Review pending drafts.', 'demo.help' => 'Publishing guide', 'demo.help_title' => 'Publishing guide', 'demo.help_body' => 'Publish a draft after reviewing its content.'],
+    'ar' => ['demo.publish' => 'نشر', 'demo.unpublish' => 'إلغاء النشر', 'demo.reason' => 'السبب', 'demo.published' => 'تم نشر المقال.', 'demo.unpublished' => 'تم إلغاء نشر المقال.', 'demo.announce' => 'إعلان', 'demo.ready' => 'راجع المسودات.', 'demo.help' => 'دليل النشر', 'demo.help_title' => 'دليل النشر', 'demo.help_body' => 'انشر المسودة بعد مراجعة محتواها.'],
+    'ku' => ['demo.publish' => 'بڵاوکردنەوە', 'demo.unpublish' => 'هەڵوەشاندنەوەی بڵاوکردنەوە', 'demo.reason' => 'هۆکار', 'demo.published' => 'بابەتەکە بڵاوکرایەوە.', 'demo.unpublished' => 'بڵاوکردنەوەی بابەتەکە هەڵوەشایەوە.', 'demo.announce' => 'ئاگاداری', 'demo.ready' => 'ڕەشنووسەکان بپشکنە.', 'demo.help' => 'ڕێنمایی بڵاوکردنەوە', 'demo.help_title' => 'ڕێنمایی بڵاوکردنەوە', 'demo.help_body' => 'دوای پشکنینی ناوەڕۆک ڕەشنووسەکە بڵاو بکەرەوە.'],
+];
+foreach ($demoLabels as $lang => $labels) { file_put_contents(ROOT . '/lang/' . $lang . '.php', '<?php return ' . var_export($labels, true) . ';'); }
 require $package . '/vendor/autoload.php';
 use FloCMS\Core\{App, Config, Csrf, Database, HttpException, Session};
 use FloCMS\Core\Http\Response;
 use FloCMS\Admin\Admin;
-use FloCMS\Admin\Tests\Fixtures\Resources\PostResource;
+use FloCMS\Admin\Tests\Fixtures\Actions\PostActionResource;
 use FloCMS\Admin\Tests\Fixtures\Resources\TagResource;
 if (!is_dir(ROOT . '/sessions')) { mkdir(ROOT . '/sessions', 0700, true); }
 session_save_path(ROOT . '/sessions');
@@ -38,7 +43,7 @@ if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
 }
-Admin::useConfig(['resources' => [PostResource::class, TagResource::class], 'brand' => 'FloCMS Studio'], true, ROOT);
+Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class], 'brand' => 'FloCMS Studio'], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {

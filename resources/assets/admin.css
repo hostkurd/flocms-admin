@@ -193,3 +193,16 @@
  .fa-panel:not([data-admin-initialized]) .fa-sidebar{position:static;visibility:visible;width:100%;height:auto}
  .fa-panel:not([data-admin-initialized]) .fa-menu-btn{display:none}
 }
+
+/* Shared actions and response-delivered notifications. */
+.fa-action-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fa-panel .fa-btn-success{background:var(--fa-success);border-color:var(--fa-success);color:#fff}
+.fa-panel .fa-btn-success:hover{background:#17633e}
+.fa-panel .fa-btn-warning{background:var(--fa-warning);border-color:var(--fa-warning);color:#fff}
+.fa-panel .fa-btn-warning:hover{background:#704900}
+.fa-notification{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid currentColor;border-radius:10px;background:#fff;margin-block-end:10px;overflow-wrap:anywhere;box-shadow:0 6px 22px #10182818;font:14px/1.5 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;text-align:start}
+.fa-notification>div{flex:1;min-width:0}.fa-notification p{margin:0}.fa-notification-title{font-weight:650}.fa-notification-body{margin-block-start:4px!important}
+.fa-notification .fa-icon-btn{flex:none;border:0;background:transparent;color:inherit;width:28px;height:28px;cursor:pointer;font:inherit}.fa-notification :focus-visible{outline:3px solid #38bde5;outline-offset:2px}
+.fa-notification.fa-alert-success{background:#e7f5ee;color:#1f7a4d}.fa-notification.fa-alert-warning{background:#fff4dc;color:#8a5a00}.fa-notification.fa-alert-danger{background:#fdecea;color:#c0362c}.fa-notification.fa-alert-info{background:#e8f0fb;color:#155eaf}
+.fa-toasts{position:fixed;inset-block-end:16px;inset-inline-end:16px;width:min(390px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;z-index:50}.fa-toasts:empty{display:none}
+.fa-panel:not([data-admin-initialized]) [data-admin-notification-dismiss]{display:none}

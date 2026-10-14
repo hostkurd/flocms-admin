@@ -4,7 +4,7 @@ declare(strict_types=1);
 $zip = new ZipArchive();
 if ($zip->open($argv[1] ?? '') !== true) { throw new RuntimeException('Cannot open distribution archive.'); }
 $version = json_decode(file_get_contents(dirname(__DIR__) . '/package.json'), true, 512, JSON_THROW_ON_ERROR)['version'];
-foreach (['dist/admin-v' . $version . '.js', 'dist/admin-v' . $version . '.css', 'bootstrap.php', 'src/Reactive/ResourceComponent.php', 'resources/views/reactive-resource.html', 'UPGRADING.md'] as $path) {
+foreach (['dist/admin-v' . $version . '.js', 'dist/admin-v' . $version . '.css', 'bootstrap.php', 'src/Reactive/ResourceComponent.php', 'src/Actions/Action.php', 'src/Actions/ActionExecutor.php', 'src/Notifications/Notification.php', 'resources/views/action.html', 'resources/views/notifications.html', 'resources/views/reactive-resource.html', 'UPGRADING.md'] as $path) {
     if ($zip->locateName($path) === false) { throw new RuntimeException('Missing ' . $path); }
 }
 for ($i = 0; $i < $zip->numFiles; $i++) {

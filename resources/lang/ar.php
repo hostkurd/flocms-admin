@@ -101,5 +101,8 @@ return [
     'reactive.standard_view' => 'فتح العرض العادي',
     'reactive.expired' => 'انتهت صلاحية هذه الصفحة. أعد تحميلها قبل المتابعة.',
     'reactive.forbidden' => 'لم تعد لديك صلاحية لتنفيذ هذا الإجراء.',
-    'reactive.operation_expired' => 'انتهت صلاحية هذه العملية أو اكتملت. أغلق الحوار وافتحه مجددًا.',
+    'reactive.operation_expired' => 'انتهت صلاحية العملية أو اكتملت أو تغيرت الصفحة. أغلق الحوار وافتحه مجددًا، أو أعد تحميل الصفحة عند الحاجة.',
+    'action.confirm_text' => 'راجع هذا الإجراء قبل المتابعة.',
+    'notifications.dismiss' => 'إغلاق الإشعار',
+    'notifications.label' => 'الإشعارات',
 ];

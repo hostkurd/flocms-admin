@@ -1,0 +1,163 @@
+import { test, expect, Page } from '@playwright/test';
+const editor = (page: Page) => page.locator('dialog.fa-editor');
+const notices = (page: Page) => page.locator('[data-admin-notifications] [data-admin-notification]');
+async function ready(page: Page, path = '/en/admin/posts') {
+  await page.goto(path);
+  await expect(page.locator('[data-rx-component]')).toBeVisible();
+  await page.evaluate(() => { (window as any).documentMarker = 'actions'; });
+}
+async function stable(page: Page) {
+  expect(await page.evaluate(() => (window as any).documentMarker)).toBe('actions');
+}
+async function open(page: Page, name: string, id = 8) {
+  await page.locator(`[data-admin-action="${name}"][data-admin-record="${id}"]`).click();
+  await expect(editor(page)).toBeVisible();
+}
+async function publish(page: Page) {
+  await open(page, 'publish');
+  await editor(page).locator('[name=reason]').fill('Content reviewed');
+  await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(notices(page)).toContainText('Post published.');
+}
+
+test('publish action validates, preserves list state and delivers once across navigation', async ({ page }) => {
+  await ready(page);
+  await page.locator('input[type=search]').fill('Studio');
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await open(page, 'publish');
+  await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(editor(page).locator('[name=reason]')).toHaveAttribute('aria-invalid', 'true');
+  await expect(editor(page).locator('[name=reason]')).toBeFocused();
+  await expect(notices(page)).toHaveCount(0);
+  await editor(page).locator('[name=reason]').fill('Content reviewed');
+  await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(page.locator('input[type=search]')).toHaveValue('Studio');
+  await expect(page.locator('tbody')).toContainText('Published');
+  await expect(page.locator('[data-admin-action=unpublish][data-admin-record="8"]')).toBeVisible();
+  await expect(notices(page)).toHaveCount(1);
+  const id = await notices(page).getAttribute('data-admin-notification');
+  await page.locator('.fa-nav a[href="/en/admin/dashboard"]').click();
+  await expect(page.locator('h1')).toHaveText('Dashboard');
+  await expect(notices(page)).toHaveAttribute('data-admin-notification', id!);
+  await page.goBack();
+  await expect(page.locator('h1')).toHaveText('Posts');
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(3);
+  await expect(notices(page)).toHaveCount(1);
+  await notices(page).getByRole('button', { name: 'Dismiss notification' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(notices(page)).toHaveCount(0);
+  await expect(page.locator('#fa-content')).toBeFocused();
+  await stable(page);
+});
+
+test('unpublish confirmation cancels with Escape and executes on explicit confirmation', async ({ page }) => {
+  await ready(page); await publish(page);
+  await open(page, 'unpublish');
+  await page.keyboard.press('Escape');
+  await expect(editor(page)).not.toBeVisible();
+  await expect(page.locator('#fa-admin-resource-unpublish-8')).toBeFocused();
+  await expect(page.locator('tbody')).toContainText('Published');
+  await expect(notices(page)).toHaveCount(1);
+  await open(page, 'unpublish');
+  await editor(page).getByRole('button', { name: 'Unpublish', exact: true }).click();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(page.locator('#fa-admin-resource-publish-8')).toBeVisible();
+  await expect(notices(page)).toHaveCount(2);
+  await expect(notices(page).last()).toHaveAttribute('role', 'alert');
+  await expect(notices(page).last()).toContainText('Post unpublished.');
+  await stable(page);
+});
+
+test('page and toolbar definitions use the shared action renderer and notification levels', async ({ page }) => {
+  await ready(page);
+  await page.locator('[data-admin-action=announce][data-admin-placement=page]').click();
+  await expect(editor(page)).toHaveAccessibleName('Announcement');
+  await editor(page).getByRole('button', { name: 'Announcement', exact: true }).click();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(notices(page)).toContainText('Review pending drafts.');
+  await page.locator('[data-admin-action=help][data-admin-placement=table]').click();
+  await expect(notices(page)).toHaveCount(2);
+  await expect(notices(page).last()).toHaveAttribute('role', 'status');
+  await expect(notices(page).last()).toContainText('Publish a draft after reviewing its content.');
+  await expect(editor(page)).not.toBeVisible();
+  await stable(page);
+});
+
+test('duplicate attempts do not repeat a custom mutation and stale snapshots are rejected', async ({ page }) => {
+  await ready(page); await open(page, 'publish');
+  await editor(page).locator('[name=reason]').fill('Content reviewed');
+  let attempts = 0; let requestBody = ''; let release: (() => void) | undefined;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/flo-reactive/update', async route => {
+    const body = new URLSearchParams(route.request().postData() || '');
+    if (body.get('_action') === 'execute') { attempts++; requestBody = body.toString(); await gate; }
+    await route.continue();
+  });
+  const submit = editor(page).getByRole('button', { name: 'Publish', exact: true });
+  await submit.click();
+  await expect(submit).toBeDisabled();
+  await submit.click({ force: true });
+  expect(attempts).toBe(1);
+  release!();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(notices(page)).toHaveCount(1);
+  const replay = await page.request.post('/en/flo-reactive/update', { data: requestBody, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  expect(replay.status()).toBe(409);
+  await stable(page);
+});
+
+test('custom action permission and network failures retain the draft and allow cancellation', async ({ page }) => {
+  await ready(page); await open(page, 'publish');
+  await editor(page).locator('[name=reason]').fill('Keep this reason');
+  await page.route('**/flo-reactive/update', async route => {
+    if (new URLSearchParams(route.request().postData() || '').get('_action') === 'execute') await route.abort();
+    else await route.continue();
+  });
+  await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(editor(page).locator('[data-rx-status]')).toContainText('failed');
+  await expect(editor(page).locator('[name=reason]')).toHaveValue('Keep this reason');
+  await expect(notices(page)).toHaveCount(0);
+  await page.unroute('**/flo-reactive/update');
+  await page.request.post('/__test/readonly');
+  await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(editor(page).locator('[data-rx-status]')).toContainText('permission');
+  await page.keyboard.press('Escape');
+  await expect(editor(page)).not.toBeVisible();
+  await expect(notices(page)).toHaveCount(0);
+  await stable(page);
+});
+
+test('Kurdish action form and notification remain contained and localized on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ready(page, '/ku/admin/posts'); await open(page, 'publish');
+  await expect(editor(page)).toHaveAccessibleName('بڵاوکردنەوە');
+  await editor(page).locator('[name=reason]').fill('پشکنراوە');
+  await editor(page).getByRole('button', { name: 'بڵاوکردنەوە', exact: true }).click();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(notices(page)).toContainText('بابەتەکە بڵاوکرایەوە.');
+  await expect(notices(page)).toHaveAttribute('dir', 'rtl');
+  await expect(notices(page)).toHaveAttribute('lang', 'ku');
+  const box = await notices(page).boundingBox();
+  expect(box!.width).toBeLessThanOrEqual(390); expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await stable(page);
+});
+
+test('standard custom action forms also validate and save with JavaScript disabled', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  try {
+    await page.goto('http://127.0.0.1:8083/en/admin/posts?static=1');
+    await page.locator('a[href="/en/admin/posts/action/row/publish/8"]').click();
+    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await expect(page.locator('[name=reason]')).toHaveAttribute('aria-invalid', 'true');
+    await page.locator('[name=reason]').fill('Content reviewed');
+    await page.getByRole('button', { name: 'Publish', exact: true }).click();
+    await expect(page.locator('[data-admin-notification]')).toContainText('Post published.');
+    await page.getByRole('link', { name: 'Open standard view' }).click();
+    await expect(page.locator('a[href="/en/admin/posts/action/row/unpublish/8"]')).toBeVisible();
+  } finally { await context.close(); }
+});

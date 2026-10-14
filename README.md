@@ -8,6 +8,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Translatable fields**: one value per site language, stored as JSON in the field's column, edited through a language badge and a dialog.
 - **Right-to-left** admin from the start (Arabic, Kurdish, …), with the right `dir` on every language input.
 - Uses FloCMS's own login, CSRF protection, permissions and validation rules.
+- **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
 - Optional and removable: no file of the site is edited.
 
 ## Requirements
@@ -280,10 +281,17 @@ composer remove hostkurd/flocms-admin
 
 Then delete `config/admin.php` and `admin/` (your own code, so the package never deletes it). The package creates no tables. Templates that call `localized()` need a replacement.
 
+## Actions and Notifications
+
+Resources receive Create/Edit/Delete Actions by default. Define additional workflows with `Action::make()` in `Resource::headerActions()`, `Table::headerActions()` or `Table::actions()`. Each action declares its permission, record policy, confirmation/form and transactional callback. `Notification::make()->title(...)->success()->send()` delivers feedback that survives panel navigation.
+
+See the [Actions and Notifications guide](docs/actions-and-notifications.md) for the Publish/Unpublish example, API, concurrency rules, standard fallback and browser coverage.
+
 ## Roadmap
 
 - 0.3: Reactive resource dialogs and lists, shared form submission, panel navigation and browser coverage
-- Next: richer Actions/Forms/Tables, then filters, image/file fields, bulk operations, notifications and dashboard widgets
+- 0.4: shared Actions, action forms/confirmation and persistent Notifications
+- Next: Table filters and bulk actions, richer Forms, then image/file fields and dashboard widgets
 - Later: relationships, a settings page, more generators
 
 ## Development
@@ -304,6 +312,6 @@ The MySQL / MariaDB tests run when `FLO_ADMIN_TEST_DB_NAME` (and `_HOST`, `_PORT
 
 MIT
 
-### Upgrading to 0.3.0
+### Upgrading to 0.4.0
 
-See [UPGRADING.md](UPGRADING.md) for dependencies, key setup, form limits, concurrency, and retained 0.2.1 correctness fixes. See the [Reactive Admin guide](docs/reactive-admin.md) for the runnable resource example and browser checks.
+See [UPGRADING.md](UPGRADING.md) for action definitions, transaction ownership, notification presentation and retained 0.3/0.2.1 contracts. See the [Reactive Admin guide](docs/reactive-admin.md) for the runnable resource example and browser checks.

@@ -62,6 +62,21 @@ final class MysqlRepositoryTest extends RepositoryTestCase
         self::assertSame('concurrent', $this->repository->find('1')->slug);
     }
 
+    public function testActionLockUsesCurrentReadRatherThanOlderRepeatableReadSnapshot(): void
+    {
+        $other = $this->connect();
+        $this->db->query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        $this->repository->transaction(function () use ($other): void {
+            $original = $this->repository->find('1');
+            $other->table('posts')->where('id', '=', 1)->update(['slug' => 'concurrent-lock']);
+            try {
+                $this->repository->lockUnchanged('1', $original);
+                self::fail('The action lock must reject the old snapshot before invoking a callback.');
+            } catch (\FloCMS\Core\ValidationException $error) { self::assertArrayHasKey('_form', $error->getErrors()); }
+        });
+        self::assertSame('concurrent-lock', $this->repository->find('1')->slug);
+    }
+
     public function testAccentedSearchIgnoresCase(): void
     {
         $this->repository->insert(['title' => '{"en":"Café du port"}', 'slug' => 'cafe', 'status' => 'draft', 'featured' => 0]);
