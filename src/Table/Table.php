@@ -17,6 +17,22 @@ final class Table
     private ?int $perPage = null;
     private ?array $actions = null;
     private array $headerActions = [];
+    private array $filters = [];
+    private array $bulkActions = [];
+
+    public function filters(array $filters): self
+    {
+        if (count($filters) > 20) { throw new InvalidArgumentException('Too many filters.'); }
+        $this->filters = [];
+        foreach ($filters as $filter) {
+            if (!$filter instanceof \FloCMS\Admin\Table\Filters\Filter || isset($this->filters[$filter->getName()])) { throw new InvalidArgumentException('Filters must have unique names.'); }
+            $this->filters[$filter->getName()] = $filter;
+        }
+        return $this;
+    }
+    public function getFilters(): array { return $this->filters; }
+    public function bulkActions(array $actions): self { $this->bulkActions = $actions; return $this; }
+    public function getBulkActions(): array { return $this->bulkActions; }
 
     /** Replace the default Edit/Delete row actions. */
     public function actions(array $actions): self { $this->actions = $actions; return $this; }

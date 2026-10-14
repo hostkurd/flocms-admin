@@ -1,0 +1,22 @@
+{!! $assets !!}
+<main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}">
+    <div class="fa-login-container">
+        <a class="fa-login-brand" href="{{ $siteUrl }}">{{ $brand }}</a>
+        <section class="fa-login-card" aria-labelledby="fa-login-title">
+            <header><p class="fa-login-eyebrow">{{ $t('login.admin') }}</p><h1 id="fa-login-title">{{ $t('login.title') }}</h1><p class="fa-login-description">{{ $t('login.description') }}</p></header>
+            @if($message !== '')<div class="fa-login-alert" role="alert">{{ $message }}</div>@endif
+            @if($signedIn)
+            <a class="fa-login-submit" href="{{ $logoutUrl }}">{{ $t('login.logout') }}</a>
+            @else
+            <form method="post" action="{{ $action }}" class="fa-login-form">
+                {!! $csrf !!}
+                <div><label for="fa-login-email">{{ $t('login.email') }}</label><input id="fa-login-email" type="email" name="email" value="{{ $email }}" required autocomplete="username" maxlength="254" dir="ltr"></div>
+                <div><label for="fa-login-password">{{ $t('login.password') }}</label><div class="fa-login-password"><input id="fa-login-password" type="password" name="password" required autocomplete="current-password"><button type="button" data-admin-password-toggle aria-controls="fa-login-password" aria-pressed="false" data-show-text="{{ $t('login.show') }}" data-hide-text="{{ $t('login.hide') }}" hidden>{{ $t('login.show') }}</button></div></div>
+                <button type="submit" class="fa-login-submit">{{ $t('login.submit') }}</button>
+            </form>
+            @endif
+        </section>
+        <nav class="fa-login-languages" aria-label="{{ $t('login.language') }}">@foreach($languages as $language)<a href="{{ $language['url'] }}" lang="{{ $language['code'] }}" @if($lang === $language['code']) aria-current="page" @endif>{{ $language['name'] }}</a>@endforeach</nav>
+        <a class="fa-login-back" href="{{ $siteUrl }}">{{ $t('login.back') }}</a>
+    </div>
+</main>

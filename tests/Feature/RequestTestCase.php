@@ -170,6 +170,7 @@ Config::set('default_language', 'en');
 Config::set('reactive.key', str_repeat('test-key-', 8));
 Config::set('permissions', $options['permissions']);
 Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin']);
+foreach (($options['config'] ?? []) as $key => $value) { Config::set($key, $value); }
 if (isset($options['admin_config'])) {
     \FloCMS\Admin\Admin::useConfig($options['admin_config'], true, ROOT);
 }

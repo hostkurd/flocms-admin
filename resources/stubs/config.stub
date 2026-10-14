@@ -6,6 +6,8 @@
 return [
     // Reactive lists/dialogs and navigation; false restores full-page behavior.
     'reactive' => true,
+    // Optional Admin login styling (requires the skeleton's auth.login_view hook).
+    'login_theme' => true,
 
     // Resource classes to load. Leave empty to load every *Resource.php
     // file in resources_path (namespace resources_namespace).

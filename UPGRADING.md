@@ -1,3 +1,44 @@
+# Upgrading to Admin 0.5.0
+
+Update the package after release with `composer require hostkurd/flocms-admin:0.5.0`, run `php flo view:clear` and `php flo admin:doctor`, then reload open Admin pages. Deploy supplied `admin-v0.5.0.js` and `admin-v0.5.0.css`; no Node build is needed on the application host. Core `^2.3.2`, Reactive `^0.3.0` and PHP 8.1+ remain unchanged. No package database migration or existing resource rewrite is required.
+
+## Filters and bulk actions
+
+Both features are opt-in resource definitions. Add `Table::filters()` and `Table::bulkActions()` as shown in the [API guide](docs/tables-and-login.md). Application columns such as status, featured or publication date must exist before you configure filters. No generated Property fields or schema are changed automatically.
+
+Selections contain at most 50 explicit IDs, carry across pagination, and clear on search/sort/filter changes or page navigation. There is no select-all-matching workflow. Every record must pass current scope, permission, policy and stale-row checks; one failure rolls back all same-connection writes. Bulk callbacks own one transaction, with commit-only notification delivery and operation consumption. Do not dispatch inside an outer transaction or manually commit from a callback. External side effects require an outbox. Custom helpers do not run full resource save hooks automatically.
+
+Action form callbacks receive a null record. Bulk actions always require review, and the existing 7,000-byte modal draft limit remains. Use `?static=1` for larger bulk forms or without JavaScript. Oversized drafts do not transfer automatically; copy unsaved text first. Filter state is a bounded JSON scalar in Reactive URLs, with equivalent standard form query parameters. Invalid filter values show errors and are not applied. Existing list/bookmark URLs remain usable.
+
+## Enable the optional login theme
+
+Existing `config/admin.php` files are preserved by the installer. Add:
+
+```php
+'login_theme' => true,
+```
+
+Skeleton 1.8.3 adds a presentation hook to `views/users/admin_login.html`. For an existing 1.8.2 application, prepend this to that view (leave the existing markup below it):
+
+```php
+<?php
+$loginRenderer = \FloCMS\Core\Config::get('auth.login_view');
+if (is_callable($loginRenderer)) {
+    $loginMarkup = $loginRenderer();
+    if (is_string($loginMarkup) && $loginMarkup !== '') {
+        echo $loginMarkup;
+        return;
+    }
+}
+?>
+```
+
+Then clear compiled views. `admin:doctor` warns when the enabled theme is missing this hook. Updating Composer alone cannot update skeleton application views. For language metadata without JavaScript, also copy the skeleton 1.8.3 admin layout's dynamic `lang` and `dir` attributes if your layout still hardcodes English. Your authentication controller, CSRF checks, login throttling and session logic remain the same.
+
+New `admin:install` configurations enable the theme, but the view hook is still needed on older skeletons. Set `'login_theme' => false` to keep your own design. An application-provided `auth.login_view` callable takes precedence; return null/empty to use the skeleton view. Without Admin/config, the skeleton view remains usable, with no Admin or Reactive dependency added to the skeleton.
+
+---
+
 # Upgrading to Admin 0.4.1
 
 Update Admin with Composer after release and deploy its supplied `admin-v0.4.1.js` and `admin-v0.4.1.css`. Reload already-open Admin pages to load the updated client. No database migration, application resource change, or Core/Reactive dependency upgrade is required.

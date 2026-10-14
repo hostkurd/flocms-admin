@@ -38,9 +38,10 @@ final class RecordRepository
      *
      * @return array{data: list<object>, pagination: array<string, mixed>, sort: ?string, dir: string}
      */
-    public function paginate(Table $table, string $search, ?string $sort, ?string $dir, int $page, int $perPage, string $lang): array
+    public function paginate(Table $table, string $search, ?string $sort, ?string $dir, int $page, int $perPage, string $lang, ?\FloCMS\Admin\Table\FilterSet $filters = null): array
     {
         $query = $this->newQuery();
+        if ($filters !== null) { $query = $filters->apply($query); }
         $default = Languages::default();
 
         $search = trim($search);

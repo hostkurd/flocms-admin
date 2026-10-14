@@ -1,5 +1,5 @@
 /* flocms-admin panel. Logical properties only, so one file serves LTR and RTL. */
-.fa-panel{
+.fa-panel,.fa-login{
   --fa-bg:#f5f6f8;--fa-surface:#fff;--fa-text:#1d2330;--fa-muted:#667085;--fa-border:#e3e6ec;--fa-border-strong:#cfd4dc;
   --fa-primary:#0b6e91;--fa-primary-hover:#095a77;--fa-primary-soft:#e6f3f8;--fa-danger:#c0362c;--fa-danger-soft:#fdecea;
   --fa-success:#1f7a4d;--fa-success-soft:#e7f5ee;--fa-warning:#8a5a00;--fa-warning-soft:#fff4dc;--fa-info:#155eaf;--fa-info-soft:#e8f0fb;
@@ -207,3 +207,38 @@
 .fa-notification.fa-alert-success{background:#e7f5ee;color:#1f7a4d}.fa-notification.fa-alert-warning{background:#fff4dc;color:#8a5a00}.fa-notification.fa-alert-danger{background:#fdecea;color:#c0362c}.fa-notification.fa-alert-info{background:#e8f0fb;color:#155eaf}
 .fa-toasts{position:fixed;inset-block-end:16px;inset-inline-end:16px;width:min(390px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;z-index:50}.fa-toasts:empty{display:none}
 .fa-panel:not([data-admin-initialized]) [data-admin-notification-dismiss]{display:none}
+
+/* Filters and explicit row selection */
+.fa-filters{align-items:flex-end;gap:12px;background:#fafbfc}
+.fa-filter{flex:1;min-width:150px;max-width:260px;display:grid;gap:6px}
+.fa-bulk-toolbar{background:var(--fa-primary-soft)}
+.fa-bulk-toolbar select{width:auto;min-width:160px;max-width:260px}
+.fa-selection-col{width:44px;text-align:center !important}
+.fa-selection-col input{width:17px;height:17px;accent-color:var(--fa-primary);cursor:pointer}
+.fa-panel [hidden]{display:none !important}
+/* Optional login presentation, scoped independently of the panel. */
+body:has(> .fa-login){margin:0}
+.fa-login{box-sizing:border-box;min-height:100dvh;align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(ellipse at top,#e6f3f8,transparent 65%),var(--fa-bg)}
+.fa-login *{box-sizing:border-box}
+.fa-login-container{width:100%;max-width:440px;text-align:center}
+.fa-login-brand{display:inline-block;margin-block-end:26px;font-size:23px;font-weight:750;color:var(--fa-text);text-decoration:none}
+.fa-login-card{text-align:start;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:14px;padding:32px;box-shadow:0 12px 36px rgba(16,24,40,.08)}
+.fa-login-card h1{font:700 27px/1.25 var(--fa-font);margin:8px 0 10px;color:var(--fa-text)}
+.fa-login-eyebrow{font-size:12px;font-weight:650;letter-spacing:.08em;color:var(--fa-primary);margin:0;text-transform:uppercase}
+.fa-login-description{font-size:14px;color:var(--fa-muted);margin:0 0 26px;line-height:1.6}
+.fa-login-form{display:grid;gap:20px}
+.fa-login-form label{display:block;font-size:14px;font-weight:600;margin-block-end:8px;color:var(--fa-text)}
+.fa-login-form input{display:block;width:100%;min-width:0;border:1px solid var(--fa-border-strong);border-radius:7px;background:#fff;color:var(--fa-text);font:inherit;padding:11px 12px;min-height:46px}
+.fa-login-form input:focus-visible,.fa-login a:focus-visible,.fa-login button:focus-visible{outline:3px solid rgba(11,110,145,.3);outline-offset:2px}
+.fa-login-password{display:flex;position:relative}
+.fa-login-password input{padding-inline-end:76px}
+.fa-login-password button{position:absolute;inset-inline-end:6px;inset-block:6px;background:transparent;color:var(--fa-muted);border:0;padding:0 8px;border-radius:4px;font:600 12px var(--fa-font);cursor:pointer}
+.fa-login [hidden]{display:none !important}
+.fa-login-submit{display:flex;width:100%;align-items:center;justify-content:center;border:0;border-radius:7px;padding:12px 16px;background:var(--fa-primary);color:#fff;font:600 15px var(--fa-font);text-decoration:none;cursor:pointer;min-height:46px}
+.fa-login-submit:hover{background:var(--fa-primary-hover);color:#fff;text-decoration:none}
+.fa-login-alert{padding:12px 14px;margin-block-end:20px;background:var(--fa-danger-soft);border:1px solid #f5c2bd;border-radius:7px;color:var(--fa-danger);font-size:14px}
+.fa-login-languages{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin:22px 0 14px;font-size:13px}
+.fa-login-languages a,.fa-login-back{color:var(--fa-muted);text-decoration:none}
+.fa-login-languages [aria-current=page]{color:var(--fa-primary);font-weight:650}
+.fa-login-back{font-size:13px}
+@media(max-width:480px){.fa-login{padding:24px 14px}.fa-login-card{padding:24px}.fa-filters .fa-filter{max-width:none;flex-basis:100%}}

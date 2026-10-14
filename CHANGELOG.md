@@ -2,7 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## 0.4.1 - Unreleased
+## 0.5.0 - Unreleased
+
+### Added
+- Select, toggle and inclusive date-range table filters with allowlisted values, bound queries, bookmarks and no-reload back/forward restoration.
+- Explicit selection across list pages, selected counts, select-this-page and PHP-defined bulk Actions with validated forms; maximum 50 selected IDs.
+- Atomic bulk dispatch with current permission/scope/policy checks for every row, stale-row locking, session-bound one-use operations and commit-only summary notifications.
+- Bulk Publish/Unpublish/Delete examples, JavaScript-disabled fallback, keyboard/mobile RTL browser coverage and configured-database regressions.
+- Optional localized Admin login presentation using the skeleton's authentication and optional rendering hook; password visibility toggle, CSRF, feedback and signed-in nonadmin logout.
+- [Table and login API guide](docs/tables-and-login.md), compatibility diagnostics and upgrade instructions for existing application views.
+
+### Changed
+- Full release-version assets are `admin-v0.5.0.js` and `admin-v0.5.0.css`. No Core/Reactive dependency change or automatic application schema change.
+- New Admin configurations enable the login theme; existing installations opt in. Standalone FloCMS remains independent.
+
+## 0.4.1 - 2026-10-14
 
 ### Fixed
 - Modal and full-page action forms use the same default-language input and language badge, including translated textareas. Translation Save/Cancel/Escape, keyboard focus, RTL and validation work inside the resource editor and after Reactive updates.

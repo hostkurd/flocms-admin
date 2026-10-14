@@ -123,6 +123,7 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('Admin layout: templates/default/layouts/admin.html', $display);
         self::assertStringContainsString('content.properties.view', $display);
         self::assertStringContainsString('Column "title" (form field) is missing', $display);
+        self::assertStringContainsString('auth.login_view presentation hook', $display);
 
         self::assertStringContainsString('Table "users" not found', $display, 'users management is on by default');
         self::assertStringContainsString('/admin shows the skeleton\'s page', $display, 'skeleton before 1.8: no admin.home');
@@ -133,6 +134,8 @@ final class CommandsTest extends TestCase
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");
+        mkdir($this->root . '/views/users', 0777, true);
+        file_put_contents($this->root . '/views/users/admin_login.html', "<?php // optional Config::get('auth.login_view')\n");
         $tester = $this->runCommand(new DoctorCommand());
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         self::assertStringContainsString('Everything looks good.', $tester->getDisplay());
