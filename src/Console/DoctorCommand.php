@@ -43,6 +43,10 @@ final class DoctorCommand extends Command
         $this->ok('Languages: ' . implode(', ', $languages) . ' (default ' . Languages::default() . ')');
 
         $this->checkLayout();
+        if ($config->loginThemeEnabled()) {
+            $login = $project->path('views/users/admin_login.html');
+            if (!is_file($login) || !str_contains((string) file_get_contents($login), 'auth.login_view')) { $this->caution('Login theme enabled: add the auth.login_view presentation hook from skeleton 1.8.3 to views/users/admin_login.html (see UPGRADING.md).'); }
+        }
         $this->checkPackagePages($config->usersEnabled());
 
         $registry = Admin::registry();
@@ -133,6 +137,7 @@ final class DoctorCommand extends Command
         foreach ($table->getColumns() as $name => $column) {
             $needed[$name] ??= 'list column';
         }
+        foreach ($table->getFilters() as $filter) { $needed[$filter->getColumn()] ??= 'filter column'; }
         foreach ($extraColumns as $name) {
             $needed[$name] = 'set on create';
         }

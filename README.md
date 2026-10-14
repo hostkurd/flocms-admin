@@ -8,6 +8,8 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Translatable fields**: one value per site language, stored as JSON in the field's column, with the same default-language input, language badge and translation dialog in modal and full-page forms.
 - **Right-to-left** admin from the start (Arabic, Kurdish, …), with the right `dir` on every language input.
 - Uses FloCMS's own login, CSRF protection, permissions and validation rules.
+- **Table filters and bulk Actions**: selects, toggles, date ranges and explicit, atomic multi-record workflows. [API guide](docs/tables-and-login.md).
+- **Optional Admin login design** with existing FloCMS authentication; see [upgrade instructions](UPGRADING.md).
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
 - Optional and removable: no file of the site is edited.
 

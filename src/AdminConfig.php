@@ -80,6 +80,8 @@ final class AdminConfig
 
     /** Disable progressive navigation and components for a legacy application. */
     public function reactiveEnabled(): bool { return ($this->values['reactive'] ?? true) !== false; }
+    /** Opt-in for existing installations; fresh installs include this setting. */
+    public function loginThemeEnabled(): bool { return ($this->values['login_theme'] ?? false) === true; }
 
     public function permissionPrefix(): string
     {

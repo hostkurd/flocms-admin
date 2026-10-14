@@ -6,6 +6,8 @@ use FloCMS\Admin\Actions\{Action, ActionContext, CreateAction, EditAction, Delet
 use FloCMS\Admin\Form\{Form, Fields\TextInput};
 use FloCMS\Admin\Notifications\Notification;
 use FloCMS\Admin\Table\Table;
+use FloCMS\Admin\Table\Filters\{SelectFilter, ToggleFilter, DateRangeFilter};
+use FloCMS\Admin\Actions\{BulkAction, BulkActionContext, DeleteBulkAction};
 use FloCMS\Admin\Tests\Fixtures\Resources\PostResource;
 
 /** Working publish/unpublish example, using only public Admin APIs. */
@@ -45,6 +47,17 @@ class PostActionResource extends PostResource
                 ->action(static function (ActionContext $context, array $data): void {
                     Notification::make()->title('demo.help_title')->body('demo.help_body')->info()->send();
                 }),
+        ])->filters([
+            SelectFilter::make('status')->options(['draft' => 'Draft', 'published' => 'Published']),
+            ToggleFilter::make('featured'), DateRangeFilter::make('published_on'),
+        ])->bulkActions([
+            DeleteBulkAction::make(),
+            BulkAction::make('publish')->label('demo.publish')->authorize(fn (?object $record): bool => $record !== null && $this->canEdit($record))
+                ->form(static fn (Form $form): Form => $form->schema([TextInput::make('reason')->label('demo.reason')->rules('required|max:60')]))
+                ->action(static fn (BulkActionContext $context) => $context->updateAll(['status' => 'published'])),
+            BulkAction::make('unpublish')->label('demo.unpublish')->color('warning')
+                ->authorize(fn (?object $record): bool => $record !== null && $this->canEdit($record))
+                ->action(static fn (BulkActionContext $context) => $context->updateAll(['status' => 'draft'])),
         ]);
     }
 }

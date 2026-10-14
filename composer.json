@@ -58,7 +58,7 @@
             ]
         },
         "branch-alias": {
-            "dev-main": "0.4-dev"
+            "dev-main": "0.5-dev"
         }
     },
     "scripts": {

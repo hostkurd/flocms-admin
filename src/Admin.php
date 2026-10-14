@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.4.1';
+    public const VERSION = '0.5.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -34,6 +34,7 @@ final class Admin
         self::$booted = true;
 
         App::resolveControllersUsing(static fn (string $controller, string $route): ?string => self::resolve($controller, $route));
+        if (Config::get('auth.login_view') === null) { Config::set('auth.login_view', static fn (): ?string => \FloCMS\Admin\Auth\LoginView::render()); }
 
         // Where the skeleton's /admin page sends logged-in users (skeleton 1.8+).
         // A site can set its own 'admin.home' in config/config.php, which runs later.

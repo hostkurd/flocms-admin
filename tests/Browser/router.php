@@ -43,7 +43,7 @@ if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
 }
-Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class], 'brand' => 'FloCMS Studio'], true, ROOT);
+Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class], 'brand' => 'FloCMS Studio', 'login_theme' => true], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -68,5 +68,13 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
     http_response_code(204); exit;
 }
 header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+if (preg_match('~^/(en|ar|ku)/__login-preview$~', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), $match)) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') { http_response_code(405); exit; }
+    define('ACTIVE_LANG', $match[1]);
+    \FloCMS\Admin\Support\AdminLang::setLanguage($match[1]);
+    $session = $_SESSION; Session::set('isloggedin', false);
+    echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login preview</title></head><body>' . \FloCMS\Admin\Auth\LoginView::render() . '</body></html>';
+    $_SESSION = $session; exit;
+}
 try { App::run($_SERVER['REQUEST_URI']); }
 catch (HttpException $error) { Response::text($error->getMessage(), $error->status)->send(); }

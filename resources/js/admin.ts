@@ -1,6 +1,8 @@
 import { receiveNotifications } from './notifications';
 import { initializeLegacy } from './legacy.js';
 import { initializeTranslations } from './translations';
+import { initializeSelection } from './selection';
+import { initializeLogin } from './login';
 import '../assets/admin.css';
 
 let navigating = false;
@@ -30,10 +32,12 @@ function status(message: string): void {
 }
 
 function initialize(): void {
+  initializeLogin();
   initializeLegacy();
   const root = panel();
   if (!root) return;
   initializeTranslations(root);
+  initializeSelection(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
@@ -105,6 +109,22 @@ document.addEventListener('click', event => {
 document.addEventListener('submit', event => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
+  if (form.hasAttribute('data-admin-bulk')) {
+    form.querySelector<HTMLInputElement>('[data-rx-bind="selectedBulk"]')!.value = form.querySelector<HTMLSelectElement>('[data-admin-bulk-name]')!.value;
+    return;
+  }
+  if (form.hasAttribute('data-admin-filters')) {
+    const values: Record<string, string | Record<string, string>> = {};
+    form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-admin-filter]').forEach(input => {
+      const [name, part] = input.dataset.adminFilter!.split('.');
+      if (part) {
+        const range = typeof values[name] === 'object' ? values[name] as Record<string, string> : {};
+        range[part] = input.value; values[name] = range;
+      } else values[name] = input.value;
+    });
+    form.querySelector<HTMLInputElement>('[data-rx-bind="filters"]')!.value = JSON.stringify(values);
+    return;
+  }
   if (form.hasAttribute('data-admin-draft')) {
     if (navigating || busy()) { event.preventDefault(); event.stopImmediatePropagation(); return; }
     const values: Record<string, string | Record<string, string>> = {};
@@ -198,7 +218,7 @@ document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) initializeTranslations(root);
+  if (root) { initializeTranslations(root); initializeSelection(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

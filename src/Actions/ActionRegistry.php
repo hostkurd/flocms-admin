@@ -12,7 +12,7 @@ final class ActionRegistry
     public function __construct(Resource $resource, ?Table $table = null)
     {
         $table ??= $resource->table(new Table());
-        foreach (['page' => $resource->headerActions(), 'table' => $table->getHeaderActions(), 'row' => $table->getActions()] as $placement => $definitions) {
+        foreach (['page' => $resource->headerActions(), 'table' => $table->getHeaderActions(), 'row' => $table->getActions(), 'bulk' => $table->getBulkActions()] as $placement => $definitions) {
             $this->actions[$placement] = self::index($definitions, $placement);
         }
     }
@@ -21,6 +21,7 @@ final class ActionRegistry
         $result = [];
         foreach ($definitions as $action) {
             if (!$action instanceof Action) { throw new \InvalidArgumentException('Actions must be Action objects.'); }
+            if (($placement === 'bulk') !== ($action instanceof BulkAction)) { throw new \InvalidArgumentException('BulkAction objects belong only in Table::bulkActions().'); }
             $name = $action->getName();
             if (isset($result[$name])) { throw new \InvalidArgumentException('Duplicate action: ' . $placement . '/' . $name); }
             if (($action->getKind() === 'create' && $placement === 'row')

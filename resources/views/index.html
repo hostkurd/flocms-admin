@@ -3,9 +3,35 @@
     <div class="fa-action-group">{!! $pageActions !!}</div>
 </div>
 <div class="fa-card">
+    @if(count($bulkActions) > 0)
+    <form class="fa-toolbar fa-bulk-toolbar" id="fa-list-bulk" data-admin-standard-bulk method="get" action="{{ $bulkUrl }}" data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}">
+        <span data-admin-selection-count role="status">{{ $t('bulk.selected', ['count' => 0]) }}</span>
+        <label class="fa-sr" for="fa-list-bulk-action">{{ $t('bulk.action') }}</label>
+        <select id="fa-list-bulk-action" name="action" class="fa-input">
+            @foreach($bulkActions as $bulk)<option value="{{ $bulk->getName() }}">{{ $bulk->getLabel($resource) }}</option>@endforeach
+        </select>
+        <button class="fa-btn" type="submit">{{ $t('bulk.run') }}</button>
+    </form>
+    @endif
+    @if($filterFields !== '')
+    <form class="fa-toolbar fa-filters" method="get" action="{{ $listUrl }}" aria-label="{{ $t('filters.title') }}">
+        @if($static !== null)<input type="hidden" name="static" value="1">@endif
+        <input type="hidden" name="q" value="{{ $search }}">
+        @if($sort !== null)<input type="hidden" name="sort" value="{{ $sort }}"><input type="hidden" name="dir" value="{{ $dir }}">@endif
+        {!! $filterFields !!}
+        <button class="fa-btn" type="submit">{{ $t('filters.apply') }}</button>
+        @if($hasActiveFilters)<a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>@endif
+    </form>
+    @endif
     @if($tableActions !== '')<div class="fa-toolbar fa-action-group">{!! $tableActions !!}</div>@endif
     @if($hasSearch)
     <form class="fa-toolbar" method="get" action="{{ $listUrl }}" role="search">
+        @if($static !== null)<input type="hidden" name="static" value="1">@endif
+        @foreach($filterState as $name => $value)
+        @if(is_array($value))
+        @foreach($value as $part => $item)<input type="hidden" name="filter[{{ $name }}][{{ $part }}]" value="{{ $item }}">@endforeach
+        @else<input type="hidden" name="filter[{{ $name }}]" value="{{ $value }}">@endif
+        @endforeach
         <label class="fa-search">
             {!! $searchIcon !!}
             <span class="fa-sr">{{ $t('table.search') }}</span>
@@ -26,6 +52,7 @@
         <table class="fa-table">
             <thead>
                 <tr>
+                    @if(count($bulkActions) > 0)<th class="fa-selection-col"><input type="checkbox" data-admin-select-page-standard aria-label="{{ $t('bulk.select_page') }}"></th>@endif
                     @foreach($columns as $column)
                     <th scope="col" class="{{ $column['class'] }}" aria-sort="{{ $column['aria'] }}">
                         @if($column['sortUrl'] !== null)
@@ -43,6 +70,7 @@
             <tbody>
                 @foreach($rows as $row)
                 <tr>
+                    @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" form="fa-list-bulk" name="ids[]" value="{{ $row['id'] }}" aria-label="{{ $t('bulk.select_record', ['id' => $row['id']]) }}"></td>@endif
                     @foreach($row['cells'] as $cell)
                     <td class="{{ $cell['class'] }}">{!! $cell['html'] !!}</td>
                     @endforeach
@@ -80,8 +108,8 @@
     </div>
     @else
     <div class="fa-blank">
-        <p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : $t('table.no_records') }}</p>
-        @if($search === '')<div class="fa-action-group">{!! $pageActions !!}</div>@endif
+        <p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : ($hasActiveFilters ? $t('filters.no_results') : $t('table.no_records')) }}</p>
+        @if($search === '' && !$hasActiveFilters)<div class="fa-action-group">{!! $pageActions !!}</div>@endif
     </div>
     @endif
 </div>

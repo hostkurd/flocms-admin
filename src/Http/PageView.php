@@ -35,16 +35,18 @@ final class PageView
      * @param Closure(object): bool $canEditRecord
      * @param Closure(object): bool $canDeleteRecord
      */
-    public function index(Table $table, array $result, string $search, bool $canCreate, bool $canUpdate, bool $canDelete, Closure $canEditRecord, Closure $canDeleteRecord): string
+    public function index(Table $table, array $result, string $search, bool $canCreate, bool $canUpdate, bool $canDelete, Closure $canEditRecord, Closure $canDeleteRecord, ?\FloCMS\Admin\Table\FilterSet $filters = null): string
     {
         $class = $this->resource;
         $slug = $class::getSlug();
         $pk = $class::getPrimaryKey();
         $definition = new $class();
         $actions = new \FloCMS\Admin\Actions\ActionRenderer($definition, new \FloCMS\Admin\Actions\ActionRegistry($definition, $table));
+        $bulkActions = array_filter((new \FloCMS\Admin\Actions\ActionRegistry($definition, $table))->all('bulk'), fn ($action): bool => $action->available($definition));
         $pagination = $result['pagination'];
         $page = (int) $pagination['cur_page'];
-        $state = ['q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
+        $filters ??= new \FloCMS\Admin\Table\FilterSet($table);
+        $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
 
         $columns = [];
         foreach ($table->getColumns() as $name => $column) {
@@ -54,7 +56,7 @@ final class PageView
                 $active = $result['sort'] === $name;
                 $sorted = $active ? $result['dir'] : null;
                 $next = $active && $result['dir'] === 'asc' ? 'desc' : 'asc';
-                $sortUrl = Admin::url($slug, ['q' => $search, 'sort' => $name, 'dir' => $next]);
+                $sortUrl = Admin::url($slug, array_replace($state, ['sort' => $name, 'dir' => $next]));
             }
             $columns[] = [
                 'label' => $column->getLabel(),
@@ -74,6 +76,7 @@ final class PageView
                 $cells[] = ['html' => $column->render($record), 'class' => $column->cellClass()];
             }
             $rows[] = [
+                'id' => $id,
                 'cells' => $cells,
                 'actions' => $actions->render('row', $record, false, backUrl: $backUrl),
                 'editUrl' => $canUpdate && $id !== '' && $canEditRecord($record) ? Admin::url($slug . '/edit/' . $id) : null,
@@ -93,7 +96,10 @@ final class PageView
             'pageActions' => $actions->render('page', reactive: false),
             'tableActions' => $actions->render('table', reactive: false),
             'createLabel' => AdminLang::get('actions.create_label', ['label' => $class::getLabel()]),
-            'listUrl' => Admin::url($slug),
+            'listUrl' => Admin::url($slug, ['static' => $state['static']]),
+            'static' => $state['static'],
+            'filterFields' => $filters->render('fa-list'), 'filterState' => $filters->active(),
+            'hasActiveFilters' => $filters->active() !== [],
             'search' => $search,
             'hasSearch' => $table->searchableColumns() !== [],
             'sort' => $result['sort'],
@@ -101,6 +107,7 @@ final class PageView
             'columns' => $columns,
             'rows' => $rows,
             'hasActions' => $table->getActions() !== [],
+            'bulkActions' => $bulkActions, 'resource' => $definition, 'bulkUrl' => Admin::url($slug . '/bulk'),
             'summary' => $total === 0 ? '' : AdminLang::get('table.summary', ['from' => $from, 'to' => $to, 'total' => $total]),
             'pages' => self::pageLinks($slug, $state, $page, (int) $pagination['last_page']),
             'prevUrl' => $page > 1 ? Admin::url($slug, $state + ['page' => $page - 1 > 1 ? $page - 1 : null]) : null,

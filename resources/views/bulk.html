@@ -1,0 +1,15 @@
+<div class="fa-page-head"><h1 class="fa-page-title">{{ $title }}</h1></div>
+<div class="fa-card fa-form-card">
+    <form method="post" action="{{ $actionUrl }}" novalidate>
+        {!! $csrf !!}
+        <input type="hidden" name="_operation" value="{{ $operation }}">
+        <input type="hidden" name="_ids" value="{{ $ids }}">
+        <p class="fa-confirm-text">{{ $description }}</p>
+        @if(isset($errors['_form']))<p class="fa-alert fa-alert-danger" role="alert">{{ $errors['_form'] }}</p>@endif
+        {!! $fields !!}
+        <div class="fa-form-actions">
+            <button type="submit" class="fa-btn{{ $submitColor === 'default' ? '' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button>
+            <button type="submit" name="_cancel" value="1" class="fa-btn">{{ $t('actions.cancel') }}</button>
+        </div>
+    </form>
+</div>

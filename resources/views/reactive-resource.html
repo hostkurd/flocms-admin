@@ -2,12 +2,33 @@
     <div><p class="fa-eyebrow">{{ $t('nav.resources') }}</p><h1 class="fa-page-title">{{ $resource::getPluralLabel() }}</h1></div>
     <div class="fa-action-group">{!! $pageActions !!}</div>
 </div>
-<noscript><p><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.full_page') }}</a></p></noscript>
+<noscript><p><a href="{{ $fullPageUrl }}">{{ $t('reactive.full_page') }}</a></p></noscript>
 {!! $notifications !!}
 @if($mode === '' && isset($errors['_form']))<p class="fa-alert fa-alert-danger" id="{{ $prefix }}-error" role="alert">{{ $errors['_form'] }}</p>
-@if($errors['_form'] === $t('reactive.large_form'))<p id="{{ $prefix }}-fallback"><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.full_page') }}</a></p>@endif
+@if($errors['_form'] === $t('reactive.large_form'))<p id="{{ $prefix }}-fallback"><a href="{{ $fullPageUrl }}">{{ $t('reactive.full_page') }}</a></p>@endif
 @endif
 <div class="fa-card" id="{{ $prefix }}-table">
+    @if(count($bulkActions) > 0)
+    <form class="fa-toolbar fa-bulk-toolbar" data-rx-submit="openBulk" data-admin-bulk data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}" data-limit-text="{{ $t('bulk.limit') }}">
+        <input type="hidden" value="{{ $selectedIds }}" data-rx-bind="selectedIds">
+        <input type="hidden" value="{{ $selectedBulk }}" data-rx-bind="selectedBulk">
+        <span data-admin-selection-count role="status">{{ $selectionLabel }}</span>
+        <label class="fa-sr" for="{{ $prefix }}-bulk-action">{{ $t('bulk.action') }}</label>
+        <select id="{{ $prefix }}-bulk-action" class="fa-input" data-admin-bulk-name>
+            @foreach($bulkActions as $bulk)<option value="{{ $bulk->getName() }}" @if($selectedBulk === $bulk->getName()) selected @endif>{{ $bulk->getLabel($resource) }}</option>@endforeach
+        </select>
+        <button class="fa-btn" type="submit" data-admin-bulk-open @if(count($selected) === 0) disabled @endif>{{ $t('bulk.run') }}</button>
+        <button class="fa-btn fa-btn-ghost" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
+    </form>
+    @endif
+    @if($filterFields !== '')
+    <form class="fa-toolbar fa-filters" data-rx-submit="applyFilters" data-admin-filters aria-label="{{ $t('filters.title') }}">
+        <input type="hidden" value="{{ $filters }}" data-rx-bind="filters">
+        {!! $filterFields !!}
+        <button class="fa-btn" type="submit">{{ $t('filters.apply') }}</button>
+        @if($hasActiveFilters)<button class="fa-btn fa-btn-ghost" type="button" data-rx-action="clearFilters">{{ $t('filters.clear') }}</button>@endif
+    </form>
+    @endif
     @if($tableActions !== '')<div class="fa-toolbar fa-action-group">{!! $tableActions !!}</div>@endif
     @if(count($table->searchableColumns()) > 0)
     <form class="fa-toolbar" data-rx-submit="refresh" role="search">
@@ -20,6 +41,7 @@
     @if(count($result['data']) > 0)
     <div class="fa-table-wrap"><table class="fa-table">
         <thead><tr>
+            @if(count($bulkActions) > 0)<th class="fa-selection-col"><input type="checkbox" data-admin-select-page aria-label="{{ $t('bulk.select_page') }}"></th>@endif
             @foreach($table->getColumns() as $name => $column)
             <th scope="col" class="{{ $column->cellClass() }}" aria-sort="{{ $result['sort'] === $name ? ($result['dir'] === 'asc' ? 'ascending' : 'descending') : 'none' }}">
                 @if($column->isSortable())<button class="fa-sort" type="button" data-rx-action="sortBy" data-rx-set="selectedSort" data-rx-value="{{ $name }}">{{ $column->getLabel() }}</button>@else{{ $column->getLabel() }}@endif
@@ -30,6 +52,7 @@
         <tbody>
             @foreach($result['data'] as $record)
             <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}">
+                @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" data-admin-select value="{{ $record->{$resource::getPrimaryKey()} }}" aria-label="{{ $t('bulk.select_record', ['id' => $record->{$resource::getPrimaryKey()}]) }}" @if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) checked @endif></td>@endif
                 @foreach($table->getColumns() as $column)<td class="{{ $column->cellClass() }}">{!! $column->render($record) !!}</td>@endforeach
                 <td class="fa-actions">
                     {!! $rowActions($record) !!}
@@ -38,7 +61,7 @@
             @endforeach
         </tbody>
     </table></div>
-    @else<div class="fa-blank"><p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : $t('table.no_records') }}</p></div>@endif
+    @else<div class="fa-blank"><p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : ($hasActiveFilters ? $t('filters.no_results') : $t('table.no_records')) }}</p></div>@endif
     <div class="fa-table-foot"><span class="fa-muted">{{ $t('table.summary', ['from' => count($result['data']) === 0 ? 0 : ($page - 1) * $result['pagination']['per_page'] + 1, 'to' => min($page * $result['pagination']['per_page'], $result['pagination']['items_count']), 'total' => $result['pagination']['items_count']]) }}</span>
         <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
             <button type="button" class="fa-page-link" data-rx-action="paginate" data-rx-set="page" data-rx-value="{{ max(1, $page - 1) }}" @if($page <= 1) disabled @endif>{{ $t('table.previous') }}</button>
@@ -53,11 +76,11 @@
     @if($mode !== '')
     <form data-rx-submit="{{ $submitAction }}" data-admin-draft novalidate>
         <input type="hidden" data-rx-bind="draft" value="">
-        @if(in_array($mode, ['custom', 'delete'], true))<p class="fa-confirm-text">{{ $actionDescription }}</p>@endif
+        @if(in_array($mode, ['custom', 'delete', 'bulk'], true))<p class="fa-confirm-text">{{ $actionDescription }}</p>@endif
         @if($formFields !== '')<div class="fa-dialog-body">{!! $formFields !!}</div>@endif
         <div class="fa-dialog-foot"><button type="submit" class="fa-btn{{ $submitColor === 'default' ? '' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button><button type="button" class="fa-btn" data-rx-dialog-close="editor">{{ $t('actions.cancel') }}</button><span data-rx-loading>{{ $t('reactive.loading') }}</span></div>
     </form>
     @endif
-    <p class="fa-muted" id="{{ $prefix }}-editor-fallback" data-admin-full-page hidden><a href="{{ \FloCMS\Admin\Admin::url($resource::getSlug(), ['static' => 1]) }}">{{ $t('reactive.full_page') }}</a></p>
+    <p class="fa-muted" id="{{ $prefix }}-editor-fallback" data-admin-full-page hidden><a href="{{ $fullPageUrl }}">{{ $t('reactive.full_page') }}</a></p>
     <p class="rx-status fa-modal-status" role="status" aria-live="polite" data-rx-status></p>
 </dialog>

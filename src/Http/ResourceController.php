@@ -52,6 +52,7 @@ final class ResourceController extends PanelController
             'admin_edit' => $class::permission('update'),
             'admin_delete' => $class::permission('delete'),
             'admin_action' => $class::permission('view'),
+            'admin_bulk' => $class::permission('view'),
         ];
     }
 
@@ -69,18 +70,21 @@ final class ResourceController extends PanelController
             ]), $class::getSlug());
         }
         $table = $this->table();
+        $filterInput = $this->request->queryValue('filter', []);
+        if (!is_array($filterInput)) { throw new HttpException(400); }
+        $filters = new \FloCMS\Admin\Table\FilterSet($table, json_encode((object) $filterInput, JSON_THROW_ON_ERROR));
         $page = max(1, (int) $this->query('page', '1'));
         $search = $this->query('q', '');
         $sort = $this->query('sort', '') ?: null;
         $dir = $this->query('dir', '') ?: null;
         $perPage = $table->getPerPage() ?? Admin::config()->perPage();
 
-        $result = $this->repository()->paginate($table, $search, $sort, $dir, $page, $perPage, AdminLang::language());
+        $result = $this->repository()->paginate($table, $search, $sort, $dir, $page, $perPage, AdminLang::language(), $filters);
 
         // Past the last page (e.g. after deleting its last row): go to the last one
         $lastPage = (int) $result['pagination']['last_page'];
         if ($page > 1 && $lastPage > 0 && $page > $lastPage) {
-            $this->redirect(Admin::url($class::getSlug(), ['q' => $search, 'sort' => $sort, 'dir' => $dir, 'page' => $lastPage]));
+            $this->redirect(Admin::url($class::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $sort, 'dir' => $dir, 'page' => $lastPage]));
         }
 
         $view = new PageView($class);
@@ -92,7 +96,7 @@ final class ResourceController extends PanelController
             $this->can('update'),
             $this->can('delete'),
             fn (object $r): bool => $this->resource->canEdit($r),
-            fn (object $r): bool => $this->resource->canDelete($r)
+            fn (object $r): bool => $this->resource->canDelete($r), $filters
         );
 
         return $this->panel($class::getPluralLabel(), $html, $class::getSlug());
@@ -140,6 +144,43 @@ final class ResourceController extends PanelController
 
         $back = $this->safeBackUrl((string) ($this->request->input('_back') ?? ''));
         $this->redirect($back ?? Admin::url($class::getSlug()));
+    }
+
+    /** Standard fallback for every declared action, also used by async navigation. */
+    public function admin_bulk(): string|\FloCMS\Core\Http\Response
+    {
+        if (!$this->request->isMethod('GET', 'POST')) { header('Allow: GET, POST'); throw new HttpException(405); }
+        if (count($this->params) > 1) { throw new HttpException(400); }
+        $name = $this->params[0] ?? $this->request->queryValue('action', '');
+        if (!is_string($name)) { throw new HttpException(400); }
+        $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find('bulk', $name);
+        $executor = new \FloCMS\Admin\Actions\BulkExecutor($this->resource, $this->repository());
+        $ids = \FloCMS\Admin\Actions\BulkExecutor::ids($this->isPost() ? $this->request->input('_ids') : $this->request->queryValue('ids', []));
+        $form = $action->getForm($this->resource); $errors = [];
+        if ($this->isPost()) {
+            $token = $this->request->input('_operation');
+            if (!is_string($token)) { throw new HttpException(400); }
+            $executor->authorize($action, $ids, $token, $this->request->input('_cancel') === null);
+            if ($this->request->input('_cancel') !== null) { \FloCMS\Admin\Actions\OperationStore::consume($token); $this->redirect(Admin::url($this->resource::getSlug(), ['static' => 1])); }
+            $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
+            try { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect(Admin::url($this->resource::getSlug(), ['static' => 1])); }
+            catch (\FloCMS\Core\ValidationException $error) { foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); } }
+        } else {
+            try { $opened = $executor->open($action, $ids); }
+            catch (\FloCMS\Core\ValidationException) { throw new HttpException(404); }
+            $token = $opened['operation']; $state = $opened['state'];
+        }
+        $safe = \FloCMS\Admin\Actions\ActionForm::safe($form, $state);
+        foreach ($form->fields() as $fieldName => $field) {
+            if (!$field->isWritable()) { $safe[$fieldName] = $field->stateFromRecord(null, Languages::default()); }
+        }
+        return $this->panel($action->getTitle($this->resource), \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('bulk'), [
+            't' => PageView::translator(), 'title' => $action->getTitle($this->resource),
+            'description' => AdminLang::get('bulk.confirm', ['count' => count($ids)]),
+            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default()))->render($form),
+            'errors' => $errors, 'ids' => json_encode($ids, JSON_THROW_ON_ERROR), 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
+            'actionUrl' => Admin::url($this->resource::getSlug() . '/bulk/' . $name), 'submitLabel' => $action->getLabel($this->resource), 'submitColor' => $action->getColor(),
+        ]), $this->resource::getSlug());
     }
 
     /** Standard fallback for every declared action, also used by async navigation. */
