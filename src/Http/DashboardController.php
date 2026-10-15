@@ -16,8 +16,8 @@ use FloCMS\Core\TemplateEngine;
 use Throwable;
 
 /**
- * The panel's home page, /admin/dashboard: one card per resource the user
- * may view, with its number of records. Any user who passed FloCMS's admin
+ * The panel's home page: explicitly configured widgets, or resource-count
+ * cards when widget configuration is empty. Any user who passed FloCMS's admin
  * login gate may open it; each card follows its resource's view permission.
  */
 final class DashboardController extends PanelController
@@ -32,9 +32,16 @@ final class DashboardController extends PanelController
             $resources['accounts'] = $registry->find('accounts');
         }
 
+        $widgetRegistry = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig(Admin::config());
+        $widgetHtml = null;
+        if ($widgetRegistry->configured()) {
+            $widgetHtml = Admin::config()->reactiveEnabled()
+                ? \FloCMS\Reactive\Reactive::mount('flo-admin-dashboard', 'admin-dashboard')
+                : \FloCMS\Admin\Widgets\Dashboard::render();
+        }
         $db = App::db();
         $cards = [];
-        foreach ($resources as $slug => $class) {
+        foreach ($widgetHtml === null ? $resources : [] as $slug => $class) {
             /** @var class-string<Resource> $class */
             if (!Auth::can($class::permission('view'))) {
                 continue;
@@ -62,7 +69,7 @@ final class DashboardController extends PanelController
         $html = TemplateEngine::renderFile(PageView::viewPath('dashboard'), [
             't' => PageView::translator(),
             'greeting' => $name === '' ? AdminLang::get('dashboard.greeting_anonymous') : AdminLang::get('dashboard.greeting', ['name' => $name]),
-            'cards' => $cards,
+            'cards' => $cards, 'widgetHtml' => $widgetHtml,
         ]);
 
         return $this->panel(AdminLang::get('nav.dashboard'), $html, 'dashboard');

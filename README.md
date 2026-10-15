@@ -266,7 +266,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
 
-The panel is drawn inside the active template's `layouts/admin.html`, which must print `$data['content']` (the skeleton's does). Its CSS and JavaScript are printed inline, so there is nothing to publish and nothing goes stale after `composer update`.
+The panel is drawn inside the active template's `layouts/admin.html`, which must print `$data['content']` (the skeleton's does). Its versioned CSS and JavaScript are served from the installed Composer package through Admin asset routes; no manual asset publishing or hosting-side Node build is required.
 
 ## Commands
 
@@ -294,12 +294,17 @@ See the [Actions and Notifications guide](docs/actions-and-notifications.md) for
 
 Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resource CRUD forms, including Reactive dialogs and no-JavaScript pages. Files use private managed storage with editor-authorized downloads, server-side validation, retained selections on validation errors, and transaction-aware replacement/removal. See the [Uploads guide](docs/uploads.md) for configuration, limits, permissions and cleanup.
 
+## Dashboard widgets
+
+Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
+
 ## Roadmap
 
 - 0.3: Reactive resource dialogs and lists, shared form submission, panel navigation and browser coverage
 - 0.4: shared Actions, action forms/confirmation and persistent Notifications
 - Completed through 0.7: table filters, bulk actions, richer Forms, and single image/file fields
-- Next: dashboard widgets
+- Completed in 0.8: configurable dashboard widgets
+- Next: relationship fields and managers
 - Later: relationships, a settings page, more generators
 
 ## Development

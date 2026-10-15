@@ -139,5 +139,12 @@ final class CommandsTest extends TestCase
         $tester = $this->runCommand(new DoctorCommand());
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         self::assertStringContainsString('Everything looks good.', $tester->getDisplay());
+
+        // Configuration diagnostics must not invoke a widget's provider.
+        file_put_contents($this->root . '/config/admin.php', '<?php return ["widgets" => [\\FloCMS\\Admin\\Tests\\Fixtures\\Widgets\\BrokenStats::class, "MissingWidget"]];');
+        $tester = $this->runCommand(new DoctorCommand());
+        self::assertSame(1, $tester->getStatusCode());
+        self::assertStringContainsString('Widget: MissingWidget', $tester->getDisplay());
+        self::assertStringNotContainsString('private-dsn-sensitive', $tester->getDisplay());
     }
 }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 — 2026-10-15
+
+- Add opt-in StatsWidget/Stat, RecordsWidget and single-series SVG ChartWidget (bar/line), explicit class registration, responsive column spans, ordering, translations and accessible chart data tables.
+- Add immutable scoped read helpers with bound filters, counts/sums and bounded records. Enforce registered source resources and view permissions before providers run, with optional extra widget permission and visibility checks.
+- Add a signed, CSRF-protected dashboard refresh component that rechecks current configuration/permissions; retain ordinary GET refresh for no-JavaScript and Reactive-disabled projects, and keep automatic resource cards when no widgets are configured.
+- Isolate provider failures, log private diagnostics, validate widget configuration through admin:doctor without invoking providers, and bound widgets, points, rows, stats and query counts.
+- Add runnable fixtures, PHP/browser regression coverage, a Widgets guide, upgrade notes and admin-v0.8.0 assets. Existing Core, Reactive, Uploader and standalone skeleton requirements remain unchanged.
+
+
 ## 0.7.0 — 2026-10-15
 
 - Add single-file FileUpload and raster ImageUpload fields to resource CRUD forms, with MIME/extension/actual-size/dimension validation and private local storage through flocms-uploader ^1.2.0.

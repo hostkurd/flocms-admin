@@ -2,6 +2,16 @@
 // flocms-admin: English. A site can override any line with an "admin.<key>"
 // entry in its own lang/<code>.php, e.g. 'admin.actions.create' => 'Add'.
 return [
+    'widgets.refresh' => 'Refresh dashboard',
+    'widgets.empty' => 'No data available.',
+    'widgets.none' => 'No dashboard widgets are available for your account.',
+    'widgets.unavailable' => 'This dashboard content is currently unavailable.',
+    'widgets.view_all' => 'View all records',
+    'widgets.chart_data' => 'View chart data',
+    'widgets.chart_description' => 'The same values are available in the data table below.',
+    'widgets.label' => 'Label',
+    'widgets.value' => 'Value',
+
     'uploads.invalid' => 'Upload failed. Check the file type, size, image dimensions, and session, then choose the file again.',
     'uploads.limit' => 'Maximum :size KiB.',
     'uploads.pending' => 'Selected file',

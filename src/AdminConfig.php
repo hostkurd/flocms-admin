@@ -90,6 +90,13 @@ final class AdminConfig
         return $prefix === '' ? 'content' : $prefix;
     }
 
+    public function widgetColumns(): int
+    {
+        $columns = $this->values['widget_columns'] ?? 2;
+        if (!is_int($columns) || $columns < 1 || $columns > 4) { throw new \InvalidArgumentException('widget_columns must be 1–4.'); }
+        return $columns;
+    }
+
     /** @return array<string, mixed> */
     public function all(): array
     {

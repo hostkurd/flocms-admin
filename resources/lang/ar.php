@@ -1,6 +1,16 @@
 <?php
 // flocms-admin: العربية
 return [
+    'widgets.refresh' => 'تحديث لوحة المعلومات',
+    'widgets.empty' => 'لا توجد بيانات.',
+    'widgets.none' => 'لا توجد عناصر لوحة معلومات متاحة لحسابك.',
+    'widgets.unavailable' => 'محتوى لوحة المعلومات غير متاح حاليًا.',
+    'widgets.view_all' => 'عرض جميع السجلات',
+    'widgets.chart_data' => 'عرض بيانات الرسم البياني',
+    'widgets.chart_description' => 'القيم نفسها متاحة في جدول البيانات أدناه.',
+    'widgets.label' => 'التسمية',
+    'widgets.value' => 'القيمة',
+
     'uploads.invalid' => 'تعذر رفع الملف. تحقق من نوعه وحجمه وأبعاد الصورة والجلسة، ثم اختر الملف مجددًا.',
     'uploads.limit' => 'الحد الأقصى :size كيلوبايت.',
     'uploads.pending' => 'الملف المحدد',
