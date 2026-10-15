@@ -184,7 +184,7 @@ final class ReactiveResourceTest extends RequestTestCase
     {
         $result = self::request('GET', '/en/admin/dashboard', ['headers' => ['X-Flo-Admin' => 'navigate'], 'admin_config' => ['reactive' => true]]);
         self::assertStringNotContainsString('<html>', $result['body']);
-        self::assertStringContainsString('admin-v0.8.0.js', $result['body']);
+        self::assertStringContainsString('admin-v0.8.1.js', $result['body']);
         self::assertStringContainsString('reactive-v0.4.0.js', $result['body']);
         self::assertStringNotContainsString('<script>', $result['body']);
         self::assertSame(404, self::request('GET', '/en/flo-admin/asset/unknown.js')['status']);

@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.8.0 — 2026-10-15
+All notable changes to `hostkurd/flocms-admin` are documented here.
+
+## 0.8.1 - 2026-10-16
+
+- Remove the browser's default 8 px page margin around the panel when the site's admin layout places the panel directly in `<body>` (the skeleton's layout does). Pages that set their own body margin are unaffected.
+- Ship `admin-v0.8.1.css` and `admin-v0.8.1.js`; the JavaScript is unchanged apart from its file name.
+- Documentation: the 0.6.0 entry carries its release date, release headings use one dash style, and the Reactive Admin guide refers to Reactive 0.4 and the released Widgets.
+
+## 0.8.0 - 2026-10-15
 
 - Add opt-in StatsWidget/Stat, RecordsWidget and single-series SVG ChartWidget (bar/line), explicit class registration, responsive column spans, ordering, translations and accessible chart data tables.
 - Add immutable scoped read helpers with bound filters, counts/sums and bounded records. Enforce registered source resources and view permissions before providers run, with optional extra widget permission and visibility checks.
@@ -8,8 +16,7 @@
 - Isolate provider failures, log private diagnostics, validate widget configuration through admin:doctor without invoking providers, and bound widgets, points, rows, stats and query counts.
 - Add runnable fixtures, PHP/browser regression coverage, a Widgets guide, upgrade notes and admin-v0.8.0 assets. Existing Core, Reactive, Uploader and standalone skeleton requirements remain unchanged.
 
-
-## 0.7.0 — 2026-10-15
+## 0.7.0 - 2026-10-15
 
 - Add single-file FileUpload and raster ImageUpload fields to resource CRUD forms, with MIME/extension/actual-size/dimension validation and private local storage through flocms-uploader ^1.2.0.
 - Add CSRF-protected multipart transport for Reactive dialogs, session/actor/record/field-bound pending tokens, permission-checked downloads/previews, and multipart standard/async forms including no-JavaScript submissions.
@@ -17,10 +24,7 @@
 - Add English/Arabic/Kurdish controls, mobile RTL preview styling, runnable fixtures, regression coverage, the Uploads guide and upgrade notes. Ship admin-v0.7.0 assets.
 - Keep Core and standalone skeleton unchanged; Reactive remains ^0.4.0. Upload fields are limited to resource CRUD forms and private local storage in this release.
 
-
-All notable changes to `hostkurd/flocms-admin` are documented here.
-
-## 0.6.0 - Unreleased
+## 0.6.0 - 2026-10-15
 
 ### Added
 - Sections, tabs and responsive 1–4 column grids with flat, unique field names shared by CRUD and action forms.
