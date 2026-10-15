@@ -31,7 +31,8 @@ final class FormRenderer
         // Retained for constructor compatibility; all forms use language badges.
         bool $inlineTranslations = false,
         private readonly string $prefix = '',
-        private readonly bool $reactive = false
+        private readonly bool $reactive = false,
+        private readonly ?\Closure $fileUrl = null
     ) {
     }
 
@@ -116,6 +117,7 @@ final class FormRenderer
     private function single(Field $field, string $id): string
     {
         $attributes = [];
+        if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && $this->fileUrl !== null) { $attributes['data-upload-url'] = ($this->fileUrl)($field, $this->stringState($field)); }
         $describedBy = [];
         if ($field->getHelp() !== null) { $describedBy[] = $id . '-help'; }
         if (isset($this->errors[$field->getName()])) { $describedBy[] = $id . '-error'; }

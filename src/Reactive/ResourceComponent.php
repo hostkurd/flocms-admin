@@ -223,8 +223,9 @@ final class ResourceComponent extends Component
             'rowActions' => static fn (object $row): string => $renderer->render('row', $row, prefix: $prefix),
             'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? AdminLang::get('bulk.confirm', ['count' => count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))]) : ($action?->getDescription() ?? ''),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
+            'uploadUrl' => Admin::url($resource::getSlug() . '/upload'), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
-            'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true))->render($form),
+            'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record)))->render($form),
             'notifications' => NotificationView::pending($this->instanceKey),
         ]);
     }

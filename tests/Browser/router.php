@@ -44,7 +44,7 @@ if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
 }
-Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class, PropertyResource::class], 'brand' => 'FloCMS Studio', 'login_theme' => true], true, ROOT);
+Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class], 'brand' => 'FloCMS Studio', 'login_theme' => true], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -61,11 +61,16 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='propertie
     $pdo->exec('CREATE TABLE properties (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, country TEXT, city TEXT, listing_type TEXT, price DECIMAL(12,2), lease_months INTEGER, access_code TEXT, status TEXT, published_on DATE)');
     App::$db->table('properties')->insert(['title' => '{"en":"Villa"}', 'description' => '{"en":"Description"}', 'country' => 'iq', 'city' => 'sulaimani', 'listing_type' => 'sale', 'price' => 100, 'status' => 'draft']);
 }
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='assets'")->fetchColumn()) {
+    $pdo->exec('CREATE TABLE assets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, kind TEXT, cover TEXT, attachment TEXT, internal TEXT, extra TEXT)');
+    App::$db->table('assets')->insert(['title'=>'Villa media', 'kind'=>'normal']);
+}
 if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
     switch (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) {
         case '/__test/readonly': Session::set('read_only', true); break;
         case '/__test/expire': Csrf::rotate(); break;
+        case '/__test/asset-change': App::$db->table('assets')->where('id', '=', 1)->update(['title'=>(string) ($_POST['title'] ?? 'Changed elsewhere')]); break;
         case '/__test/change': App::$db->table('posts')->where('id', '=', (int) ($_POST['id'] ?? 1))->update(['title'=>'{"en":"Changed elsewhere"}']); break;
         case '/__test/delete': App::$db->table('posts')->where('id', '=', (int) ($_POST['id'] ?? 1))->delete(); break;
         default: http_response_code(404); exit;

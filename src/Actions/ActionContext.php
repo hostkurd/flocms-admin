@@ -9,7 +9,7 @@ final class ActionContext
 {
     public readonly ?object $record;
     private ?object $original;
-    public function __construct(public readonly Resource $resource, private readonly RecordRepository $repository, ?object $record)
+    public function __construct(public readonly Resource $resource, private readonly RecordRepository $repository, ?object $record, private readonly ?\FloCMS\Admin\Uploads\UploadBatch $uploads = null)
     {
         $this->record = $record !== null ? clone $record : null;
         $this->original = $record !== null ? clone $record : null;
@@ -26,6 +26,7 @@ final class ActionContext
     public function delete(): void
     {
         $record = $this->original ?? throw new \LogicException('This action has no active record.');
+        $this->uploads?->deleting($this->resource, $record);
         $this->repository->deleteUnchanged((string) $record->{$this->resource::getPrimaryKey()}, $record);
         $this->original = null;
     }

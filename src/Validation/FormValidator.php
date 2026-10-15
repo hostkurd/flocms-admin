@@ -86,6 +86,7 @@ final class FormValidator
     /** First failing check of one value, as a message, or null. */
     private function check(Field $field, string $value, bool $skipRequired, ?string $language = null): ?string
     {
+        if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && $value === '@remove') { $value = ''; }
         $rules = $field->rulesFor($this->isEdit);
         $names = array_map(static fn (string $rule): string => explode(':', $rule, 2)[0], $rules);
         $typeRules = array_values(array_filter($rules, static fn (string $r): bool => in_array(explode(':', $r, 2)[0], ['integer', 'numeric'], true)));

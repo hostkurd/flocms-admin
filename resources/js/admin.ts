@@ -1,3 +1,4 @@
+import { hasFiles, stageUploads } from './uploads';
 import { receiveNotifications } from './notifications';
 import { initializeLegacy } from './legacy.js';
 import { initializeTranslations } from './translations';
@@ -47,7 +48,7 @@ function initialize(): void {
   receiveNotifications();
 }
 
-async function navigate(url: URL, options: { method?: string; body?: URLSearchParams; replace?: boolean; history?: boolean } = {}): Promise<void> {
+async function navigate(url: URL, options: { method?: string; body?: URLSearchParams | FormData; replace?: boolean; history?: boolean } = {}): Promise<void> {
   if (navigating || busy()) { status(panel()?.dataset.adminBusy || 'Please wait.'); return; }
   navigating = true;
   navigation?.abort();
@@ -102,7 +103,7 @@ document.addEventListener('click', event => {
   if (!enabled() || !anchor || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
     || anchor.target || anchor.hasAttribute('download') || anchor.hasAttribute('data-no-navigate') || anchor.hash) return;
   const url = internal(anchor.href);
-  if (!url) return;
+  if (!url || (event.target instanceof Element && event.target.closest('[data-admin-file-link]'))) return;
   event.preventDefault();
   void navigate(url);
 });
@@ -129,10 +130,21 @@ document.addEventListener('submit', event => {
     return;
   }
   if (form.hasAttribute('data-admin-draft')) {
+    if (form.dataset.uploadBusy === 'true') { event.preventDefault(); event.stopImmediatePropagation(); return; }
+    if (hasFiles(form)) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const submitter = event.submitter as HTMLButtonElement | null;
+      void stageUploads(form).then(() => { if (form.isConnected) form.requestSubmit(submitter); }).catch(() => {});
+      return;
+    }
+    form.querySelectorAll<HTMLInputElement>('[data-upload-remove]').forEach(remove => {
+      const value = remove.closest('[data-admin-upload]')!.querySelector<HTMLInputElement>('[data-upload-value]')!;
+      if (remove.checked) value.value = '@remove'; else if (value.value === '@remove') value.value = '';
+    });
     if (navigating || busy()) { event.preventDefault(); event.stopImmediatePropagation(); return; }
     const values: Record<string, string | Record<string, string>> = {};
     for (const [name, value] of new FormData(form)) {
-      if (typeof value !== 'string') continue;
+      if (typeof value !== 'string' || name.startsWith('_upload_control[') || name.startsWith('_remove_upload[')) continue;
       const translated = /^([A-Za-z_][A-Za-z0-9_]*)\[([a-z0-9-]+)\]$/.exec(name);
       if (translated) {
         const current = values[translated[1]];
@@ -169,11 +181,11 @@ document.addEventListener('submit', event => {
   // Legacy delete confirmation owns its initial submit, then requests a new one.
   if (!enabled() || form.hasAttribute('data-rx-submit') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
   const url = internal(form.action);
-  if (!url) return;
+  if (!url || (event.target instanceof Element && event.target.closest('[data-admin-file-link]'))) return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  const values = new URLSearchParams();
-  new FormData(form).forEach((value, name) => { if (typeof value === 'string') values.append(name, value); });
+  const values = form.method.toUpperCase() === 'GET' ? new URLSearchParams() : new FormData(form);
+  if (values instanceof URLSearchParams) new FormData(form).forEach((value, name) => { if (typeof value === 'string') values.append(name, value); });
   const submitter = event.submitter as HTMLButtonElement | null;
   if (submitter?.name) values.append(submitter.name, submitter.value);
   if (form.method.toUpperCase() === 'GET') {

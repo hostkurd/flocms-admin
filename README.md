@@ -290,11 +290,16 @@ Resources receive Create/Edit/Delete Actions by default. Define additional workf
 
 See the [Actions and Notifications guide](docs/actions-and-notifications.md) for the Publish/Unpublish example, API, concurrency rules, standard fallback and browser coverage.
 
+## File and image fields
+
+Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resource CRUD forms, including Reactive dialogs and no-JavaScript pages. Files use private managed storage with editor-authorized downloads, server-side validation, retained selections on validation errors, and transaction-aware replacement/removal. See the [Uploads guide](docs/uploads.md) for configuration, limits, permissions and cleanup.
+
 ## Roadmap
 
 - 0.3: Reactive resource dialogs and lists, shared form submission, panel navigation and browser coverage
 - 0.4: shared Actions, action forms/confirmation and persistent Notifications
-- Next: Table filters and bulk actions, richer Forms, then image/file fields and dashboard widgets
+- Completed through 0.7: table filters, bulk actions, richer Forms, and single image/file fields
+- Next: dashboard widgets
 - Later: relationships, a settings page, more generators
 
 ## Development

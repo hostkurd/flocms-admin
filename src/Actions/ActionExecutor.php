@@ -34,8 +34,10 @@ final class ActionExecutor
         self::validContext($placement, $id);
         if ($this->repository->inTransaction()) { throw new \LogicException('Action dispatch owns its transaction; dispatch outside an existing transaction.'); }
         $entry = OperationStore::get($token, $this->resource::getSlug(), $placement, $action->getName(), $id);
-        Notifications::capture(function () use ($action, $placement, $id, $input, $entry, &$accepted, $maxDraftBytes): void {
-            $this->repository->transaction(function () use ($action, $placement, $id, $input, $entry, &$accepted, $maxDraftBytes): void {
+        $batch = new \FloCMS\Admin\Uploads\UploadBatch();
+        try {
+        Notifications::capture(function () use ($action, $placement, $id, $input, $entry, &$accepted, $maxDraftBytes, $batch): void {
+            $this->repository->transaction(function () use ($action, $placement, $id, $input, $entry, &$accepted, $maxDraftBytes, $batch): void {
                 Auth::authorize($this->resource::permission('view'));
                 $action->authorizePermission($this->resource);
                 $record = $this->record($placement, $id);
@@ -48,22 +50,23 @@ final class ActionExecutor
                 }
                 $form = $action->getForm($this->resource);
                 $kind = $action->getKind();
-                if ($kind === 'delete') { $this->repository->deleteUnchanged($id, $record); }
+                if ($kind === 'delete') { $batch->deleting($this->resource, $record); $this->repository->deleteUnchanged($id, $record); }
                 elseif (in_array($kind, ['create', 'edit'], true)) {
                     $submission = new FormSubmission($this->resource, $this->repository);
+                    $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $input, $_FILES['_uploads'] ?? [], $this->resource, $record);
                     $state = $submission->state($form, $input, $record);
                     $accepted = ActionForm::safe($form, $state);
                     $this->limit($accepted, $maxDraftBytes);
                     $errors = $submission->errors($form, $state, $record);
                     if ($errors !== []) { throw new ValidationException($errors); }
-                    $submission->save($form, $state, $record, true);
+                    $submission->save($form, $state, $record, true, $batch);
                 } else {
                     $state = ActionForm::state($action, $form, $input, $record);
                     $accepted = ActionForm::safe($form, $state);
                     $this->limit($accepted, $maxDraftBytes);
                     $errors = ActionForm::errors($action, $form, $state, $record);
                     if ($errors !== []) { throw new ValidationException($errors); }
-                    $action->invoke(new ActionContext($this->resource, $this->repository, $record), ActionForm::dehydrate($form, $state));
+                    $action->invoke(new ActionContext($this->resource, $this->repository, $record, $batch), ActionForm::dehydrate($form, $state));
                 }
                 if ($kind !== 'custom') {
                     Notification::make()->title(AdminLang::get(match ($kind) {
@@ -72,6 +75,8 @@ final class ActionExecutor
                 }
             });
         });
+        } catch (\Throwable $error) { $batch->rollback(); throw $error; }
+        $batch->commit();
         OperationStore::consume($token);
     }
 

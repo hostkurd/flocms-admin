@@ -8,10 +8,10 @@ final class BulkActionContext
 {
     public readonly array $records;
     private array $contexts;
-    public function __construct(public readonly Resource $resource, RecordRepository $repository, array $records)
+    public function __construct(public readonly Resource $resource, RecordRepository $repository, array $records, ?\FloCMS\Admin\Uploads\UploadBatch $uploads = null)
     {
         $this->records = array_map(static fn (object $record): object => clone $record, $records);
-        $this->contexts = array_map(fn (object $record): ActionContext => new ActionContext($resource, $repository, $record), $records);
+        $this->contexts = array_map(fn (object $record): ActionContext => new ActionContext($resource, $repository, $record, $uploads), $records);
     }
     public function updateAll(array $data): void { foreach ($this->contexts as $context) { $context->update($data); } }
     public function deleteAll(): void { foreach ($this->contexts as $context) { $context->delete(); } }

@@ -1,6 +1,14 @@
 <?php
 // flocms-admin: العربية
 return [
+    'uploads.invalid' => 'تعذر رفع الملف. تحقق من نوعه وحجمه وأبعاد الصورة والجلسة، ثم اختر الملف مجددًا.',
+    'uploads.limit' => 'الحد الأقصى :size كيلوبايت.',
+    'uploads.pending' => 'الملف المحدد',
+    'uploads.current' => 'الملف الحالي',
+    'uploads.remove' => 'إزالة الملف',
+    'uploads.loading' => 'جارٍ الرفع…',
+    'uploads.ready' => 'الملف جاهز للحفظ.',
+
     'form.update_fields' => 'تحديث الحقول',
     'nav.label' => 'قائمة الإدارة',
     'nav.dashboard' => 'لوحة التحكم',

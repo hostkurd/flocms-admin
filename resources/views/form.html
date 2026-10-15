@@ -4,13 +4,13 @@
         <h1 class="fa-page-title">{{ $title }}</h1>
     </div>
     @if($deleteUrl !== null)
-    <form method="post" action="{{ $deleteUrl }}" data-confirm>
+    <form method="post" enctype="multipart/form-data" action="{{ $deleteUrl }}" data-confirm>
         {!! $csrf !!}
         <button type="submit" class="fa-btn fa-btn-danger-ghost">{{ $t('actions.delete') }}</button>
     </form>
     @endif
 </div>
-<form method="post" action="{{ $action }}" class="fa-card fa-form" novalidate>
+<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-card fa-form" novalidate>
     {!! $csrf !!}
     {!! $fields !!}
     <div class="fa-form-actions">
