@@ -1,6 +1,7 @@
 <?php
 // flocms-admin: العربية
 return [
+    'form.update_fields' => 'تحديث الحقول',
     'nav.label' => 'قائمة الإدارة',
     'nav.dashboard' => 'لوحة التحكم',
     'nav.resources' => 'المحتوى',

@@ -39,7 +39,7 @@ final class PanelRequestTest extends RequestTestCase
         // Navigation: the current page is marked; tags need taxonomy.tags.view, which editors lack
         self::assertStringContainsString('aria-current="page"', $body);
         self::assertStringNotContainsString('/en/admin/post-tags', $body);
-        self::assertStringContainsString('admin-v0.5.0.css', $body);
+        self::assertStringContainsString('admin-v0.6.0.css', $body);
         self::assertStringNotContainsString('<style>', $body);
     }
 

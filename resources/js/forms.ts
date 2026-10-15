@@ -1,0 +1,58 @@
+// Tabs are progressive enhancement: without JS every section remains reachable.
+const activeTabs = new Map<string, string>();
+function activate(group: HTMLElement, id: string, focus = false): void {
+  const tabs = [...group.querySelectorAll<HTMLButtonElement>(':scope > [data-admin-tab-list] > [data-admin-tab]')];
+  tabs.forEach(tab => { const active = tab.dataset.adminTab === id; tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1; });
+  group.querySelectorAll<HTMLElement>(':scope > [data-admin-tab-panel]').forEach(panel => { panel.hidden = panel.id !== id; });
+  activeTabs.set(group.id, id);
+  if (focus) tabs.find(tab => tab.dataset.adminTab === id)?.focus();
+}
+export function initializeForms(root: HTMLElement): void {
+  root.querySelectorAll<HTMLElement>('[data-admin-tabs]').forEach(group => {
+    const list = group.querySelector<HTMLElement>(':scope > [data-admin-tab-list]');
+    const tabs = [...group.querySelectorAll<HTMLButtonElement>(':scope > [data-admin-tab-list] > [data-admin-tab]')];
+    if (!list || !tabs.length) return;
+    list.hidden = false; list.setAttribute('role', 'tablist'); group.dataset.adminTabsReady = 'true';
+    tabs.forEach(tab => {
+      tab.setAttribute('role', 'tab'); tab.setAttribute('aria-controls', tab.dataset.adminTab!);
+      const panel = document.getElementById(tab.dataset.adminTab!);
+      panel?.setAttribute('role', 'tabpanel'); panel?.setAttribute('aria-labelledby', tab.id);
+    });
+    const invalid = [...group.querySelectorAll<HTMLElement>(':scope > [data-admin-tab-panel]')].find(panel => panel.querySelector('[aria-invalid=true],.has-error'));
+    const previous = activeTabs.get(group.id);
+    activate(group, invalid?.id || (tabs.some(tab => tab.dataset.adminTab === previous) ? previous! : tabs[0].dataset.adminTab!));
+  });
+  root.querySelectorAll<HTMLButtonElement>('button[name="_refresh"]').forEach(button => { button.hidden = true; });
+}
+document.addEventListener('click', event => {
+  const tab = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-admin-tab]') : null;
+  const group = tab?.closest<HTMLElement>('[data-admin-tabs]');
+  if (tab && group) activate(group, tab.dataset.adminTab!, true);
+});
+document.addEventListener('keydown', event => {
+  if (!(event.target instanceof HTMLButtonElement) || !event.target.matches('[data-admin-tab]')) return;
+  const group = event.target.closest<HTMLElement>('[data-admin-tabs]')!;
+  const tabs = [...group.querySelectorAll<HTMLButtonElement>(':scope > [data-admin-tab-list] > [data-admin-tab]')];
+  const rtl = getComputedStyle(group).direction === 'rtl';
+  const current = tabs.indexOf(event.target); let next = current;
+  if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = tabs.length - 1;
+  else if (event.key === 'ArrowRight') next = (current + (rtl ? -1 : 1) + tabs.length) % tabs.length;
+  else if (event.key === 'ArrowLeft') next = (current + (rtl ? 1 : -1) + tabs.length) % tabs.length;
+  else return;
+  event.preventDefault(); event.stopPropagation(); activate(group, tabs[next].dataset.adminTab!, true);
+});
+// Use change (rather than per-keystroke refresh) to retain predictable focus and drafts.
+document.addEventListener('change', event => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement) || !input.closest('[data-admin-live]')) return;
+  if (input.closest('.fa-lang-dialog')) return;
+  const form = input.closest<HTMLFormElement>('form');
+  const button = form?.querySelector<HTMLButtonElement>('[data-admin-form-refresh]');
+  if (!form || !button || form.closest('[aria-busy=true]')) return;
+  if (form.hasAttribute('data-admin-draft')) {
+    // The submit capture handler packages all fields before dispatching the explicit RPC.
+    form.dataset.adminRefreshing = 'true';
+    form.requestSubmit();
+  } else form.requestSubmit(button);
+});

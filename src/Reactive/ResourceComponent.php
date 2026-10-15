@@ -31,7 +31,7 @@ final class ResourceComponent extends Component
     #[State(writable: false)] public string $fingerprint = '';
     #[State(writable: false)] public string $mode = '';
     #[State(writable: false)] public string $operation = '';
-    #[State] public string $draft = '';
+    #[State(maxBytes: 65536)] public string $draft = '';
 
     public function authorize(Request $request): void
     {
@@ -80,7 +80,7 @@ final class ResourceComponent extends Component
         $this->activeAction = $action->getName(); $this->activePlacement = 'bulk'; $this->mode = 'bulk';
         $this->bulkIds = json_encode($opened['ids'], JSON_THROW_ON_ERROR); $this->operation = $opened['operation'];
         $this->draft = json_encode((object) ActionForm::safe($action->getForm($this->resource()), $opened['state']), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        if (strlen($this->draft) > 7000) { $this->discard(); throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
+        if (strlen($this->draft) > 64000) { $this->discard(); throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
     }
     // Keep the 0.3 RPC entry points, but resolve them through the same allowlist.
     #[Action] public function create(): void { $this->open('page', 'create', ''); }
@@ -98,10 +98,27 @@ final class ResourceComponent extends Component
         $this->fingerprint = $opened['record'] !== null ? RecordRepository::fingerprint($opened['record']) : '';
         $this->mode = $action->getKind();
         $this->draft = json_encode((object) ActionForm::safe($action->getForm($resource), $opened['state']), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        if (strlen($this->draft) > 7000) {
+        if (strlen($this->draft) > 64000) {
             $this->discard(); throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]);
         }
         if (!$action->needsDialog($resource)) { $this->execute(); }
+    }
+    /** Refresh declared dependencies without validating/saving the resource. */
+    #[Action] public function refreshForm(): void
+    {
+        if ($this->mode === '') { throw new HttpException(400); }
+        $input = json_decode($this->draft, true);
+        if (!is_array($input) || !json_decode($this->draft) instanceof \stdClass) { throw new HttpException(400); }
+        $action = $this->active(); $resource = $this->resource(); $form = $action->getForm($resource);
+        if ($this->mode === 'bulk') { $this->bulkExecutor()->preview($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation); }
+        $record = $this->editingId !== '' ? $this->repository()->find($this->editingId) : null;
+        if ($this->activePlacement === 'row' && $record === null) { throw new ValidationException(['_form' => AdminLang::get('reactive.missing')]); }
+        $state = in_array($action->getKind(), ['create', 'edit'], true)
+            ? (new \FloCMS\Admin\Form\FormSubmission($resource, $this->repository()))->state($form, $input, $record)
+            : ActionForm::state($action, $form, $input, $record);
+        $form->refreshState($state, $record);
+        $this->draft = json_encode((object) ActionForm::safe($form, $state), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        if (strlen($this->draft) > 64000) { $this->draft = '{}'; throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
     }
     #[Action] public function execute(): void
     {
@@ -112,11 +129,11 @@ final class ResourceComponent extends Component
         $accepted = ActionForm::safe($action->getForm($this->resource()), json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR));
         try {
             if ($this->mode === 'bulk') {
-                $this->bulkExecutor()->execute($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation, json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 7000);
+                $this->bulkExecutor()->execute($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation, json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 64000);
                 $this->selectedIds = '[]';
             } else {
                 $this->executor()->execute($action, $this->activePlacement, $this->editingId, $this->operation,
-                    json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 7000);
+                    json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 64000);
             }
         } catch (ValidationException $error) {
             $this->draft = json_encode((object) $accepted, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -191,7 +208,7 @@ final class ResourceComponent extends Component
         }
         if ($this->draft !== '') {
             $this->draft = json_encode((object) $safe, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-            if (strlen($this->draft) > 7000) { $this->draft = '{}'; $this->errors['_form'] = AdminLang::get('reactive.large_form'); }
+            if (strlen($this->draft) > 64000) { $this->draft = '{}'; $this->errors['_form'] = AdminLang::get('reactive.large_form'); }
         }
         $prefix = 'fa-' . $this->instanceKey;
         $renderer = new ActionRenderer($resource, $registry);
@@ -207,7 +224,7 @@ final class ResourceComponent extends Component
             'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? AdminLang::get('bulk.confirm', ['count' => count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))]) : ($action?->getDescription() ?? ''),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
-            'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-'))->render($form),
+            'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true))->render($form),
             'notifications' => NotificationView::pending($this->instanceKey),
         ]);
     }

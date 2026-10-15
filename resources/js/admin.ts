@@ -3,6 +3,7 @@ import { initializeLegacy } from './legacy.js';
 import { initializeTranslations } from './translations';
 import { initializeSelection } from './selection';
 import { initializeLogin } from './login';
+import { initializeForms } from './forms';
 import '../assets/admin.css';
 
 let navigating = false;
@@ -36,6 +37,7 @@ function initialize(): void {
   initializeLegacy();
   const root = panel();
   if (!root) return;
+  initializeForms(root);
   initializeTranslations(root);
   initializeSelection(root);
   document.title = root.dataset.adminTitle || document.title;
@@ -51,6 +53,7 @@ async function navigate(url: URL, options: { method?: string; body?: URLSearchPa
   navigation?.abort();
   navigation = new AbortController();
   const current = panel();
+  const focusedId = options.body?.has('_refresh') ? document.activeElement?.id : '';
   current?.setAttribute('aria-busy', 'true');
   status(current?.dataset.adminBusy || 'Loading…');
   if (current) current.inert = true;
@@ -74,7 +77,7 @@ async function navigate(url: URL, options: { method?: string; body?: URLSearchPa
     if (options.history !== false) history[options.replace || options.method === 'POST' ? 'replaceState' : 'pushState'](null, '', finalUrl);
     displayedUrl = finalUrl;
     const invalid = next.querySelector<HTMLElement>('[aria-invalid="true"]');
-    (invalid || next.querySelector<HTMLElement>('#fa-content'))?.focus();
+    (invalid || (focusedId ? next.querySelector<HTMLElement>(`#${CSS.escape(focusedId)}`) : null) || next.querySelector<HTMLElement>('#fa-content'))?.focus();
     if (!invalid) window.scrollTo(0, 0);
     document.dispatchEvent(new CustomEvent('flo-admin:navigated'));
   } catch {
@@ -139,7 +142,22 @@ document.addEventListener('submit', event => {
     }
     const input = form.querySelector<HTMLInputElement>('[data-rx-bind="draft"]')!;
     input.value = JSON.stringify(values);
-    if (new TextEncoder().encode(input.value).length > 7000) {
+    if (form.dataset.adminRefreshing === 'true') {
+      delete form.dataset.adminRefreshing;
+      if (new TextEncoder().encode(input.value).length <= 64000) {
+        const original = form.dataset.rxSubmit;
+        form.dataset.rxSubmit = 'refreshForm';
+        queueMicrotask(() => { form.dataset.rxSubmit = original; });
+      } else {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const message = form.closest('dialog')?.querySelector<HTMLElement>('[data-rx-status]');
+        if (message) message.textContent = panel()?.dataset.adminLargeForm || 'This form is too large.';
+        const fallback = form.closest('dialog')?.querySelector<HTMLElement>('[data-admin-full-page]');
+        if (fallback) fallback.hidden = false;
+      }
+      return;
+    }
+    if (new TextEncoder().encode(input.value).length > 64000) {
       event.preventDefault(); event.stopImmediatePropagation();
       const message = form.closest('dialog')?.querySelector<HTMLElement>('[data-rx-status]');
       if (message) message.textContent = panel()?.dataset.adminLargeForm || 'This form is too large for the dialog. Copy any unsaved text before continuing on the full page.';
@@ -218,7 +236,7 @@ document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) { initializeTranslations(root); initializeSelection(root); }
+  if (root) { initializeForms(root); initializeTranslations(root); initializeSelection(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

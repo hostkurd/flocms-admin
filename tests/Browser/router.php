@@ -23,6 +23,7 @@ use FloCMS\Core\Http\Response;
 use FloCMS\Admin\Admin;
 use FloCMS\Admin\Tests\Fixtures\Actions\PostActionResource;
 use FloCMS\Admin\Tests\Fixtures\Resources\TagResource;
+use FloCMS\Admin\Tests\Fixtures\Resources\PropertyResource;
 if (!is_dir(ROOT . '/sessions')) { mkdir(ROOT . '/sessions', 0700, true); }
 session_save_path(ROOT . '/sessions');
 session_start();
@@ -43,7 +44,7 @@ if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
 }
-Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class], 'brand' => 'FloCMS Studio', 'login_theme' => true], true, ROOT);
+Admin::useConfig(['resources' => [PostActionResource::class, TagResource::class, PropertyResource::class], 'brand' => 'FloCMS Studio', 'login_theme' => true], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -55,6 +56,10 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")-
     foreach (['Sea view villa', 'Mountain cabin', 'City apartment', 'Garden house', 'Lake house', 'Modern loft', 'Country cottage', 'Studio'] as $i => $title) {
         App::$db->table('posts')->insert(['title'=>json_encode(['en'=>$title,'ar'=>'منزل '.$i,'ku'=>'خانوو '.$i]),'slug'=>'post-'.($i+1),'body'=>json_encode(['en'=>'A place to call home.']),'status'=>'draft','views'=>10,'featured'=>1]);
     }
+}
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='properties'")->fetchColumn()) {
+    $pdo->exec('CREATE TABLE properties (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, country TEXT, city TEXT, listing_type TEXT, price DECIMAL(12,2), lease_months INTEGER, access_code TEXT, status TEXT, published_on DATE)');
+    App::$db->table('properties')->insert(['title' => '{"en":"Villa"}', 'description' => '{"en":"Description"}', 'country' => 'iq', 'city' => 'sulaimani', 'listing_type' => 'sale', 'price' => 100, 'status' => 'draft']);
 }
 if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }

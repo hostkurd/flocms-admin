@@ -13,20 +13,71 @@ final class Form
     /** @var array<string, Field> */
     private array $fields = [];
 
-    /** @param list<Field> $fields */
+    private array $components = [];
+    private int $columns = 2;
+    public function columns(int $columns): self
+    {
+        if ($columns < 1 || $columns > 4) { throw new InvalidArgumentException('Forms support 1–4 columns.'); }
+        $this->columns = $columns; return $this;
+    }
+    public function getColumns(): int { return $this->columns; }
+    public function components(): array { return $this->components; }
+
+    /** Fields may be grouped in layouts while retaining flat, unique names. */
     public function schema(array $fields): self
     {
-        foreach ($fields as $field) {
-            if (!$field instanceof Field) {
-                throw new InvalidArgumentException('Form::schema() expects Field objects.');
+        $components = array_merge($this->components, $fields);
+        $flat = []; $count = 0;
+        $walk = function (array $nodes, int $depth = 0) use (&$walk, &$flat, &$count): void {
+            if ($depth > 8) { throw new InvalidArgumentException('Form layouts are nested too deeply.'); }
+            foreach ($nodes as $node) {
+                if (++$count > 256) { throw new InvalidArgumentException('Too many form components.'); }
+                if ($node instanceof \FloCMS\Admin\Form\Layout\Layout) { $walk($node->children(), $depth + 1); }
+                elseif ($node instanceof Field) {
+                    if (isset($flat[$node->getName()])) { throw new InvalidArgumentException('The form has two fields named "' . $node->getName() . '".'); }
+                    $flat[$node->getName()] = $node;
+                } else { throw new InvalidArgumentException('Form::schema() expects fields or layouts.'); }
             }
-            if (isset($this->fields[$field->getName()])) {
-                throw new InvalidArgumentException('The form has two fields named "' . $field->getName() . '".');
-            }
-            $this->fields[$field->getName()] = $field;
-        }
+        };
+        $walk($components); $this->components = $components; $this->fields = $flat; return $this;
+    }
 
-        return $this;
+    /** Resolve dependencies in order; hidden submitted values never control other fields. */
+    public function evaluate(array &$state, ?object $record = null): self
+    {
+        $result = clone $this; $resolved = []; $effective = []; $visiting = [];
+        $visit = function (string $name) use (&$visit, &$resolved, &$effective, &$visiting, &$state, $record): void {
+            if (isset($resolved[$name])) { return; }
+            if (isset($visiting[$name])) { throw new \LogicException('Cyclic form dependency: ' . $name); }
+            $field = $this->fields[$name] ?? throw new \LogicException('Unknown form dependency: ' . $name);
+            $visiting[$name] = true;
+            foreach ($field->dependencies() as $dependency) {
+                if (($this->fields[$dependency] ?? null)?->isTranslatable()) { throw new \LogicException('Dependencies must use scalar fields.'); }
+                if (($this->fields[$dependency] ?? null) instanceof \FloCMS\Admin\Form\Fields\TextInput && $this->fields[$dependency]->getType() === 'password') { throw new \LogicException('Passwords cannot control dependencies.'); }
+                $visit($dependency);
+            }
+            $current = $field->resolve($effective);
+            if (!$current->isVisible() || ($current->isDisabled() && $record !== null)) { $state[$name] = $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default()); }
+            $value = $state[$name] ?? $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default());
+            $effective[$name] = !$current->isVisible() || is_array($value) || $current->typeError((string) $value) !== null ? '' : $value;
+            $resolved[$name] = $current; unset($visiting[$name]);
+        };
+        foreach (array_keys($this->fields) as $name) { $visit($name); }
+        $result->fields = array_replace($this->fields, $resolved); return $result;
+    }
+    public function refreshState(array &$state, ?object $record = null): void
+    {
+        $resolved = $this->evaluate($state, $record);
+        foreach ($resolved->fields() as $name => $field) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Select && $field->hasDependentOptions() && $field->typeError((string) ($state[$name] ?? '')) !== null) { $state[$name] = ''; }
+        }
+        $this->evaluate($state, $record);
+    }
+    public function liveFields(): array
+    {
+        $names = [];
+        foreach ($this->fields as $field) { $names = array_merge($names, $field->dependencies()); }
+        return array_values(array_unique($names));
     }
 
     /** @return array<string, Field> */

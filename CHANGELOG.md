@@ -2,7 +2,20 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## 0.5.0 - Unreleased
+## 0.6.0 - Unreleased
+
+### Added
+- Sections, tabs and responsive 1–4 column grids with flat, unique field names shared by CRUD and action forms.
+- Accessible keyboard/RTL tabs, error-tab selection, and visible section fallback without JavaScript.
+- Server-resolved dependent select options and conditional visibility/required rules; hidden values cannot bypass validation or overwrite stored columns.
+- Authorized, non-writing dependency refreshes for Reactive, standard, custom and bulk action forms, preserving unrelated drafts and existing operation guards.
+- Runnable Properties example and [Forms guide](docs/forms.md), including database, callback, password and no-JavaScript contracts.
+
+### Changed
+- Requires Reactive `^0.4.0` for larger bounded scalar state. Modal drafts now allow 64,000 UTF-8 JSON bytes, with full-page recovery above that size.
+- Assets use complete release filenames `admin-v0.6.0.js` and `admin-v0.6.0.css`. Core and skeleton dependencies are unchanged; no application migration is performed automatically.
+
+## 0.5.0 - 2026-10-14
 
 ### Added
 - Select, toggle and inclusive date-range table filters with allowlisted values, bound queries, bookmarks and no-reload back/forward restoration.

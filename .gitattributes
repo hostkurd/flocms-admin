@@ -18,3 +18,5 @@
 /playwright-report export-ignore
 /.phpunit.cache export-ignore
 /.phpunit.result.cache export-ignore
+
+/composer.local.* export-ignore

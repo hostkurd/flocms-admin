@@ -17,12 +17,16 @@ final class FormSubmission
                 ? $field->stateFromInput($input, Languages::all())
                 : $field->stateFromRecord($record, Languages::default());
         }
+        $form->evaluate($state, $record);
         foreach ($form->fields() as $field) { $state = $field->prepare($state, Languages::default()); }
-        return $this->resource->normalizeState($state, $record);
+        $state = $this->resource->normalizeState($state, $record);
+        $form->evaluate($state, $record);
+        return $state;
     }
 
     public function errors(Form $form, array $state, ?object $record): array
     {
+        $form = $form->evaluate($state, $record);
         $pk = $this->resource::getPrimaryKey();
         $except = $record === null ? null : (string) $record->{$pk};
         $validator = new FormValidator(Languages::all(), Languages::default(),
@@ -35,6 +39,7 @@ final class FormSubmission
     /** Optional original record enables atomic optimistic concurrency for Reactive saves. */
     public function save(Form $form, array $state, ?object $record, bool $guarded = false): string
     {
+        $form = $form->evaluate($state, $record);
         return $this->repository->transaction(function () use ($form, $state, $record, $guarded): string {
             $class = $this->resource;
             $skip = $this->skip($form, $state, $record);

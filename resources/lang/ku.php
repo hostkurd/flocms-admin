@@ -1,6 +1,7 @@
 <?php
 // flocms-admin: کوردی (سۆرانی)
 return [
+    'form.update_fields' => 'نوێکردنەوەی خانەکان',
     'nav.label' => 'لیستی بەڕێوەبردن',
     'nav.dashboard' => 'داشبۆرد',
     'nav.resources' => 'ناوەڕۆک',
