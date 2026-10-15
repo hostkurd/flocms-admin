@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.9.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.9.0" -W`, then run `php flo view:clear` and reload open Admin pages. Composer ships `admin-v0.9.0.css`/`.js` and the fonts in `resources/fonts/`; no Node build, migration or dependency change is needed.
+
+- The panel looks different (new fonts, colours, spacing and focus ring). If your template overrides admin styles by selector, check them; prefer the new `--fa-*` custom properties (README, "Look and theming").
+- Optional: add `'theme' => 'light'` (or `'dark'`, `'auto'`) to `config/admin.php`. Without it the panel stays light.
+- If a strict `font-src` Content-Security-Policy is set, allow `'self'`; the fonts are served from the site's own `/flo-admin/asset/` route.
+
+---
+
 # Upgrading to Admin 0.8.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.8.1" -W` and reload open Admin pages. Composer ships `admin-v0.8.1.css`/`.js` in place of the 0.8.0 files; no configuration, resource, database or dependency change is needed. The only visible change is that the panel no longer sits inside the browser's default 8 px page margin.

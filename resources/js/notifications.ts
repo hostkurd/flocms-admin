@@ -13,6 +13,7 @@ export function receiveNotifications(): void {
     document.body.append(host);
   }
   host.dir = panel.dir;
+  host.dataset.theme = panel.dataset.theme || 'light';
   host.setAttribute('aria-label', panel.dataset.adminNotificationsLabel || 'Notifications');
   document.querySelectorAll<HTMLElement>('[data-admin-notification-payload]').forEach(payload => {
     payload.querySelectorAll<HTMLElement>('[data-admin-notification]').forEach(message => {

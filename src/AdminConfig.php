@@ -83,6 +83,16 @@ final class AdminConfig
     /** Opt-in for existing installations; fresh installs include this setting. */
     public function loginThemeEnabled(): bool { return ($this->values['login_theme'] ?? false) === true; }
 
+    public const THEMES = ['light', 'dark', 'auto'];
+
+    /** Colour theme: light (default), dark, or auto (follows the operating system). Unknown values fall back to light; admin:doctor reports them. */
+    public function theme(): string
+    {
+        $theme = $this->values['theme'] ?? 'light';
+
+        return is_string($theme) && in_array($theme, self::THEMES, true) ? $theme : 'light';
+    }
+
     public function permissionPrefix(): string
     {
         $prefix = trim((string) ($this->values['permission_prefix'] ?? 'content'), '.');

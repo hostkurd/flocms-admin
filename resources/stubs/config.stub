@@ -29,6 +29,9 @@ return [
     // (the skeleton's users table). false switches both off.
     'users' => true,
 
+    // Colour theme: 'light', 'dark', or 'auto' (follows the operating system)
+    'theme' => 'light',
+
     // Name at the top of the sidebar
     'brand' => \FloCMS\Core\Env::get('SITE_NAME_ADMIN', 'Admin'),
 

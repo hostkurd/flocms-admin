@@ -83,6 +83,7 @@ final class PanelView
             'assets' => \FloCMS\Admin\Assets::tags(),
             'navigation' => Admin::config()->reactiveEnabled(),
             'panelBase' => Admin::url(),
+            'theme' => Admin::config()->theme(),
         ];
     }
 

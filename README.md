@@ -261,12 +261,25 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `resources_path` | `'admin/Resources'` | Folder of the resource classes |
 | `resources_namespace` | `'App\Admin\Resources'` | Their namespace |
 | `brand` | `SITE_NAME_ADMIN` | Name at the top of the sidebar |
+| `theme` | `'light'` | Colour theme: `'light'`, `'dark'`, or `'auto'` (follows the visitor's operating system) |
 | `per_page` | `25` | Rows per page |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
 
 The panel is drawn inside the active template's `layouts/admin.html`, which must print `$data['content']` (the skeleton's does). Its versioned CSS and JavaScript are served from the installed Composer package through Admin asset routes; no manual asset publishing or hosting-side Node build is required.
+
+### Look and theming
+
+The panel ships its own fonts: Instrument Sans for Latin text and Noto Sans Arabic for Arabic and Kurdish (both SIL Open Font License, in `resources/fonts/`). They are served by the same asset route as the CSS, and a browser downloads only the scripts a page uses (about 40 KB for Latin, 165 KB once for Arabic script).
+
+All colours, radii and shadows are CSS custom properties on `.fa-panel` (and `.fa-login`). To adjust the look without overriding selectors, set them in your template's stylesheet, for example:
+
+```css
+.fa-panel, .fa-login { --fa-primary: #4f46e5; --fa-primary-hover: #4338ca; --fa-primary-text: #4f46e5; }
+```
+
+The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-border`, `--fa-primary` (fills), `--fa-primary-text` (links and active states), `--fa-success` / `--fa-warning` / `--fa-danger` / `--fa-info` with `-soft` backgrounds, `--fa-radius` and `--fa-font`. The dark theme redefines the same names, so a site override applies to the light theme unless it also targets `.fa-panel[data-theme="dark"]`.
 
 ## Commands
 
@@ -304,6 +317,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.4: shared Actions, action forms/confirmation and persistent Notifications
 - Completed through 0.7: table filters, bulk actions, richer Forms, and single image/file fields
 - Completed in 0.8: configurable dashboard widgets
+- 0.9: design foundation: tokens, light/dark/auto theme, shipped fonts. Following releases restyle the list page, modals and forms, the panel shell, and phone layouts
 - Next: relationship fields and managers
 - Later: relationships, a settings page, more generators
 

@@ -34,7 +34,10 @@ final class LoginViewTest extends TestCase
         self::assertStringNotContainsString('<script>bad()', $html);
         self::assertStringNotContainsString('must-not-appear', $html);
         self::assertStringNotContainsString('reactive-v', $html);
-        self::assertStringContainsString('admin-v0.8.1.css', $html);
+        self::assertStringContainsString('admin-v0.9.0.css', $html);
+        self::assertStringContainsString('data-theme="light"', $html);
+        Admin::useConfig(['login_theme' => true, 'theme' => 'auto']);
+        self::assertStringContainsString('data-theme="auto"', LoginView::render());
     }
     public function testSignedInNonadminCanStillSignOut(): void
     {

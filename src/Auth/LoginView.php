@@ -21,7 +21,7 @@ final class LoginView
             't' => PageView::translator(), 'brand' => AdminLang::label(Admin::config()->brand()), 'lang' => $lang, 'dir' => PanelView::direction($lang),
             'languages' => $languages, 'message' => $message, 'csrf' => Csrf::field(), 'email' => is_string($email) ? mb_substr($email, 0, 254) : '',
             'assets' => Assets::loginTags(), 'action' => Admin::url('users/login'), 'siteUrl' => $base . '/' . rawurlencode($lang) . '/',
-            'signedIn' => (bool) Session::get('isloggedin'), 'logoutUrl' => Admin::url('users/logout'),
+            'signedIn' => (bool) Session::get('isloggedin'), 'logoutUrl' => Admin::url('users/logout'), 'theme' => Admin::config()->theme(),
         ]);
     }
 }
