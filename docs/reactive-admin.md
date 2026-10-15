@@ -1,8 +1,8 @@
 # Reactive Admin integration
 
-Admin applies its Reactive adapter to existing `Resource` classes. The list renders on the server. htmx transports component actions and Alpine CSP/Morph updates their HTML through Reactive 0.3; Admin's small navigation adapter fetches panel pages and owns browser history. There is no client-side data model or second application API.
+Admin applies its Reactive adapter to existing `Resource` classes. The list renders on the server. htmx transports component actions and Alpine CSP/Morph updates their HTML through Reactive 0.4; Admin's small navigation adapter fetches panel pages and owns browser history. There is no client-side data model or second application API.
 
-`FormSubmission` owns normalization, validation and transactional persistence for both modal and standard forms. `RecordRepository` owns scoped reads and conditional mutations. Existing `Form`, `Table` and `Resource` contracts remain the extension points. Admin 0.4 adds shared [Actions and Notifications](actions-and-notifications.md); Widgets remain a later milestone.
+`FormSubmission` owns normalization, validation and transactional persistence for both modal and standard forms. `RecordRepository` owns scoped reads and conditional mutations. Existing `Form`, `Table` and `Resource` contracts remain the extension points. Admin 0.4 added shared [Actions and Notifications](actions-and-notifications.md) and Admin 0.8 opt-in [dashboard Widgets](widgets.md).
 
 ## Runnable example
 

@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.8.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.8.1" -W` and reload open Admin pages. Composer ships `admin-v0.8.1.css`/`.js` in place of the 0.8.0 files; no configuration, resource, database or dependency change is needed. The only visible change is that the panel no longer sits inside the browser's default 8 px page margin.
+
+---
+
 # Upgrading to Admin 0.8.0
 
 Update after release with `composer require "hostkurd/flocms-admin:^0.8.0" -W`, then run `php flo view:clear` and `php flo admin:doctor`, and reload open Admin pages. Composer ships `admin-v0.8.0.css`/`.js`; no application Node build or manual asset publishing is required. Existing Core `^2.3.2`, Reactive `^0.4.0`, Uploader `^1.2.0` and PHP `^8.1` requirements are unchanged.
