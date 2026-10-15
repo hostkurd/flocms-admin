@@ -1,4 +1,14 @@
-# Upgrading to Admin 0.6.0
+# Upgrading to Admin 0.8.0
+
+Update after release with `composer require "hostkurd/flocms-admin:^0.8.0" -W`, then run `php flo view:clear` and `php flo admin:doctor`, and reload open Admin pages. Composer ships `admin-v0.8.0.css`/`.js`; no application Node build or manual asset publishing is required. Existing Core `^2.3.2`, Reactive `^0.4.0`, Uploader `^1.2.0` and PHP `^8.1` requirements are unchanged.
+
+Widgets are opt-in. Existing configuration with no `widgets` entry, or `'widgets' => []`, keeps the original resource-count dashboard. To use widgets, add the explicit class list and optional `widgets_path`, `widgets_namespace` and `widget_columns` settings shown in [docs/widgets.md](docs/widgets.md), then create your own widget PHP classes. No migration, example database, application layout replacement or skeleton update is installed.
+
+Use only registered source resources and the scoped read helpers for tenant-sensitive dashboard data. Widgets check all declared source view permissions before their providers run; optional widget permissions can narrow access. Providers must be read-only, because rendering/refresh repeats them. Do not put user- or tenant-specific results in shared caches. See the guide for supported widget types, bounds, failure handling and the normal GET refresh fallback.
+
+---
+
+# Upgrading to Admin 0.7.0
 
 ## 0.6 → 0.7
 
@@ -10,6 +20,10 @@ Managed file columns belong to CRUD: do not rewrite them in beforeSave/afterSave
 
 Publish/distribute `dist/admin-v0.7.0.css` and `.js` together with this package and clear cached asset references. Existing resources without upload fields retain their form contracts. All standard POST form navigation now uses FormData to preserve binary file inputs.
 
+
+---
+
+# Upgrading to Admin 0.6.0
 
 Release Reactive 0.4.0 before Admin 0.6.0. Then run `composer require hostkurd/flocms-admin:0.6.0 -W`, `php flo view:clear` and `php flo admin:doctor`, and reload open Admin pages. Admin now requires Reactive `^0.4.0`; PHP 8.1+ and Core `^2.3.2` remain unchanged. Deploy the supplied `admin-v0.6.0.js` / `.css` and matching Reactive assets. Full release-version filenames remain the convention. No Node build, package database migration, skeleton change or resource rewrite is required.
 

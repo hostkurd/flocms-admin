@@ -4,7 +4,9 @@
         <p class="fa-muted fa-subtitle">{{ $greeting }}</p>
     </div>
 </div>
-@if(count($cards) > 0)
+@if($widgetHtml !== null)
+{!! $widgetHtml !!}
+@elseif(count($cards) > 0)
 <div class="fa-cards">
     @foreach($cards as $card)
     <a class="fa-card fa-stat" href="{{ $card['url'] }}">

@@ -122,6 +122,8 @@ for (const lang of ['ar', 'ku']) test(`mobile ${lang} filters and selection rema
 test('bulk unpublish leaves unselected published rows intact', async ({ page }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.locator('#fa-admin-resource-row-5')).toBeVisible();
+  await expect(page.locator('[data-rx-component]')).toHaveAttribute('aria-busy', 'false');
   await page.locator('[data-admin-select-page]').check();
   await expect(selected(page)).toHaveText('3 records selected');
   await page.locator('[data-admin-bulk-name]').selectOption('publish');

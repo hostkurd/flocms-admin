@@ -88,6 +88,13 @@ final class DoctorCommand extends Command
             $this->checkResource('accounts', $users, $db, ['is_verified', 'verify_type', 'token']);
         }
 
+        try {
+            $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
+            foreach ($widgets->problems() as $problem) { $this->bad('Widget: ' . $problem); }
+            $config->widgetColumns();
+            if ($widgets->configured()) { $this->ok('Configured dashboard widgets: ' . count($widgets->all()) . ' (data providers not executed)'); }
+        } catch (Throwable $error) { $this->bad('Widgets: ' . $error->getMessage()); }
+
         $this->newLine();
         if ($this->errors > 0) {
             $this->error($this->errors . ' problem(s), ' . $this->warnings . ' warning(s).');

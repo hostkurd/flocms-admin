@@ -17,6 +17,14 @@ return [
     'resources_path' => 'admin/Resources',
     'resources_namespace' => 'App\\Admin\\Resources',
 
+    // Optional dashboard widgets, explicitly registered. Empty keeps resource-count cards.
+    'widgets' => [
+        // App\Admin\Widgets\Overview::class,
+    ],
+    'widgets_path' => 'admin/Widgets',
+    'widgets_namespace' => 'App\\Admin\\Widgets',
+    'widget_columns' => 2,
+
     // Users management at /admin/accounts and the profile page at /admin/profile
     // (the skeleton's users table). false switches both off.
     'users' => true,

@@ -15,3 +15,5 @@ if (class_exists(\FloCMS\Core\App::class) && method_exists(\FloCMS\Core\App::cla
 }
 
 \FloCMS\Reactive\Reactive::register('flo-admin-resource', \FloCMS\Admin\Reactive\ResourceComponent::class);
+
+\FloCMS\Reactive\Reactive::register('flo-admin-dashboard', \FloCMS\Admin\Reactive\DashboardComponent::class);
