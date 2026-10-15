@@ -17,9 +17,11 @@ final class FormSubmission
                 ? $field->stateFromInput($input, Languages::all())
                 : $field->stateFromRecord($record, Languages::default());
         }
+        $state = \FloCMS\Admin\Uploads\Uploads::state($form, $state, $this->resource, $record);
         $form->evaluate($state, $record);
         foreach ($form->fields() as $field) { $state = $field->prepare($state, Languages::default()); }
         $state = $this->resource->normalizeState($state, $record);
+        $state = \FloCMS\Admin\Uploads\Uploads::state($form, $state, $this->resource, $record);
         $form->evaluate($state, $record);
         return $state;
     }
@@ -37,10 +39,15 @@ final class FormSubmission
     }
 
     /** Optional original record enables atomic optimistic concurrency for Reactive saves. */
-    public function save(Form $form, array $state, ?object $record, bool $guarded = false): string
+    public function save(Form $form, array $state, ?object $record, bool $guarded = false, ?\FloCMS\Admin\Uploads\UploadBatch $batch = null): string
     {
         $form = $form->evaluate($state, $record);
-        return $this->repository->transaction(function () use ($form, $state, $record, $guarded): string {
+        $owns = $batch === null;
+        if ($owns && $this->repository->inTransaction()) { throw new \LogicException('Supply the outer transaction upload batch.'); }
+        $batch ??= new \FloCMS\Admin\Uploads\UploadBatch();
+        try {
+        $id = $this->repository->transaction(function () use ($form, $state, $record, $guarded, $batch): string {
+            $state = $batch->prepare($form, $state, $this->resource, $record);
             $class = $this->resource;
             $skip = $this->skip($form, $state, $record);
             $data = [];
@@ -57,7 +64,11 @@ final class FormSubmission
             $pk = $class::getPrimaryKey();
             if ($record !== null) { unset($data[$pk]); }
             unset($data['created_at'], $data['updated_at']);
+            $prepared = $data;
             $data = $class->beforeSave($data, $record);
+            foreach ($form->writableFields() as $name => $field) {
+                if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && ($data[$name] ?? null) !== ($prepared[$name] ?? null)) { throw new \LogicException('beforeSave must preserve managed upload columns.'); }
+            }
             if ($class::usesTimestamps()) {
                 $now = date('Y-m-d H:i:s');
                 if ($record === null) { $data['created_at'] = $now; }
@@ -73,6 +84,9 @@ final class FormSubmission
             if ($saved !== null) { $class->afterSave($saved); }
             return $id;
         });
+        } catch (\Throwable $error) { if ($owns) { $batch->rollback(); } throw $error; }
+        if ($owns) { $batch->commit(); }
+        return $id;
     }
 
     private function skip(Form $form, array $state, ?object $record): array

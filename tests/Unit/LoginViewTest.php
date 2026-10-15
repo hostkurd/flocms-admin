@@ -34,7 +34,7 @@ final class LoginViewTest extends TestCase
         self::assertStringNotContainsString('<script>bad()', $html);
         self::assertStringNotContainsString('must-not-appear', $html);
         self::assertStringNotContainsString('reactive-v', $html);
-        self::assertStringContainsString('admin-v0.6.0.css', $html);
+        self::assertStringContainsString('admin-v0.7.0.css', $html);
     }
     public function testSignedInNonadminCanStillSignOut(): void
     {

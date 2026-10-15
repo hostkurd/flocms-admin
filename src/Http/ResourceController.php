@@ -53,6 +53,8 @@ final class ResourceController extends PanelController
             'admin_delete' => $class::permission('delete'),
             'admin_action' => $class::permission('view'),
             'admin_bulk' => $class::permission('view'),
+            'admin_upload' => $class::permission('view'),
+            'admin_file' => $class::permission('view'),
         ];
     }
 
@@ -139,7 +141,10 @@ final class ResourceController extends PanelController
             throw new HttpException(403);
         }
 
+        $batch = new \FloCMS\Admin\Uploads\UploadBatch();
+        $batch->deleting($this->resource, $record);
         $this->repository()->delete($this->recordId());
+        $batch->commit();
         Session::setFlash(AdminLang::get('flash.deleted', ['label' => $class::getLabel()]), 'success');
 
         $back = $this->safeBackUrl((string) ($this->request->input('_back') ?? ''));
@@ -240,11 +245,76 @@ final class ResourceController extends PanelController
         $title = $action->getTitle($this->resource);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
-            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit'))->render($form),
+            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record)))->render($form),
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '')),
             'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),
         ]), $this->resource::getSlug());
+    }
+
+    /** Multipart transport for a declared CRUD action; never a generic upload API. */
+    public function admin_upload(): \FloCMS\Core\Http\Response
+    {
+        if (!$this->isPost()) { throw new HttpException(405); }
+        $placement = $this->request->input('_placement'); $name = $this->request->input('_name');
+        $id = $this->request->input('_id'); $operation = $this->request->input('_operation');
+        $fieldName = $this->request->input('_field'); $draft = $this->request->input('_draft');
+        foreach ([$placement, $name, $id, $operation, $fieldName, $draft] as $value) { if (!is_string($value)) { throw new HttpException(400); } }
+        if (strlen($draft) > 64000) { throw new HttpException(413); }
+        \FloCMS\Admin\Actions\ActionExecutor::validContext($placement, $id);
+        $entry = \FloCMS\Admin\Actions\OperationStore::get($operation, $this->resource::getSlug(), $placement, $name, $id);
+        $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find($placement, $name);
+        if (!in_array($action->getKind(), ['create', 'edit'], true)) { throw new HttpException(400); }
+        $record = (new \FloCMS\Admin\Actions\ActionExecutor($this->resource, $this->repository()))->record($placement, $id);
+        $action->authorizeRequest($this->resource, $record);
+        if ($record !== null && !hash_equals($entry['fingerprint'], RecordRepository::fingerprint($record))) { throw new HttpException(409); }
+        try { $input = json_decode($draft, true, 64, JSON_THROW_ON_ERROR); }
+        catch (\JsonException) { throw new HttpException(400); }
+        if (!is_array($input)) { throw new HttpException(400); }
+        $form = $action->getForm($this->resource);
+        $state = (new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository()))->state($form, $input, $record);
+        $field = $form->evaluate($state, $record)->field($fieldName);
+        if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || !$field->isWritable()) { throw new HttpException(403); }
+        try {
+            $value = \FloCMS\Admin\Uploads\Uploads::stage(is_array($_FILES['file'] ?? null) ? $_FILES['file'] : [], $field, \FloCMS\Admin\Uploads\Uploads::scope($this->resource, $record, $fieldName));
+        } catch (\FloCMS\Core\HttpException|\FloCMS\Uploader\Exceptions\UploadException) {
+            return \FloCMS\Core\Http\Response::json(['error' => AdminLang::get('uploads.invalid')], 422)->header('Cache-Control', 'no-store');
+        }
+        return \FloCMS\Core\Http\Response::json(['value' => $value, 'url' => (\FloCMS\Admin\Uploads\Uploads::url($this->resource, $record))($field, $value)])->header('Cache-Control', 'no-store');
+    }
+
+    /** Managed files are private; recheck the current record policy on every read. */
+    public function admin_file(): \FloCMS\Core\Http\Response
+    {
+        if (!$this->request->isMethod('GET', 'HEAD')) { throw new HttpException(405); }
+        if (count($this->params) !== 2) { throw new HttpException(404); }
+        [$id, $name] = $this->params;
+        $pending = $id === 'pending';
+        if ($pending) {
+            $token = $this->request->queryValue('token', ''); if (!is_string($token)) { throw new HttpException(404); }
+            $entry = \FloCMS\Admin\Uploads\Uploads::entry($token);
+            [$slug, $id, $fieldName] = json_decode($entry['scope'], true, 64, JSON_THROW_ON_ERROR);
+            if ($slug !== $this->resource::getSlug() || $fieldName !== $name) { throw new HttpException(404); }
+        }
+        $record = $id !== '' ? $this->repository()->find($id) : null;
+        if ($id !== '' && $record === null) { throw new HttpException(404); }
+        Auth::authorize($this->resource::permission($record === null ? 'create' : 'update'));
+        if ($record === null ? !$this->resource->canCreate() : !$this->resource->canEdit($record)) { throw new HttpException(403); }
+        $form = $this->form(); $state = [];
+        foreach ($form->fields() as $n => $f) { $state[$n] = $f->stateFromRecord($record, Languages::default()); }
+        $field = $form->evaluate($state, $record)->field($name);
+        if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || (!$pending && !$field->isVisible())) { throw new HttpException(404); }
+        $path = $pending ? $entry['path'] : (string) ($record->{$name} ?? '');
+        if (!$pending && !\FloCMS\Admin\Uploads\Uploads::managed($path, $this->resource, $field)) { throw new HttpException(404); }
+        $absolute = \FloCMS\Admin\Uploads\Uploads::storage()->path($path);
+        if ($absolute === null || !is_file($absolute) || filesize($absolute) > 16777216) { throw new HttpException(404); }
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($absolute);
+        $inline = $field instanceof \FloCMS\Admin\Form\Fields\ImageUpload && in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true);
+        return \FloCMS\Core\Http\Response::make($this->request->isMethod('HEAD') ? '' : (string) file_get_contents($absolute))
+            ->header('Content-Type', $inline ? $mime : 'application/octet-stream')
+            ->header('Content-Disposition', ($inline ? 'inline' : 'attachment') . '; filename="' . basename($path) . '"')
+            ->header('Cache-Control', 'private, no-store')->header('X-Content-Type-Options', 'nosniff')
+            ->header('Content-Security-Policy', "default-src 'none'; sandbox");
     }
 
     private function builtin(string $placement, string $name, string $kind): \FloCMS\Admin\Actions\Action
@@ -269,7 +339,8 @@ final class ResourceController extends PanelController
 
         if ($this->isPost()) {
             $submission = new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository());
-            $state = $submission->state($form, $this->request->all(), $record);
+            $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $this->request->all(), $_FILES['_uploads'] ?? [], $this->resource, $record);
+            $state = $submission->state($form, $input, $record);
             $refreshing = $this->request->input('_refresh') !== null;
             if ($refreshing) { $form->refreshState($state, $record); }
             $errors = $refreshing ? [] : $submission->errors($form, $state, $record);
@@ -292,7 +363,7 @@ final class ResourceController extends PanelController
             }
         }
 
-        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit);
+        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record));
         $view = new PageView($class);
         $title = $isEdit
             ? AdminLang::get('form.edit_title', ['label' => $class::getLabel()])

@@ -256,3 +256,8 @@ body:has(> .fa-login){margin:0}
 .fa-tab-list [aria-selected=true]{color:var(--fa-primary);border-color:var(--fa-primary)}
 .fa-tabs[data-admin-tabs-ready]>.fa-tab-heading,.fa-tabs[data-admin-tabs-ready]>[data-admin-tab-panel]>.fa-tab-heading{display:none}
 @media(max-width:767px){.fa-panel .fa-form-grid{grid-template-columns:minmax(0,1fr)}.fa-panel .fa-field{grid-column:1/-1}}
+
+/* Managed single-file fields */
+.fa-upload{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;min-width:0}.fa-upload>.fa-input,.fa-upload>.fa-help,.fa-upload>.fa-error{flex-basis:100%;min-width:0}.fa-upload-preview{display:block;width:100%;max-width:20rem;max-height:12rem;object-fit:contain;border:1px solid var(--fa-border,#ddd);border-radius:.5rem}.fa-upload-remove{display:inline-flex;gap:.4rem;align-items:center}.fa-upload input[type=file]{max-width:100%}
+
+.fa-upload-remove[hidden]{display:none}

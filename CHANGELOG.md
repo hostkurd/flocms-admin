@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-10-15
+
+- Add single-file FileUpload and raster ImageUpload fields to resource CRUD forms, with MIME/extension/actual-size/dimension validation and private local storage through flocms-uploader ^1.2.0.
+- Add CSRF-protected multipart transport for Reactive dialogs, session/actor/record/field-bound pending tokens, permission-checked downloads/previews, and multipart standard/async forms including no-JavaScript submissions.
+- Preserve pending selections on validation failure, compensate newly written files on transaction rollback, and clean up replaced/removed/deleted managed files only after commit. Bound pending lifetime, count and bytes; expose scheduled stale-upload pruning.
+- Add English/Arabic/Kurdish controls, mobile RTL preview styling, runnable fixtures, regression coverage, the Uploads guide and upgrade notes. Ship admin-v0.7.0 assets.
+- Keep Core and standalone skeleton unchanged; Reactive remains ^0.4.0. Upload fields are limited to resource CRUD forms and private local storage in this release.
+
+
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
 ## 0.6.0 - Unreleased

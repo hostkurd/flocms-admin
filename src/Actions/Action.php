@@ -103,7 +103,9 @@ class Action
     public function getForm(Resource $resource): Form
     {
         if (in_array($this->kind, ['create', 'edit'], true)) { return $resource->form(new Form()); }
-        return $this->form !== null ? ($this->form)(new Form()) : new Form();
+        $form = $this->form !== null ? ($this->form)(new Form()) : new Form();
+        foreach ($form->fields() as $field) { if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload) { throw new \LogicException('Upload fields belong to resource CRUD forms; custom and bulk actions do not own a file column lifecycle.'); } }
+        return $form;
     }
     public function allowed(Resource $resource, ?object $record): bool
     {

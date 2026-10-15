@@ -1,5 +1,16 @@
 # Upgrading to Admin 0.6.0
 
+## 0.6 → 0.7
+
+Update `hostkurd/flocms-admin` to `^0.7.0`. Composer adds the already-released `hostkurd/flocms-uploader ^1.2.0` (requires `ext-fileinfo`); Core stays `^2.3.2`, Reactive stays `^0.4.0`, PHP stays `^8.1`. No separate prerequisite release or Core/skeleton update is required.
+
+Upload fields are opt-in: add nullable string/TEXT columns in your application migration and declare `FileUpload` / `ImageUpload` in the resource form. Keep `<root>/storage/admin-uploads` outside public web access, writable by PHP, backed up with the database, and configure multipart request limits. See [uploads.md](docs/uploads.md) for exact supported types/size/dimensions, editor-only download permissions, token expiry/quotas, and scheduled cleanup. No file table, filesystem symlink, application migration, public storage route or global uploader config is installed.
+
+Managed file columns belong to CRUD: do not rewrite them in beforeSave/afterSave/custom callbacks or copy their values between records. `beforeSave` must preserve prepared upload columns. Deleting through Admin row/bulk actions also deletes managed files after commit; raw SQL and external application code remain responsible for their own file handling. Legacy external paths are retained but not served/deleted. Custom/bulk input forms cannot declare upload fields in this version.
+
+Publish/distribute `dist/admin-v0.7.0.css` and `.js` together with this package and clear cached asset references. Existing resources without upload fields retain their form contracts. All standard POST form navigation now uses FormData to preserve binary file inputs.
+
+
 Release Reactive 0.4.0 before Admin 0.6.0. Then run `composer require hostkurd/flocms-admin:0.6.0 -W`, `php flo view:clear` and `php flo admin:doctor`, and reload open Admin pages. Admin now requires Reactive `^0.4.0`; PHP 8.1+ and Core `^2.3.2` remain unchanged. Deploy the supplied `admin-v0.6.0.js` / `.css` and matching Reactive assets. Full release-version filenames remain the convention. No Node build, package database migration, skeleton change or resource rewrite is required.
 
 Existing flat resource definitions remain supported. Opt into `Form\Layout\Section`, `Grid`, `Tabs`, and `Tab`, with 1–4 columns and `columnSpan('full')`. Fields retain flat column names across all layouts and must be globally unique. Tab names must be unique within a group. Without JavaScript, every tab remains visible as a section.

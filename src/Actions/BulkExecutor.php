@@ -67,8 +67,10 @@ final class BulkExecutor
         $ids = self::ids($ids);
         if ($this->repository->inTransaction()) { throw new \LogicException('Bulk dispatch owns its transaction.'); }
         $entry = OperationStore::get($token, $this->resource::getSlug(), 'bulk', $action->getName(), self::digest($ids));
-        Notifications::capture(function () use ($action, $ids, $input, $entry, &$accepted, $maxBytes): void {
-            $this->repository->transaction(function () use ($action, $ids, $input, $entry, &$accepted, $maxBytes): void {
+        $batch = new \FloCMS\Admin\Uploads\UploadBatch();
+        try {
+        Notifications::capture(function () use ($action, $ids, $input, $entry, &$accepted, $maxBytes, $batch): void {
+            $this->repository->transaction(function () use ($action, $ids, $input, $entry, &$accepted, $maxBytes, $batch): void {
                 $records = $this->records($action, $ids);
                 $fingerprints = json_decode($entry['fingerprint'], true, 512, JSON_THROW_ON_ERROR);
                 // Lock in deterministic ID order; reject every stale row before writing any.
@@ -83,10 +85,12 @@ final class BulkExecutor
                 if ($maxBytes !== null && strlen(json_encode((object) $accepted, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)) > $maxBytes) { $accepted = []; throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
                 $errors = ActionForm::errors($action, $form, $state, null);
                 if ($errors !== []) { throw new ValidationException($errors); }
-                $action->invokeBulk(new BulkActionContext($this->resource, $this->repository, $records), ActionForm::dehydrate($form, $state));
+                $action->invokeBulk(new BulkActionContext($this->resource, $this->repository, $records, $batch), ActionForm::dehydrate($form, $state));
                 Notification::make()->title(AdminLang::get('bulk.completed', ['count' => count($ids)]))->success()->send();
             });
         });
+        } catch (\Throwable $error) { $batch->rollback(); throw $error; }
+        $batch->commit();
         OperationStore::consume($token);
     }
 }

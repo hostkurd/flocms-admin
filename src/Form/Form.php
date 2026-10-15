@@ -52,6 +52,7 @@ final class Form
             $field = $this->fields[$name] ?? throw new \LogicException('Unknown form dependency: ' . $name);
             $visiting[$name] = true;
             foreach ($field->dependencies() as $dependency) {
+                if (($this->fields[$dependency] ?? null) instanceof \FloCMS\Admin\Form\Fields\FileUpload) { throw new \LogicException('Uploads cannot control dependencies.'); }
                 if (($this->fields[$dependency] ?? null)?->isTranslatable()) { throw new \LogicException('Dependencies must use scalar fields.'); }
                 if (($this->fields[$dependency] ?? null) instanceof \FloCMS\Admin\Form\Fields\TextInput && $this->fields[$dependency]->getType() === 'password') { throw new \LogicException('Passwords cannot control dependencies.'); }
                 $visit($dependency);

@@ -2,6 +2,14 @@
 // flocms-admin: English. A site can override any line with an "admin.<key>"
 // entry in its own lang/<code>.php, e.g. 'admin.actions.create' => 'Add'.
 return [
+    'uploads.invalid' => 'Upload failed. Check the file type, size, image dimensions, and session, then choose the file again.',
+    'uploads.limit' => 'Maximum :size KiB.',
+    'uploads.pending' => 'Selected file',
+    'uploads.current' => 'Current file',
+    'uploads.remove' => 'Remove file',
+    'uploads.loading' => 'Uploading…',
+    'uploads.ready' => 'File ready to save.',
+
     'form.update_fields' => 'Update fields',
     'nav.label' => 'Admin navigation',
     'nav.dashboard' => 'Dashboard',
