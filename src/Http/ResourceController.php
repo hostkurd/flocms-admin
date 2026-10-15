@@ -163,7 +163,12 @@ final class ResourceController extends PanelController
             $executor->authorize($action, $ids, $token, $this->request->input('_cancel') === null);
             if ($this->request->input('_cancel') !== null) { \FloCMS\Admin\Actions\OperationStore::consume($token); $this->redirect(Admin::url($this->resource::getSlug(), ['static' => 1])); }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
-            try { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect(Admin::url($this->resource::getSlug(), ['static' => 1])); }
+            try {
+                if ($this->request->input('_refresh') !== null) {
+                    $executor->preview($action, $ids, $token);
+                    $state = \FloCMS\Admin\Actions\ActionForm::state($action, $form, $this->request->all(), null); $form->refreshState($state);
+                } else { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect(Admin::url($this->resource::getSlug(), ['static' => 1])); }
+            }
             catch (\FloCMS\Core\ValidationException $error) { foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); } }
         } else {
             try { $opened = $executor->open($action, $ids); }
@@ -208,8 +213,17 @@ final class ResourceController extends PanelController
             }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
             try {
-                $executor->execute($action, $placement, $id, $token, $this->request->all(), $state);
-                $this->redirect(Admin::url($this->resource::getSlug()));
+                if ($this->request->input('_refresh') !== null) {
+                    Auth::authorize($this->resource::permission('view'));
+                    $record = $executor->record($placement, $id); $action->authorizeRequest($this->resource, $record);
+                    $state = in_array($action->getKind(), ['create', 'edit'], true)
+                        ? (new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository()))->state($form, $this->request->all(), $record)
+                        : \FloCMS\Admin\Actions\ActionForm::state($action, $form, $this->request->all(), $record);
+                    $form->refreshState($state, $record);
+                } else {
+                    $executor->execute($action, $placement, $id, $token, $this->request->all(), $state);
+                    $this->redirect(Admin::url($this->resource::getSlug()));
+                }
             } catch (\FloCMS\Core\ValidationException $error) {
                 foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); }
                 $record = $id !== '' ? $this->repository()->find($id) : null;
@@ -256,9 +270,11 @@ final class ResourceController extends PanelController
         if ($this->isPost()) {
             $submission = new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository());
             $state = $submission->state($form, $this->request->all(), $record);
-            $errors = $submission->errors($form, $state, $record);
+            $refreshing = $this->request->input('_refresh') !== null;
+            if ($refreshing) { $form->refreshState($state, $record); }
+            $errors = $refreshing ? [] : $submission->errors($form, $state, $record);
 
-            if ($errors === []) {
+            if (!$refreshing && $errors === []) {
                 $id = $submission->save($form, $state, $record);
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
@@ -268,7 +284,7 @@ final class ResourceController extends PanelController
                 $this->redirect($continue && $id !== '' ? Admin::url($class::getSlug() . '/edit/' . $id) : Admin::url($class::getSlug()));
             }
 
-            Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger');
+            if (!$refreshing) { Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger'); }
         } else {
             $state = [];
             foreach ($form->fields() as $name => $field) {

@@ -31,7 +31,27 @@ abstract class Field
     protected ?bool $nullable = null;
     protected bool $unique = false;
     protected bool $requiredOnCreate = false;
-    protected int $columnSpan = 1;
+    protected int|string $columnSpan = 1;
+    private ?array $visibleCondition = null;
+    private ?array $requiredCondition = null;
+    private bool $visible = true;
+    public function visibleWhen(string $field, string|array $values): static { $this->visibleCondition = self::condition($field, $values); return $this; }
+    public function requiredWhen(string $field, string|array $values): static { $this->requiredCondition = self::condition($field, $values); return $this; }
+    private static function condition(string $field, string|array $values): array
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $field) !== 1) { throw new InvalidArgumentException('Invalid dependency field name.'); }
+        foreach ((array) $values as $value) { if (!is_string($value)) { throw new InvalidArgumentException('Condition values must be strings.'); } }
+        return [$field, array_values((array) $values)];
+    }
+    public function dependencies(): array { return array_values(array_unique(array_filter([$this->visibleCondition[0] ?? null, $this->requiredCondition[0] ?? null]))); }
+    public function isVisible(): bool { return $this->visible; }
+    public function resolve(array $state): static
+    {
+        $field = clone $this;
+        if ($this->visibleCondition !== null) { [$parent, $values] = $this->visibleCondition; $field->visible = in_array($state[$parent] ?? '', $values, true); }
+        if ($this->requiredCondition !== null) { [$parent, $values] = $this->requiredCondition; $field->required(in_array($state[$parent] ?? '', $values, true)); }
+        return $field;
+    }
 
     final public function __construct(string $name)
     {
@@ -133,10 +153,11 @@ abstract class Field
         return $this;
     }
 
-    /** 1 = half the form width on large screens, 2 = the full width. */
-    public function columnSpan(int $span): static
+    /** Span 1–4 columns, or the full containing grid. */
+    public function columnSpan(int|string $span): static
     {
-        $this->columnSpan = $span >= 2 ? 2 : 1;
+        if ($span !== 'full' && (!is_int($span) || $span < 1 || $span > 4)) { throw new InvalidArgumentException('Use columnSpan(1–4) or columnSpan("full").'); }
+        $this->columnSpan = $span;
         return $this;
     }
 
@@ -221,7 +242,7 @@ abstract class Field
         return $this->nullable ?? $this->translatable;
     }
 
-    public function getColumnSpan(): int
+    public function getColumnSpan(): int|string
     {
         return $this->columnSpan;
     }
@@ -229,7 +250,7 @@ abstract class Field
     /** Whether the value is written to the table. */
     public function isWritable(): bool
     {
-        return !$this->disabled;
+        return !$this->disabled && $this->visible;
     }
 
     public function supportsTranslation(): bool

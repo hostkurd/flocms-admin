@@ -1,3 +1,19 @@
+# Upgrading to Admin 0.6.0
+
+Release Reactive 0.4.0 before Admin 0.6.0. Then run `composer require hostkurd/flocms-admin:0.6.0 -W`, `php flo view:clear` and `php flo admin:doctor`, and reload open Admin pages. Admin now requires Reactive `^0.4.0`; PHP 8.1+ and Core `^2.3.2` remain unchanged. Deploy the supplied `admin-v0.6.0.js` / `.css` and matching Reactive assets. Full release-version filenames remain the convention. No Node build, package database migration, skeleton change or resource rewrite is required.
+
+Existing flat resource definitions remain supported. Opt into `Form\Layout\Section`, `Grid`, `Tabs`, and `Tab`, with 1–4 columns and `columnSpan('full')`. Fields retain flat column names across all layouts and must be globally unique. Tab names must be unique within a group. Without JavaScript, every tab remains visible as a section.
+
+Use `Select::optionsFor(parent, callback)`, `visibleWhen(parent, values)` and `requiredWhen(parent, values)` for dependent fields. Parent values must be scalar and non-password. Declare no cycles or unknown fields. Callbacks must be read-only and use scoped, bound database queries; they can run multiple times. Current options and requirements are checked again on save. Hidden values are not written; existing stored values remain on edit, and hidden create columns need database defaults/nullability. Resource permissions and query scope still provide authorization.
+
+A live dependency change refreshes controls without saving or consuming the operation. Invalid child select values clear, unrelated drafts remain, and passwords are scrubbed after the response. Enter passwords after changing dependencies. With JavaScript disabled, use the Update fields button before choosing a child value. Existing transaction, stale-record, actor/CSRF and operation replay protections remain in effect for CRUD and bulk/custom actions.
+
+The complete modal draft limit increases from 7,000 to **64,000 UTF-8 JSON bytes**, including keys, values and translations. Full-page fallback remains above the limit and does not transfer unsaved text. Reactive opted-in requests may use up to a 1 MiB HTTP envelope; allow sufficient PHP/web-server request-body size. Signed snapshots remain readable client data; do not put secrets in state. This release adds no repeaters, uploads, nested/object state or relationship managers.
+
+See [Forms API and example](docs/forms.md). Application fields still need matching database columns; installing/updating Admin never automatically adds example Property columns. Existing optional login-theme configuration remains unchanged.
+
+---
+
 # Upgrading to Admin 0.5.0
 
 Update the package after release with `composer require hostkurd/flocms-admin:0.5.0`, run `php flo view:clear` and `php flo admin:doctor`, then reload open Admin pages. Deploy supplied `admin-v0.5.0.js` and `admin-v0.5.0.css`; no Node build is needed on the application host. Core `^2.3.2`, Reactive `^0.3.0` and PHP 8.1+ remain unchanged. No package database migration or existing resource rewrite is required.

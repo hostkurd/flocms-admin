@@ -156,7 +156,7 @@ final class ReactiveResourceTest extends RequestTestCase
         self::assertSame(422, $invalid['status']);
         self::assertSame('sea-view-villa', self::row('posts', 1)['slug']);
         $stmt = self::pdo()->prepare('UPDATE posts SET body = ? WHERE id = 1');
-        $stmt->execute([json_encode(['en' => str_repeat('x', 7100)])]);
+        $stmt->execute([json_encode(['en' => str_repeat('x', 65000)])]);
         $large = $this->update($this->mount(), 'edit', ['selectedId' => '1']);
         self::assertSame(422, $large['status']);
         self::assertStringContainsString('id="fa-admin-resource-fallback"', $large['body']);
@@ -175,7 +175,7 @@ final class ReactiveResourceTest extends RequestTestCase
         $page = self::request('GET', '/en/admin/posts', $disabled);
         self::assertSame(200, $page['status']);
         self::assertStringNotContainsString('data-rx-component=', $page['body']);
-        self::assertStringNotContainsString('reactive-v0.3.0.js', $page['body']);
+        self::assertStringNotContainsString('reactive-v0.4.0.js', $page['body']);
         self::assertStringContainsString('data-admin-navigation="false"', $page['body']);
         self::assertStringContainsString('/en/admin/posts/edit/1', $page['body']);
     }
@@ -184,8 +184,8 @@ final class ReactiveResourceTest extends RequestTestCase
     {
         $result = self::request('GET', '/en/admin/dashboard', ['headers' => ['X-Flo-Admin' => 'navigate'], 'admin_config' => ['reactive' => true]]);
         self::assertStringNotContainsString('<html>', $result['body']);
-        self::assertStringContainsString('admin-v0.5.0.js', $result['body']);
-        self::assertStringContainsString('reactive-v0.3.0.js', $result['body']);
+        self::assertStringContainsString('admin-v0.6.0.js', $result['body']);
+        self::assertStringContainsString('reactive-v0.4.0.js', $result['body']);
         self::assertStringNotContainsString('<script>', $result['body']);
         self::assertSame(404, self::request('GET', '/en/flo-admin/asset/unknown.js')['status']);
     }

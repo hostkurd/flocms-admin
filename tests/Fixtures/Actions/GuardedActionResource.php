@@ -30,7 +30,7 @@ final class GuardedActionResource extends PostActionResource
             ]))->validate(static fn (array $state): array => $state['note'] === 'blocked' ? ['note' => 'Business validation failed.'] : [])
                 ->action(static function (ActionContext $context): void { $context->update(['slug' => 'checked']); }),
             Action::make('expand')->form(static fn (Form $form): Form => $form->schema([TextInput::make('note')]))
-                ->normalizeState(static fn (array $state): array => ['note' => str_repeat('x', 7100)])
+                ->normalizeState(static fn (array $state): array => ['note' => str_repeat('x', 65000)])
                 ->action(static function (): void { throw new \RuntimeException('Expanded callback ran'); }),
             Action::make('reject')->action(static function (): void {
                 Notification::make()->title('False validation success')->success()->send();

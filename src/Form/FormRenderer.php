@@ -23,34 +23,63 @@ final class FormRenderer
      * @param list<string> $languages default language first
      */
     public function __construct(
-        private readonly array $state,
+        private array $state,
         private readonly array $errors,
         private readonly array $languages,
         private readonly string $defaultLang,
         private readonly bool $isEdit = false,
         // Retained for constructor compatibility; all forms use language badges.
         bool $inlineTranslations = false,
-        private readonly string $prefix = ''
+        private readonly string $prefix = '',
+        private readonly bool $reactive = false
     ) {
     }
 
     public function render(Form $form): string
     {
-        $hidden = '';
-        $html = '';
-
-        foreach ($form->fields() as $field) {
-            if ($field instanceof Hidden) {
-                $hidden .= $field->renderControl($this->prefix . 'f-' . $field->getName(), $field->getName(), $this->stringState($field));
-                continue;
-            }
-            $html .= $this->field($field);
+        $resolved = $form->evaluate($this->state);
+        $html = $this->nodes($form->components(), $resolved, $form->getColumns(), $form->liveFields(), 'layout');
+        if ($form->liveFields() !== []) {
+            $html .= $this->reactive ? '<button type="button" data-rx-action="refreshForm" data-admin-form-refresh hidden></button>'
+                : '<button class="fa-btn" type="submit" name="_refresh" value="1" data-admin-form-refresh>' . Str::e(AdminLang::get('form.update_fields')) . '</button>';
         }
-
-        return $hidden . '<div class="fa-form-grid">' . $html . '</div>';
+        return $html;
     }
 
-    public function field(Field $field): string
+    private function nodes(array $nodes, Form $form, int $columns, array $live, string $path): string
+    {
+        $html = '';
+        foreach ($nodes as $index => $node) {
+            if ($node instanceof Field) {
+                $field = $form->field($node->getName());
+                if (!$field->isVisible()) { continue; }
+                if ($field instanceof Hidden) { $html .= $field->renderControl($this->prefix . 'f-' . $field->getName(), $field->getName(), $this->stringState($field)); continue; }
+                $rendered = $this->field($field, $columns);
+                if (in_array($field->getName(), $live, true)) { $rendered = str_replace('data-field=', 'data-admin-live data-field=', $rendered); }
+                $html .= $rendered; continue;
+            }
+            $id = $this->prefix . $path . '-' . $index . '-' . $node->getName();
+            $label = Str::e($node->getLabel());
+            if ($node instanceof \FloCMS\Admin\Form\Layout\Tabs) {
+                $buttons = ''; $panels = ''; $names = [];
+                foreach ($node->children() as $tabIndex => $tab) {
+                    if (isset($names[$tab->getName()])) { throw new \LogicException('Tab names must be unique in a group.'); }
+                    $names[$tab->getName()] = true;
+                    $tabId = $id . '-' . $tabIndex;
+                    $buttons .= '<button type="button" id="' . Str::e($tabId . '-tab') . '" data-admin-tab="' . Str::e($tabId) . '">' . Str::e($tab->getLabel()) . '</button>';
+                    $panels .= '<section id="' . Str::e($tabId) . '" data-admin-tab-panel aria-labelledby="' . Str::e($tabId . '-title') . '"><h3 class="fa-tab-heading" id="' . Str::e($tabId . '-title') . '">' . Str::e($tab->getLabel()) . '</h3>' . $this->nodes($tab->children(), $form, $tab->getColumns(), $live, $tabId) . '</section>';
+                }
+                $html .= '<div class="fa-tabs fa-span-full" id="' . Str::e($id) . '" data-admin-tabs><div class="fa-tab-list" data-admin-tab-list aria-label="' . $label . '" hidden>' . $buttons . '</div>' . $panels . '</div>';
+            } else {
+                $title = $node instanceof \FloCMS\Admin\Form\Layout\Grid ? '' : '<h3 class="fa-section-title" id="' . Str::e($id . '-title') . '">' . $label . '</h3>';
+                $description = $node->getDescription() === null ? '' : '<p class="fa-help">' . Str::e($node->getDescription()) . '</p>';
+                $html .= '<section class="fa-form-section fa-span-full"' . ($title !== '' ? ' aria-labelledby="' . Str::e($id . '-title') . '"' : '') . '>' . $title . $description . $this->nodes($node->children(), $form, $node->getColumns(), $live, $id) . '</section>';
+            }
+        }
+        return '<div class="fa-form-grid fa-grid-' . $columns . '">' . $html . '</div>';
+    }
+
+    public function field(Field $field, int $columns = 2): string
     {
         $name = $field->getName();
         $id = $this->prefix . 'f-' . $name;
@@ -58,9 +87,9 @@ final class FormRenderer
         $langErrors = $field->isTranslatable() ? $this->languageErrors($name) : [];
 
         $classes = ['fa-field'];
-        if ($field->getColumnSpan() === 2) {
-            $classes[] = 'fa-span-2';
-        }
+        $span = $field->getColumnSpan();
+        if ($span === 'full') { $classes[] = 'fa-span-full'; }
+        elseif ($span > 1) { $classes[] = 'fa-span-' . min($span, $columns); }
         if ($error !== null || $langErrors !== []) {
             $classes[] = 'has-error';
         }

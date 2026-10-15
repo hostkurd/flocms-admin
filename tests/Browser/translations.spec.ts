@@ -121,13 +121,13 @@ test('full-page translation controls retain Save and Cancel behavior after panel
 test('oversized drafts retain text and expose the full-page fallback only when needed', async ({ page }) => {
   await open(page);
   await expect(editor(page).locator('[data-admin-full-page]')).not.toBeVisible();
-  await editor(page).locator('[name="body[en]"]').fill('x'.repeat(9000));
+  await editor(page).locator('[name="body[en]"]').fill('x'.repeat(65000));
   await editor(page).getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(editor(page).locator('[data-rx-status]')).toContainText('Copy any unsaved text');
-  await expect(editor(page).locator('[name="body[en]"]')).toHaveValue('x'.repeat(9000));
+  await expect(editor(page).locator('[name="body[en]"]')).toHaveValue('x'.repeat(65000));
   await editor(page).getByRole('link', { name: 'Continue on full page' }).click();
   await page.locator('a[href="/en/admin/posts/edit/8"]').click();
-  await page.locator('[name="body[en]"]').fill('x'.repeat(9000));
+  await page.locator('[name="body[en]"]').fill('x'.repeat(65000));
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await page.locator('#fa-admin-resource-edit-8').click();
   await expect(page.locator('#fa-admin-resource-error')).toContainText('too large');

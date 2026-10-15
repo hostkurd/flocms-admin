@@ -242,3 +242,17 @@ body:has(> .fa-login){margin:0}
 .fa-login-languages [aria-current=page]{color:var(--fa-primary);font-weight:650}
 .fa-login-back{font-size:13px}
 @media(max-width:480px){.fa-login{padding:24px 14px}.fa-login-card{padding:24px}.fa-filters .fa-filter{max-width:none;flex-basis:100%}}
+/* Form layouts retain flat field state. Tabs are enhanced only with JavaScript. */
+.fa-grid-1{grid-template-columns:minmax(0,1fr)}
+.fa-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fa-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.fa-grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.fa-span-2{grid-column:span 2}.fa-span-3{grid-column:span 3}.fa-span-4{grid-column:span 4}.fa-span-full{grid-column:1/-1}
+.fa-form-section,.fa-tabs{min-width:0}
+.fa-section-title,.fa-tab-heading{font-size:16px;margin:0 0 16px!important}
+.fa-form-section>.fa-help{margin-block-end:16px}
+.fa-tab-list{display:flex;overflow-x:auto;gap:4px;border-block-end:1px solid var(--fa-border);margin-block-end:20px}
+.fa-tab-list button{font:inherit;color:var(--fa-muted);background:transparent;border:0;border-block-end:3px solid transparent;padding:10px 14px;white-space:nowrap;cursor:pointer}
+.fa-tab-list [aria-selected=true]{color:var(--fa-primary);border-color:var(--fa-primary)}
+.fa-tabs[data-admin-tabs-ready]>.fa-tab-heading,.fa-tabs[data-admin-tabs-ready]>[data-admin-tab-panel]>.fa-tab-heading{display:none}
+@media(max-width:767px){.fa-panel .fa-form-grid{grid-template-columns:minmax(0,1fr)}.fa-panel .fa-field{grid-column:1/-1}}

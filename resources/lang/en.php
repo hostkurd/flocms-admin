@@ -2,6 +2,7 @@
 // flocms-admin: English. A site can override any line with an "admin.<key>"
 // entry in its own lang/<code>.php, e.g. 'admin.actions.create' => 'Add'.
 return [
+    'form.update_fields' => 'Update fields',
     'nav.label' => 'Admin navigation',
     'nav.dashboard' => 'Dashboard',
     'nav.resources' => 'Content',

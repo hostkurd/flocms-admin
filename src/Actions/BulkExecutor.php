@@ -43,6 +43,12 @@ final class BulkExecutor
         Auth::authorize($this->resource::permission('view'));
         if ($checkPermission) { $action->authorizePermission($this->resource); }
     }
+    /** Dependency refreshes must enforce every current record policy too. */
+    public function preview(BulkAction $action, array $ids, string $token): void
+    {
+        $this->authorize($action, $ids, $token);
+        $this->records($action, self::ids($ids));
+    }
     private function records(BulkAction $action, array $ids): array
     {
         Auth::authorize($this->resource::permission('view'));

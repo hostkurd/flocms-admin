@@ -48,6 +48,7 @@ final class FormValidator
      */
     public function validate(Form $form, array $state, array $skip = []): array
     {
+        $form = $form->evaluate($state);
         $errors = [];
 
         foreach ($form->writableFields() as $name => $field) {

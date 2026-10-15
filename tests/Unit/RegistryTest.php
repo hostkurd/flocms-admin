@@ -25,7 +25,7 @@ final class RegistryTest extends TestCase
         $this->useFixtures();
         $registry = Admin::registry();
 
-        self::assertSame(['posts' => PostResource::class, 'post-tags' => TagResource::class], $registry->all());
+        self::assertSame(['properties' => \FloCMS\Admin\Tests\Fixtures\Resources\PropertyResource::class, 'posts' => PostResource::class, 'post-tags' => TagResource::class], $registry->all());
 
         $problems = implode("\n", $registry->problems());
         self::assertStringContainsString('slug "news" is taken by the application controller FloCMS\\Controllers\\NewsController', $problems);

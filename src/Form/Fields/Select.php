@@ -10,6 +10,27 @@ use FloCMS\Admin\Support\Str;
 
 class Select extends Field
 {
+    private ?string $parent = null;
+    private ?Closure $dependentOptions = null;
+    /** The callback receives only the canonical parent value. */
+    public function optionsFor(string $parent, Closure $callback): static
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $parent) !== 1) { throw new \InvalidArgumentException('Invalid dependency field name.'); }
+        $this->parent = $parent; $this->dependentOptions = $callback; return $this;
+    }
+    public function hasDependentOptions(): bool { return $this->dependentOptions !== null; }
+    public function dependencies(): array { return array_values(array_unique(array_merge(parent::dependencies(), $this->parent === null ? [] : [$this->parent]))); }
+    public function resolve(array $state): static
+    {
+        $field = parent::resolve($state);
+        if ($this->dependentOptions === null) { $field->resolved = $this->getOptions(); }
+        if ($this->dependentOptions !== null) {
+            $options = ($this->dependentOptions)((string) ($state[$this->parent] ?? ''));
+            if (!is_array($options)) { throw new \LogicException('Dependent options must return an array.'); }
+            $field->options($options);
+        }
+        return $field;
+    }
     /** @var array<int|string, string>|Closure */
     protected array|Closure $options = [];
     /** @var array<int|string, string>|null */
