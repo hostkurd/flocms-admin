@@ -5,12 +5,14 @@
  * before. The server cleans that HTML again: nothing here is a security check.
  */
 import { Editor, Node, mergeAttributes } from '@tiptap/core';
+import type { DOMOutputSpec } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import { NodeSelection } from '@tiptap/pm/state';
 import Image from '@tiptap/extension-image';
-import { Placeholder } from '@tiptap/extensions';
+import { Placeholder, TrailingNode } from '@tiptap/extensions';
 import { parseEmbed, type Embed as EmbedInfo } from './embeds';
 import { uploadImage, uploadVideo, UploadError } from './uploads';
+import { mediaView, mediaAttributes, mediaClasses, BlockFormat, cleanPastedHtml, type Position } from './media';
 
 type Config = {
   toolbar: string[]; images: boolean; videos: boolean; uploads: boolean; embeds: string[];
@@ -18,54 +20,122 @@ type Config = {
 };
 type Strings = Record<string, string>;
 
-const ImageNode = Image.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      width: { default: null, parseHTML: element => element.getAttribute('width'), renderHTML: attributes => (attributes.width ? { width: attributes.width } : {}) },
-      height: { default: null, parseHTML: element => element.getAttribute('height'), renderHTML: attributes => (attributes.height ? { height: attributes.height } : {}) },
-    };
-  },
-}).configure({ inline: false, allowBase64: false });
+/** The <img> inside a figure, or the element itself. */
+const imageOf = (element: HTMLElement): HTMLElement => (element.tagName === 'FIGURE' ? element.querySelector<HTMLElement>('img') ?? element : element);
 
-const VideoNode = Node.create({
-  name: 'video', group: 'block', atom: true, draggable: true, selectable: true,
-  addAttributes() { return { src: { default: null } }; },
-  parseHTML() { return [{ tag: 'video[src]' }]; },
-  renderHTML({ HTMLAttributes }) { return ['video', mergeAttributes(HTMLAttributes, { controls: '', preload: 'metadata' })]; },
-});
+/**
+ * An image: <img class="rt-w-60 rt-align-center">, or with a caption or link
+ * <figure class="rt-figure rt-w-60 …"><a href><img></a><figcaption>…</figcaption></figure>.
+ */
+function imageNode(strings: Strings) {
+  return Image.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        src: { default: null, parseHTML: element => imageOf(element).getAttribute('src') },
+        alt: { default: null, parseHTML: element => imageOf(element).getAttribute('alt') },
+        title: { default: null, parseHTML: element => imageOf(element).getAttribute('title') },
+        width: { default: null, parseHTML: element => imageOf(element).getAttribute('width'), renderHTML: attributes => (attributes.width ? { width: attributes.width } : {}) },
+        height: { default: null, parseHTML: element => imageOf(element).getAttribute('height'), renderHTML: attributes => (attributes.height ? { height: attributes.height } : {}) },
+        caption: { default: '', rendered: false, parseHTML: element => (element.tagName === 'FIGURE' ? element.querySelector('figcaption')?.textContent?.trim() ?? '' : '') },
+        href: { default: null, rendered: false, parseHTML: element => (element.tagName === 'FIGURE' ? element.querySelector('a[href]')?.getAttribute('href') ?? null : null) },
+        ...mediaAttributes(),
+      };
+    },
+    parseHTML() {
+      return [{ tag: 'figure', priority: 60, getAttrs: element => ((element as HTMLElement).querySelector('img[src]') ? {} : false) }, { tag: 'img[src]' }];
+    },
+    renderHTML({ node, HTMLAttributes }) {
+      const classes = mediaClasses(node.attrs);
+      const caption = String(node.attrs.caption ?? '').trim();
+      const href = node.attrs.href as string | null;
+      if (caption === '' && !href) return ['img', mergeAttributes(HTMLAttributes, classes.length ? { class: classes.join(' ') } : {})];
+      const img: DOMOutputSpec = ['img', HTMLAttributes];
+      return ['figure', { class: ['rt-figure', ...classes].join(' ') }, href ? ['a', { href }, img] : img, ...(caption ? [['figcaption', {}, caption] as DOMOutputSpec] : [])];
+    },
+    addNodeView() {
+      return ({ node, view, getPos }) => mediaView({
+        node, view, getPos: getPos as () => number | undefined, strings, caption: current => String(current.attrs.caption ?? ''),
+        render: first => {
+          const img = document.createElement('img');
+          const update = (current: typeof first) => {
+            img.src = String(current.attrs.src ?? '');
+            img.alt = String(current.attrs.alt ?? '');
+            if (current.attrs.width) img.width = Number(current.attrs.width); else img.removeAttribute('width');
+            if (current.attrs.height) img.height = Number(current.attrs.height); else img.removeAttribute('height');
+            img.draggable = false;
+          };
+          update(first);
+          return { element: img, update };
+        },
+      });
+    },
+  }).configure({ inline: false, allowBase64: false });
+}
+
+function videoNode(strings: Strings) {
+  return Node.create({
+    name: 'video', group: 'block', atom: true, draggable: true, selectable: true,
+    addAttributes() { return { src: { default: null }, ...mediaAttributes() }; },
+    parseHTML() { return [{ tag: 'video[src]' }]; },
+    renderHTML({ node, HTMLAttributes }) {
+      const classes = mediaClasses(node.attrs);
+      return ['video', mergeAttributes(HTMLAttributes, classes.length ? { class: classes.join(' ') } : {}, { controls: '', preload: 'metadata' })];
+    },
+    addNodeView() {
+      return ({ node, view, getPos }) => mediaView({
+        node, view, getPos: getPos as () => number | undefined, strings,
+        render: first => {
+          const video = document.createElement('video');
+          video.controls = true; video.preload = 'metadata';
+          const update = (current: typeof first) => { if (video.getAttribute('src') !== current.attrs.src) video.src = String(current.attrs.src ?? ''); };
+          update(first);
+          return { element: video, update };
+        },
+      });
+    },
+  });
+}
 
 /** Stored as <div data-embed data-id>; the server adds the iframe. The editor shows a card instead. */
 function embedNode(strings: Strings) {
   return Node.create({
     name: 'embed', group: 'block', atom: true, draggable: true, selectable: true,
-    addAttributes() { return { provider: { default: null }, id: { default: null } }; },
+    addAttributes() { return { provider: { default: null, rendered: false }, id: { default: null, rendered: false }, ...mediaAttributes() }; },
     parseHTML() {
       return [{ tag: 'div[data-embed]', priority: 60, getAttrs: element => ({ provider: (element as HTMLElement).dataset.embed, id: (element as HTMLElement).dataset.id }) }];
     },
-    renderHTML({ node }) { return ['div', { 'data-embed': node.attrs.provider, 'data-id': node.attrs.id }]; },
+    renderHTML({ node }) {
+      const classes = mediaClasses(node.attrs);
+      return ['div', { 'data-embed': node.attrs.provider, 'data-id': node.attrs.id, ...(classes.length ? { class: classes.join(' ') } : {}) }];
+    },
     addNodeView() {
-      return ({ node }) => {
-        const dom = document.createElement('div');
-        dom.className = 'fa-rich-embed';
-        dom.dataset.provider = String(node.attrs.provider ?? '');
-        dom.contentEditable = 'false';
-        const ns = 'http://www.w3.org/2000/svg';
-        const icon = document.createElementNS(ns, 'svg');
-        icon.setAttribute('viewBox', '0 0 40 28');
-        icon.setAttribute('aria-hidden', 'true');
-        icon.classList.add('fa-rich-embed-icon');
-        const play = document.createElementNS(ns, 'path');
-        play.setAttribute('d', 'M16 8l10 6-10 6z');
-        play.setAttribute('fill', 'currentColor');
-        icon.append(play);
-        const label = document.createElement('strong');
-        label.textContent = strings[node.attrs.provider === 'vimeo' ? 'vimeo' : 'youtube'] ?? 'Video';
-        const id = document.createElement('span');
-        id.textContent = String(node.attrs.id ?? '');
-        dom.append(icon, label, id);
-        return { dom };
-      };
+      return ({ node, view, getPos }) => mediaView({
+        node, view, getPos: getPos as () => number | undefined, strings,
+        render: first => {
+          const dom = document.createElement('div');
+          dom.className = 'fa-rich-embed';
+          const ns = 'http://www.w3.org/2000/svg';
+          const icon = document.createElementNS(ns, 'svg');
+          icon.setAttribute('viewBox', '0 0 40 28');
+          icon.setAttribute('aria-hidden', 'true');
+          icon.classList.add('fa-rich-embed-icon');
+          const play = document.createElementNS(ns, 'path');
+          play.setAttribute('d', 'M16 8l10 6-10 6z');
+          play.setAttribute('fill', 'currentColor');
+          icon.append(play);
+          const label = document.createElement('strong');
+          const id = document.createElement('span');
+          dom.append(icon, label, id);
+          const update = (current: typeof first) => {
+            dom.dataset.provider = String(current.attrs.provider ?? '');
+            label.textContent = strings[current.attrs.provider === 'vimeo' ? 'vimeo' : 'youtube'] ?? 'Video';
+            id.textContent = String(current.attrs.id ?? '');
+          };
+          update(first);
+          return { element: dom, update };
+        },
+      });
     },
   });
 }
@@ -106,7 +176,6 @@ class RichField {
   private readonly strings: Strings;
   private readonly editors = new Map<string, Editor>();
   private readonly toolbar: HTMLElement | null;
-  private readonly menu: HTMLElement | null;
   private readonly statusBox: HTMLElement | null;
   private words: HTMLElement | null = null;
   private active = '';
@@ -114,14 +183,17 @@ class RichField {
   private editingImage = false;
   private upload: AbortController | null = null;
   private statusTimer = 0;
+  private readonly mediaBar: HTMLElement | null;
+  /** The image a Replace upload goes into (checked again when the upload ends). */
+  private replacing: { pos: number; src: string } | null = null;
   private readonly listeners = new AbortController();
 
   constructor(private readonly root: HTMLElement) {
     this.config = JSON.parse(root.dataset.config ?? '{}');
     this.strings = JSON.parse(root.dataset.strings ?? '{}');
     this.toolbar = root.querySelector<HTMLElement>('[data-rich-toolbar]');
-    this.menu = root.querySelector<HTMLElement>('[data-rich-menu]');
     this.statusBox = root.querySelector<HTMLElement>('[data-rich-status]');
+    this.mediaBar = root.querySelector<HTMLElement>('[data-rich-mediabar]');
     // After a failed save Reactive focuses the invalid source textarea; remember it before hiding it.
     const focused = document.activeElement;
     const panels = [...root.querySelectorAll<HTMLElement>(':scope > .fa-rich-panel')];
@@ -130,6 +202,7 @@ class RichField {
     this.setUpTabs(panels);
     this.setUpToolbar();
     this.setUpMenu();
+    this.setUpMediaBar();
     this.setUpDialogs();
     this.setUpFiles();
     this.setUpFooter();
@@ -172,13 +245,21 @@ class RichField {
           link: { openOnClick: false, autolink: true, defaultProtocol: 'https', HTMLAttributes: { target: null, rel: null } },
         }),
         Placeholder.configure({ placeholder: this.strings.placeholder ?? '' }),
-        ...(this.config.images ? [ImageNode] : []), ...(this.config.videos ? [VideoNode] : []),
+        BlockFormat,
+        // Always a paragraph after the last image or embed, so typing can continue below it.
+        TrailingNode,
+        ...(this.config.images ? [imageNode(this.strings)] : []), ...(this.config.videos ? [videoNode(this.strings)] : []),
         ...(this.config.embeds.length > 0 ? [embedNode(this.strings)] : []),
       ],
       editorProps: {
         attributes,
         handleKeyDown: (_view, event) => {
           // Ctrl/⌘+K opens the link dialog, as in most editors.
+          if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key === '\\' && this.has('clearFormatting')) {
+            event.preventDefault();
+            this.clearFormatting();
+            return true;
+          }
           if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'k' && this.has('link')) {
             event.preventDefault();
             this.openLinkDialog();
@@ -186,6 +267,7 @@ class RichField {
           }
           return false;
         },
+        transformPastedHTML: html => cleanPastedHtml(html),
         handleDoubleClickOn: (_view, _pos, node) => {
           if (node.type.name !== 'image' || !this.has('image')) return false;
           this.openImageDialog(true);
@@ -202,6 +284,7 @@ class RichField {
       onSelectionUpdate: () => this.refreshToolbar(),
       onTransaction: () => this.refreshToolbar(),
       onFocus: () => { this.active = this.key(panel); this.refreshToolbar(); this.countWords(); },
+      onBlur: () => { requestAnimationFrame(() => this.refreshMedia()); },
     });
     source.hidden = true;
     this.editors.set(this.key(panel), editor);
@@ -305,6 +388,11 @@ class RichField {
         if (button.getAttribute('aria-haspopup') === 'menu') { this.toggleMenu(button); return; }
         this.openImageDialog(false);
         return;
+      case 'textAlign': this.toggleMenu(button); return;
+      case 'direction': this.toggleDirection(); return;
+      case 'indent': this.indent(1); return;
+      case 'outdent': this.indent(-1); return;
+      case 'clearFormatting': this.clearFormatting(); return;
     }
     const chain = editor.chain().focus();
     switch (command) {
@@ -339,7 +427,109 @@ class RichField {
       if (command === 'image') button.classList.toggle('is-active', this.selectedImage() !== null);
       if (command === 'undo') button.disabled = !editor.can().undo();
       if (command === 'redo') button.disabled = !editor.can().redo();
+      if (command === 'direction') {
+        const dir = (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph')).dir;
+        button.setAttribute('aria-pressed', String(Boolean(dir) && dir !== (this.isRtl() ? 'rtl' : 'ltr')));
+      }
+      if (command === 'outdent') {
+        const indent = Number((editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph')).indent) || 0;
+        button.disabled = indent === 0 && !editor.isActive('listItem');
+      }
+      if (command === 'textAlign') {
+        // The button shows the current alignment's icon; the menu marks it.
+        const align = this.currentAlign(editor);
+        const menu = document.getElementById(button.getAttribute('aria-controls') ?? '');
+        menu?.querySelectorAll<HTMLElement>('[data-rich-action^="align-"]').forEach(item => item.setAttribute('aria-checked', String(item.dataset.richAction === `align-${align}`)));
+        const icon = menu?.querySelector(`[data-rich-action="align-${align}"] svg`);
+        const holder = button.querySelector<HTMLElement>('[data-rich-icon]');
+        if (icon && holder && holder.dataset.align !== align) { holder.replaceChildren(icon.cloneNode(true)); holder.dataset.align = align; }
+        button.classList.toggle('is-active', align !== (this.isRtl() ? 'right' : 'left'));
+      }
     });
+    this.refreshMedia();
+  }
+
+  /* Media options bar over a selected image, video or embed ---------------- */
+
+  private selectedMedia(): { node: import('@tiptap/pm/model').Node; pos: number } | null {
+    const selection = this.current()?.state.selection;
+    return selection instanceof NodeSelection && ['image', 'video', 'embed'].includes(selection.node.type.name)
+      ? { node: selection.node, pos: selection.from } : null;
+  }
+
+  private setUpMediaBar(): void {
+    const bar = this.mediaBar;
+    if (!bar) return;
+    bar.addEventListener('mousedown', event => event.preventDefault());
+    bar.addEventListener('click', event => {
+      const button = (event.target as Element).closest<HTMLButtonElement>('[data-media]');
+      const editor = this.current();
+      const media = this.selectedMedia();
+      if (!button || !editor || !media) return;
+      const action = button.dataset.media!;
+      const set = (attrs: Record<string, unknown>) => {
+        const { tr } = editor.state;
+        tr.setNodeMarkup(media.pos, undefined, { ...media.node.attrs, ...attrs });
+        tr.setSelection(NodeSelection.create(tr.doc, media.pos));
+        editor.view.dispatch(tr);
+        editor.view.focus();
+      };
+      if (action.startsWith('align-') || action.startsWith('wrap-')) {
+        const position = (action.startsWith('align-') ? action.slice(6) : action) as Position;
+        set({ align: media.node.attrs.align === position ? null : position });
+      } else if (action.startsWith('width-')) {
+        const size = Number(action.slice(6));
+        set({ size: media.node.attrs.size === size ? null : size });
+      } else if (action === 'edit') this.openImageDialog(true);
+      else if (action === 'replace') { this.replacing = { pos: media.pos, src: String(media.node.attrs.src ?? '') }; this.pick('image'); }
+      else if (action === 'remove') editor.chain().focus().deleteSelection().run();
+    });
+    // One tab stop; arrow keys move between its buttons.
+    bar.addEventListener('keydown', event => {
+      const buttons = [...bar.querySelectorAll<HTMLButtonElement>('[data-media]')].filter(button => button.offsetParent !== null);
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.current()?.view.focus(); return; }
+      if (index < 0) return;
+      const rtl = getComputedStyle(bar).direction === 'rtl';
+      const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, Home: -index, End: buttons.length - 1 - index }[event.key];
+      if (step === undefined) return;
+      event.preventDefault();
+      buttons[(index + step + buttons.length) % buttons.length].focus();
+    });
+    const reposition = () => this.refreshMedia();
+    window.addEventListener('resize', reposition, { signal: this.listeners.signal });
+    window.addEventListener('scroll', reposition, { signal: this.listeners.signal, passive: true, capture: true });
+  }
+
+  private refreshMedia(): void {
+    const bar = this.mediaBar;
+    if (!bar) return;
+    const editor = this.current();
+    const media = editor?.isFocused || bar.contains(document.activeElement) || this.openDialog ? this.selectedMedia() : null;
+    const element = media && editor ? editor.view.nodeDOM(media.pos) as HTMLElement | null : null;
+    if (!media || !element) { bar.hidden = true; return; }
+    const kind = media.node.type.name;
+    bar.hidden = false;
+    bar.dataset.kind = kind;
+    bar.querySelectorAll<HTMLElement>('[data-media-only]').forEach(item => { item.hidden = item.dataset.mediaOnly !== kind; });
+    bar.querySelectorAll<HTMLButtonElement>('[data-media]').forEach(button => {
+      const action = button.dataset.media!;
+      const position = action.startsWith('align-') ? action.slice(6) : action.startsWith('wrap-') ? action : null;
+      if (position) button.setAttribute('aria-pressed', String(media.node.attrs.align === position));
+      if (action.startsWith('width-')) button.setAttribute('aria-pressed', String(media.node.attrs.size === Number(action.slice(6))));
+      button.tabIndex = -1;
+    });
+    const first = [...bar.querySelectorAll<HTMLButtonElement>('[data-media]')].find(button => button.offsetParent !== null);
+    if (first) first.tabIndex = 0;
+    // Above the item, or over its top edge when the toolbar or the window edge is in the way.
+    const box = this.root.getBoundingClientRect();
+    const at = element.getBoundingClientRect();
+    const toolbarBottom = this.toolbar?.getBoundingClientRect().bottom ?? box.top;
+    let top = at.top - box.top - bar.offsetHeight - 8;
+    if (at.top - bar.offsetHeight - 8 < Math.max(toolbarBottom, 0)) top = Math.max(at.top, toolbarBottom) - box.top + 8;
+    const left = Math.max(4, Math.min(at.left - box.left + at.width / 2 - bar.offsetWidth / 2, box.width - bar.offsetWidth - 4));
+    bar.style.top = `${top}px`;
+    bar.style.left = `${left}px`;
   }
 
   private selectedImage(): Record<string, unknown> | null {
@@ -347,49 +537,58 @@ class RichField {
     return selection instanceof NodeSelection && selection.node.type.name === 'image' ? selection.node.attrs : null;
   }
 
-  /* Image menu: Upload image / Image from a link ------------------------ */
+  /* Menus: Image (upload / from a link) and Text alignment -------------- */
 
-  private menuButton(): HTMLButtonElement | null {
-    return this.toolbar?.querySelector<HTMLButtonElement>('[data-command="image"][aria-haspopup="menu"]') ?? null;
+  private openMenuEl: HTMLElement | null = null;
+
+  private menuButton(menu: HTMLElement | null = this.openMenuEl): HTMLButtonElement | null {
+    return menu ? this.toolbar?.querySelector<HTMLButtonElement>(`[aria-controls="${CSS.escape(menu.id)}"]`) ?? null : null;
   }
 
-  private menuItems(): HTMLButtonElement[] { return [...(this.menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])]; }
+  private menuItems(menu: HTMLElement | null = this.openMenuEl): HTMLButtonElement[] {
+    return [...(menu?.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]') ?? [])];
+  }
 
   private setUpMenu(): void {
-    const menu = this.menu;
-    if (!menu) return;
-    // Out of the toolbar, which may scroll sideways on phones and would clip the menu.
-    this.root.append(menu);
-    menu.addEventListener('mousedown', event => event.preventDefault());
-    menu.addEventListener('click', event => {
-      const item = (event.target as Element).closest<HTMLButtonElement>('[data-rich-action]');
-      if (!item) return;
-      const action = item.dataset.richAction;
-      this.closeMenu(false);
-      if (action === 'image-upload') this.pick('image');
-      if (action === 'image-link') this.openImageDialog(false);
-    });
-    menu.addEventListener('keydown', event => {
-      const items = this.menuItems();
-      const index = items.indexOf(document.activeElement as HTMLButtonElement);
-      const move = { ArrowDown: 1, ArrowUp: -1, Home: -index, End: items.length - 1 - index }[event.key];
-      if (move !== undefined) { event.preventDefault(); items[(index + move + items.length) % items.length]?.focus(); return; }
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.closeMenu(true); }
-      if (event.key === 'Tab') this.closeMenu(false);
+    this.root.querySelectorAll<HTMLElement>('[data-rich-menu]').forEach(menu => {
+      // Out of the toolbar, which may scroll sideways on phones and would clip the menu.
+      this.root.append(menu);
+      menu.addEventListener('mousedown', event => event.preventDefault());
+      menu.addEventListener('click', event => {
+        const item = (event.target as Element).closest<HTMLButtonElement>('[data-rich-action]');
+        if (!item) return;
+        const action = item.dataset.richAction!;
+        this.closeMenu(false);
+        if (action === 'image-upload') this.pick('image');
+        else if (action === 'image-link') this.openImageDialog(false);
+        else if (action.startsWith('align-')) this.align(action.slice(6));
+      });
+      menu.addEventListener('keydown', event => {
+        const items = this.menuItems(menu);
+        const index = items.indexOf(document.activeElement as HTMLButtonElement);
+        const move = { ArrowDown: 1, ArrowUp: -1, Home: -index, End: items.length - 1 - index }[event.key];
+        if (move !== undefined) { event.preventDefault(); items[(index + move + items.length) % items.length]?.focus(); return; }
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.closeMenu(true); }
+        if (event.key === 'Tab') this.closeMenu(false);
+      });
     });
     document.addEventListener('pointerdown', event => {
-      if (!menu.hidden && !menu.contains(event.target as globalThis.Node) && !this.menuButton()?.contains(event.target as globalThis.Node)) this.closeMenu(false);
+      const menu = this.openMenuEl;
+      if (menu && !menu.contains(event.target as globalThis.Node) && !this.menuButton()?.contains(event.target as globalThis.Node)) this.closeMenu(false);
     }, { signal: this.listeners.signal });
   }
 
   private toggleMenu(button: HTMLButtonElement): void {
-    if (this.menu && !this.menu.hidden) { this.closeMenu(false); return; }
+    const menu = document.getElementById(button.getAttribute('aria-controls') ?? '');
+    if (menu && this.openMenuEl === menu) { this.closeMenu(false); return; }
     this.openMenu(button);
   }
 
   private openMenu(button: HTMLButtonElement): void {
-    const menu = this.menu;
-    if (!menu) return;
+    const menu = document.getElementById(button.getAttribute('aria-controls') ?? '');
+    if (!menu || !this.root.contains(menu)) return;
+    this.closeMenu(false);
+    this.openMenuEl = menu;
     menu.hidden = false;
     button.setAttribute('aria-expanded', 'true');
     // Under the button, kept inside the editor's width.
@@ -399,15 +598,79 @@ class RichField {
     menu.style.top = `${at.bottom - box.top + 4}px`;
     if (rtl) { menu.style.right = `${Math.max(0, box.right - at.right)}px`; menu.style.left = 'auto'; }
     else { menu.style.left = `${Math.max(0, Math.min(at.left - box.left, box.width - menu.offsetWidth))}px`; menu.style.right = 'auto'; }
-    this.menuItems()[0]?.focus();
+    const items = this.menuItems(menu);
+    (items.find(item => item.getAttribute('aria-checked') === 'true') ?? items[0])?.focus();
   }
 
   private closeMenu(focusButton: boolean): void {
-    if (!this.menu || this.menu.hidden) return;
-    this.menu.hidden = true;
-    const button = this.menuButton();
+    const menu = this.openMenuEl;
+    if (!menu) return;
+    menu.hidden = true;
+    const button = this.menuButton(menu);
+    this.openMenuEl = null;
     button?.setAttribute('aria-expanded', 'false');
     if (focusButton) button?.focus();
+  }
+
+  /* Paragraph formatting: alignment, direction, indent, clear ------------ */
+
+  private blockTypes(): string[] { return ['paragraph', 'heading']; }
+
+  private align(value: string): void {
+    const editor = this.current();
+    if (!editor) return;
+    // The natural side of the language needs no class.
+    const textAlign = value === (this.isRtl() ? 'right' : 'left') ? null : value;
+    let chain = editor.chain().focus();
+    for (const type of this.blockTypes()) chain = chain.updateAttributes(type, { textAlign });
+    chain.run();
+  }
+
+  private currentAlign(editor: Editor): string {
+    const attrs = editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph');
+    return (attrs.textAlign as string | null) ?? (this.isRtl() ? 'right' : 'left');
+  }
+
+  /** The written direction of the field in the open language. */
+  private isRtl(): boolean {
+    return this.current()?.view.dom.getAttribute('dir') === 'rtl';
+  }
+
+  /** Flip the selected paragraphs to the other direction (Kurdish in an English text), or back. */
+  private toggleDirection(): void {
+    const editor = this.current();
+    if (!editor) return;
+    const other = this.isRtl() ? 'ltr' : 'rtl';
+    const current = (editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph')).dir as string | null;
+    const dir = current === other ? null : other;
+    let chain = editor.chain().focus();
+    for (const type of [...this.blockTypes(), 'listItem']) chain = chain.updateAttributes(type, { dir });
+    if (editor.isActive('bulletList')) chain = chain.updateAttributes('bulletList', { dir });
+    if (editor.isActive('orderedList')) chain = chain.updateAttributes('orderedList', { dir });
+    chain.run();
+  }
+
+  private indent(step: 1 | -1): void {
+    const editor = this.current();
+    if (!editor) return;
+    if (editor.isActive('listItem')) {
+      if (step > 0) editor.chain().focus().sinkListItem('listItem').run();
+      else editor.chain().focus().liftListItem('listItem').run();
+      return;
+    }
+    const attrs = editor.isActive('heading') ? editor.getAttributes('heading') : editor.getAttributes('paragraph');
+    const indent = Math.max(0, Math.min(4, (Number(attrs.indent) || 0) + step));
+    let chain = editor.chain().focus();
+    for (const type of this.blockTypes()) chain = chain.updateAttributes(type, { indent });
+    chain.run();
+  }
+
+  private clearFormatting(): void {
+    const editor = this.current();
+    if (!editor) return;
+    let chain = editor.chain().focus().unsetAllMarks().clearNodes();
+    for (const type of this.blockTypes()) chain = chain.updateAttributes(type, { textAlign: null, indent: 0, dir: null });
+    chain.run();
   }
 
   /* Dialogs: link, image from a link, YouTube/Vimeo ------------------- */
@@ -460,6 +723,8 @@ class RichField {
       if (input.type === 'checkbox') input.checked = values.blank === true;
       else if (input.matches('[data-rich-url]')) input.value = String(values.url ?? '');
       else if (input.matches('[data-rich-alt]')) input.value = String(values.alt ?? '');
+      else if (input.matches('[data-rich-caption]')) input.value = String(values.caption ?? '');
+      else if (input.matches('[data-rich-href]')) input.value = String(values.href ?? '');
     });
     const heading = dialog.querySelector<HTMLElement>('.fa-rich-dialog-title');
     if (heading) {
@@ -500,7 +765,8 @@ class RichField {
     const image = edit ? this.selectedImage() : null;
     const apply = this.dialog('image')?.querySelector<HTMLElement>('[data-rich-apply]');
     if (apply) apply.textContent = image ? this.strings.save : this.strings.insert;
-    this.open('image', { url: String(image?.src ?? ''), alt: String(image?.alt ?? '') }, image ? this.strings.image_edit_title : this.strings.image_title);
+    this.open('image', { url: String(image?.src ?? ''), alt: String(image?.alt ?? ''), caption: String(image?.caption ?? ''), href: String(image?.href ?? '') },
+      image ? this.strings.image_edit_title : this.strings.image_title);
     this.editingImage = image !== null;
   }
 
@@ -537,13 +803,18 @@ class RichField {
     if (name === 'image') {
       if (!validMediaUrl(url)) { this.invalid(dialog, input, this.strings.image_invalid); return; }
       const alt = dialog.querySelector<HTMLInputElement>('[data-rich-alt]')?.value.trim() ?? '';
+      const caption = dialog.querySelector<HTMLInputElement>('[data-rich-caption]')?.value.trim() ?? '';
+      const hrefInput = dialog.querySelector<HTMLInputElement>('[data-rich-href]');
+      const href = (hrefInput?.value ?? '').trim();
+      if (href !== '' && !validLink(href)) { this.invalid(dialog, hrefInput, this.strings.link_invalid); return; }
       this.close(false);
+      const extra = { caption, href: href === '' ? null : href };
       if (editingImage) {
         const old = this.selectedImage();
-        // A new address drops the old size; the browser measures the new image.
+        // A new address drops the old pixel size; the browser measures the new image.
         const size = old && old.src === url ? {} : { width: null, height: null };
-        editor.chain().focus().updateAttributes('image', { src: url, alt, ...size }).run();
-      } else insertBlock(editor, { type: 'image', attrs: { src: url, alt } });
+        editor.chain().focus().updateAttributes('image', { src: url, alt, ...extra, ...size }).run();
+      } else insertBlock(editor, { type: 'image', attrs: { src: url, alt, ...extra } });
       return;
     }
     const embed: EmbedInfo | null = parseEmbed(url, this.config.embeds);
@@ -560,7 +831,10 @@ class RichField {
         const file = input.files?.[0];
         input.value = '';
         if (file) void (input.dataset.richFile === 'video' ? this.insertVideo(file) : this.insertImage(file));
+        else this.replacing = null;
       });
+      // Closing the picker without a file cancels a Replace.
+      input.addEventListener('cancel', () => { this.replacing = null; });
     });
     this.statusBox?.querySelector('[data-rich-status-cancel]')?.addEventListener('click', () => {
       if (this.upload) { this.upload.abort(); this.upload = null; this.showStatus(this.strings.cancelled, 'done'); }
@@ -591,11 +865,23 @@ class RichField {
   private async insertImage(file: File): Promise<void> {
     if (file.size > this.config.maxImage) { this.showStatus(this.strings.too_large.replace(':size', size(this.config.maxImage)), 'error'); return; }
     const editor = this.current();
+    const replacing = this.replacing;
+    this.replacing = null;
     const upload = this.upload = new AbortController();
     this.showStatus(`${this.strings.uploading} ${file.name}`, 'busy');
     try {
       const image = await uploadImage(this.config, file, upload.signal);
-      if (editor && !editor.isDestroyed) insertBlock(editor, { type: 'image', attrs: { src: image.url, alt: '', width: image.width ?? null, height: image.height ?? null } });
+      if (editor && !editor.isDestroyed) {
+        const attrs = { src: image.url, width: image.width ?? null, height: image.height ?? null };
+        const target = replacing ? editor.state.doc.nodeAt(replacing.pos) : null;
+        if (replacing && target?.type.name === 'image' && target.attrs.src === replacing.src) {
+          // Replace keeps the description, caption, link, width and position.
+          const { tr } = editor.state;
+          tr.setNodeMarkup(replacing.pos, undefined, { ...target.attrs, ...attrs });
+          tr.setSelection(NodeSelection.create(tr.doc, replacing.pos));
+          editor.view.dispatch(tr);
+        } else insertBlock(editor, { type: 'image', attrs: { ...attrs, alt: '' } });
+      }
       this.showStatus(this.strings.uploaded, 'done');
     } catch (error) {
       if ((error as Error).name !== 'AbortError') this.showStatus(error instanceof UploadError ? error.message || this.strings.image_invalid : this.strings.upload_failed, 'error');

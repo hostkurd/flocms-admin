@@ -13,6 +13,23 @@ namespace FloCMS\Admin\Support;
 final class EditorIcons
 {
     private const ICONS = [
+        'alignLeft' => '<path d="M15 12H3" /> <path d="M17 18H3" /> <path d="M21 6H3" />',
+        'alignCenter' => '<path d="M17 12H7" /> <path d="M19 18H5" /> <path d="M21 6H3" />',
+        'alignRight' => '<path d="M21 12H9" /> <path d="M21 18H7" /> <path d="M21 6H3" />',
+        'alignJustify' => '<path d="M3 12h18" /> <path d="M3 18h18" /> <path d="M3 6h18" />',
+        'direction' => '<path d="M8 3 4 7l4 4" /> <path d="M4 7h16" /> <path d="m16 21 4-4-4-4" /> <path d="M20 17H4" />',
+        'indent' => '<path d="M21 12H11" /> <path d="M21 18H11" /> <path d="M21 6H11" /> <path d="m3 8 4 4-4 4" />',
+        'outdent' => '<path d="M21 12H11" /> <path d="M21 18H11" /> <path d="M21 6H11" /> <path d="m7 8-4 4 4 4" />',
+        'clearFormatting' => '<path d="M4 7V4h16v3" /> <path d="M5 20h6" /> <path d="M13 4 8 20" /> <path d="m15 15 5 5" /> <path d="m20 15-5 5" />',
+        'edit' => '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" />',
+        'trash' => '<path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />',
+        'replace' => '<path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21" /> <path d="m14 19.5 3-3 3 3" /> <path d="M17 22v-5.5" /> <circle cx="9" cy="9" r="2" />',
+        'caption' => '<rect width="18" height="14" x="3" y="5" rx="2" ry="2" /> <path d="M7 15h4M15 15h2M7 11h2M13 11h4" />',
+        'mediaLeft' => '<rect x="3" y="5" width="9" height="8" rx="1"/> <path d="M15 7h6"/> <path d="M15 11h6"/> <path d="M3 17h18"/> <path d="M3 21h12"/>',
+        'mediaCenter' => '<rect x="7" y="3" width="10" height="9" rx="1"/> <path d="M3 16h18"/> <path d="M6 20h12"/>',
+        'mediaRight' => '<rect x="12" y="5" width="9" height="8" rx="1"/> <path d="M3 7h6"/> <path d="M3 11h6"/> <path d="M3 17h18"/> <path d="M9 21h12"/>',
+        'wrapLeft' => '<rect x="3" y="4" width="8" height="8" rx="1"/> <path d="M14 5h7"/> <path d="M14 9h7"/> <path d="M14 13h7"/> <path d="M3 17h18"/> <path d="M3 21h18"/>',
+        'wrapRight' => '<rect x="13" y="4" width="8" height="8" rx="1"/> <path d="M3 5h7"/> <path d="M3 9h7"/> <path d="M3 13h7"/> <path d="M3 17h18"/> <path d="M3 21h18"/>',
         'bold' => '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
         'italic' => '<line x1="19" x2="10" y1="4" y2="4"/> <line x1="14" x2="5" y1="20" y2="20"/> <line x1="15" x2="9" y1="4" y2="20"/>',
         'underline' => '<path d="M6 4v6a6 6 0 0 0 12 0V4"/> <line x1="4" x2="20" y1="20" y2="20"/>',

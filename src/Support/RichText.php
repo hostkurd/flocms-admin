@@ -11,8 +11,11 @@ namespace FloCMS\Admin\Support;
  * code, rules, line breaks, images, videos and YouTube/Vimeo embeds. Everything
  * else is unwrapped (its text is kept) or, for scripts, styles, frames and form
  * controls, removed with its content. Every attribute is rebuilt: no event
- * handlers, no style or class, no unknown URL schemes. Embeds are re-created
- * from a validated provider and video ID; the submitted iframe is never kept.
+ * handlers, no style, no unknown URL schemes, and only the presentation classes
+ * of rich-text.css (rt-w-*, rt-align-*, rt-wrap-*, rt-text-*, rt-indent-*).
+ * Images may sit in <figure class="rt-figure"> with a link and a caption.
+ * Embeds are re-created from a validated provider and video ID; the submitted
+ * iframe is never kept.
  *
  *   echo RichText::clean($post->body);           // print stored content
  *   RichText::clean($html, images: false);       // a field without images
@@ -23,6 +26,11 @@ final class RichText
 
     /** Elements kept as they are (attributes are rebuilt per element). */
     private const KEEP = ['p', 'h2', 'h3', 'h4', 'blockquote', 'ul', 'ol', 'li', 'pre', 'code', 'strong', 'em', 'u', 's', 'br', 'hr', 'a', 'img', 'video'];
+    /** Blocks that may carry text alignment, indent and direction. */
+    private const BLOCKS = ['p', 'h2', 'h3', 'h4', 'blockquote', 'ul', 'ol', 'li'];
+    /** Media widths (percent of the text column), in steps of 5. */
+    public const WIDTHS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+    public const POSITIONS = ['left', 'center', 'right', 'wrap-left', 'wrap-right'];
     /** Older or equivalent markup mapped to the kept element. */
     private const RENAME = ['b' => 'strong', 'i' => 'em', 'del' => 's', 'strike' => 's', 'h1' => 'h2', 'h5' => 'h4', 'h6' => 'h4'];
     /** Removed together with everything inside. */
@@ -60,6 +68,16 @@ final class RichText
         // Editors keep an empty paragraph at the end; it is not content.
         $out = trim((string) preg_replace('~(?:<p>(?:<br>)?</p>)+$~', '', trim($cleaner->children($root, 0, false))));
         return self::isEmpty($out) ? '' : $out;
+    }
+
+    /**
+     * The <link> tag of rich-text.css, which draws image widths and positions,
+     * captions, embeds and text alignment on the website. Put it in the layout's
+     * <head>, and print content inside an element with class "rt-content".
+     */
+    public static function stylesheet(): string
+    {
+        return '<link rel="stylesheet" href="' . self::e(\FloCMS\Admin\Assets::richTextUrl()) . '">';
     }
 
     /** True when the HTML has no visible text and no image, video, embed or rule. */
@@ -120,9 +138,10 @@ final class RichText
     }
 
     /** Canonical embed markup; the iframe is sandboxed and loads lazily. */
-    public static function embedHtml(array $embed): string
+    /** @param list<string> $classes presentation classes (width, position) */
+    public static function embedHtml(array $embed, array $classes = []): string
     {
-        return '<div data-embed="' . self::e($embed['provider']) . '" data-id="' . self::e($embed['id']) . '">'
+        return '<div data-embed="' . self::e($embed['provider']) . '" data-id="' . self::e($embed['id']) . '"' . self::classAttribute($classes) . '>'
             . '<iframe src="' . self::e($embed['src']) . '" title="' . self::e($embed['title']) . '" width="640" height="360" loading="lazy"'
             . ' allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen'
             . ' referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"></iframe></div>';
@@ -146,6 +165,7 @@ final class RichText
         $tag = strtolower($node->tagName);
         if (in_array($tag, self::DROP, true)) { return ''; }
         if ($tag === 'div' && $node->hasAttribute('data-embed')) { return $this->embedNode($node); }
+        if ($tag === 'figure') { return $this->figure($node, $depth, $pre); }
         $tag = self::RENAME[$tag] ?? $tag;
         // Very deep nesting is flattened to its text.
         if ($depth >= self::MAX_DEPTH) { return self::e($node->textContent); }
@@ -179,12 +199,12 @@ final class RichText
                     $value = $node->getAttribute($name);
                     if (preg_match('/^[1-9]\d{0,3}$/D', $value) === 1) { $html .= ' ' . $name . '="' . $value . '"'; }
                 }
-                return $html . ' loading="lazy"';
+                return $html . self::classAttribute(self::mediaClasses($node)) . ' loading="lazy"';
             case 'ol':
                 $start = $node->getAttribute('start');
-                return preg_match('/^[1-9]\d{0,5}$/D', $start) === 1 && $start !== '1' ? ' start="' . $start . '"' : '';
+                return (preg_match('/^[1-9]\d{0,5}$/D', $start) === 1 && $start !== '1' ? ' start="' . $start . '"' : '') . self::blockAttributes($tag, $node);
             default:
-                return '';
+                return in_array($tag, self::BLOCKS, true) ? self::blockAttributes($tag, $node) : '';
         }
     }
 
@@ -196,7 +216,7 @@ final class RichText
         }
         $src = self::url($src, false);
         if ($src === null || preg_match('~\.(mp4|webm)(?:[?#].*)?$~iD', $src) !== 1) { return ''; }
-        return '<video src="' . self::e($src) . '" controls preload="metadata"></video>';
+        return '<video src="' . self::e($src) . '"' . self::classAttribute(self::mediaClasses($node)) . ' controls preload="metadata"></video>';
     }
 
     private function embedNode(\DOMElement $node): string
@@ -209,7 +229,62 @@ final class RichText
             default => '',
         };
         $embed = $url === '' ? null : self::embed($url, $this->providers);
-        return $embed === null ? '' : self::embedHtml($embed);
+        return $embed === null ? '' : self::embedHtml($embed, self::mediaClasses($node));
+    }
+
+    /**
+     * <figure class="rt-figure …"><a href>?<img></a>?<figcaption>text</figcaption></figure>,
+     * rebuilt from its first image, link and caption; anything else is dropped.
+     */
+    private function figure(\DOMElement $node, int $depth, bool $pre): string
+    {
+        $image = $node->getElementsByTagName('img')->item(0);
+        if (!$this->images || !$image instanceof \DOMElement || ($attributes = $this->attributes('img', $image)) === null) {
+            return $this->images ? '' : $this->children($node, $depth + 1, $pre);
+        }
+        // The figure carries the width and position; the image fills it.
+        $img = '<img' . preg_replace('~ class="[^"]*"~', '', $attributes) . '>';
+        $link = $image->parentNode instanceof \DOMElement && strtolower($image->parentNode->tagName) === 'a' ? self::url($image->parentNode->getAttribute('href'), true) : null;
+        if ($link !== null) {
+            $blank = strtolower($image->parentNode->getAttribute('target')) === '_blank';
+            $img = '<a href="' . self::e($link) . '"' . ($blank ? ' target="_blank" rel="noopener noreferrer"' : '') . '>' . $img . '</a>';
+        }
+        $caption = $node->getElementsByTagName('figcaption')->item(0);
+        // The caption is plain text: its cleaned content without tags (scripts are already gone).
+        $text = $caption === null ? '' : html_entity_decode(strip_tags($this->children($caption, $depth + 1, false)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+        $text = mb_substr($text, 0, 300);
+        return '<figure' . self::classAttribute(array_merge(['rt-figure'], self::mediaClasses($node))) . '>' . $img
+            . ($text !== '' ? '<figcaption>' . self::e($text) . '</figcaption>' : '') . '</figure>';
+    }
+
+    /** @return list<string> the allowed width and position classes of a media element (one of each) */
+    private static function mediaClasses(\DOMElement $node): array
+    {
+        $width = null; $position = null;
+        foreach (preg_split('/\s+/', trim($node->getAttribute('class'))) ?: [] as $class) {
+            if ($width === null && preg_match('/^rt-w-(\d{2,3})$/D', $class, $m) === 1 && in_array((int) $m[1], self::WIDTHS, true)) { $width = $class; }
+            if ($position === null && preg_match('/^rt-(?:align-(left|center|right)|wrap-(left|right))$/D', $class) === 1) { $position = $class; }
+        }
+        return array_values(array_filter([$width, $position]));
+    }
+
+    /** Text alignment and indent classes, and dir="rtl|ltr", for paragraphs, headings, quotes and lists. */
+    private static function blockAttributes(string $tag, \DOMElement $node): string
+    {
+        $classes = [];
+        foreach (preg_split('/\s+/', trim($node->getAttribute('class'))) ?: [] as $class) {
+            if (preg_match('/^rt-text-(left|center|right|justify)$/D', $class) === 1 && in_array($tag, ['p', 'h2', 'h3', 'h4'], true)) { $classes['align'] ??= $class; }
+            if (preg_match('/^rt-indent-[1-4]$/D', $class) === 1 && in_array($tag, ['p', 'h2', 'h3', 'h4'], true)) { $classes['indent'] ??= $class; }
+        }
+        $dir = strtolower($node->getAttribute('dir'));
+        return self::classAttribute(array_values($classes)) . (in_array($dir, ['rtl', 'ltr'], true) ? ' dir="' . $dir . '"' : '');
+    }
+
+    /** @param list<string> $classes */
+    private static function classAttribute(array $classes): string
+    {
+        return $classes === [] ? '' : ' class="' . self::e(implode(' ', $classes)) . '"';
     }
 
     private static function seconds(mixed $value): int

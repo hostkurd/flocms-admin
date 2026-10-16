@@ -1,4 +1,4 @@
-# Rich text (0.10, editor reworked in 0.11)
+# Rich text (0.10; dialogs 0.11; layout tools 0.13)
 
 `RichEditor` is a visual editor (bold, headings, lists, links, quotes, code) with images, videos and YouTube/Vimeo embeds. It stores **clean HTML** in a TEXT column, or one HTML value per language as JSON when translatable, exactly like `Textarea`.
 
@@ -12,7 +12,7 @@ RichEditor::make('content')->maxImageSize(4096)->maxVideoSize(300)->embeds(['you
 
 | Method | Default | Meaning |
 | --- | --- | --- |
-| `toolbar([...])` | all | Buttons, in order: `heading2`, `heading3`, `bold`, `italic`, `underline`, `strike`, `link`, `bulletList`, `orderedList`, `blockquote`, `codeBlock`, `horizontalRule`, `image`, `video`, `embed`, `undo`, `redo` |
+| `toolbar([...])` | all | Buttons, in order: `heading2`, `heading3`, `bold`, `italic`, `underline`, `strike`, `link`, `bulletList`, `orderedList`, `outdent`, `indent`, `textAlign`, `direction`, `blockquote`, `codeBlock`, `horizontalRule`, `image`, `video`, `embed`, `clearFormatting`, `undo`, `redo` |
 | `images(false)` | on | No images. Without the `image` button images are off too |
 | `videos(false)` | on | No uploaded videos |
 | `embeds(['youtube'])` | YouTube, Vimeo | Video sites that can be embedded from a link; `false` for none |
@@ -35,11 +35,24 @@ The browser sends HTML, and the server cleans it again with `FloCMS\Admin\Suppor
 - images and videos from `http(s)://` or `/paths` (videos: `.mp4`, `.webm` only), with `loading="lazy"` and `controls`;
 - embeds as `<div data-embed="youtube" data-id="…">` around an iframe that the server builds from the validated video ID (`youtube-nocookie.com`, or `player.vimeo.com` with `dnt=1`), lazily loaded and sandboxed.
 
-Everything else is removed: scripts, styles, event handlers, `style`/`class`/`id` attributes, forms, other iframes, `javascript:` and `data:` URLs. Content is therefore safe to print on a public page. Print it unescaped, and clean it again if the column can be written by anything other than the admin:
+- since 0.13, presentation classes from the package's `rich-text.css` and nothing else: on images, videos and embeds one width `rt-w-10` … `rt-w-100` (5 % steps) and one position `rt-align-left|center|right` or `rt-wrap-left|right`; on paragraphs and headings `rt-text-left|center|right|justify` and `rt-indent-1` … `rt-indent-4`; `dir="rtl|ltr"` on paragraphs, headings, quotes, lists and list items;
+- images with a caption or a link as `<figure class="rt-figure …"><a href="…"><img …></a><figcaption>text</figcaption></figure>` (one image, a checked link, a plain-text caption).
+
+Everything else is removed: scripts, styles, event handlers, `style`/`id` attributes and any other class, forms, other iframes, `javascript:` and `data:` URLs. Content is therefore safe to print on a public page. Print it unescaped, and clean it again if the column can be written by anything other than the admin:
 
 ```html
-<article>{!! \FloCMS\Admin\Support\RichText::clean($post->body) !!}</article>
+<article class="rt-content">{!! \FloCMS\Admin\Support\RichText::clean($post->body) !!}</article>
 ```
+
+### Showing sizes, positions and captions on the website (0.13)
+
+The classes above only take effect with the package's stylesheet. Add it once to the layout's `<head>`:
+
+```html
+{!! \FloCMS\Admin\Support\RichText::stylesheet() !!}
+```
+
+It links `/flo-admin/asset/rich-text-v<version>.css` (about 2 KB, cached, classes only, so it works under a strict Content-Security-Policy). You can also copy `vendor/hostkurd/flocms-admin/resources/assets/rich-text.css` into your own CSS. Put content in an element with class `rt-content`, so text wrapped around an image ends inside it. Embeds keep a 16:9 frame at any width. On phones (600 px and narrower) wrapped images stand on their own line at full width. Left and right are as on screen, also in right-to-left text.
 
 `RichText::plain($html, 160)` gives a plain-text excerpt (for list columns, meta descriptions and search).
 
@@ -61,6 +74,24 @@ Files are stored as `<resource>/<field>/<yyyy>/<mm>/…` with random names, and 
 - **Videos** (MP4, WebM) are sent in 1 MiB parts, so PHP's `upload_max_filesize` does not limit them. A part upload belongs to the user and session that started it; unfinished uploads expire after a day (`storage/admin-uploads/chunks`).
 - Only people who may create or edit the resource can upload, and only into a `RichEditor` whose toolbar has that button. The endpoint is `POST /<lang>/admin/<resource>/media/<field>/<image|start|chunk|complete|abort>`, CSRF-protected.
 - Uploaded files stay when content that used them is deleted; they are public files, and Admin cannot know whether another page links to them.
+
+### Size and position (0.13)
+
+Click an image, video or embed to select it. It shows **grips** on its corners and sides, and a small **toolbar** above it:
+
+- **Left · Centre · Right**, and **Text wraps on the right / on the left** (the image floats and text flows beside it). Pressing the active one again takes it off.
+- **25 % · 50 % · 75 % · 100 %** widths, or drag a grip: the width follows the pointer in 5 % steps of the text column and shows a "Width 60%" label; the height follows, so pictures never stretch.
+- For images: **Edit image** (address, description, caption, link), **Replace image** (opens the file picker; keeps description, caption, link, size and position) and **Remove**.
+
+The toolbar is one tab stop (arrow keys move inside it; Escape returns to the text).
+
+### Paragraph tools (0.13)
+
+- **Text alignment** menu: left, centre, right, justify. The language's own side is the default and stores no class.
+- **Switch text direction**: the selected paragraphs become right-to-left in a left-to-right text (or the other way), for a Kurdish line in an English article. Stored as `dir`.
+- **Increase / Decrease indent**: nests list items; indents paragraphs and headings up to four steps.
+- **Clear formatting** (Ctrl/⌘+\\): removes bold, links and other marks, headings, alignment, indent and direction from the selection.
+- Text pasted from **Word** or other office programs arrives clean: their hidden markup, styles and list bullets are dropped, while bold, italic, links, lists and centred or right-aligned paragraphs stay.
 
 How people add media (0.11):
 
