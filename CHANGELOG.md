@@ -4,7 +4,7 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 
 ## 0.10.0 - 2026-10-16
 
-Rich text. Additions only; existing resources, fields and settings are unchanged. Requires `hostkurd/flocms-reactive` **^0.5.1** (for `data-rx-ignore`).
+Rich text. Additions only; existing resources, fields and settings are unchanged. Requires `hostkurd/flocms-reactive` **^0.5.1** (for `data-rx-ignore`) and `hostkurd/flocms-uploader` **^1.2.1** (its Imagick driver padded resized images to a square).
 
 - New `RichEditor` field: headings, bold/italic/underline/strike, links (checked, optional new tab), lists, quotes, code blocks, dividers, undo/redo, images, videos and YouTube/Vimeo embeds. `toolbar()`, `images()`, `videos()`, `embeds()`, `maxImageSize()`, `maxVideoSize()`, `maxLength()`. See [docs/rich-text.md](docs/rich-text.md).
 - Translatable rich text shows language tabs (EN · AR · KU) with filled/empty/invalid dots; each language has its own editor and writes in its own direction. Single-language sites get no tabs.
