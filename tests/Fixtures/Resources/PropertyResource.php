@@ -12,6 +12,7 @@ final class PropertyResource extends Resource
 {
     protected static string $table = 'properties';
     protected static string $slug = 'properties';
+    protected static ?string $icon = 'building';
     protected static string $label = 'Property';
     protected static string $pluralLabel = 'Properties';
     public function tableActionsForm(Form $form): Form

@@ -62,6 +62,24 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringContainsString('<form class="fa-search" method="get"', $body);
     }
 
+    public function testShellShowsBreadcrumbsLanguagesAndAccountMenu(): void
+    {
+        $body = self::request('GET', '/en/admin/posts?static=1')['body'];
+        self::assertStringContainsString('data-sidebar="light"', $body);
+        self::assertStringContainsString('<span class="fa-brand-mark" aria-hidden="true">T</span>', $body);
+        self::assertMatchesRegularExpression('~<nav class="fa-breadcrumbs"[^>]*><ol>\s*<li><span>Content</span></li>\s*<li><span aria-current="page">Posts</span></li>~', $body);
+        self::assertStringContainsString('href="https://example.test/ku/admin/posts?static=1" hreflang="ku"', $body);
+        self::assertStringContainsString('<span class="fa-avatar" aria-hidden="true">S</span>', $body);
+        self::assertStringContainsString('class="fa-menu-item fa-topbar-user" href="https://example.test/en/admin/profile"', $body);
+        $form = self::request('GET', '/en/admin/posts/create')['body'];
+        self::assertMatchesRegularExpression('~<li><a href="https://example.test/en/admin/posts">Posts</a></li>\s*<li><span aria-current="page">New Post</span></li>~', $form);
+        $config = ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class], 'brand' => 'Test Panel', 'primary_color' => '#4f46e5', 'sidebar' => 'dark', 'logo' => '/logo.svg'];
+        $branded = self::request('GET', '/en/admin/posts', ['admin_config' => $config])['body'];
+        self::assertMatchesRegularExpression('~<link rel="stylesheet" href="https://example.test/en/flo-admin/asset/theme-[0-9a-f]{12}\.css">~', $branded);
+        self::assertStringContainsString('data-sidebar="dark"', $branded);
+        self::assertStringContainsString('<img class="fa-brand-logo" src="/logo.svg" alt="">', $branded);
+    }
+
     public function testSearchAndSort(): void
     {
         $body = self::request('GET', '/admin/posts?q=cabin&sort=title&dir=asc')['body'];

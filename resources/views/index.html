@@ -1,5 +1,5 @@
 <div class="fa-page-head">
-    <h1 class="fa-page-title">{{ $title }}</h1>
+    <div><h1 class="fa-page-title">{{ $title }}</h1>@if($resource::getDescription() !== null)<p class="fa-page-description">{{ $resource::getDescription() }}</p>@endif</div>
     <div class="fa-action-group">{!! $pageActions !!}</div>
 </div>
 <div class="fa-card">

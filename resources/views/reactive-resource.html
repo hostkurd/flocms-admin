@@ -1,5 +1,5 @@
 <div class="fa-page-head" id="{{ $prefix }}-head">
-    <div><p class="fa-eyebrow">{{ $t('nav.resources') }}</p><h1 class="fa-page-title">{{ $resource::getPluralLabel() }}</h1></div>
+    <div><h1 class="fa-page-title">{{ $resource::getPluralLabel() }}</h1>@if($resource::getDescription() !== null)<p class="fa-page-description">{{ $resource::getDescription() }}</p>@endif</div>
     <div class="fa-action-group">{!! $pageActions !!}</div>
 </div>
 <noscript><p><a href="{{ $fullPageUrl }}">{{ $t('reactive.full_page') }}</a></p></noscript>

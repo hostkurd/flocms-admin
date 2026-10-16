@@ -20,6 +20,11 @@ final class AssetController extends Controller
         if (in_array($name, ['admin-v' . Admin::VERSION . '.js', 'admin-v' . Admin::VERSION . '.css'], true)) {
             $file = $root . '/dist/' . $name;
             $type = str_ends_with($name, '.js') ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8';
+        } elseif (($theme = \FloCMS\Admin\Support\Theme::fileName()) !== null && $name === $theme) {
+            // Only the stylesheet for the currently configured colour exists.
+            return Response::make(\FloCMS\Admin\Support\Theme::css((string) Admin::config()->primaryColor()))
+                ->header('Content-Type', 'text/css; charset=utf-8')
+                ->header('Cache-Control', 'public, max-age=31536000, immutable')->header('X-Content-Type-Options', 'nosniff');
         } elseif (in_array($name, self::FONTS, true)) {
             // Fonts sit next to the stylesheet's URL, so its url() references stay relative.
             $file = $root . '/resources/fonts/' . $name;

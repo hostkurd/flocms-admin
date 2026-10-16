@@ -33,6 +33,14 @@ The panel redesign, matching the approved mockup. No resource, form, table, acti
 - The translation badge joins its input like an add-on; for long text it sits on the label line. The translation dialog is a compact panel whose rows start with the language code, and ends with Cancel, then Save.
 - Section descriptions sit directly under their heading, and consecutive sections are separated by a line.
 
+### Sidebar and topbar
+- Light sidebar by default (`'sidebar' => 'dark'` keeps a dark one), with a brand mark (the brand's first letter, or `logo`) and "Admin" under the brand name.
+- Topbar: breadcrumbs (Content / Posts / New post) instead of a repeated page title; a language switcher that opens the same admin page in another site language; an account menu (avatar initial, name) with My profile, View site and Log out. Full-page forms lose their in-page breadcrumb link, which the topbar now carries.
+- New settings in `config/admin.php`: `primary_color` (`#rrggbb`; shades for hover, highlights and the dark theme are derived from it and served as `theme-<hash>.css`, immutable and CSP-safe), `logo` (absolute URL or `/path`), `sidebar`. Invalid values fall back to the defaults; `admin:doctor` reports them and warns when white button text on `primary_color` is below 4.5:1 contrast.
+- Optional `Resource::$description`, shown under the list page title. The "Content" eyebrow above list titles is gone (the breadcrumb carries it).
+- 22 more icons for resources and actions (`newspaper`, `folder`, `map-pin`, `cart`, `credit-card`, `chart`, `message`, `bell`, `key`, `shield`, `layers`, `briefcase`, `book`, `camera`, `video`, `heart`, `link`, `phone`, `truck`, `grid`, `globe`, `user`), plus `chevron-down` and `external` for the topbar.
+- New strings `nav.admin`, `nav.breadcrumb`, `nav.language`, `nav.account` in en/ar/ku.
+
 Ship `admin-v0.9.0.css` and `admin-v0.9.0.js`.
 
 ## 0.8.1 - 2026-10-16

@@ -1,8 +1,5 @@
 <div class="fa-page-head">
-    <div>
-        <p class="fa-breadcrumb"><a href="{{ $listUrl }}">{{ $listLabel }}</a></p>
-        <h1 class="fa-page-title">{{ $title }}</h1>
-    </div>
+    <h1 class="fa-page-title">{{ $title }}</h1>
     @if($deleteUrl !== null)
     <form method="post" enctype="multipart/form-data" action="{{ $deleteUrl }}" data-confirm>
         {!! $csrf !!}

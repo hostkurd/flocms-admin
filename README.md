@@ -141,7 +141,8 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$primaryKey` | `'id'` | Primary key column |
 | `$timestamps` | `false` | Fill `created_at` on insert and `updated_at` on every save |
 | `$label`, `$pluralLabel` | from the table / slug | Text, or a key of the site's lang files |
-| `$icon` | `'list'` | `list`, `file`, `building`, `home`, `users`, `tag`, `image`, `calendar`, `mail`, `box`, `star`, `settings` |
+| `$icon` | `'list'` | `list`, `file`, `newspaper`, `book`, `folder`, `building`, `home`, `map-pin`, `users`, `user`, `tag`, `image`, `camera`, `video`, `calendar`, `mail`, `message`, `phone`, `bell`, `box`, `cart`, `credit-card`, `truck`, `briefcase`, `chart`, `grid`, `layers`, `link`, `globe`, `key`, `shield`, `heart`, `star`, `settings` |
+| `$description` | `null` | One line under the list page title: text, or a key of the site's lang files |
 | `$navigationSort` | `0` | Order in the sidebar |
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
@@ -262,6 +263,9 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `resources_namespace` | `'App\Admin\Resources'` | Their namespace |
 | `brand` | `SITE_NAME_ADMIN` | Name at the top of the sidebar |
 | `theme` | `'light'` | Colour theme: `'light'`, `'dark'`, or `'auto'` (follows the visitor's operating system) |
+| `primary_color` | `null` | Brand colour as `#rrggbb` for buttons, links and highlights; `null` keeps the default blue. Buttons use white text, so `admin:doctor` warns below a 4.5:1 contrast |
+| `logo` | `null` | Logo image URL (absolute, or a path starting with `/`) for the sidebar and login page; `null` shows the brand's first letter |
+| `sidebar` | `'light'` | `'light'` or `'dark'` |
 | `per_page` | `25` | Rows per page |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
@@ -278,6 +282,8 @@ All colours, radii and shadows are CSS custom properties on `.fa-panel` (and `.f
 ```css
 .fa-panel, .fa-login { --fa-primary: #4f46e5; --fa-primary-hover: #4338ca; --fa-primary-text: #4f46e5; }
 ```
+
+For the brand colour alone, set `primary_color` in `config/admin.php` instead: the package derives hover, soft and dark-theme shades from it and serves them as a small cached stylesheet (no inline styles, so a strict Content-Security-Policy keeps working). `logo` and `sidebar` complete the shell.
 
 The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-border`, `--fa-primary` (fills), `--fa-primary-text` (links and active states), `--fa-success` / `--fa-warning` / `--fa-danger` / `--fa-info` with `-soft` backgrounds, `--fa-radius` and `--fa-font`. The dark theme redefines the same names, so a site override applies to the light theme unless it also targets `.fa-panel[data-theme="dark"]`.
 

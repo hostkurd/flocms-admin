@@ -6,6 +6,7 @@ final class AssetResource extends Resource
 {
     protected static string $table = 'assets';
     protected static string $slug = 'assets';
+    protected static ?string $icon = 'image';
     protected static string $label = 'Asset';
     protected static string $pluralLabel = 'Assets';
     protected static bool $timestamps = false;

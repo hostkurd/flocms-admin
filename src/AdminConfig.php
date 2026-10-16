@@ -84,6 +84,32 @@ final class AdminConfig
     public function loginThemeEnabled(): bool { return ($this->values['login_theme'] ?? false) === true; }
 
     public const THEMES = ['light', 'dark', 'auto'];
+    public const SIDEBARS = ['light', 'dark'];
+
+    /** Brand colour as #rrggbb (from #rgb or #rrggbb), or null for the default blue. Invalid values are ignored; admin:doctor reports them. */
+    public function primaryColor(): ?string
+    {
+        $color = $this->values['primary_color'] ?? null;
+        if (!is_string($color) || preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/iD', trim($color)) !== 1) { return null; }
+        $hex = strtolower(ltrim(trim($color), '#'));
+        if (strlen($hex) === 3) { $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2]; }
+        return '#' . $hex;
+    }
+
+    /** URL of a logo image for the sidebar and login page, or null to show the brand's first letter. */
+    public function logo(): ?string
+    {
+        $logo = $this->values['logo'] ?? null;
+        if (!is_string($logo) || ($logo = trim($logo)) === '' || preg_match('~^(https?://|/)[^\s"\'<>]*$~iD', $logo) !== 1 || str_starts_with($logo, '//')) { return null; }
+        return $logo;
+    }
+
+    /** Sidebar style: light (default) or dark. */
+    public function sidebar(): string
+    {
+        $sidebar = $this->values['sidebar'] ?? 'light';
+        return is_string($sidebar) && in_array($sidebar, self::SIDEBARS, true) ? $sidebar : 'light';
+    }
 
     /** Colour theme: light (default), dark, or auto (follows the operating system). Unknown values fall back to light; admin:doctor reports them. */
     public function theme(): string

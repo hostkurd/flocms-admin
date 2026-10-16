@@ -167,11 +167,13 @@ test('accounts and profile forms navigate and save without reload', async ({ pag
   await ready(page, '/en/admin/dashboard');
   await page.locator('.fa-nav a[href="/en/admin/accounts"]').click();
   await expect(page.locator('h1')).toHaveText('Users');
+  // Profile is in the account menu in the topbar.
+  await page.locator('#fa-user-menu > summary').click();
   await page.locator('.fa-topbar-user').click();
   await expect(page.locator('[name=full_name]')).toHaveValue('Sara');
   await page.locator('[name=full_name]').fill('Sara Updated');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-  await expect(page.locator('.fa-topbar-user')).toHaveText('Sara Updated');
+  await expect(page.locator('.fa-user-name')).toHaveText('Sara Updated');
   await stable(page);
 });
 

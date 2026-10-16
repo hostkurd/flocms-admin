@@ -47,6 +47,24 @@ final class DoctorCommand extends Command
             $this->caution("theme must be 'light', 'dark' or 'auto'; using 'light'.");
         }
 
+        $values = $config->all();
+        if (array_key_exists('primary_color', $values) && $values['primary_color'] !== null) {
+            $color = $config->primaryColor();
+            if ($color === null) {
+                $this->caution("primary_color must be a hex colour such as '#0b6e91'; using the default.");
+            } elseif (($ratio = \FloCMS\Admin\Support\Theme::contrastWithWhite($color)) < 4.5) {
+                $this->caution(sprintf('primary_color %s gives white button text a contrast of %.1f:1; choose a darker colour (at least 4.5:1).', $color, $ratio));
+            } else {
+                $this->ok(sprintf('Brand colour %s (white text contrast %.1f:1)', $color, \FloCMS\Admin\Support\Theme::contrastWithWhite($color)));
+            }
+        }
+        if (array_key_exists('logo', $values) && $values['logo'] !== null && $config->logo() === null) {
+            $this->caution('logo must be an absolute URL or a path starting with /; showing the brand letter instead.');
+        }
+        if (array_key_exists('sidebar', $values) && !in_array($values['sidebar'], \FloCMS\Admin\AdminConfig::SIDEBARS, true)) {
+            $this->caution("sidebar must be 'light' or 'dark'; using 'light'.");
+        }
+
         $this->checkLayout();
         if ($config->loginThemeEnabled()) {
             $login = $project->path('views/users/admin_login.html');
