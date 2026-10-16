@@ -5,7 +5,9 @@ namespace FloCMS\Admin\Tests\Console;
 
 use FloCMS\Admin\Console\DoctorCommand;
 use FloCMS\Admin\Console\InstallCommand;
+use FloCMS\Admin\Console\ListCommand;
 use FloCMS\Admin\Console\MakeResourceCommand;
+use FloCMS\Admin\Console\MakeWidgetCommand;
 use FloCMS\CLI\Console\Testing\CommandTester;
 use FloCMS\CLI\Project;
 use PHPUnit\Framework\TestCase;
@@ -140,11 +142,98 @@ final class CommandsTest extends TestCase
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         self::assertStringContainsString('Everything looks good.', $tester->getDisplay());
 
+        // admin:list shows the resource, the built-in accounts and the permission names.
+        $list = $this->runCommand(new ListCommand());
+        self::assertSame(0, $list->getStatusCode(), $list->getDisplay() . $list->getErrorOutput());
+        self::assertMatchesRegularExpression('~/admin/properties\s+.*properties\s+.*content\.properties\.view~', $list->getDisplay());
+        self::assertStringContainsString('built in', $list->getDisplay());
+        self::assertStringContainsString('make:admin-widget', $list->getDisplay());
+        $permissions = $this->runCommand(new ListCommand(), ['--permissions'])->getDisplay();
+        self::assertStringContainsString("    'content.properties.view',\n    'content.properties.create',", $permissions);
+
         // Configuration diagnostics must not invoke a widget's provider.
         file_put_contents($this->root . '/config/admin.php', '<?php return ["widgets" => [\\FloCMS\\Admin\\Tests\\Fixtures\\Widgets\\BrokenStats::class, "MissingWidget"]];');
         $tester = $this->runCommand(new DoctorCommand());
         self::assertSame(1, $tester->getStatusCode());
-        self::assertStringContainsString('Widget: MissingWidget', $tester->getDisplay());
+        self::assertStringContainsString('Widget: MissingWidget: class not found: it is outside widgets_namespace', $tester->getDisplay());
+
+        // A file with the wrong name (ListingStats.php.txt) is named in the message.
+        mkdir($this->root . '/admin/Widgets', 0777, true);
+        file_put_contents($this->root . '/admin/Widgets/ListingStats.php.txt', '<?php');
+        file_put_contents($this->root . '/config/admin.php', '<?php return ["widgets" => [App\\Admin\\Widgets\\ListingStats::class, App\\Admin\\Widgets\\Gone::class]];');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('ListingStats: class not found: expected the file admin/Widgets/ListingStats.php (found ListingStats.php.txt: the file must be named ListingStats.php)', $display);
+        self::assertStringContainsString('Gone: class not found: expected the file admin/Widgets/Gone.php (create it with: php flo make:admin-widget Gone)', $display);
         self::assertStringNotContainsString('private-dsn-sensitive', $tester->getDisplay());
+    }
+
+    private function lint(string $file): void
+    {
+        exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file), $out, $lint);
+        self::assertSame(0, $lint, implode("\n", $out));
+    }
+
+    public function testMakeWidgetWritesEachTypeAndRegistersIt(): void
+    {
+        $this->runCommand(new InstallCommand());
+        $tester = $this->runCommand(new MakeWidgetCommand(), ['PostStats', '--resource=Post']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        $code = (string) file_get_contents($this->root . '/admin/Widgets/PostStats.php');
+        self::assertStringContainsString('namespace App\Admin\Widgets;', $code);
+        self::assertStringContainsString('use App\Admin\Resources\PostResource;', $code);
+        self::assertStringContainsString('final class PostStats extends StatsWidget', $code);
+        self::assertStringContainsString('protected array $resources = [PostResource::class];', $code);
+        self::assertStringContainsString("Stat::make('Total', \$records->count())->resource(PostResource::class)", $code);
+        $this->lint($this->root . '/admin/Widgets/PostStats.php');
+        self::assertStringContainsString('admin/Resources/PostResource.php was not found', $tester->getErrorOutput());
+        self::assertStringContainsString('Registered PostStats in config/admin.php', $tester->getDisplay());
+
+        $this->runCommand(new MakeWidgetCommand(), ['RecentPosts', '--type=records', '--resource=PostResource']);
+        $this->runCommand(new MakeWidgetCommand(), ['Visits', '--type=chart']);
+        $records = (string) file_get_contents($this->root . '/admin/Widgets/RecentPosts.php');
+        self::assertStringContainsString('protected string $resource = PostResource::class;', $records);
+        $chart = (string) file_get_contents($this->root . '/admin/Widgets/Visits.php');
+        self::assertStringContainsString('protected array $resources = [];', $chart);
+        self::assertStringNotContainsString('use App\Admin\Resources', $chart);
+        $this->lint($this->root . '/admin/Widgets/RecentPosts.php');
+        $this->lint($this->root . '/admin/Widgets/Visits.php');
+
+        $this->lint($this->root . '/config/admin.php');
+        $config = require $this->root . '/config/admin.php';
+        self::assertSame(['App\Admin\Widgets\PostStats', 'App\Admin\Widgets\RecentPosts', 'App\Admin\Widgets\Visits'], $config['widgets']);
+
+        // Once only, and an existing file is kept.
+        $again = $this->runCommand(new MakeWidgetCommand(), ['PostStats', '--force']);
+        self::assertStringContainsString('already registered', $again->getDisplay());
+        self::assertSame(3, count((require $this->root . '/config/admin.php')['widgets']));
+        self::assertSame(1, $this->runCommand(new MakeWidgetCommand(), ['Visits'])->getStatusCode());
+    }
+
+    public function testMakeWidgetRegistersInListsWrittenByHand(): void
+    {
+        foreach (["[]", "[\n        \\App\\Admin\\Widgets\\One::class\n    ]"] as $list) {
+            file_put_contents($this->root . '/config/admin.php', "<?php\nreturn [\n    'widgets' => " . $list . ",\n    'widgets_path' => 'admin/Widgets',\n];\n");
+            $tester = $this->runCommand(new MakeWidgetCommand(), ['Two', '--force']);
+            self::assertStringContainsString('Registered Two', $tester->getDisplay(), $list);
+            $this->lint($this->root . '/config/admin.php');
+            self::assertContains('App\Admin\Widgets\Two', (require $this->root . '/config/admin.php')['widgets']);
+            self::assertSame('admin/Widgets', (require $this->root . '/config/admin.php')['widgets_path']);
+        }
+        // A list it cannot read: it says what to add instead of guessing.
+        file_put_contents($this->root . '/config/admin.php', "<?php\nreturn ['widgets' => array_merge([], [])];\n");
+        $tester = $this->runCommand(new MakeWidgetCommand(), ['Three']);
+        self::assertSame(0, $tester->getStatusCode());
+        self::assertStringContainsString("Add it to config/admin.php", $tester->getDisplay());
+    }
+
+    public function testMakeWidgetRefusesBadInput(): void
+    {
+        self::assertNotSame(0, $this->runCommand(new MakeWidgetCommand(), ['post-stats'])->getStatusCode());
+        self::assertNotSame(0, $this->runCommand(new MakeWidgetCommand(), ['Stats', '--type=pie'])->getStatusCode());
+        $records = $this->runCommand(new MakeWidgetCommand(), ['Recent', '--type=records']);
+        self::assertNotSame(0, $records->getStatusCode());
+        self::assertStringContainsString('add --resource=Post', $records->getErrorOutput());
+        self::assertNotSame(0, $this->runCommand(new MakeWidgetCommand(), ['Stats', '--resource=../x'])->getStatusCode());
+        self::assertDirectoryDoesNotExist($this->root . '/admin/Widgets');
     }
 }

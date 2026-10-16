@@ -294,7 +294,9 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 | --- | --- |
 | `php flo admin:install` | Create `config/admin.php` and `admin/Resources/` (never overwrites) |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--migration] [--force]` | Create a resource class, and optionally a migration |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables and columns |
+| `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
+| `php flo admin:list [--permissions]` | List resources and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns and widgets |
 
 ## Removing the package
 
@@ -316,11 +318,11 @@ Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resourc
 
 ## Rich text
 
-Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`); videos upload in parts. See the [Rich text guide](docs/rich-text.md).
+Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). See the [Rich text guide](docs/rich-text.md).
 
 ## Dashboard widgets
 
-Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
+Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. Start one with `php flo make:admin-widget PostStats --resource=Post`. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
 
 ## Roadmap
 

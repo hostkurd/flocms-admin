@@ -2,6 +2,32 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.11.0 - 2026-10-16
+
+A more professional editor, a page progress bar and widget commands. Additions only; no resource, field or configuration API changed, and no new dependency.
+
+### Rich text editor
+
+- Links, images from a link and YouTube/Vimeo videos open in **modal dialogs** above the form (or the record dialog) instead of panels inside the editor. Enter applies, Escape or a click outside closes only that dialog, and focus returns to the text. Ctrl/⌘+K opens the link dialog; on an existing link it shows **Edit link** with **Remove link**.
+- The **Image** button opens a small menu: **Upload an image** (opens the file picker straight away) or **Image from a link**. Without an upload address it opens the link dialog directly. The **Video** button opens the file picker directly.
+- Images and videos can also be **pasted or dropped** into the text; they upload through flocms-uploader like the buttons.
+- Double-click an image (or select it and press Image) to edit its address and description (alt text).
+- Uploads show their progress in a footer strip with **Cancel**, then "Upload complete." or the error. The footer also counts words for the current language.
+- Placeholder text ("Start writing…", or the field's `placeholder()`), and keyboard shortcuts in the button tooltips.
+- New toolbar icons from Lucide (ISC, see `THIRD_PARTY_NOTICES.md`), drawn on a 24 px grid with a 2 px stroke and shown at 20 px, so they are sharp; H2/H3 are icons now.
+- Fix: the language tabs showed a vertical scroll bar.
+- New strings `editor.link_title`, `editor.link_edit_title`, `editor.image_title`, `editor.image_edit_title`, `editor.image_from_link`, `editor.image_from_link_help`, `editor.embed_title`, `editor.save`, `editor.placeholder`, `editor.words`, `editor.cancelled`, `editor.uploaded` in en/ar/ku.
+
+### Panel
+
+- A thin **progress bar** along the top of the window replaces the "Loading…" box while a page loads or a Reactive update runs. It appears only after 150 ms, so fast pages show nothing, takes the brand colour and respects reduced motion. Screen readers still hear the loading status. Small loading indicators inside the panel are now spinners.
+
+### Commands
+
+- New `php flo make:admin-widget Name [--type=stats|records|chart] [--resource=Post] [--force]`: writes a working widget to `admin/Widgets/` (or `widgets_path`) and adds it to `'widgets'` in `config/admin.php`. When it cannot safely edit that list it prints the line to add instead.
+- New `php flo admin:list [--permissions]`: the resources (URL, table, permissions, class) and dashboard widgets the panel loads; `--permissions` prints every permission name, ready to paste into a role.
+- Clearer widget errors in `admin:doctor`: a class that is not found now names the file it expected (for example `admin/Widgets/ListingStats.php`), points out a misnamed file such as `ListingStats.php.txt`, and says when a class is outside `widgets_namespace`. Other errors say whether the class is abstract or does not extend a widget type.
+
 ## 0.10.0 - 2026-10-16
 
 Rich text. Additions only; existing resources, fields and settings are unchanged. Requires `hostkurd/flocms-reactive` **^0.5.1** (for `data-rx-ignore`) and `hostkurd/flocms-uploader` **^1.2.1** (its Imagick driver padded resized images to a square).

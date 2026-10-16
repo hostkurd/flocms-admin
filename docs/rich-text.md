@@ -1,4 +1,4 @@
-# Rich text (0.10)
+# Rich text (0.10, editor reworked in 0.11)
 
 `RichEditor` is a visual editor (bold, headings, lists, links, quotes, code) with images, videos and YouTube/Vimeo embeds. It stores **clean HTML** in a TEXT column, or one HTML value per language as JSON when translatable, exactly like `Textarea`.
 
@@ -62,12 +62,24 @@ Files are stored as `<resource>/<field>/<yyyy>/<mm>/…` with random names, and 
 - Only people who may create or edit the resource can upload, and only into a `RichEditor` whose toolbar has that button. The endpoint is `POST /<lang>/admin/<resource>/media/<field>/<image|start|chunk|complete|abort>`, CSRF-protected.
 - Uploaded files stay when content that used them is deleted; they are public files, and Admin cannot know whether another page links to them.
 
-Images can also be inserted from an address. Uploads need a create or edit form of the resource; elsewhere (custom action forms) only images by address are offered.
+How people add media (0.11):
+
+- **Image** opens a menu with **Upload an image** (the file picker opens at once) and **Image from a link** (a dialog for the address and description). Where uploads are not available, Image opens the link dialog directly.
+- **Video** opens the file picker at once. **YouTube or Vimeo video** opens a dialog for the video page address.
+- An image or video can also be **pasted or dropped** into the text.
+- Double-click an image to change its address or description (alt text).
+- Progress and errors show in the editor's footer, with **Cancel** while uploading.
+
+Uploads need a create or edit form of the resource; elsewhere (custom action forms) only images by address are offered.
 
 ## In the browser
 
 The editor is Tiptap 3, bundled as `admin-editor-v<version>.js` (about 126 KB gzipped) and loaded only on pages with an editor. It works under a strict Content-Security-Policy (`script-src 'self'; style-src 'self'`): no inline scripts or style elements, and embeds show as cards in the admin, so no third-party frames load there. On the website, allow the embed hosts if you set a CSP: `frame-src https://www.youtube-nocookie.com https://player.vimeo.com`.
 
-Keyboard: the toolbar is one tab stop (arrow keys, Home, End move inside it); Ctrl/⌘+B, I, U and Z work in the text; Enter applies an open link/image/embed panel and Escape closes it. Without JavaScript each language is a plain HTML textarea.
+Links, images from a link and YouTube/Vimeo links are entered in native modal dialogs above the form or record dialog (plain buttons, no nested `<form>`). The footer shows the word count of the current language; the field's `placeholder()` (default "Start writing…") shows in an empty editor.
+
+Keyboard: the toolbar is one tab stop (arrow keys, Home, End move inside it; Down opens the Image menu); Ctrl/⌘+B, I, U and Z work in the text and Ctrl/⌘+K opens the link dialog; button tooltips show the shortcuts. In a dialog, Enter applies and Escape closes only that dialog, then focus returns to the text. Without JavaScript each language is a plain HTML textarea.
+
+Toolbar icons are from Lucide (ISC licence), shown at 20 px with a 2 px stroke.
 
 In Reactive dialogs the editor keeps its own state while the dialog updates (validation errors on other fields do not reset it or its undo history), using Reactive 0.5.1's `data-rx-ignore`. Very long content (over 64 KB for the whole form) continues on the full-page form, as for other large forms.

@@ -153,12 +153,33 @@ final class RichTextTest extends TestCase
     {
         $html = $this->editor(RichEditor::make('body'), ['body' => ''], [], null, null, ['en']);
         self::assertStringNotContainsString('data-command="video"', $html);
-        self::assertStringNotContainsString('data-insert-file', $html);
-        self::assertStringContainsString('data-insert="image"', $html);
+        self::assertStringNotContainsString('data-rich-file', $html);
+        // Without uploads the Image button opens the link dialog directly: no menu.
+        self::assertStringNotContainsString('data-rich-menu', $html);
+        self::assertMatchesRegularExpression('~data-command="image" title="Image" aria-label="Image" aria-haspopup="dialog"~', $html);
+        self::assertStringContainsString('<dialog class="fa-rich-dialog" id="p-f-body-image-dialog" data-rich-dialog="image"', $html);
         self::assertStringContainsString('&quot;uploads&quot;:false', $html);
         self::assertStringContainsString('<textarea id="p-f-body" name="body"', $html);
         self::assertStringNotContainsString('fa-rich-tabs', $html);
         self::assertStringNotContainsString('data-rich-toolbar', $this->editor(RichEditor::make('body')->disabled(), ['body' => '']));
+    }
+
+    public function testWithUploadsImageOffersAMenuAndFilesOpenTheFilePickerDirectly(): void
+    {
+        $html = $this->editor(RichEditor::make('body')->videos(), ['body' => ''], [], '/en/admin/articles/media', null, ['en']);
+        self::assertMatchesRegularExpression('~data-command="image"[^>]* aria-haspopup="menu" aria-expanded="false" aria-controls="p-f-body-image-menu"~', $html);
+        self::assertStringContainsString('<div class="fa-rich-menu" id="p-f-body-image-menu" role="menu"', $html);
+        self::assertStringContainsString('data-rich-action="image-upload"', $html);
+        self::assertStringContainsString('data-rich-action="image-link"', $html);
+        self::assertStringContainsString('<input type="file" class="fa-rich-file-input" accept="image/jpeg,image/png,image/gif,image/webp" data-rich-file="image"', $html);
+        self::assertStringContainsString('accept="video/mp4,video/webm" data-rich-file="video"', $html);
+        // Dialogs never nest a <form> inside the record form; every button is type=button.
+        self::assertStringNotContainsString('<form', $html);
+        self::assertSame(0, preg_match('~<button(?![^>]*type="button")~', $html));
+        // Icons: one crisp 20px Lucide icon per button, shortcuts in the tooltip.
+        self::assertStringContainsString('title="Bold (Ctrl+B)"', $html);
+        self::assertMatchesRegularExpression('~<svg class="fa-rich-icon"[^>]* viewBox="0 0 24 24" width="20" height="20"[^>]* stroke-width="2"~', $html);
+        self::assertStringContainsString('<div class="fa-rich-status" data-rich-status hidden>', $html);
     }
 
     public function testMediaSettingsHaveSafeDefaults(): void

@@ -7,6 +7,7 @@ import { initializeLogin } from './login';
 import { initializeForms } from './forms';
 import { initializeEditors } from './editors';
 import './popovers';
+import { startProgress, finishProgress } from './progress';
 import '../assets/admin.css';
 
 let navigating = false;
@@ -30,9 +31,10 @@ function internal(value: string): URL | undefined {
   return url;
 }
 
-function status(message: string): void {
+/** Announce a message; "busy" ones are for screen readers only (the progress bar shows loading). */
+function status(message: string, busy = false): void {
   const element = panel()?.querySelector<HTMLElement>('[data-admin-status]');
-  if (element) { element.textContent = message; element.tabIndex = -1; element.focus(); }
+  if (element) { element.textContent = message; element.classList.toggle('is-busy', busy); element.tabIndex = -1; element.focus(); }
 }
 
 function initialize(): void {
@@ -59,7 +61,8 @@ async function navigate(url: URL, options: { method?: string; body?: URLSearchPa
   const current = panel();
   const focusedId = options.body?.has('_refresh') ? document.activeElement?.id : '';
   current?.setAttribute('aria-busy', 'true');
-  status(current?.dataset.adminBusy || 'Loading…');
+  status(current?.dataset.adminBusy || 'Loading…', true);
+  startProgress();
   if (current) current.inert = true;
   const timeout = setTimeout(() => navigation?.abort(), 30000);
   try {
@@ -90,6 +93,7 @@ async function navigate(url: URL, options: { method?: string; body?: URLSearchPa
       // A failed popstate must not show old content under a different URL.
       if (options.history === false) history.replaceState(null, '', displayedUrl);
   } finally {
+    finishProgress();
     clearTimeout(timeout);
     navigating = false;
     if (current) current.inert = false;

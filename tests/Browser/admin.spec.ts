@@ -219,3 +219,21 @@ test('standard translations and mobile navigation remain usable without JavaScri
     await expect(page.locator('[name="title[ar]"]')).toHaveValue('عنوان جديد');
   } finally { await context.close(); }
 });
+
+test('a slow page shows the top progress bar instead of a loading box, then hides it', async ({ page }) => {
+  await ready(page, '/en/admin/dashboard');
+  let release = () => {};
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/en/admin/posts', async route => { await held; await route.continue(); });
+  await page.locator('.fa-nav a[href="/en/admin/posts"]').click();
+  const bar = page.locator('[data-admin-progress]');
+  await expect(bar).toHaveClass(/is-active/);
+  expect(await bar.evaluate(element => { const box = element.getBoundingClientRect(); return [box.top, box.height]; })).toEqual([0, 3]);
+  // The status text is still announced, but not drawn as a box.
+  const status = page.locator('.fa-navigation-status');
+  await expect(status).toHaveClass(/is-busy/);
+  expect(await status.evaluate(element => element.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
+  release();
+  await expect(page.locator('h1')).toHaveText('Posts');
+  await expect(bar).not.toHaveClass(/is-active/);
+});

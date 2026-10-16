@@ -1,3 +1,12 @@
+# Upgrading to Admin 0.11.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.11.0" -W`, then run `php flo view:clear` and reload open Admin pages. Composer ships `admin-v0.11.0.css`/`.js` and `admin-editor-v0.11.0.js`; no Node build, migration, configuration or dependency change is needed.
+
+- Browser tests or scripts that drove the editor's insert panels (`[data-insert=…]`, `[data-insert-file]`) need updating: links, images from a link and video links are now `<dialog data-rich-dialog="link|image|embed">`, the Image button opens a menu (`role="menu"`) when uploads are available, and Video opens the file picker directly. Upload messages are in `[data-rich-status-text]`.
+- The "Loading…" box during navigation is gone; the `.fa-navigation-status` region still exists for screen readers and gets the class `is-busy` while loading. If your styles targeted it, check them.
+
+---
+
 # Upgrading to Admin 0.10.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.10.0" -W` (this also brings `hostkurd/flocms-reactive` 0.5.1), then run `php flo view:clear` and reload open Admin pages. Composer ships `admin-v0.10.0.css`/`.js` and `admin-editor-v0.10.0.js`; no Node build or migration is needed, and nothing changes until a resource uses `RichEditor`.
