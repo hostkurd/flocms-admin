@@ -84,8 +84,8 @@ test('create and delete use modal actions and no reload', async ({ page }) => {
 test('keyboard modal containment, Escape discard and opener focus', async ({ page }) => {
   await ready(page);
   await open(page);
-  const cancel = editor(page).locator('[data-rx-dialog-close]').last();
-  await cancel.focus();
+  // The primary button is the last control in the dialog; Tab wraps to the close button.
+  await editor(page).locator('button[type=submit]').focus();
   await page.keyboard.press('Tab');
   await expect(editor(page).locator('[data-rx-dialog-close]').first()).toBeFocused();
   await editor(page).locator('[name="title[en]"]').fill('Discard this');

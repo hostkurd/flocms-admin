@@ -65,4 +65,13 @@ final class FormRendererTest extends TestCase
         self::assertStringContainsString('aria-invalid="true"', $html);
         self::assertStringNotContainsString('data-open-on-load', $html);
     }
+
+    public function testTranslationDialogPutsSaveLastAndLeadsRowsWithTheLanguageCode(): void
+    {
+        $form = (new \FloCMS\Admin\Form\Form())->schema([\FloCMS\Admin\Form\Fields\TextInput::make('title')->translatable()]);
+        $html = (new FormRenderer(['title' => ['en' => 'Villa']], [], ['en', 'ar'], 'en'))->render($form);
+        self::assertMatchesRegularExpression('~data-dialog-cancel>.*?</button><button type="button" class="fa-btn fa-btn-primary fa-btn-sm" data-dialog-save>~s', $html);
+        self::assertStringContainsString('<code class="fa-lang-code is-default">en</code> <span class="fa-lang-name">', $html);
+        self::assertStringContainsString('<code class="fa-lang-code">ar</code> <span class="fa-lang-name">', $html);
+    }
 }
