@@ -2,6 +2,19 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.9.0 - 2026-10-16
+
+First step of the panel redesign: the visual foundation. No resource, form, table or configuration API changes; existing sites keep working and only look different.
+
+- Design tokens: every colour, radius and shadow in `admin.css` is now a CSS custom property (`--fa-*`). The 70 hard-coded colour values outside the token definitions are gone (white text on solid buttons excepted).
+- New `theme` setting in `config/admin.php`: `'light'` (default), `'dark'`, or `'auto'` (follows the operating system). Applies to the panel, the optional login page and toasts. Unknown values fall back to light; `admin:doctor` reports them.
+- Shipped fonts: Instrument Sans (Latin) and Noto Sans Arabic (Arabic, Kurdish), SIL OFL 1.1, served by the asset route with immutable caching. Kurdish and Arabic no longer fall back to Tahoma or Segoe UI on Windows.
+- One focus ring everywhere (2 px, theme-aware) instead of three different styles; stronger focus state on inputs.
+- Refreshed buttons, inputs, cards, badges, alerts, tables, pagination, tabs, dialogs, toasts, login page and dashboard widgets on the tokens (radius, spacing, weights, softer borders).
+- Fix: Reactive's own dialog and status styles, which load after the admin's, no longer force a white dialog background or a fixed red status colour inside the panel.
+- Fix: toasts used their own font stack and colours; they now use the panel's font and theme.
+- Ship `admin-v0.9.0.css` and `admin-v0.9.0.js`. The browser fixture accepts `FLO_ADMIN_THEME=dark|auto` for local testing.
+
 ## 0.8.1 - 2026-10-16
 
 - Remove the browser's default 8 px page margin around the panel when the site's admin layout places the panel directly in `<body>` (the skeleton's layout does). Pages that set their own body margin are unaffected.

@@ -42,6 +42,11 @@ final class DoctorCommand extends Command
         $languages = Languages::all();
         $this->ok('Languages: ' . implode(', ', $languages) . ' (default ' . Languages::default() . ')');
 
+        $theme = $config->all()['theme'] ?? 'light';
+        if (!is_string($theme) || !in_array($theme, \FloCMS\Admin\AdminConfig::THEMES, true)) {
+            $this->caution("theme must be 'light', 'dark' or 'auto'; using 'light'.");
+        }
+
         $this->checkLayout();
         if ($config->loginThemeEnabled()) {
             $login = $project->path('views/users/admin_login.html');

@@ -39,8 +39,17 @@ final class PanelRequestTest extends RequestTestCase
         // Navigation: the current page is marked; tags need taxonomy.tags.view, which editors lack
         self::assertStringContainsString('aria-current="page"', $body);
         self::assertStringNotContainsString('/en/admin/post-tags', $body);
-        self::assertStringContainsString('admin-v0.8.1.css', $body);
+        self::assertStringContainsString('admin-v0.9.0.css', $body);
         self::assertStringNotContainsString('<style>', $body);
+    }
+
+    public function testPanelCarriesTheConfiguredColourTheme(): void
+    {
+        self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/posts')['body']);
+        $config = ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class], 'brand' => 'Test Panel'];
+        self::assertStringContainsString('data-theme="dark"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['theme' => 'dark']])['body']);
+        self::assertStringContainsString('data-theme="auto"', self::request('GET', '/ku/admin/posts', ['admin_config' => $config + ['theme' => 'auto']])['body']);
+        self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['theme' => 'sepia']])['body']);
     }
 
     public function testSearchAndSort(): void
