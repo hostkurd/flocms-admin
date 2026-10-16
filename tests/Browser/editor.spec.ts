@@ -14,6 +14,23 @@ async function open(page: Page, lang = 'en') {
   await expect(dialog(page)).toBeVisible();
   await expect(body(page).locator('.fa-rich')).toHaveClass(/is-ready/);
 }
+/** Put the cursor at the end of the text (clicking the empty area below it may place it at the start). */
+async function toEnd(page: Page, editor = content(page)) {
+  await editor.locator(':scope > *').last().click();
+  await expect(editor).toBeFocused();
+  // Check that the caret really is after the last character before typing.
+  await expect.poll(async () => {
+    await page.keyboard.press('ControlOrMeta+End');
+    return editor.evaluate(element => {
+      const selection = getSelection();
+      if (!selection || !selection.isCollapsed || !selection.anchorNode || !element.contains(selection.anchorNode)) return false;
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.setStart(selection.anchorNode, selection.anchorOffset);
+      return range.toString() === '';
+    });
+  }).toBe(true);
+}
 async function save(page: Page) {
   await dialog(page).getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(dialog(page)).not.toBeVisible();
@@ -25,8 +42,7 @@ test('formatting and every language save as clean HTML, with tabs, dots and RTL 
   const tabs = body(page).getByRole('tablist');
   await expect(tabs.getByRole('tab')).toHaveCount(3);
   await expect(tabs.getByRole('tab', { name: /^en/i })).toHaveAttribute('aria-selected', 'true');
-  await content(page).click();
-  await page.keyboard.press('ControlOrMeta+End');
+  await toEnd(page);
   await page.keyboard.press('Enter');
   await tool(page, 'Heading').click();
   await page.keyboard.type('Location');
@@ -164,8 +180,7 @@ test('YouTube and Vimeo links become embeds; other links are refused', async ({ 
 
 test('the editor survives validation errors on other fields, and an empty body is reported in the editor', async ({ page }) => {
   await open(page);
-  await content(page).click();
-  await page.keyboard.press('ControlOrMeta+End');
+  await toEnd(page);
   await page.keyboard.type(' and more');
   await content(page).evaluate(element => { (element as HTMLElement).dataset.marker = 'same-editor'; });
   await dialog(page).locator('[name="title[en]"]').fill('');
@@ -206,8 +221,7 @@ test('the full-page form uses the same editor and saves without Reactive', async
   await page.goto('/en/admin/articles/edit/1');
   const field = page.locator('[data-field=body]');
   await expect(field.locator('.fa-rich')).toHaveClass(/is-ready/);
-  await field.locator('.fa-rich-panel[data-lang=en] .fa-rich-content').click();
-  await page.keyboard.press('ControlOrMeta+End');
+  await toEnd(page, field.locator('.fa-rich-panel[data-lang=en] .fa-rich-content'));
   await page.keyboard.type('!');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await page.goto('/en/admin/articles/edit/1');
