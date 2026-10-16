@@ -73,6 +73,9 @@ final class PanelView
             'dashboardActive' => $activeSlug === 'dashboard',
             'usersUrl' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
             'usersActive' => $activeSlug === 'accounts',
+            'settingsUrl' => \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
+            'settingsActive' => $activeSlug === 'settings',
+            'settingsIcon' => Icons::svg('settings'),
             'profileUrl' => $usersEnabled ? Admin::url('profile') : null,
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
@@ -123,6 +126,11 @@ final class PanelView
     {
         if ($activeSlug === null || in_array($activeSlug, ['dashboard', 'profile'], true)) {
             return [['label' => $title, 'url' => null]];
+        }
+        if ($activeSlug === 'settings') {
+            $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => AdminLang::get('settings.title'), 'url' => null]];
+            if ($title !== AdminLang::get('settings.title')) { $items[] = ['label' => $title, 'url' => null]; }
+            return $items;
         }
         if ($activeSlug === 'accounts') {
             return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];

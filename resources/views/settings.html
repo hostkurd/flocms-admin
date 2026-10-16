@@ -1,0 +1,47 @@
+<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-record fa-settings" id="fa-record-form" novalidate data-admin-record-form data-admin-settings data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}" data-default-lang="{{ $defaultLang }}" data-editing="{{ $editing }}">
+    {!! $csrf !!}
+    <input type="hidden" name="_editing" value="{{ $editing }}" data-settings-editing-value>
+    <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $t('actions.save') }}</button>
+    <div class="fa-record-head">
+        <div class="fa-record-heading">
+            <h1 class="fa-page-title">{{ $title }}</h1>
+            @if($description !== null)<p class="fa-page-description">{{ $description }}</p>@endif
+        </div>
+        <div class="fa-record-actions">
+            @if($switch)
+            <label class="fa-editing" data-settings-switch data-admin-untracked hidden>
+                <span class="fa-editing-label">{{ $t('settings.editing') }}</span>
+                <select class="fa-input fa-select fa-editing-select" data-settings-language aria-describedby="fa-editing-help">
+                    @foreach($languages as $language)<option value="{{ $language['code'] }}" lang="{{ $language['code'] }}"@if($language['code'] === $editing) selected @endif>{{ $language['name'] }}@if($language['code'] === $defaultLang) · {{ $t('translations.default_language') }}@endif</option>@endforeach
+                </select>
+                <span class="fa-sr" id="fa-editing-help">{{ $t('settings.editing_help') }}</span>
+            </label>
+            @endif
+            <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
+            <button type="submit" name="_save" value="1" class="fa-btn fa-btn-primary" data-admin-save title="{{ $t('form.save_shortcut') }}"@if(!$ready) disabled @endif>{{ $t('actions.save') }}</button>
+        </div>
+    </div>
+    <div class="fa-settings-layout">
+        <nav class="fa-settings-nav" aria-label="{{ $t('settings.pages') }}">
+            <div class="fa-settings-picker" data-settings-picker data-admin-untracked hidden>
+                <label class="fa-sr" for="fa-settings-picker">{{ $t('settings.pages') }}</label>
+                <select class="fa-input fa-select" id="fa-settings-picker" data-settings-nav>
+                    @foreach($pages as $item)<option value="{{ $item['url'] }}"@if($item['active']) selected @endif>{{ $item['label'] }}</option>@endforeach
+                </select>
+            </div>
+            <ul class="fa-settings-tabs">
+                @foreach($pages as $item)
+                <li><a class="fa-settings-tab{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>
+                    <span class="fa-settings-tab-icon" aria-hidden="true">{!! $item['icon'] !!}</span>
+                    <span class="fa-settings-tab-text"><span class="fa-settings-tab-label">{{ $item['label'] }}</span>@if($item['description'] !== null)<span class="fa-settings-tab-sub">{{ $item['description'] }}</span>@endif</span>
+                </a></li>
+                @endforeach
+            </ul>
+        </nav>
+        <div class="fa-settings-body">
+            @if(!$ready)<div class="fa-alert fa-alert-warning" role="status">{{ $t('settings.not_ready') }}</div>@endif
+            @if($switch)<p class="fa-alert fa-alert-info fa-settings-other" data-settings-other data-template="{{ $t('settings.editing_other', ['language' => ':language', 'default' => $defaultName]) }}" hidden></p>@endif
+            {!! $fields !!}
+        </div>
+    </div>
+</form>

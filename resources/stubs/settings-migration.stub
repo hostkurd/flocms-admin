@@ -1,0 +1,27 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * Values of the admin settings pages (flocms-admin). One row per key
+ * ("site.title"); the value is JSON: "Acme", {"en":"Acme","ar":"أكمي"}.
+ * Read on the website with setting('site.title').
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
+            `key` VARCHAR(190) NOT NULL PRIMARY KEY,
+            `value` TEXT NULL,
+            `updated_at` DATETIME NULL
+        )' . $this->tableOptions($db));
+    }
+
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ table }}`');
+    }
+};

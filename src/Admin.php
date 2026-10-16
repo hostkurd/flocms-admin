@@ -23,6 +23,7 @@ final class Admin
     private static ?string $root = null;
     private static ?AdminConfig $config = null;
     private static ?ResourceRegistry $registry = null;
+    private static ?\FloCMS\Admin\Settings\SettingsRegistry $settings = null;
     private static bool $problemsLogged = false;
 
     /** Register the controller resolver (once). Called from bootstrap.php. */
@@ -71,6 +72,9 @@ final class Admin
         if ($controller === 'dashboard') {
             return DashboardController::class;
         }
+        if ($controller === 'settings') {
+            return \FloCMS\Admin\Http\SettingsController::class;
+        }
         if ($controller === 'profile' && $config->usersEnabled()) {
             return ProfileController::class;
         }
@@ -93,6 +97,8 @@ final class Admin
         self::$root = $root === null ? null : rtrim($root, '/\\');
         self::$config = null;
         self::$registry = null;
+        self::$settings = null;
+        \FloCMS\Admin\Settings\Settings::reset();
     }
 
     public static function config(): AdminConfig
@@ -123,6 +129,8 @@ final class Admin
     {
         self::$config = new AdminConfig($values, $root ?? self::root(), $installed);
         self::$registry = null;
+        self::$settings = null;
+        \FloCMS\Admin\Settings\Settings::reset();
         Languages::setRtl(self::$config->rtlLanguages());
 
         return self::$config;
@@ -133,12 +141,20 @@ final class Admin
         return self::$registry ??= ResourceRegistry::fromConfig(self::config());
     }
 
+    /** The settings pages: admin/settings.php and the panel's own page. */
+    public static function settings(): \FloCMS\Admin\Settings\SettingsRegistry
+    {
+        return self::$settings ??= \FloCMS\Admin\Settings\SettingsRegistry::fromConfig(self::config());
+    }
+
     /** Forget configuration and resources (tests). The resolver stays registered. */
     public static function reset(): void
     {
         self::$root = null;
         self::$config = null;
         self::$registry = null;
+        self::$settings = null;
+        \FloCMS\Admin\Settings\Settings::reset();
         self::$problemsLogged = false;
         Languages::reset();
     }

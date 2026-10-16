@@ -112,6 +112,13 @@ final class AdminConfig
         return $logo;
     }
 
+    /** List page density: comfortable (default) or compact. */
+    public function density(): string
+    {
+        $density = $this->values['density'] ?? 'comfortable';
+        return is_string($density) && in_array($density, \FloCMS\Admin\Settings\PanelSettings::DENSITIES, true) ? $density : 'comfortable';
+    }
+
     /** Sidebar style: light (default) or dark. */
     public function sidebar(): string
     {
@@ -143,6 +150,48 @@ final class AdminConfig
         if (!is_string($url) || preg_match('~^(https?://[^\s"\'<>/]+)?/[^\s"\'<>]*$~iD', $url = rtrim(trim($url), '/')) !== 1 || str_starts_with($url, '//')) {
             $path = defined('SITE_URI') ? (string) parse_url((string) SITE_URI, PHP_URL_PATH) : '';
             $url = rtrim($path, '/') . '/uploads/editor';
+        }
+        return ['root' => $root, 'url' => $url];
+    }
+
+    /** Table of the settings pages' values (default "settings"). */
+    public function settingsTable(): string
+    {
+        $table = $this->values['settings_table'] ?? 'settings';
+        return is_string($table) && preg_match('/^[A-Za-z0-9_]{1,64}$/D', $table) === 1 ? $table : 'settings';
+    }
+
+    /** Absolute path of the file that declares the settings pages (default admin/settings.php). */
+    public function settingsPath(): string
+    {
+        $path = str_replace('\\', '/', (string) ($this->values['settings_path'] ?? 'admin/settings.php'));
+        $absolute = str_starts_with($path, '/') || preg_match('/^[A-Za-z]:\//', $path) === 1;
+        return $absolute ? $path : rtrim($this->root, '/\\') . '/' . ltrim($path, '/');
+    }
+
+    /** Whether the built-in "Admin panel" settings page is offered (default yes). */
+    public function panelSettingsEnabled(): bool
+    {
+        return ($this->values['panel_settings'] ?? true) !== false;
+    }
+
+    /**
+     * Where files uploaded on settings pages are stored and their public URL.
+     * They are public (a logo is shown on the website and the login page).
+     * Defaults: <root>/public/uploads/settings served at <site path>/uploads/settings.
+     *
+     * @return array{root: string, url: string}
+     */
+    public function settingsUploads(): array
+    {
+        $uploads = is_array($this->values['settings_uploads'] ?? null) ? $this->values['settings_uploads'] : [];
+        $root = is_string($uploads['root'] ?? null) && trim($uploads['root']) !== '' ? str_replace('\\', '/', trim($uploads['root'])) : 'public/uploads/settings';
+        $absolute = str_starts_with($root, '/') || preg_match('/^[A-Za-z]:\//', $root) === 1;
+        $root = $absolute ? rtrim($root, '/') : rtrim($this->root, '/\\') . '/' . trim($root, '/');
+        $url = $uploads['url'] ?? null;
+        if (!is_string($url) || preg_match('~^(https?://[^\s"\'<>/]+)?/[^\s"\'<>]*$~iD', $url = rtrim(trim($url), '/')) !== 1 || str_starts_with($url, '//')) {
+            $path = defined('SITE_URI') ? (string) parse_url((string) SITE_URI, PHP_URL_PATH) : '';
+            $url = rtrim($path, '/') . '/uploads/settings';
         }
         return ['root' => $root, 'url' => $url];
     }

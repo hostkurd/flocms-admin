@@ -216,6 +216,10 @@ class RichField {
     panels.forEach((panel, index) => this.createEditor(panel, index === 0));
     this.active = panels[0]?.dataset.lang ?? '';
     this.setUpTabs(panels);
+    // A settings page's "Editing: language" switch chooses the language here too.
+    const page = root.closest<HTMLElement>('[data-admin-settings].is-switching');
+    if (page?.dataset.editing) this.selectTab(page.dataset.editing);
+    root.addEventListener('flo-admin:editing-language', event => this.selectTab(String((event as CustomEvent).detail ?? '')), { signal: this.listeners.signal });
     this.setUpToolbar();
     this.setUpMenu();
     this.setUpMediaBar();
@@ -225,7 +229,7 @@ class RichField {
     root.classList.add('is-ready');
     // The field label names the editor and moves focus into it.
     const label = root.closest('.fa-field')?.querySelector<HTMLLabelElement>(':scope > .fa-label');
-    label?.addEventListener('click', event => { event.preventDefault(); this.selectTab(panels[0]?.dataset.lang ?? ''); this.current()?.commands.focus(); });
+    label?.addEventListener('click', event => { event.preventDefault(); if (!root.closest('[data-admin-settings].is-switching')) this.selectTab(panels[0]?.dataset.lang ?? ''); this.current()?.commands.focus(); });
     // A failed save marked the source invalid and focused it: carry both over.
     panels.forEach(panel => {
       const source = panel.querySelector<HTMLTextAreaElement>('[data-rich-source]')!;

@@ -26,7 +26,7 @@ function track(event: Event): void {
   if (!(target instanceof Element)) return;
   const form = target.closest<HTMLFormElement>('form[data-admin-record-form]');
   // Inputs inside a dialog (translations, editor links) count once the dialog applies them.
-  if (!form || target.closest('dialog') || (target as HTMLInputElement).type === 'hidden') return;
+  if (!form || target.closest('dialog') || target.closest('[data-admin-untracked]') || (target as HTMLInputElement).type === 'hidden') return;
   if (form.dataset.adminDirty !== 'true') markDirty(form, true);
 }
 document.addEventListener('input', track);

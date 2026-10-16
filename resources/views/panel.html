@@ -14,9 +14,14 @@
             <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span></a>
             @endforeach
             @endif
-            @if($usersUrl !== null)
+            @if($usersUrl !== null || $settingsUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
+            @endif
+            @if($usersUrl !== null)
             <a class="fa-nav-link{{ $usersActive ? ' is-active' : '' }}" href="{{ $usersUrl }}"@if($usersActive) aria-current="page"@endif>{!! $usersIcon !!}<span>{{ $t('nav.users') }}</span></a>
+            @endif
+            @if($settingsUrl !== null)
+            <a class="fa-nav-link{{ $settingsActive ? ' is-active' : '' }}" href="{{ $settingsUrl }}"@if($settingsActive) aria-current="page"@endif>{!! $settingsIcon !!}<span>{{ $t('nav.settings') }}</span></a>
             @endif
         </nav>
     </aside>

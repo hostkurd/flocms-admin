@@ -52,7 +52,10 @@ final class Uploads
     }
     public static function state(Form $form, array $state, Resource $resource, ?object $record): array
     {
-        foreach ($form->fields() as $name => $field) { if ($field instanceof FileUpload && $field->isWritable()) { $state[$name] = self::trusted($field, $state[$name] ?? '', $resource, $record); } }
+        foreach ($form->fields() as $name => $field) {
+            if ($field instanceof FileUpload && $field->isTranslatable()) { throw new \LogicException('Translatable uploads ("' . $name . '") are supported on settings pages only.'); }
+            if ($field instanceof FileUpload && $field->isWritable()) { $state[$name] = self::trusted($field, $state[$name] ?? '', $resource, $record); }
+        }
         return $state;
     }
     /** Real multipart inputs only; called after the controller authorizes the record. */
