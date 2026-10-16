@@ -14,6 +14,8 @@ final class TagResource extends Resource
 {
     protected static string $table = 'tags';
     protected static string $slug = 'post-tags';
+    // Small records: a panel from the side of the window.
+    protected static string $formMode = 'slide-over';
     protected static ?string $icon = 'tag';
     protected static ?string $permissionPrefix = 'taxonomy.tags';
     protected static array $permissions = ['delete' => 'settings.delete'];

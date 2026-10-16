@@ -12,6 +12,8 @@ final class PropertyResource extends Resource
 {
     protected static string $table = 'properties';
     protected static string $slug = 'properties';
+    // The browser tests drive these records in the list dialog.
+    protected static string $formMode = 'modal';
     protected static ?string $icon = 'building';
     protected static string $label = 'Property';
     protected static string $pluralLabel = 'Properties';

@@ -93,7 +93,7 @@ final class PageView
             't' => self::translator(),
             'title' => $class::getPluralLabel(),
             'createUrl' => $canCreate ? Admin::url($slug . '/create') : null,
-            'pageActions' => $actions->render('page', reactive: false),
+            'pageActions' => $actions->render('page', reactive: false, backUrl: $backUrl),
             'tableActions' => $actions->render('table', reactive: false),
             'createLabel' => AdminLang::get('actions.create_label', ['label' => $class::getLabel()]),
             'listUrl' => Admin::url($slug, ['static' => $state['static']]),
@@ -126,7 +126,8 @@ final class PageView
         ]);
     }
 
-    public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors): string
+    public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors,
+        ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false): string
     {
         $class = $this->resource;
 
@@ -142,6 +143,13 @@ final class PageView
             'isEdit' => $isEdit,
             'canContinue' => $canContinue,
             'hasErrors' => $hasErrors,
+            'backUrl' => $backUrl ?? Admin::url($class::getSlug()),
+            'canAnother' => $canAnother,
+            // A re-shown form (errors, refreshed fields) holds unsaved input.
+            'dirty' => $dirty,
+            'hasAside' => $hasAside,
+            'description' => $class::getDescription(),
+            'trashIcon' => Icons::svg('trash'),
         ]);
     }
 

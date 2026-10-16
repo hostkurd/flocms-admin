@@ -70,7 +70,9 @@ final class ActionRenderer
             'menu' => ['fa-menu-item' . ($color === 'danger' ? ' is-danger' : ''), self::menuIcon($action) . '<span>' . Str::e($text) . '</span>', ''],
             default => ['fa-btn' . ($color === 'default' ? '' : ' fa-btn-' . $color), ($action->getIcon() !== null ? Icons::svg($action->getIcon()) : '') . '<span>' . Str::e($text) . '</span>', ''],
         };
-        if ($reactive) {
+        // A page-mode Create or Edit is an ordinary link (the panel loads it without a reload).
+        $page = $action->getMode($this->resource) === 'page' && in_array($action->getKind(), ['create', 'edit'], true);
+        if ($reactive && !$page) {
             return '<button type="button" id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" class="' . $class . '"' . $attributes . ' data-admin-action="' . Str::e($name) . '" data-admin-placement="' . $placement . '" data-admin-record="' . Str::e($id) . '" data-rx-set="selection" data-rx-value="' . Str::e($placement . ':' . $name . ':' . $id) . '" data-rx-action="openAction" data-rx-dialog-trigger="editor">' . $label . '</button>';
         }
         $kind = $action->getKind();
@@ -79,6 +81,9 @@ final class ActionRenderer
         $path = $this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '');
         if ($name === 'create' && $kind === 'create' && $placement === 'page') { $path = $this->resource::getSlug() . '/create'; }
         if ($name === 'edit' && $kind === 'edit') { $path = $this->resource::getSlug() . '/edit/' . $id; }
+        if ($backUrl !== null && (($name === 'create' && $kind === 'create' && $placement === 'page') || ($name === 'edit' && $kind === 'edit'))) {
+            return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e(Admin::url($path, ['back' => $backUrl])) . '">' . $label . '</a>';
+        }
         if ($name === 'delete' && $kind === 'delete') {
             return '<form method="post" class="fa-inline" data-confirm action="' . Str::e(Admin::url($this->resource::getSlug() . '/delete/' . $id)) . '">'
                 . \FloCMS\Core\Csrf::field() . '<input type="hidden" name="_back" value="' . Str::e($backUrl ?? Admin::url($this->resource::getSlug())) . '">'

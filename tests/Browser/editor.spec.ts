@@ -314,7 +314,7 @@ test('the full-page form uses the same editor and saves without Reactive', async
   await expect(field.locator('.fa-rich')).toHaveClass(/is-ready/);
   await toEnd(page, field.locator('.fa-rich-panel[data-lang=en] .fa-rich-content'));
   await page.keyboard.type('!');
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.getByRole('button', { name: 'Save and close', exact: true }).click();
   await page.goto('/en/admin/articles/edit/1');
   await expect(field.locator('textarea[name="body[en]"]')).toHaveValue('<p>Hello <strong>world!</strong></p>');
 });

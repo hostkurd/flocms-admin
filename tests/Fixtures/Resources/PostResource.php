@@ -21,6 +21,8 @@ class PostResource extends Resource
 {
     protected static string $table = 'posts';
     protected static string $slug = 'posts';
+    // The browser tests drive these records in the list dialog.
+    protected static string $formMode = 'modal';
     protected static bool $timestamps = true;
     protected static string $label = 'Post';
     protected static string $pluralLabel = 'Posts';

@@ -58,9 +58,9 @@ test('standard multipart forms retain selections through validation and save wit
   try {
     await page.goto('http://127.0.0.1:8083/en/admin/assets/edit/1');
     await page.locator('[data-upload-field=attachment]').setInputFiles({name:'note.txt',mimeType:'text/plain',buffer:Buffer.from('No JS document')});
-    await page.locator('[name=title]').fill(''); await page.getByRole('button',{name:'Save changes',exact:true}).click();
+    await page.locator('[name=title]').fill(''); await page.getByRole('button',{name: 'Save and close',exact:true}).click();
     await expect(page.locator('[name=attachment]')).toHaveValue(/^@upload:/);
-    await page.locator('[name=title]').fill('No JS saved');await page.getByRole('button',{name:'Save changes',exact:true}).click();
+    await page.locator('[name=title]').fill('No JS saved');await page.getByRole('button',{name: 'Save and close',exact:true}).click();
     await page.goto('http://127.0.0.1:8083/en/admin/assets/edit/1');
     await expect(page.locator('[name=attachment]')).toHaveValue(/^assets\/attachment\//);
     expect(await (await page.request.get((await page.locator('[data-field=attachment] [data-admin-file-link]').getAttribute('href'))!)).text()).toBe('No JS document');
@@ -70,7 +70,7 @@ test('standard multipart forms retain selections through validation and save wit
 test('standard async navigation submits multipart file bytes', async ({ page }) => {
   await page.goto('/en/admin/assets/edit/1');await page.evaluate(()=>{(window as any).uploadMarker='kept';});
   await page.locator('[data-upload-field=attachment]').setInputFiles({name:'note.txt',mimeType:'text/plain',buffer:Buffer.from('Async document')});
-  await page.getByRole('button',{name:'Save changes',exact:true}).click();await expect(page).toHaveURL(/\/admin\/assets$/);
+  await page.getByRole('button',{name: 'Save and close',exact:true}).click();await expect(page).toHaveURL(/\/admin\/assets$/);
   expect(await page.evaluate(()=>(window as any).uploadMarker)).toBe('kept');
   await page.goto('/en/admin/assets/edit/1');await expect(page.locator('[name=attachment]')).toHaveValue(/^assets\/attachment\//);
 });

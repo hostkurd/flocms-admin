@@ -8,6 +8,7 @@ import { initializeForms } from './forms';
 import { initializeEditors } from './editors';
 import './popovers';
 import { startProgress, finishProgress } from './progress';
+import { initializeRecord, isDirty, confirmLeave } from './record';
 import '../assets/admin.css';
 
 let navigating = false;
@@ -46,6 +47,7 @@ function initialize(): void {
   initializeTranslations(root);
   initializeEditors(root);
   initializeSelection(root);
+  initializeRecord(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
@@ -112,6 +114,8 @@ document.addEventListener('click', event => {
   const url = internal(anchor.href);
   if (!url || (event.target instanceof Element && event.target.closest('[data-admin-file-link]'))) return;
   event.preventDefault();
+  // Unsaved changes on a record page: ask first.
+  if (isDirty()) { void confirmLeave().then(leave => { if (leave) void navigate(url); }); return; }
   void navigate(url);
 });
 
@@ -211,6 +215,12 @@ window.addEventListener('popstate', event => {
   const url = internal(location.href);
   if (url) {
     if (navigating || busy()) { history.replaceState(null, '', displayedUrl); return; }
+    if (isDirty()) {
+      // Stay on the record page's address until the person decides.
+      history.pushState(null, '', displayedUrl);
+      void confirmLeave().then(leave => { if (leave) void navigate(url); });
+      return;
+    }
     void navigate(url, { history: false });
   } else location.reload();
 }, true);

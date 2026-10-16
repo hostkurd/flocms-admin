@@ -85,6 +85,7 @@ final class PanelView
             'panelBase' => Admin::url(),
             'theme' => Admin::config()->theme(),
             'sidebar' => Admin::config()->sidebar(),
+            'contentWidth' => Admin::config()->contentWidth(),
             'logo' => Admin::config()->logo(),
             'brandInitial' => self::initial(AdminLang::label(Admin::config()->brand())),
             'userInitial' => self::initial($user),

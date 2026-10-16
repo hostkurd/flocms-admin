@@ -94,6 +94,12 @@ final class ProfileController extends PanelController
             'isEdit' => true,
             'canContinue' => false,
             'hasErrors' => $errors !== [],
+            'backUrl' => Admin::url('dashboard'),
+            'canAnother' => false,
+            'dirty' => $errors !== [],
+            'hasAside' => false,
+            'description' => null,
+            'trashIcon' => '',
         ]);
 
         return $this->panel($title, $html, 'profile');

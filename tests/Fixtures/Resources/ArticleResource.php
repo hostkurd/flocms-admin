@@ -12,6 +12,8 @@ final class ArticleResource extends Resource
 {
     protected static string $table = 'articles';
     protected static string $slug = 'articles';
+    // The browser tests drive these records in the list dialog.
+    protected static string $formMode = 'modal';
     protected static ?string $icon = 'newspaper';
     protected static string $label = 'Article';
     protected static string $pluralLabel = 'Articles';
