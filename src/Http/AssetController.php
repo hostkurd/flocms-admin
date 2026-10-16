@@ -17,7 +17,7 @@ final class AssetController extends Controller
         $name = $this->params[0] ?? '';
         if (count($this->params) !== 1 || !is_string($name)) { throw new HttpException(404); }
         $root = dirname(__DIR__, 2);
-        if (in_array($name, ['admin-v' . Admin::VERSION . '.js', 'admin-v' . Admin::VERSION . '.css'], true)) {
+        if (in_array($name, ['admin-v' . Admin::VERSION . '.js', 'admin-v' . Admin::VERSION . '.css', 'admin-editor-v' . Admin::VERSION . '.js'], true)) {
             $file = $root . '/dist/' . $name;
             $type = str_ends_with($name, '.js') ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8';
         } elseif (($theme = \FloCMS\Admin\Support\Theme::fileName()) !== null && $name === $theme) {

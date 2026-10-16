@@ -119,6 +119,26 @@ final class AdminConfig
         return is_string($theme) && in_array($theme, self::THEMES, true) ? $theme : 'light';
     }
 
+    /**
+     * Where rich text editor uploads (images, videos) are stored and their public
+     * URL. Defaults: <root>/public/uploads/editor served at <site path>/uploads/editor.
+     *
+     * @return array{root: string, url: string}
+     */
+    public function media(): array
+    {
+        $media = is_array($this->values['media'] ?? null) ? $this->values['media'] : [];
+        $root = is_string($media['root'] ?? null) && trim($media['root']) !== '' ? str_replace('\\', '/', trim($media['root'])) : 'public/uploads/editor';
+        $absolute = str_starts_with($root, '/') || preg_match('/^[A-Za-z]:\//', $root) === 1;
+        $root = $absolute ? rtrim($root, '/') : rtrim($this->root, '/\\') . '/' . trim($root, '/');
+        $url = $media['url'] ?? null;
+        if (!is_string($url) || preg_match('~^(https?://[^\s"\'<>/]+)?/[^\s"\'<>]*$~iD', $url = rtrim(trim($url), '/')) !== 1 || str_starts_with($url, '//')) {
+            $path = defined('SITE_URI') ? (string) parse_url((string) SITE_URI, PHP_URL_PATH) : '';
+            $url = rtrim($path, '/') . '/uploads/editor';
+        }
+        return ['root' => $root, 'url' => $url];
+    }
+
     public function permissionPrefix(): string
     {
         $prefix = trim((string) ($this->values['permission_prefix'] ?? 'content'), '.');

@@ -42,6 +42,13 @@ return [
     // Sidebar style: 'light' or 'dark'
     'sidebar' => 'light',
 
+    // Rich text editor uploads: folder (relative to the project) and its public URL.
+    // The folder must be inside the web root and writable; admin:doctor checks it.
+    'media' => [
+        'root' => 'public/uploads/editor',
+        'url' => '/uploads/editor',
+    ],
+
     // Name at the top of the sidebar
     'brand' => \FloCMS\Core\Env::get('SITE_NAME_ADMIN', 'Admin'),
 

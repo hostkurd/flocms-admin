@@ -16,6 +16,7 @@
   "include": [
     "resources/js/**/*.ts",
     "vite.config.ts",
+    "vite.editor.config.ts",
     "playwright.config.ts",
     "tests/Browser/**/*.ts"
   ]

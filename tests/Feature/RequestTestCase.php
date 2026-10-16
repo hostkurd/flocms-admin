@@ -53,14 +53,17 @@ abstract class RequestTestCase extends TestCase
         $pdo = self::pdo();
         $pdo->exec('DROP TABLE IF EXISTS posts');
         $pdo->exec('DROP TABLE IF EXISTS tags');
+        $pdo->exec('DROP TABLE IF EXISTS articles');
         self::createTable($pdo, 'CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NULL, slug VARCHAR(190) NOT NULL DEFAULT "",
             body TEXT NULL, status VARCHAR(20) NOT NULL DEFAULT "draft", views INTEGER NULL, featured INTEGER NOT NULL DEFAULT 0,
             published_on DATE NULL, created_at DATETIME NULL, updated_at DATETIME NULL)');
         self::createTable($pdo, 'CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "")');
+        self::createTable($pdo, 'CREATE TABLE articles (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NULL, body TEXT NULL, note TEXT NULL)');
         $pdo->exec("INSERT INTO posts (title, slug, status, featured) VALUES
             ('{\"en\":\"Sea view villa\",\"ar\":\"فيلا\"}', 'sea-view-villa', 'published', 1),
             ('{\"en\":\"Mountain cabin\"}', 'mountain-cabin', 'draft', 0)");
         $pdo->exec("INSERT INTO tags (name) VALUES ('Garden')");
+        $pdo->exec("INSERT INTO articles (title, body) VALUES ('{\"en\":\"Welcome\"}', '{\"en\":\"<p>Hello</p>\"}')");
 
         // The skeleton's users table: 1 Sara (Editor), 2 Ali (Admin), 3 Root (Super Admin), 4 Dara (User)
         $pdo->exec('DROP TABLE IF EXISTS users');

@@ -10,6 +10,19 @@ final class Icons
 {
     private const PATHS = [
         'list' => 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
+        // Rich text toolbar
+        'bold' => 'M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z',
+        'italic' => 'M10 5h8M6 19h8M14 5l-4 14',
+        'underline' => 'M7 4v7a5 5 0 0 0 10 0V4M5 20h14',
+        'strike' => 'M5 12h14M16 7.5C15.4 6 13.9 5 12 5c-2.2 0-4 1.2-4 3 0 1.3.9 2.3 2.4 3M8 16.5c.6 1.5 2.1 2.5 4 2.5 2.2 0 4-1.2 4-3 0-.6-.2-1.1-.5-1.6',
+        'list-ordered' => 'M10 6h10M10 12h10M10 18h10M4 5l1.5-1v5M4 14.5a1.5 1.5 0 0 1 3 .5c0 .8-3 2.5-3 4h3',
+        'quote' => 'M4 7h6v6H7l-3 4zM14 7h6v6h-3l-3 4z',
+        'code' => 'M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14',
+        'minus' => 'M5 12h14',
+        'play' => 'M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM10 9l5 3-5 3z',
+        'undo' => 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+        'redo' => 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
+        'upload' => 'M12 16V4M7 9l5-5 5 5M4 16v4h16v-4',
         'file' => 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6',
         'building' => 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
         'home' => 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',
@@ -64,6 +77,13 @@ final class Icons
     public static function names(): array
     {
         return array_keys(self::PATHS);
+    }
+
+    /** An icon by exact name (no fallback); for toolbar buttons. */
+    public static function svgFor(string $name): string
+    {
+        if (!isset(self::PATHS[$name])) { throw new \InvalidArgumentException('Unknown icon ' . $name . '.'); }
+        return self::svg($name);
     }
 
     public static function svg(?string $name, string $class = 'fa-icon'): string

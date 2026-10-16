@@ -28,8 +28,8 @@
         "ext-mbstring": "*",
         "ext-pdo": "*",
         "hostkurd/flocms-core": "^2.3.2",
-        "hostkurd/flocms-reactive": "^0.4.0",
-        "hostkurd/flocms-uploader": "^1.2.0"
+        "hostkurd/flocms-reactive": "^0.5.1",
+        "hostkurd/flocms-uploader": "^1.2.1"
     },
     "require-dev": {
         "hostkurd/flocms-cli": "^2.0.1",
@@ -59,7 +59,7 @@
             ]
         },
         "branch-alias": {
-            "dev-main": "0.9-dev"
+            "dev-main": "0.10-dev"
         }
     },
     "scripts": {
