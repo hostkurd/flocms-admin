@@ -14,6 +14,7 @@ final class TagResource extends Resource
 {
     protected static string $table = 'tags';
     protected static string $slug = 'post-tags';
+    protected static ?string $icon = 'tag';
     protected static ?string $permissionPrefix = 'taxonomy.tags';
     protected static array $permissions = ['delete' => 'settings.delete'];
     protected static int $navigationSort = 2;

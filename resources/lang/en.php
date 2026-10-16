@@ -163,4 +163,8 @@ return [
     'table.more_actions' => 'More actions',
     'table.page' => 'Page :page',
     'filters.remove' => 'Remove filter :label: :value',
+    'nav.admin' => 'Admin',
+    'nav.breadcrumb' => 'Breadcrumb',
+    'nav.language' => 'Language',
+    'nav.account' => 'Account menu',
 ];

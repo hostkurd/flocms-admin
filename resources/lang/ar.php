@@ -162,4 +162,8 @@ return [
     'table.more_actions' => 'مزيد من الإجراءات',
     'table.page' => 'الصفحة :page',
     'filters.remove' => 'إزالة عامل التصفية :label: :value',
+    'nav.admin' => 'الإدارة',
+    'nav.breadcrumb' => 'مسار التنقل',
+    'nav.language' => 'اللغة',
+    'nav.account' => 'قائمة الحساب',
 ];

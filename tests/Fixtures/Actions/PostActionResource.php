@@ -13,6 +13,7 @@ use FloCMS\Admin\Tests\Fixtures\Resources\PostResource;
 /** Working publish/unpublish example, using only public Admin APIs. */
 class PostActionResource extends PostResource
 {
+    protected static ?string $description = 'Articles shown on the website, in English, Arabic and Kurdish.';
     public function headerActions(): array
     {
         return [CreateAction::make(), Action::make('announce')->label('demo.announce')->icon('mail')

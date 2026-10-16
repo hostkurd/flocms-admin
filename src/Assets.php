@@ -13,7 +13,7 @@ final class Assets
         $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
         $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
         $url = $base . '/' . $lang . 'flo-admin/asset/admin-v' . Admin::VERSION;
-        return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '"><script defer src="' . Str::e($url . '.js') . '"></script>';
+        return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '">' . \FloCMS\Admin\Support\Theme::tag() . '<script defer src="' . Str::e($url . '.js') . '"></script>';
     }
     public static function tags(): string
     {
@@ -21,7 +21,7 @@ final class Assets
         $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
         $url = $base . '/' . $lang . 'flo-admin/asset/admin-v' . Admin::VERSION;
         // Navigation owns popstate inside the panel and loads before Reactive.
-        return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '">'
+        return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '">' . \FloCMS\Admin\Support\Theme::tag()
             . '<script defer src="' . Str::e($url . '.js') . '"></script>'
             . (Admin::config()->reactiveEnabled() ? Reactive::assets() : '');
     }

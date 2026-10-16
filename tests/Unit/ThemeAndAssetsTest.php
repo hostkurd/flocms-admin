@@ -60,6 +60,52 @@ final class ThemeAndAssetsTest extends TestCase
         self::assertSame(405, self::asset(AssetController::FONTS, 'POST')->status());
     }
 
+    public function testBrandColourSettingsAreValidatedAndNormalised(): void
+    {
+        self::assertNull(Admin::config()->primaryColor());
+        Admin::useConfig(['primary_color' => '#4F46E5']);
+        self::assertSame('#4f46e5', Admin::config()->primaryColor());
+        Admin::useConfig(['primary_color' => '#0af']);
+        self::assertSame('#00aaff', Admin::config()->primaryColor());
+        foreach (['red', '#12345', 'rgb(0,0,0)', '#4f46e5;x', 0, null] as $invalid) {
+            Admin::useConfig(['primary_color' => $invalid]);
+            self::assertNull(Admin::config()->primaryColor());
+        }
+        Admin::useConfig(['logo' => '/img/logo.svg', 'sidebar' => 'dark']);
+        self::assertSame('/img/logo.svg', Admin::config()->logo());
+        self::assertSame('dark', Admin::config()->sidebar());
+        foreach (['javascript:alert(1)', '//evil.test/x.png', 'logo.png', '/a" onerror="x', ''] as $invalid) {
+            Admin::useConfig(['logo' => $invalid, 'sidebar' => 'purple']);
+            self::assertNull(Admin::config()->logo());
+            self::assertSame('light', Admin::config()->sidebar());
+        }
+    }
+
+    public function testBrandStylesheetExistsOnlyForTheConfiguredColour(): void
+    {
+        self::assertNull(\FloCMS\Admin\Support\Theme::fileName());
+        Admin::useConfig(['primary_color' => '#4f46e5']);
+        $name = (string) \FloCMS\Admin\Support\Theme::fileName();
+        self::assertMatchesRegularExpression('/^theme-[0-9a-f]{12}\.css$/', $name);
+        $css = self::asset([$name]);
+        self::assertSame('text/css; charset=utf-8', self::header($css, 'Content-Type'));
+        self::assertSame('public, max-age=31536000, immutable', self::header($css, 'Cache-Control'));
+        self::assertStringContainsString('--fa-primary:#4f46e5;', $css->body());
+        self::assertStringContainsString('.fa-panel[data-theme="dark"]', $css->body());
+        self::assertStringContainsString('@media (prefers-color-scheme:dark)', $css->body());
+        Admin::useConfig(['primary_color' => '#047857']);
+        self::assertNotSame($name, \FloCMS\Admin\Support\Theme::fileName());
+        try { self::asset([$name]); self::fail('Served a stale brand stylesheet'); } catch (HttpException $e) { self::assertSame(404, $e->status); }
+    }
+
+    public function testContrastWithWhiteFollowsWcag(): void
+    {
+        self::assertEqualsWithDelta(21.0, \FloCMS\Admin\Support\Theme::contrastWithWhite('#000000'), 0.01);
+        self::assertEqualsWithDelta(1.0, \FloCMS\Admin\Support\Theme::contrastWithWhite('#ffffff'), 0.01);
+        self::assertGreaterThan(4.5, \FloCMS\Admin\Support\Theme::contrastWithWhite('#0b6e91'));
+        self::assertLessThan(4.5, \FloCMS\Admin\Support\Theme::contrastWithWhite('#38bbe0'));
+    }
+
     /** @param list<string> $params */
     private static function asset(array $params, string $method = 'GET'): Response
     {

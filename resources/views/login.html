@@ -1,7 +1,7 @@
 {!! $assets !!}
 <main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}" data-theme="{{ $theme }}">
     <div class="fa-login-container">
-        <a class="fa-login-brand" href="{{ $siteUrl }}">{{ $brand }}</a>
+        <a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>
         <section class="fa-login-card" aria-labelledby="fa-login-title">
             <header><p class="fa-login-eyebrow">{{ $t('login.admin') }}</p><h1 id="fa-login-title">{{ $t('login.title') }}</h1><p class="fa-login-description">{{ $t('login.description') }}</p></header>
             @if($message !== '')<div class="fa-login-alert" role="alert">{{ $message }}</div>@endif

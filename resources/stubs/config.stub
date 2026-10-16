@@ -32,6 +32,16 @@ return [
     // Colour theme: 'light', 'dark', or 'auto' (follows the operating system)
     'theme' => 'light',
 
+    // Brand colour for buttons, links and highlights (#rrggbb); null keeps the default blue.
+    // Pick a colour dark enough for white text: admin:doctor checks the contrast.
+    'primary_color' => null,
+
+    // Logo image URL for the sidebar (square works best); null shows the brand's first letter
+    'logo' => null,
+
+    // Sidebar style: 'light' or 'dark'
+    'sidebar' => 'light',
+
     // Name at the top of the sidebar
     'brand' => \FloCMS\Core\Env::get('SITE_NAME_ADMIN', 'Admin'),
 

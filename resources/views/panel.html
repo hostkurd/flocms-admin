@@ -1,8 +1,11 @@
 {!! $assets !!}
-<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
+<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
 
     <aside id="fa-sidebar" class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
-        <div class="fa-brand"><a href="{{ $dashboardUrl }}">{{ $brand }}</a></div>
+        <a class="fa-brand" href="{{ $dashboardUrl }}">
+            @if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif
+            <span class="fa-brand-text"><span class="fa-brand-name">{{ $brand }}</span><span class="fa-brand-sub">{{ $t('nav.admin') }}</span></span>
+        </a>
         <nav class="fa-nav">
             <a class="fa-nav-link{{ $dashboardActive ? ' is-active' : '' }}" href="{{ $dashboardUrl }}"@if($dashboardActive) aria-current="page"@endif>{!! $dashboardIcon !!}<span>{{ $t('nav.dashboard') }}</span></a>
             @if(count($nav) > 0)
@@ -21,15 +24,36 @@
     <div class="fa-main">
         <header class="fa-topbar">
             <button type="button" class="fa-icon-btn fa-menu-btn" data-admin-menu aria-controls="fa-sidebar" aria-expanded="false" title="{{ $t('nav.menu') }}">{!! $menuIcon !!}<span class="fa-sr">{{ $t('nav.menu') }}</span></button>
-            <span class="fa-topbar-title">{{ $title }}</span>
+            <nav class="fa-breadcrumbs" aria-label="{{ $t('nav.breadcrumb') }}"><ol>
+                @foreach($breadcrumbs as $crumb)
+                @if($crumb['current'])<li><span aria-current="page">{{ $crumb['label'] }}</span></li>
+                @elseif($crumb['url'] !== null)<li><a href="{{ $crumb['url'] }}">{{ $crumb['label'] }}</a></li>
+                @else<li><span>{{ $crumb['label'] }}</span></li>@endif
+                @endforeach
+            </ol></nav>
             <span class="fa-topbar-spacer"></span>
-            <a class="fa-topbar-link" href="{{ $siteUrl }}" target="_blank" rel="noopener">{{ $t('nav.view_site') }}</a>
-            @if($user !== '' && $profileUrl !== null)
-            <a class="fa-topbar-link fa-topbar-user" href="{{ $profileUrl }}" title="{{ $t('nav.profile') }}">{{ $user }}</a>
-            @elseif($user !== '')
-            <span class="fa-topbar-user">{{ $user }}</span>
+            <a class="fa-topbar-action" href="{{ $siteUrl }}" target="_blank" rel="noopener" title="{{ $t('nav.view_site') }}">{!! $externalIcon !!}<span class="fa-topbar-action-label">{{ $t('nav.view_site') }}</span></a>
+            @if(count($languages) > 0)
+            <details class="fa-topbar-menu" id="fa-language-menu" data-admin-popover>
+                <summary class="fa-topbar-action" aria-label="{{ $t('nav.language') }}" title="{{ $t('nav.language') }}">{!! $globeIcon !!}<span>{{ strtoupper($lang) }}</span></summary>
+                <div class="fa-menu-panel fa-topbar-panel">
+                    @foreach($languages as $language)<a class="fa-menu-item" href="{{ $language['url'] }}" hreflang="{{ $language['code'] }}" lang="{{ $language['code'] }}"@if($language['current']) aria-current="true"@endif><span class="fa-menu-code">{{ strtoupper($language['code']) }}</span><span>{{ $language['name'] }}</span></a>@endforeach
+                </div>
+            </details>
             @endif
-            <a class="fa-topbar-link" href="{{ $logoutUrl }}">{!! $logoutIcon !!}<span>{{ $t('nav.logout') }}</span></a>
+            @if($user !== '')
+            <details class="fa-topbar-menu fa-user-menu" id="fa-user-menu" data-admin-popover>
+                <summary class="fa-topbar-action" aria-label="{{ $t('nav.account') }}"><span class="fa-avatar" aria-hidden="true">{{ $userInitial }}</span><span class="fa-user-name">{{ $user }}</span>{!! $chevronIcon !!}</summary>
+                <div class="fa-menu-panel fa-topbar-panel">
+                    @if($profileUrl !== null)<a class="fa-menu-item fa-topbar-user" href="{{ $profileUrl }}">{!! $profileIcon !!}<span>{{ $t('nav.profile') }}</span></a>@endif
+                    <a class="fa-menu-item" href="{{ $siteUrl }}" target="_blank" rel="noopener">{!! $externalIcon !!}<span>{{ $t('nav.view_site') }}</span></a>
+                    <hr class="fa-menu-divider">
+                    <a class="fa-menu-item" href="{{ $logoutUrl }}">{!! $logoutIcon !!}<span>{{ $t('nav.logout') }}</span></a>
+                </div>
+            </details>
+            @else
+            <a class="fa-topbar-action" href="{{ $logoutUrl }}">{!! $logoutIcon !!}<span>{{ $t('nav.logout') }}</span></a>
+            @endif
         </header>
         <main class="fa-content" id="fa-content" tabindex="-1">
             <p class="fa-navigation-status" role="status" aria-live="polite" data-admin-status></p>

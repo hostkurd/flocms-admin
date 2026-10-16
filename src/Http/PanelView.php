@@ -84,7 +84,91 @@ final class PanelView
             'navigation' => Admin::config()->reactiveEnabled(),
             'panelBase' => Admin::url(),
             'theme' => Admin::config()->theme(),
+            'sidebar' => Admin::config()->sidebar(),
+            'logo' => Admin::config()->logo(),
+            'brandInitial' => self::initial(AdminLang::label(Admin::config()->brand())),
+            'userInitial' => self::initial($user),
+            'breadcrumbs' => $this->breadcrumbs($title, $activeSlug),
+            'languages' => self::languageLinks($lang),
+            'globeIcon' => Icons::svg('globe'),
+            'chevronIcon' => Icons::svg('chevron-down', 'fa-icon fa-icon-sm'),
+            'externalIcon' => Icons::svg('external'),
+            'profileIcon' => Icons::svg('user'),
         ];
+    }
+
+    /** Uppercase first letter for the logo mark and avatar; empty when there is no text. */
+    private static function initial(string $text): string
+    {
+        $text = trim($text);
+        return $text === '' ? '' : mb_strtoupper(mb_substr($text, 0, 1));
+    }
+
+    /**
+     * Where the current page sits: Dashboard; Site / Users; Content / Posts; Content / Posts / New post.
+     *
+     * @return list<array{label: string, url: ?string, current: bool}>
+     */
+    private function breadcrumbs(string $title, ?string $activeSlug): array
+    {
+        $items = $this->trail($title, $activeSlug);
+        $last = array_key_last($items);
+        foreach ($items as $index => $item) { $items[$index]['current'] = $index === $last; }
+        return $items;
+    }
+
+    /** @return list<array{label: string, url: ?string}> */
+    private function trail(string $title, ?string $activeSlug): array
+    {
+        if ($activeSlug === null || in_array($activeSlug, ['dashboard', 'profile'], true)) {
+            return [['label' => $title, 'url' => null]];
+        }
+        if ($activeSlug === 'accounts') {
+            return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];
+        }
+        $class = Admin::registry()->find($activeSlug);
+        if ($class === null) {
+            return [['label' => $title, 'url' => null]];
+        }
+        /** @var class-string<Resource> $class */
+        $plural = $class::getPluralLabel();
+        $items = [['label' => AdminLang::get('nav.resources'), 'url' => null]];
+        if ($title === $plural) {
+            $items[] = ['label' => $plural, 'url' => null];
+        } else {
+            $items[] = ['label' => $plural, 'url' => Admin::url($activeSlug)];
+            $items[] = ['label' => $title, 'url' => null];
+        }
+        return $items;
+    }
+
+    /**
+     * The current admin page in every site language. Switching language is an
+     * ordinary page load (the language is part of the URL).
+     *
+     * @return list<array{code: string, name: string, url: string, current: bool}>
+     */
+    private static function languageLinks(string $current): array
+    {
+        $languages = Languages::all();
+        if (count($languages) < 2) {
+            return [];
+        }
+        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        $path = (string) (parse_url($uri, PHP_URL_PATH) ?: '');
+        $query = parse_url($uri, PHP_URL_QUERY);
+        $rest = preg_match('~/admin(/[^?#]*)?$~', $path, $match) === 1 ? trim($match[1] ?? '', '/') : 'dashboard';
+        $base = defined('SITE_URI') ? rtrim((string) constant('SITE_URI'), '/') : '';
+        $links = [];
+        foreach ($languages as $code) {
+            $links[] = [
+                'code' => $code,
+                'name' => Languages::name($code),
+                'url' => $base . '/' . rawurlencode($code) . '/admin' . ($rest !== '' ? '/' . $rest : '') . (is_string($query) && $query !== '' ? '?' . $query : ''),
+                'current' => $code === $current,
+            ];
+        }
+        return $links;
     }
 
     /** The site's lng.dir for the admin language, else the package's RTL list. */

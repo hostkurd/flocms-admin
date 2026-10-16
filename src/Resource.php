@@ -41,6 +41,9 @@ abstract class Resource
     /** Navigation icon name (see the README for the list). */
     protected static ?string $icon = null;
 
+    /** Optional one-line description under the list page title: plain text or a lang key. */
+    protected static ?string $description = null;
+
     protected static int $navigationSort = 0;
 
     /** Prefix of the permission names; default "<config permission_prefix>.<slug>". */
@@ -167,6 +170,11 @@ abstract class Resource
     public static function getIcon(): ?string
     {
         return static::$icon;
+    }
+
+    public static function getDescription(): ?string
+    {
+        return static::$description === null || static::$description === '' ? null : AdminLang::label(static::$description);
     }
 
     public static function getNavigationSort(): int

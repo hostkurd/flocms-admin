@@ -162,4 +162,8 @@ return [
     'table.more_actions' => 'کرداری زیاتر',
     'table.page' => 'پەڕەی :page',
     'filters.remove' => 'لابردنی فلتەری :label: :value',
+    'nav.admin' => 'بەڕێوەبردن',
+    'nav.breadcrumb' => 'ڕێڕەو',
+    'nav.language' => 'زمان',
+    'nav.account' => 'لیستی هەژمار',
 ];
