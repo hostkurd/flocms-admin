@@ -31,8 +31,8 @@ final class Dashboard
             foreach ($registry->problems() as $problem) { self::log('Admin widget configuration: ' . $problem); }
             $notice = '<p class="fa-muted" role="status">' . Str::e(AdminLang::get('widgets.unavailable')) . '</p>';
         }
-        $form = '<form class="fa-widget-toolbar" method="get" action="' . Str::e(Admin::url('dashboard')) . '"' . ($reactive ? ' data-rx-submit="refresh"' : '') . '><button type="submit" class="fa-btn" id="fa-dashboard-refresh">' . Str::e(AdminLang::get('widgets.refresh')) . '</button>'
-            . ($reactive ? '<span class="fa-muted" data-rx-loading>' . Str::e(AdminLang::get('reactive.loading')) . '</span>' : '') . '</form>';
+        $form = '<form class="fa-widget-toolbar" method="get" action="' . Str::e(Admin::url('dashboard')) . '"' . ($reactive ? ' data-rx-submit="refresh"' : '') . '>' . ($reactive ? '<span class="fa-loading" data-rx-loading>' . Str::e(AdminLang::get('reactive.loading')) . '</span>' : '')
+            . '<button type="submit" class="fa-btn fa-btn-sm" id="fa-dashboard-refresh">' . \FloCMS\Admin\Support\Icons::svg('refresh') . '<span>' . Str::e(AdminLang::get('widgets.refresh')) . '</span></button></form>';
         return $form . $notice . ($items !== '' ? '<div class="fa-widget-grid fa-widget-grid-' . $columns . '">' . $items . '</div>' : '<p class="fa-card fa-blank" role="status">' . Str::e(AdminLang::get('widgets.none')) . '</p>');
     }
 }

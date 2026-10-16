@@ -102,7 +102,13 @@ final class FormRenderer
 
         $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '">';
         $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . '</label>';
-        $html .= $field->isTranslatable() ? $this->translatable($field, $id, $langErrors) : $this->single($field, $id);
+        if ($field->isTranslatable() && count($this->languages) > 1) {
+            $html .= $this->translatable($field, $id, $langErrors);
+        } elseif ($field->isTranslatable()) {
+            $html .= $this->singleLanguage($field, $id);
+        } else {
+            $html .= $this->single($field, $id);
+        }
 
         if (($help = $field->getHelp()) !== null) {
             $html .= '<p class="fa-help" id="' . Str::e($id) . '-help">' . Str::e($help) . '</p>';
@@ -129,6 +135,25 @@ final class FormRenderer
         return $field->renderControl($id, $field->getName(), $this->stringState($field), $attributes);
     }
 
+    /**
+     * A translatable field on a site with one language: a plain input, still
+     * submitted as name[lang] so stored values keep their JSON shape and a
+     * second language can be added later without migrating anything.
+     */
+    private function singleLanguage(Field $field, string $id): string
+    {
+        $name = $field->getName();
+        $values = $this->state[$name] ?? [];
+        $values = is_array($values) ? $values : [];
+        $attributes = ['dir' => Languages::direction($this->defaultLang), 'lang' => $this->defaultLang];
+        $describedBy = [];
+        if ($field->getHelp() !== null) { $describedBy[] = $id . '-help'; }
+        if (isset($this->errors[$name])) { $describedBy[] = $id . '-error'; $attributes['aria-invalid'] = 'true'; }
+        if ($describedBy !== []) { $attributes['aria-describedby'] = implode(' ', $describedBy); }
+
+        return $field->renderControl($id, $name . '[' . $this->defaultLang . ']', $values[$this->defaultLang] ?? '', $attributes);
+    }
+
     /** @param array<string, string> $langErrors */
     private function translatable(Field $field, string $id, array $langErrors): string
     {
@@ -146,28 +171,35 @@ final class FormRenderer
         $control = $field->renderControl($id, $name . '[' . $default . ']', $values[$default] ?? '', $mainAttributes);
 
         $missing = [];
-        $badge = '';
+        $dots = '';
         foreach ($this->languages as $lang) {
             $filled = ($values[$lang] ?? '') !== '';
             if (!$filled) {
                 $missing[] = $lang;
             }
-            $state = $lang === $default ? 'is-default' : ($filled ? 'is-filled' : 'is-empty');
+            if ($lang === $default) { continue; }
+            // One dot per other language: filled, empty or invalid. The button's
+            // label and title name the missing languages for every reader.
+            $state = $filled ? 'is-filled' : 'is-empty';
             if (isset($langErrors[$lang])) {
                 $state .= ' is-invalid';
             }
-            $badge .= '<span class="fa-code ' . $state . '">' . Str::e($lang) . '</span>';
+            $dots .= '<span class="fa-dot ' . $state . '" data-lang="' . Str::e($lang) . '"></span>';
         }
+        $badge = '<span class="fa-code is-default">' . Str::e($default) . '</span><span class="fa-dots" aria-hidden="true">' . $dots . '</span>';
 
         $title = $missing === []
             ? AdminLang::get('translations.all_filled')
             : AdminLang::get('translations.missing', ['languages' => implode(', ', $missing)]);
 
-        $html = '<div class="fa-input-row">' . $control;
+        // The row takes the default language's direction, so the badge sits at the
+        // end of that text (left for Arabic content, right for English) on any page.
+        $html = '<div class="fa-input-row' . (count($this->languages) > 6 ? ' is-many' : '') . '" dir="' . Languages::direction($default) . '">' . $control;
         $html .= '<button type="button" class="fa-lang-badge' . ($langErrors !== [] ? ' is-invalid' : '') . '"'
             . ' data-dialog="' . Str::e($dialogId) . '" aria-haspopup="dialog" aria-controls="' . Str::e($dialogId) . '"'
             . ' data-missing-text="' . Str::e(AdminLang::get('translations.missing', ['languages' => ''])) . '"'
             . ' data-complete-text="' . Str::e(AdminLang::get('translations.all_filled')) . '"'
+            . ' data-open-text="' . Str::e(AdminLang::get('translations.open', ['field' => $field->getLabel()])) . '"'
             . ' title="' . Str::e($title) . '" aria-label="' . Str::e(AdminLang::get('translations.open', ['field' => $field->getLabel()]) . '. ' . $title) . '">'
             . $badge . '</button></div>';
 

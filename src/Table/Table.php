@@ -81,6 +81,15 @@ final class Table
     }
 
     /** @return array<string, Column> */
+    /** The column that titles a row on phones: the first searchable column, else the first column. */
+    public function primaryColumn(): ?string
+    {
+        foreach ($this->getColumns() as $name => $column) {
+            if ($column->isSearchable()) { return $name; }
+        }
+        return array_key_first($this->getColumns());
+    }
+
     public function searchableColumns(): array
     {
         return array_filter($this->columns, static fn (Column $c): bool => $c->isSearchable());

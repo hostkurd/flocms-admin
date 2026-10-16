@@ -55,9 +55,9 @@
     </div>
     @endif
     @if(count($result['data']) > 0)
-    <div class="fa-table-wrap"><table class="fa-table">
+    <div class="fa-table-wrap"><table class="fa-table fa-table-list">
         <thead><tr>
-            @if(count($bulkActions) > 0)<th class="fa-selection-col"><input type="checkbox" data-admin-select-page aria-label="{{ $t('bulk.select_page') }}"></th>@endif
+            @if(count($bulkActions) > 0)<th class="fa-selection-col"><label class="fa-select-page"><input type="checkbox" data-admin-select-page aria-label="{{ $t('bulk.select_page') }}"><span class="fa-select-page-label" aria-hidden="true">{{ $t('bulk.select_page') }}</span></label></th>@endif
             @foreach($table->getColumns() as $name => $column)
             <th scope="col" class="{{ $column->cellClass() }}" aria-sort="{{ $result['sort'] === $name ? ($result['dir'] === 'asc' ? 'ascending' : 'descending') : 'none' }}">
                 @if($column->isSortable())<button class="fa-sort{{ $result['sort'] === $name ? ' is-' . $result['dir'] : '' }}" type="button" data-rx-action="sortBy" data-rx-set="selectedSort" data-rx-value="{{ $name }}">{{ $column->getLabel() }}</button>@else{{ $column->getLabel() }}@endif
@@ -69,7 +69,7 @@
             @foreach($result['data'] as $record)
             <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}"@if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) class="is-selected"@endif>
                 @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" data-admin-select value="{{ $record->{$resource::getPrimaryKey()} }}" aria-label="{{ $t('bulk.select_record', ['id' => $record->{$resource::getPrimaryKey()}]) }}" @if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) checked @endif></td>@endif
-                @foreach($table->getColumns() as $column)<td class="{{ $column->cellClass() }}">{!! $column->render($record) !!}</td>@endforeach
+                @foreach($table->getColumns() as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">{!! $column->render($record) !!}</td>@endforeach
                 <td class="fa-actions">{!! $rowActions($record) !!}</td>
             </tr>
             @endforeach

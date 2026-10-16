@@ -19,21 +19,28 @@ abstract class ChartWidget extends Widget
         if ($values === []) { return '<p class="fa-muted">' . Str::e(AdminLang::get('widgets.empty')) . '</p>'; }
         $minimum = min(0, min($values)); $maximum = max(0, max($values));
         if ($maximum === $minimum) { $maximum = $minimum + 1; }
-        $y = static fn (float $value): float => 200 - ($value - $minimum) / ($maximum - $minimum) * 170;
-        $n = count($values); $step = 540 / $n; $zero = $y(0); $shapes = ''; $points = []; $rows = '';
+        // Plot area 0..100 high, 10 units per point. The SVG stretches to the
+        // widget's width (preserveAspectRatio="none") while every label is HTML
+        // text, so labels keep one size however wide the widget is.
+        $y = static fn (float $value): float => round(100 - ($value - $minimum) / ($maximum - $minimum) * 100, 2);
+        $n = count($values); $width = $n * 10; $zero = $y(0); $shapes = ''; $points = []; $rows = ''; $xLabels = '';
+        $shown = $n <= 8 ? range(0, $n - 1) : array_unique([0, (int) floor(($n - 1) / 2), $n - 1]);
         foreach ($values as $index => $value) {
-            $x = 65 + ($index + .5) * $step; $top = $y((float) $value); $points[] = round($x, 2) . ',' . round($top, 2);
-            if ($this->type === 'bar') { $shapes .= '<rect class="fa-chart-bar" x="' . round($x - $step * .32, 2) . '" y="' . round(min($zero, $top), 2) . '" width="' . round($step * .64, 2) . '" height="' . round(max(.5, abs($zero - $top)), 2) . '"></rect>'; }
-            else { $shapes .= '<circle class="fa-chart-point" cx="' . round($x, 2) . '" cy="' . round($top, 2) . '" r="3"></circle>'; }
-            $rows .= '<tr><th scope="row">' . Str::e(AdminLang::label($labels[$index])) . '</th><td>' . Str::e(self::number($value)) . '</td></tr>';
+            $x = $index * 10 + 5; $top = $y((float) $value); $points[] = $x . ',' . $top;
+            if ($this->type === 'bar') { $shapes .= '<rect class="fa-chart-bar" x="' . ($index * 10 + 2) . '" y="' . min($zero, $top) . '" width="6" height="' . max(.5, round(abs($zero - $top), 2)) . '"></rect>'; }
+            else { $shapes .= '<line class="fa-chart-point" x1="' . $x . '" y1="' . $top . '" x2="' . $x . '" y2="' . $top . '"></line>'; }
+            $label = AdminLang::label($labels[$index]);
+            $rows .= '<tr><th scope="row">' . Str::e($label) . '</th><td>' . Str::e(self::number($value)) . '</td></tr>';
+            $xLabels .= '<span>' . (in_array($index, $shown, true) ? Str::e(mb_strimwidth($label, 0, 24, '…')) : '') . '</span>';
         }
         if ($this->type === 'line') { $shapes = '<polyline class="fa-chart-line" points="' . implode(' ', $points) . '"></polyline>' . $shapes; }
-        $ticks = '';
-        foreach (array_unique([0, (int) floor(($n - 1) / 2), $n - 1]) as $index) { $ticks .= '<text class="fa-chart-label" x="' . round(65 + ($index + .5) * $step, 2) . '" y="225" text-anchor="middle">' . Str::e(mb_strimwidth(AdminLang::label($labels[$index]), 0, 24, '…')) . '</text>'; }
-        $svg = '<svg class="fa-widget-chart" viewBox="0 0 640 245" role="img" aria-labelledby="' . Str::e($id . '-chart-title ' . $id . '-chart-description') . '" direction="ltr"><title id="' . Str::e($id . '-chart-title') . '">' . Str::e($this->title()) . '</title><desc id="' . Str::e($id . '-chart-description') . '">' . Str::e(AdminLang::get('widgets.chart_description')) . '</desc>'
-            . '<line class="fa-chart-axis" x1="60" x2="610" y1="' . round($zero, 2) . '" y2="' . round($zero, 2) . '"></line>' . $shapes . $ticks
-            . '<text class="fa-chart-label" x="55" y="24" text-anchor="end">' . Str::e(self::number($maximum)) . '</text><text class="fa-chart-label" x="55" y="205" text-anchor="end">' . Str::e(self::number($minimum)) . '</text></svg>';
-        return $svg . '<details class="fa-chart-data"><summary>' . Str::e(AdminLang::get('widgets.chart_data')) . '</summary><div class="fa-table-wrap"><table class="fa-table"><caption class="fa-sr">' . Str::e($this->title()) . '</caption><thead><tr><th scope="col">' . Str::e(AdminLang::get('widgets.label')) . '</th><th scope="col">' . Str::e(AdminLang::get('widgets.value')) . '</th></tr></thead><tbody>' . $rows . '</tbody></table></div></details>';
+        $grid = '<line class="fa-chart-grid" x1="0" x2="' . $width . '" y1="0" y2="0"></line><line class="fa-chart-grid" x1="0" x2="' . $width . '" y1="50" y2="50"></line>'
+            . '<line class="fa-chart-axis" x1="0" x2="' . $width . '" y1="' . $zero . '" y2="' . $zero . '"></line>' . ($zero !== 100.0 ? '<line class="fa-chart-grid" x1="0" x2="' . $width . '" y1="100" y2="100"></line>' : '');
+        $svg = '<svg class="fa-widget-chart" viewBox="0 0 ' . $width . ' 100" preserveAspectRatio="none" role="img" aria-labelledby="' . Str::e($id . '-chart-title ' . $id . '-chart-description') . '" direction="ltr"><title id="' . Str::e($id . '-chart-title') . '">' . Str::e($this->title()) . '</title><desc id="' . Str::e($id . '-chart-description') . '">' . Str::e(AdminLang::get('widgets.chart_description')) . '</desc>'
+            . $grid . $shapes . '</svg>';
+        $chart = '<div class="fa-chart" dir="ltr"><div class="fa-chart-y" aria-hidden="true"><span>' . Str::e(self::number($maximum)) . '</span><span>' . Str::e(self::number(($maximum + $minimum) / 2)) . '</span><span>' . Str::e(self::number($minimum)) . '</span></div>'
+            . $svg . '<div class="fa-chart-x" aria-hidden="true">' . $xLabels . '</div></div>';
+        return $chart . '<details class="fa-chart-data"><summary>' . Str::e(AdminLang::get('widgets.chart_data')) . '</summary><div class="fa-table-wrap"><table class="fa-table"><caption class="fa-sr">' . Str::e($this->title()) . '</caption><thead><tr><th scope="col">' . Str::e(AdminLang::get('widgets.label')) . '</th><th scope="col">' . Str::e(AdminLang::get('widgets.value')) . '</th></tr></thead><tbody>' . $rows . '</tbody></table></div></details>';
     }
     private static function number(int|float $value): string { return number_format($value, floor($value) === (float) $value ? 0 : 2); }
 }

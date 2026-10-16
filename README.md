@@ -323,7 +323,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.4: shared Actions, action forms/confirmation and persistent Notifications
 - Completed through 0.7: table filters, bulk actions, richer Forms, and single image/file fields
 - Completed in 0.8: configurable dashboard widgets
-- 0.9: design foundation: tokens, light/dark/auto theme, shipped fonts. Following releases restyle the list page, modals and forms, the panel shell, and phone layouts
+- 0.9: the redesign: tokens, light/dark/auto theme, shipped fonts, new list page, dialogs and forms, sidebar and topbar with brand settings, phone layouts and dashboard polish
 - Next: relationship fields and managers
 - Later: relationships, a settings page, more generators
 

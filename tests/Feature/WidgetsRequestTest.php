@@ -11,6 +11,12 @@ final class WidgetsRequestTest extends RequestTestCase
     {
         parent::setUp();file_put_contents(self::$root.'/lang/ar.php', '<?php return ["lng.dir"=>"rtl"];');self::pdo()->exec("UPDATE posts SET views=12 WHERE id=1");self::pdo()->exec("UPDATE posts SET title='{\"en\":\"Secret row\"}', views=999 WHERE id=2");
     }
+    private static function diagnosis(array $response):string
+    {
+        $log=@file_get_contents(self::$root.'/storage/logs/app.log');
+        $unavailable=substr_count($response['body'],'currently unavailable');
+        return 'Diagnosis: request error='.($response['error']??'none').'; unavailable widgets='.$unavailable.'; app.log='.($log===false||$log===''?'(empty)':substr($log,-1500));
+    }
     private function options(array $extra=[]):array
     {
         return ['admin_config'=>$extra+['resources'=>[WidgetPostResource::class], 'widgets'=>[ContentOverview::class,RecentPosts::class,PublicationChart::class], 'reactive'=>true]];
@@ -22,8 +28,13 @@ final class WidgetsRequestTest extends RequestTestCase
     }
     public function testConfiguredDashboardUsesScopedCountsRecordsAndChartData():void
     {
-        $response=self::request('GET','/en/admin/dashboard',$this->options());self::assertSame(200,$response['status']);
-        self::assertStringContainsString('Content overview',$response['body']);self::assertStringContainsString('Sea view villa',$response['body']);self::assertStringNotContainsString('Secret row',$response['body']);self::assertStringNotContainsString('999',$response['body']);self::assertStringContainsString('>12<',$response['body']);self::assertStringContainsString('View chart data',$response['body']);
+        @unlink(self::$root.'/storage/logs/app.log');
+        $response=self::request('GET','/en/admin/dashboard',$this->options());
+        // This test has failed intermittently on CI (PHP 8.1 / MySQL 8) without a readable cause: GitHub cuts
+        // the message to the page's opening HTML. Put the widget error log and any request error first.
+        $why=self::diagnosis($response);
+        self::assertSame(200,$response['status'],$why);
+        self::assertStringContainsString('Content overview',$response['body'],$why);self::assertStringContainsString('Sea view villa',$response['body'],$why);self::assertStringNotContainsString('Secret row',$response['body'],$why);self::assertStringNotContainsString('999',$response['body'],$why);self::assertStringContainsString('>12<',$response['body'],$why);self::assertStringContainsString('View chart data',$response['body'],$why);
         $ar=self::request('GET','/ar/admin/dashboard',$this->options());self::assertStringContainsString('فيلا',$ar['body']);self::assertStringContainsString('dir="rtl"',$ar['body']);
     }
     public function testRefreshReadsCurrentDataAndPermissionRevocationRemovesWidgets():void

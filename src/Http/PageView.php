@@ -72,8 +72,8 @@ final class PageView
         foreach ($result['data'] as $record) {
             $id = property_exists($record, $pk) ? (string) $record->{$pk} : '';
             $cells = [];
-            foreach ($table->getColumns() as $column) {
-                $cells[] = ['html' => $column->render($record), 'class' => $column->cellClass()];
+            foreach ($table->getColumns() as $name => $column) {
+                $cells[] = ['html' => $column->render($record), 'class' => $column->cellClass() . ($name === $table->primaryColumn() ? ' fa-cell-primary' : ''), 'label' => $column->getLabel()];
             }
             $rows[] = [
                 'id' => $id,
