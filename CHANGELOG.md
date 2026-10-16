@@ -2,6 +2,15 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.13.1 - 2026-10-16
+
+Fixes for resizing and positioning media in the rich text editor.
+
+- Fix: an image, video or embed placed after a wrapped (floated) one ran underneath it in the editor, so its frame and grips covered both and dragging resized the wrong one. Each media block now sits beside or below a wrapped one with its own frame. The website stylesheet does the same for figures, videos and embeds.
+- Fix: videos ignored their width unless they were wrapped, and embeds always filled the column; both now take 25/50/75/100 % and dragged widths in every position. Wrapped media no longer jump while dragging past half the column.
+- Embeds show their real YouTube or Vimeo player in the editor (16:9, sandboxed), under a transparent shield so a click selects the embed instead of playing it. Sites that send a Content-Security-Policy allow `frame-src https://www.youtube-nocookie.com https://player.vimeo.com` for the admin too.
+- The toolbar's Image button always adds an image (after a selected one); a selected image is edited from its own toolbar.
+
 ## 0.13.0 - 2026-10-16
 
 Layout tools for the rich text editor. Existing content and toolbars keep working; new buttons appear in the default toolbar. No new dependency or migration.

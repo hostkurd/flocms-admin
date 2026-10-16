@@ -114,7 +114,7 @@ test('embeds can be sized and positioned too', async ({ page }) => {
   const embed = body(page).locator('dialog[data-rich-dialog=embed]');
   await embed.getByLabel(/link/).fill('https://youtu.be/dQw4w9WgXcQ');
   await embed.getByRole('button', { name: 'Insert' }).click();
-  await content(page).locator('.fa-rich-embed').click();
+  await content(page).locator('.fa-rich-player').click();
   await expect(bar(page)).toBeVisible();
   await expect(bar(page).getByRole('button', { name: 'Edit image' })).toBeHidden();
   await bar(page).getByRole('button', { name: '50% wide' }).click();
@@ -186,4 +186,75 @@ test('the website stylesheet for rich text is served with the package', async ({
   expect(response.headers()['content-type']).toContain('text/css');
   const css = await response.text();
   for (const rule of ['.rt-w-50{width:50%}', '.rt-wrap-left{float:left', '.rt-figure figcaption', '.rt-text-center{text-align:center}', 'div[data-embed]{position:relative;aspect-ratio:16/9']) expect(css).toContain(rule);
+});
+
+const clip = readFileSync(new URL('./fixtures/clip.mp4', import.meta.url));
+const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+  a.x < b.x + b.width - 1 && b.x < a.x + a.width - 1 && a.y < b.y + b.height - 1 && b.y < a.y + a.height - 1;
+
+test('an image after a wrapped image keeps its own frame, and resizing it changes only it', async ({ page }) => {
+  await open(page);
+  await upload(page);
+  await content(page).locator('.fa-media').nth(0).locator('img').click();
+  await bar(page).getByRole('button', { name: '50% wide' }).click();
+  await bar(page).getByRole('button', { name: 'Text wraps on the right' }).click();
+  await upload(page);
+  await expect(content(page).locator('img')).toHaveCount(2);
+  const second = content(page).locator('.fa-media').nth(1);
+  await second.locator('img').click({ position: { x: 20, y: 20 } });
+  await bar(page).getByRole('button', { name: 'Left', exact: true }).click();
+  await bar(page).getByRole('button', { name: '25% wide' }).click();
+  // The second frame sits beside or under the floated first one, never on top of it.
+  const firstBox = (await content(page).locator('.fa-media').nth(0).boundingBox())!;
+  const secondBox = (await second.boundingBox())!;
+  expect(overlap(firstBox, secondBox)).toBe(false);
+  // Its grips are on its own image.
+  const image = (await second.locator('img').boundingBox())!;
+  const grip = (await second.locator('.fa-media-handle.is-se').boundingBox())!;
+  expect(Math.abs(grip.x + grip.width / 2 - (image.x + image.width))).toBeLessThan(6);
+  expect(Math.abs(grip.y + grip.height / 2 - (image.y + image.height))).toBeLessThan(6);
+  // Dragging its grip resizes it, not the first image.
+  await page.mouse.move(grip.x + 6, grip.y + 6);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + 120, grip.y + 6, { steps: 6 });
+  await page.mouse.up();
+  const html = await source(page).inputValue();
+  const classes = [...html.matchAll(/<img [^>]*class="([^"]+)"/g)].map(match => match[1]);
+  expect(classes[0]).toBe('rt-w-50 rt-wrap-left');
+  expect(classes[1]).toMatch(/^rt-w-(\d+) rt-align-left$/);
+  expect(Number(/rt-w-(\d+)/.exec(classes[1])![1])).toBeGreaterThan(25);
+});
+
+test('videos and embeds take the width they are given, in every position', async ({ page }) => {
+  await open(page);
+  await content(page).locator('p').first().click();
+  await page.keyboard.press('ControlOrMeta+End');
+  const chooser = page.waitForEvent('filechooser');
+  await tool(page, 'Video').click();
+  await (await chooser).setFiles({ name: 'tour.mp4', mimeType: 'video/mp4', buffer: clip });
+  await expect(content(page).locator('video')).toHaveCount(1);
+  const column = async () => content(page).evaluate(element => element.clientWidth - parseFloat(getComputedStyle(element).paddingLeft) - parseFloat(getComputedStyle(element).paddingRight));
+  const video = content(page).locator('.fa-media[data-kind=video]');
+  await video.click({ position: { x: 10, y: 10 } });
+  for (const position of [null, 'Text wraps on the right', 'Text wraps on the left', 'Centre']) {
+    if (position) await bar(page).getByRole('button', { name: position, exact: true }).click();
+    await bar(page).getByRole('button', { name: '75% wide' }).click();
+    await expect.poll(async () => Math.round((await video.locator('video').boundingBox())!.width / await column() * 100)).toBe(75);
+    await bar(page).getByRole('button', { name: '25% wide' }).click();
+    await expect.poll(async () => Math.round((await video.locator('video').boundingBox())!.width / await column() * 100)).toBe(25);
+  }
+
+  await tool(page, 'YouTube or Vimeo video').click();
+  await body(page).locator('dialog[data-rich-dialog=embed]').getByLabel(/link/).fill('https://youtu.be/dQw4w9WgXcQ');
+  await body(page).locator('dialog[data-rich-dialog=embed]').getByRole('button', { name: 'Insert' }).click();
+  const embed = content(page).locator('.fa-media[data-kind=embed]');
+  await embed.click();
+  await bar(page).getByRole('button', { name: '25% wide' }).click();
+  await expect.poll(async () => Math.round((await embed.boundingBox())!.width / await column() * 100)).toBe(25);
+  // 16:9 at any width.
+  const player = (await embed.locator('.fa-rich-player').boundingBox())!;
+  expect(Math.abs(player.width / player.height - 16 / 9)).toBeLessThan(0.05);
+  await bar(page).getByRole('button', { name: 'Text wraps on the left' }).click();
+  await bar(page).getByRole('button', { name: '25% wide' }).click();
+  await expect.poll(async () => Math.round((await embed.boundingBox())!.width / await column() * 100)).toBe(50);
 });

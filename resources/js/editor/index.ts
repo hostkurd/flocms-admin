@@ -97,7 +97,20 @@ function videoNode(strings: Strings) {
   });
 }
 
-/** Stored as <div data-embed data-id>; the server adds the iframe. The editor shows a card instead. */
+/** The player address the server builds for a stored embed ID (see RichText::embed()). */
+function playerUrl(provider: string, id: string): string {
+  if (provider === 'youtube') {
+    const [video, query] = id.split('?');
+    return /^[A-Za-z0-9_-]{11}$/.test(video) ? `https://www.youtube-nocookie.com/embed/${video}${query && /^start=\d+$/.test(query) ? `?${query}` : ''}` : 'about:blank';
+  }
+  if (provider === 'vimeo') {
+    const [video, query] = id.split('?');
+    return /^\d{1,12}$/.test(video) ? `https://player.vimeo.com/video/${video}?dnt=1${query && /^h=[a-f0-9]{6,20}$/.test(query) ? `&${query}` : ''}` : 'about:blank';
+  }
+  return 'about:blank';
+}
+
+/** Stored as <div data-embed data-id>; the server adds the iframe. The editor shows the player under a shield. */
 function embedNode(strings: Strings) {
   return Node.create({
     name: 'embed', group: 'block', atom: true, draggable: true, selectable: true,
@@ -113,24 +126,27 @@ function embedNode(strings: Strings) {
       return ({ node, view, getPos }) => mediaView({
         node, view, getPos: getPos as () => number | undefined, strings,
         render: first => {
+          // The real player, as on the website, under a shield: a click selects the
+          // embed (to size or move it) instead of starting the video.
           const dom = document.createElement('div');
-          dom.className = 'fa-rich-embed';
-          const ns = 'http://www.w3.org/2000/svg';
-          const icon = document.createElementNS(ns, 'svg');
-          icon.setAttribute('viewBox', '0 0 40 28');
-          icon.setAttribute('aria-hidden', 'true');
-          icon.classList.add('fa-rich-embed-icon');
-          const play = document.createElementNS(ns, 'path');
-          play.setAttribute('d', 'M16 8l10 6-10 6z');
-          play.setAttribute('fill', 'currentColor');
-          icon.append(play);
-          const label = document.createElement('strong');
-          const id = document.createElement('span');
-          dom.append(icon, label, id);
+          dom.className = 'fa-rich-player';
+          const frame = document.createElement('iframe');
+          frame.loading = 'lazy';
+          frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+          frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+          frame.setAttribute('allow', 'encrypted-media; picture-in-picture');
+          frame.tabIndex = -1;
+          const shield = document.createElement('span');
+          shield.className = 'fa-rich-player-shield';
+          const label = document.createElement('span');
+          label.className = 'fa-rich-player-label';
+          dom.append(frame, shield, label);
           const update = (current: typeof first) => {
-            dom.dataset.provider = String(current.attrs.provider ?? '');
-            label.textContent = strings[current.attrs.provider === 'vimeo' ? 'vimeo' : 'youtube'] ?? 'Video';
-            id.textContent = String(current.attrs.id ?? '');
+            const provider = String(current.attrs.provider ?? '');
+            const src = playerUrl(provider, String(current.attrs.id ?? ''));
+            dom.dataset.provider = provider;
+            if (frame.getAttribute('src') !== src) frame.src = src;
+            frame.title = label.textContent = strings[provider === 'vimeo' ? 'vimeo' : 'youtube'] ?? 'Video';
           };
           update(first);
           return { element: dom, update };
@@ -384,7 +400,7 @@ class RichField {
       case 'embed': this.open('embed'); return;
       case 'video': this.pick('video'); return;
       case 'image':
-        if (this.selectedImage()) { this.openImageDialog(true); return; }
+        // Always adds an image (after a selected one); the media toolbar edits a selected image.
         if (button.getAttribute('aria-haspopup') === 'menu') { this.toggleMenu(button); return; }
         this.openImageDialog(false);
         return;
@@ -424,7 +440,6 @@ class RichField {
     this.toolbar.querySelectorAll<HTMLButtonElement>('[data-command]').forEach(button => {
       const command = button.dataset.command!;
       if (active[command]) button.setAttribute('aria-pressed', String(active[command]()));
-      if (command === 'image') button.classList.toggle('is-active', this.selectedImage() !== null);
       if (command === 'undo') button.disabled = !editor.can().undo();
       if (command === 'redo') button.disabled = !editor.can().redo();
       if (command === 'direction') {

@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.13.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.13.1" -W` and reload open Admin pages. Nothing else changes; if your site sends a Content-Security-Policy, allow `frame-src https://www.youtube-nocookie.com https://player.vimeo.com` on admin pages so embeds show their player.
+
+---
+
 # Upgrading to Admin 0.13.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.13.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration or dependency change is needed.

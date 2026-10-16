@@ -237,19 +237,19 @@ test('YouTube and Vimeo links become embeds; other links are refused', async ({ 
   await expect(embed.locator('[data-rich-error]')).toHaveText('Use a YouTube or Vimeo video address.');
   await embed.getByLabel(/link/).fill('https://youtu.be/dQw4w9WgXcQ?t=42');
   await embed.getByRole('button', { name: 'Insert' }).click();
-  // Inside the admin an embed is a card, not an iframe (no third-party frames here).
-  await expect(content(page).locator('.fa-rich-embed')).toContainText('YouTube video');
-  await expect(content(page).locator('iframe')).toHaveCount(0);
+  // The editor shows the real player (as on the website) under a shield that selects it on click.
+  await expect(content(page).locator('.fa-rich-player')).toContainText('YouTube video');
+  await expect(content(page).locator('.fa-rich-player iframe')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=42');
   await tool(page, 'YouTube or Vimeo video').click();
   await expect(embed.getByLabel(/link/)).toHaveValue('');
   await embed.getByLabel(/link/).fill('vimeo.com/76979871');
   await page.keyboard.press('Enter');
-  await expect(content(page).locator('.fa-rich-embed[data-provider=vimeo]')).toBeVisible();
+  await expect(content(page).locator('.fa-rich-player[data-provider=vimeo] iframe')).toHaveAttribute('src', 'https://player.vimeo.com/video/76979871?dnt=1');
   await save(page);
   await page.locator('#fa-admin-resource-edit-1').click();
   await expect(source(page)).toHaveValue(/<div data-embed="youtube" data-id="dQw4w9WgXcQ\?start=42"><iframe src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?start=42"[^>]* sandbox="[^"]+"><\/iframe><\/div>/);
   await expect(source(page)).toHaveValue(/<div data-embed="vimeo" data-id="76979871"><iframe src="https:\/\/player\.vimeo\.com\/video\/76979871\?dnt=1"/);
-  await expect(content(page).locator('.fa-rich-embed')).toHaveCount(2);
+  await expect(content(page).locator('.fa-rich-player')).toHaveCount(2);
 });
 
 test('tabs never show a scroll bar; icons are crisp; the footer counts words', async ({ page }) => {
