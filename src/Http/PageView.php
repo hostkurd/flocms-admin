@@ -48,8 +48,10 @@ final class PageView
         $filters ??= new \FloCMS\Admin\Table\FilterSet($table);
         $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
 
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $slug);
+        $visible = $visibility->visibleColumns();
         $columns = [];
-        foreach ($table->getColumns() as $name => $column) {
+        foreach ($visible as $name => $column) {
             $sortUrl = null;
             $sorted = null;
             if ($column->isSortable()) {
@@ -72,7 +74,7 @@ final class PageView
         foreach ($result['data'] as $record) {
             $id = property_exists($record, $pk) ? (string) $record->{$pk} : '';
             $cells = [];
-            foreach ($table->getColumns() as $name => $column) {
+            foreach ($visible as $name => $column) {
                 $cells[] = ['html' => $column->render($record), 'class' => $column->cellClass() . ($name === $table->primaryColumn() ? ' fa-cell-primary' : ''), 'label' => $column->getLabel()];
             }
             $rows[] = [
@@ -120,6 +122,9 @@ final class PageView
             'removeIcon' => Icons::svg('x'),
             'prevIcon' => Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'),
             'nextIcon' => Icons::svg('chevron-right', 'fa-icon fa-flip-rtl'),
+            'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
+            'columnsChanged' => $visibility->changed(),
+            'columnsIcon' => Icons::svg('columns'),
             'filterErrors' => $filters->errors !== [],
             'filterCount' => count($filters->active()),
             'chips' => array_map(static fn (array $chip): array => $chip + ['url' => Admin::url($slug, array_replace($state, ['filter' => $chip['query']]))], $filters->chips()),

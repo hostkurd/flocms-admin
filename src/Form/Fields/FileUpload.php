@@ -13,6 +13,8 @@ class FileUpload extends Field
     protected int $maxBytes = 5242880;
     protected array $dimensions = [];
     protected function setUp(): void { $this->nullable = true; }
+    /** One file per language: supported on settings pages only (resources reject it). */
+    public function supportsTranslation(): bool { return true; }
     public function acceptedFileTypes(array $types): static
     {
         if ($types === [] || array_diff($types, array_keys(self::TYPES)) !== []) { throw new \InvalidArgumentException('Use supported explicit MIME types from FileUpload::TYPES.'); }
@@ -25,6 +27,9 @@ class FileUpload extends Field
         if ($kib < 1 || $kib > 16384) { throw new \InvalidArgumentException('Upload size must be 1–16384 KiB.'); }
         $this->maxBytes = $kib * 1024; return $this;
     }
+    /** @return list<string> accepted MIME types */
+    public function getAcceptedFileTypes(): array { return $this->mimeTypes; }
+    public function getMaxBytes(): int { return $this->maxBytes; }
     public function validateFile(array $file): array
     {
         $detectedTypes = $this->mimeTypes;

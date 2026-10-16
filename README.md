@@ -1,6 +1,6 @@
 # flocms-admin
 
-The admin panel for [FloCMS](https://github.com/hostkurd/FloCMS): a dashboard, users management, a profile page, and a builder for your own content. You describe a database table as a PHP class (a *resource*) and get a list page with search, sorting and pagination, plus create, edit and delete pages, under clean URLs such as `/admin/properties/edit/5`.
+The admin panel for [FloCMS](https://github.com/hostkurd/FloCMS): a dashboard, users management, a profile page, website settings pages, and a builder for your own content. You describe a database table as a PHP class (a *resource*) and get a list page with search, sorting and pagination, plus create, edit and delete pages, under clean URLs such as `/admin/properties/edit/5`.
 
 FloCMS provides the security (login, sessions, roles and permissions); flocms-admin provides the screens and always asks FloCMS who may do what.
 
@@ -12,6 +12,8 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Table filters and bulk Actions**: selects, toggles, date ranges and explicit, atomic multi-record workflows. [API guide](docs/tables-and-login.md).
 - **Optional Admin login design** with existing FloCMS authentication; see [upgrade instructions](UPGRADING.md).
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
+- **Website settings**: settings pages declared in PHP, a page-level language switch, one image per language, and a cached `setting('site.title')` helper for templates. [Settings guide](docs/settings.md).
+- **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
 
 ## Requirements
@@ -28,16 +30,19 @@ composer require hostkurd/flocms-admin
 php flo admin:install
 ```
 
-`admin:install` creates two things and changes nothing else:
+`admin:install` creates these and changes nothing else:
 
 - `config/admin.php`, the package's settings (deleting it switches the panel off);
-- `admin/Resources/`, where your resource classes live.
+- `admin/Resources/`, where your resource classes live;
+- two migrations: FloCMS's `settings` table, which the settings pages share with core (created only if the site lacks it), and `admin_user_preferences` (personal preferences).
 
-Then create a resource and its table:
+Then create the tables, a resource and, if you like, website settings pages:
 
 ```bash
+php flo migrate
 php flo make:admin-resource Property --migration
 php flo migrate
+php flo make:admin-settings
 ```
 
 Log in and you land on the dashboard (`/admin/dashboard`; on skeletons before 1.8, open it yourself or link it from `views/pages/admin_index.html`). `php flo admin:doctor` checks the setup at any time.
@@ -56,7 +61,8 @@ That last point has a consequence. If your site has `controllers/PropertiesContr
 | --- | --- | --- |
 | Dashboard | `/admin/dashboard` | Every logged-in admin user; one card per resource they may view, with its number of records |
 | Users | `/admin/accounts` | `users.manage` (Admins and Super Admins in the skeleton) |
-| Profile | `/admin/profile` | Every logged-in admin user, for their own account |
+| Profile | `/admin/profile` | Every logged-in admin user, for their own account, with a "My preferences" tab |
+| Settings | `/admin/settings` | `settings.manage` for website settings pages, `settings.panel` for Admin panel (Admins and Super Admins in the skeleton) |
 
 **`/admin`** opens the dashboard on skeleton 1.8+: the package sets `Config 'admin.home'` and the skeleton's `/admin` page follows it. Set `admin.home` in your `config/config.php` to send `/admin` elsewhere, or to `null` to keep the skeleton's page.
 
@@ -69,9 +75,11 @@ That last point has a consequence. If your site has `controllers/PropertiesContr
 - users created here are active and verified (no email is sent); the login defaults to the email;
 - suspending a user ends their access on their next request (core's session refresh).
 
-**Profile** edits your own name, email, login and password. Changing the email or the password asks for the current password; role and status are shown, not editable.
+**Profile** edits your own name, email, login and password. Changing the email or the password asks for the current password; role and status are shown, not editable. Its **My preferences** tab holds your own theme, panel language and table density.
 
-Set `'users' => false` in `config/admin.php` to switch users management and the profile page off. The URLs `dashboard`, `accounts` and `profile` belong to the panel and cannot be used as resource slugs.
+**Settings** shows the website settings pages of `admin/settings.php` and the panel's own **Admin panel** page. See the [Settings guide](docs/settings.md).
+
+Set `'users' => false` in `config/admin.php` to switch users management and the profile page off. The URLs `dashboard`, `accounts`, `profile` and `settings` belong to the panel and cannot be used as resource slugs.
 
 ## Resources
 
@@ -195,7 +203,7 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `DateColumn` | a date | `->dateFormat('Y-m-d H:i')` |
 | `BadgeColumn` | a coloured badge | `->colors([...])` (gray, green, blue, yellow, red, purple), `->labels([...])` |
 
-Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`. Search and sort only use columns marked `searchable()` / `sortable()`.
+Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
 
 ## Translatable fields
 
@@ -269,6 +277,10 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `logo` | `null` | Logo image URL (absolute, or a path starting with `/`) for the sidebar and login page; `null` shows the brand's first letter |
 | `sidebar` | `'light'` | `'light'` or `'dark'` |
 | `content_width` | `'full'` | `'full'` uses the whole window; `'boxed'` centres pages at most 1280 px wide |
+| `density` | `'comfortable'` | List rows: `'comfortable'` or `'compact'` |
+| `panel_settings` | `true` | The "Admin panel" settings page; its saved values override `brand`, `logo`, `primary_color`, `theme`, `sidebar`, `content_width` and `density` |
+| `settings_path` | `'admin/settings.php'` | File that declares the website settings pages |
+| `settings_uploads` | `public/uploads/settings` at `/uploads/settings` | `['root' => …, 'url' => …]`: where files uploaded on settings pages are stored (public) |
 | `per_page` | `25` | Rows per page |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
@@ -286,7 +298,7 @@ All colours, radii and shadows are CSS custom properties on `.fa-panel` (and `.f
 .fa-panel, .fa-login { --fa-primary: #4f46e5; --fa-primary-hover: #4338ca; --fa-primary-text: #4f46e5; }
 ```
 
-For the brand colour alone, set `primary_color` in `config/admin.php` instead: the package derives hover, soft and dark-theme shades from it and serves them as a small cached stylesheet (no inline styles, so a strict Content-Security-Policy keeps working). `logo` and `sidebar` complete the shell.
+Administrators can change the name, logo, brand colour, theme, sidebar, width and density from **Settings → Admin panel**; a saved value there overrides `config/admin.php`, and each user can pick their own theme and density in **My preferences**. For the brand colour alone in code, set `primary_color` in `config/admin.php` instead: the package derives hover, soft and dark-theme shades from it and serves them as a small cached stylesheet (no inline styles, so a strict Content-Security-Policy keeps working). `logo` and `sidebar` complete the shell.
 
 The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-border`, `--fa-primary` (fills), `--fa-primary-text` (links and active states), `--fa-success` / `--fa-warning` / `--fa-danger` / `--fa-info` with `-soft` backgrounds, `--fa-radius` and `--fa-font`. The dark theme redefines the same names, so a site override applies to the light theme unless it also targets `.fa-panel[data-theme="dark"]`.
 
@@ -294,11 +306,12 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 
 | Command | |
 | --- | --- |
-| `php flo admin:install` | Create `config/admin.php` and `admin/Resources/` (never overwrites) |
+| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings and preferences migrations (never overwrites; run again after an upgrade to add what is missing) |
+| `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--migration] [--force]` | Create a resource class, and optionally a migration |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
-| `php flo admin:list [--permissions]` | List resources and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns and widgets |
+| `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns, widgets, settings pages and the settings and preferences tables |
 
 ## Removing the package
 
@@ -306,7 +319,7 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 composer remove hostkurd/flocms-admin
 ```
 
-Then delete `config/admin.php` and `admin/` (your own code, so the package never deletes it). The package creates no tables. Templates that call `localized()` need a replacement.
+Then delete `config/admin.php` and `admin/` (your own code, so the package never deletes it). The `admin_user_preferences` table and the admin's rows in FloCMS's `settings` table stay until you remove them (`DROP TABLE admin_user_preferences;` and `DELETE FROM settings WHERE lang = '' AND param LIKE '%.%';`; keep the table itself, core uses it), and so do files in `public/uploads/settings/`. Templates that call `localized()`, `setting()` or `settings()` need a replacement first.
 
 ## Actions and Notifications
 
@@ -334,8 +347,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - Completed in 0.8: configurable dashboard widgets
 - 0.9: the redesign: tokens, light/dark/auto theme, shipped fonts, new list page, dialogs and forms, sidebar and topbar with brand settings, phone layouts and dashboard polish
 - 0.10: `RichEditor` with image/video uploads and YouTube/Vimeo embeds
+- 0.14: website settings pages with `setting()`, Admin panel settings, My preferences, the Columns button
 - Next: relationship fields and managers
-- Later: relationships, a settings page, more generators
 
 ## Development
 

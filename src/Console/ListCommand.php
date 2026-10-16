@@ -19,7 +19,7 @@ final class ListCommand extends Command
 
     protected string $name = 'admin:list';
 
-    protected string $description = 'List the admin resources and dashboard widgets with their URLs, tables and permissions';
+    protected string $description = 'List the admin resources, settings pages and dashboard widgets with their URLs, tables and permissions';
 
     protected array $examples = [
         'php flo admin:list',
@@ -70,6 +70,18 @@ final class ListCommand extends Command
             $this->table(['Resource', 'URL', 'Table', 'Permissions', 'Class'], $rows);
         }
 
+        $settings = Admin::settings();
+        $this->section('Settings pages');
+        if ($settings->all() === []) {
+            $this->note('None: php flo make:admin-settings');
+        } else {
+            $rows = [];
+            foreach ($settings->all() as $name => $page) {
+                $rows[] = [$page->getLabel(), '/admin/settings/edit/' . $name, $name . '.*', (string) count($page->storedFields()), $page->getPermission()];
+            }
+            $this->table(['Page', 'URL', 'Keys', 'Fields', 'Permission'], $rows);
+        }
+
         $this->section('Dashboard widgets');
         if (!$widgets->configured()) {
             $this->note("None: the dashboard shows resource counts. Create one with php flo make:admin-widget Overview");
@@ -89,7 +101,7 @@ final class ListCommand extends Command
             }
         }
 
-        $problems = array_merge($registry->problems(), array_map(static fn (string $p): string => 'Widget: ' . $p, $widgets->problems()));
+        $problems = array_merge($registry->problems(), array_map(static fn (string $p): string => 'Widget: ' . $p, $widgets->problems()), array_map(static fn (string $p): string => 'Settings: ' . $p, $settings->problems()));
         foreach ($problems as $problem) {
             $this->warn($problem);
         }
@@ -114,6 +126,9 @@ final class ListCommand extends Command
             if (is_string($permission) && $permission !== '') {
                 $names[] = $permission;
             }
+        }
+        foreach (Admin::settings()->all() as $page) {
+            $names[] = $page->getPermission();
         }
         $names = array_values(array_unique($names));
         $this->line("// Custom actions add <prefix>.<action> names, e.g. content.posts.publish.");

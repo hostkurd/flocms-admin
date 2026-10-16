@@ -1,5 +1,5 @@
 {!! $assets !!}
-<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-width="{{ $contentWidth }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
+<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-width="{{ $contentWidth }}" data-density="{{ $density }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
 
     <aside id="fa-sidebar" class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
         <a class="fa-brand" href="{{ $dashboardUrl }}">
@@ -14,9 +14,14 @@
             <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span></a>
             @endforeach
             @endif
-            @if($usersUrl !== null)
+            @if($usersUrl !== null || $settingsUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
+            @endif
+            @if($usersUrl !== null)
             <a class="fa-nav-link{{ $usersActive ? ' is-active' : '' }}" href="{{ $usersUrl }}"@if($usersActive) aria-current="page"@endif>{!! $usersIcon !!}<span>{{ $t('nav.users') }}</span></a>
+            @endif
+            @if($settingsUrl !== null)
+            <a class="fa-nav-link{{ $settingsActive ? ' is-active' : '' }}" href="{{ $settingsUrl }}"@if($settingsActive) aria-current="page"@endif>{!! $settingsIcon !!}<span>{{ $t('nav.settings') }}</span></a>
             @endif
         </nav>
     </aside>

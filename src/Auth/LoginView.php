@@ -18,10 +18,10 @@ final class LoginView
         $message = $flash !== null ? trim(strip_tags(str_replace(['<br>', '<br/>', '<br />'], ' ', (string) $flash['message']))) : '';
         $email = $_POST['email'] ?? '';
         return TemplateEngine::renderFile(PageView::viewPath('login'), [
-            't' => PageView::translator(), 'brand' => AdminLang::label(Admin::config()->brand()), 'lang' => $lang, 'dir' => PanelView::direction($lang),
+            't' => PageView::translator(), 'brand' => \FloCMS\Admin\Support\Appearance::brand(), 'lang' => $lang, 'dir' => PanelView::direction($lang),
             'languages' => $languages, 'message' => $message, 'csrf' => Csrf::field(), 'email' => is_string($email) ? mb_substr($email, 0, 254) : '',
             'assets' => Assets::loginTags(), 'action' => Admin::url('users/login'), 'siteUrl' => $base . '/' . rawurlencode($lang) . '/',
-            'signedIn' => (bool) Session::get('isloggedin'), 'logoutUrl' => Admin::url('users/logout'), 'theme' => Admin::config()->theme(), 'logo' => Admin::config()->logo(), 'brandInitial' => mb_strtoupper(mb_substr(trim(AdminLang::label(Admin::config()->brand())), 0, 1)),
+            'signedIn' => (bool) Session::get('isloggedin'), 'logoutUrl' => Admin::url('users/logout'), 'theme' => \FloCMS\Admin\Support\Appearance::theme(), 'logo' => \FloCMS\Admin\Support\Appearance::logo(), 'brandInitial' => mb_strtoupper(mb_substr(trim(\FloCMS\Admin\Support\Appearance::brand()), 0, 1)),
         ]);
     }
 }

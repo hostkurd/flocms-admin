@@ -112,6 +112,11 @@ abstract class Resource
     {
     }
 
+    /** Runs right after a record was deleted (inside the action's transaction when there is one). */
+    public function afterDelete(object $record): void
+    {
+    }
+
     /** Return false to refuse creating records (the New button is hidden, the page answers 403). */
     public function canCreate(): bool
     {

@@ -39,7 +39,13 @@ final class FormRenderer
         private readonly ?string $mediaUrl = null,
         // Identifies one editing session (a dialog's operation) so Reactive keeps
         // a rich editor's own DOM across updates of that session.
-        private readonly ?string $editorKey = null
+        private readonly ?string $editorKey = null,
+        // Settings pages: translatable fields show one input per language, and a
+        // page-level "Editing: language" switch shows the chosen one (JavaScript).
+        private readonly bool $languageSwitch = false,
+        // Settings pages: renders a (public) upload control instead of the resource one:
+        // fn (FileUpload $field, string $id, string $name, string $value, ?string $fallback, array $attributes): string
+        private readonly ?\Closure $uploadControl = null
     ) {
     }
 
@@ -137,9 +143,23 @@ final class FormRenderer
             $label .= ' <span class="fa-required" aria-hidden="true">*</span>';
         }
 
-        $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '">';
-        $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . '</label>';
-        if ($field instanceof Fields\RichEditor) {
+        $isUpload = $field instanceof Fields\FileUpload;
+        if ($isUpload && $field->isTranslatable() && $this->uploadControl === null) {
+            throw new \LogicException('Translatable uploads ("' . $name . '") are supported on settings pages only.');
+        }
+        $panes = $field->isTranslatable() && !$field instanceof Fields\RichEditor && ($this->languageSwitch || $isUpload);
+        if ($this->languageSwitch && !$field->isTranslatable()) { $classes[] = 'is-shared'; }
+
+        $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '"' . ($this->languageSwitch && !$field->isTranslatable() ? ' data-same-all' : '') . ($panes ? ' data-translatable' : '') . '>';
+        $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . ($panes && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
+        if ($this->languageSwitch && !$field->isTranslatable()) {
+            $html .= '<p class="fa-same-note" hidden>' . Str::e(AdminLang::get('settings.same_all_languages')) . '</p>';
+        }
+        if ($panes) {
+            $html .= $this->panes($field, $id, $langErrors);
+        } elseif ($isUpload && $this->uploadControl !== null) {
+            $html .= ($this->uploadControl)($field, $id, $name, $this->stringState($field), null, $this->describedBy($field, $id));
+        } elseif ($field instanceof Fields\RichEditor) {
             $html .= $this->richEditor($field, $id, $langErrors);
         } elseif ($field->isTranslatable() && count($this->languages) > 1) {
             $html .= $this->translatable($field, $id, $langErrors);
@@ -191,6 +211,75 @@ final class FormRenderer
         if ($describedBy !== []) { $attributes['aria-describedby'] = implode(' ', $describedBy); }
 
         return $field->renderControl($id, $name . '[' . $this->defaultLang . ']', $values[$this->defaultLang] ?? '', $attributes);
+    }
+
+    /** @return array<string, string> aria attributes of a single control */
+    private function describedBy(Field $field, string $id): array
+    {
+        $attributes = [];
+        $describedBy = [];
+        if ($field->getHelp() !== null) { $describedBy[] = $id . '-help'; }
+        if (isset($this->errors[$field->getName()])) { $describedBy[] = $id . '-error'; $attributes['aria-invalid'] = 'true'; }
+        if ($describedBy !== []) { $attributes['aria-describedby'] = implode(' ', $describedBy); }
+        return $attributes;
+    }
+
+    /** Small filled/empty dots after a translatable label (one per language). */
+    private function labelDots(Field $field): string
+    {
+        $values = $this->state[$field->getName()] ?? [];
+        $values = is_array($values) ? $values : [];
+        $dots = '';
+        foreach ($this->languages as $lang) {
+            $filled = ($values[$lang] ?? '') !== '';
+            $state = $filled ? 'is-filled' : 'is-empty';
+            if ($lang === $this->defaultLang ? isset($this->errors[$field->getName()]) : isset($this->errors[$field->getName() . '.' . $lang])) { $state .= ' is-invalid'; }
+            $dots .= '<span class="fa-dot ' . $state . '" data-lang="' . Str::e($lang) . '" title="' . Str::e(Languages::name($lang)) . '"></span>';
+        }
+        return ' <span class="fa-dots fa-label-dots" aria-hidden="true">' . $dots . '</span>';
+    }
+
+    /**
+     * One input per language, each in a pane marked with its language. On a
+     * settings page the "Editing" switch shows the chosen language's pane;
+     * without JavaScript every pane is shown with its language code.
+     *
+     * @param array<string, string> $langErrors
+     */
+    private function panes(Field $field, string $id, array $langErrors): string
+    {
+        $name = $field->getName();
+        $values = $this->state[$name] ?? [];
+        $values = is_array($values) ? $values : [];
+        $default = $this->defaultLang;
+        $languages = $this->languages === [] ? [$default] : $this->languages;
+        $html = '<div class="fa-lang-panes" data-lang-panes>';
+        foreach ($languages as $lang) {
+            $isDefault = $lang === $default;
+            $inputId = $isDefault ? $id : $id . '-' . $lang;
+            $attributes = ['dir' => Languages::direction($lang), 'lang' => $lang];
+            $describedBy = [];
+            if ($isDefault && $field->getHelp() !== null) { $describedBy[] = $id . '-help'; }
+            if ($isDefault && isset($this->errors[$name])) { $describedBy[] = $id . '-error'; $attributes['aria-invalid'] = 'true'; }
+            if (!$isDefault && isset($langErrors[$lang])) { $describedBy[] = $inputId . '-error'; $attributes['aria-invalid'] = 'true'; }
+            if ($describedBy !== []) { $attributes['aria-describedby'] = implode(' ', $describedBy); }
+            $html .= '<div class="fa-lang-pane' . (!$isDefault && isset($langErrors[$lang]) ? ' has-error' : '') . '" data-lang="' . Str::e($lang) . '" data-input="' . Str::e($inputId) . '">';
+            if (count($languages) > 1) {
+                $html .= '<span class="fa-lang-pane-code"><code class="fa-lang-code' . ($isDefault ? ' is-default' : '') . '">' . Str::e($lang) . '</code> ' . Str::e(Languages::name($lang)) . '</span>';
+            }
+            $value = (string) ($values[$lang] ?? '');
+            if ($field instanceof Fields\FileUpload) {
+                $fallback = $isDefault ? null : (string) ($values[$default] ?? '');
+                $html .= ($this->uploadControl)($field, $inputId, $name . '[' . $lang . ']', $value, $fallback === \FloCMS\Admin\Settings\SettingsUploads::PENDING ? null : $fallback, $attributes);
+            } else {
+                $html .= $field->renderControl($inputId, $name . '[' . $lang . ']', $value, $attributes);
+            }
+            if (!$isDefault && isset($langErrors[$lang])) {
+                $html .= '<p class="fa-error" role="alert" id="' . Str::e($inputId . '-error') . '">' . Str::e($langErrors[$lang]) . '</p>';
+            }
+            $html .= '</div>';
+        }
+        return $html . '</div>';
     }
 
     /** @param array<string, string> $langErrors */

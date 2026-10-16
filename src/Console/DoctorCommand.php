@@ -115,6 +115,8 @@ final class DoctorCommand extends Command
             $this->checkResource('accounts', $users, $db, ['is_verified', 'verify_type', 'token']);
         }
 
+        $this->checkSettings($config, $db);
+
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
             foreach ($widgets->problems() as $problem) { $this->bad('Widget: ' . $problem); }
@@ -225,7 +227,7 @@ final class DoctorCommand extends Command
     /** The package's own pages, and whether /admin can open the dashboard. */
     private function checkPackagePages(bool $usersEnabled): void
     {
-        $pages = ['dashboard' => 'Dashboard'];
+        $pages = ['dashboard' => 'Dashboard', 'settings' => 'Settings'];
         if ($usersEnabled) {
             $pages += ['accounts' => 'Users', 'profile' => 'Profile'];
         }
@@ -240,6 +242,93 @@ final class DoctorCommand extends Command
         $pages = (string) @file_get_contents($this->project()->path('controllers/PagesController.php'));
         if (!str_contains($pages, 'admin.home')) {
             $this->caution('/admin shows the skeleton\'s page (skeleton 1.8+ opens the dashboard): link /admin/dashboard from views/pages/admin_index.html');
+        }
+    }
+
+    /** Settings pages, their table and files, and the personal preferences table. */
+    private function checkSettings(\FloCMS\Admin\AdminConfig $config, ?Database $db): void
+    {
+        $this->section('Settings and preferences');
+        $settings = Admin::settings();
+        foreach ($settings->problems() as $problem) {
+            $this->bad('Settings: ' . $problem);
+        }
+        $pages = $settings->all();
+        $site = array_diff_key($pages, ['panel' => true]);
+        if ($site === [] && $settings->problems() === []) {
+            $this->ok('No website settings pages (optional: php flo make:admin-settings)');
+        } elseif ($site !== []) {
+            $this->ok('Settings pages: ' . implode(', ', array_map(static fn ($page): string => $page->getName() . ' (' . $page->getPermission() . ')', $site)));
+        }
+        if (isset($pages['panel'])) {
+            $this->ok('Admin panel settings page (settings.panel)');
+        }
+
+        $uploads = false;
+        foreach ($settings->fields() as [, $field]) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload) { $uploads = true; break; }
+        }
+        if ($uploads) {
+            $folder = $config->settingsUploads()['root'];
+            $parent = $folder;
+            while (!is_dir($parent) && dirname($parent) !== $parent) { $parent = dirname($parent); }
+            if (!is_writable($parent)) {
+                $this->bad('Settings uploads folder ' . $folder . ' is not writable: logos and other files cannot be saved.');
+            } else {
+                $this->ok('Settings uploads: ' . $folder . ' (served at ' . $config->settingsUploads()['url'] . ')');
+            }
+        }
+
+        $cache = $config->root() . '/storage/cache';
+        $parent = $cache;
+        while (!is_dir($parent) && dirname($parent) !== $parent) { $parent = dirname($parent); }
+        if (!is_writable($parent)) {
+            $this->caution('storage/cache is not writable: setting() works but reads the database on every request.');
+        }
+
+        if ($db === null && $pages !== []) {
+            try {
+                $db = $this->project()->database();
+                $db->query('SELECT 1');
+            } catch (Throwable $e) {
+                $this->bad('Database: ' . $e->getMessage());
+                return;
+            }
+        }
+        if ($db === null) {
+            return;
+        }
+
+        $table = \FloCMS\Admin\Settings\SettingsStore::TABLE;
+        $columns = $this->columns($db, $table);
+        if ($columns === null) {
+            $this->bad('Settings table "' . $table . '" not found: run php flo admin:install, then php flo migrate');
+        } elseif (array_diff(['param', 'value', 'lang'], array_keys($columns)) !== []) {
+            $this->bad('Table "' . $table . '" does not have the columns param, value and lang of FloCMS\'s settings table');
+        } else {
+            $this->ok('Table "' . $table . '"');
+            try {
+                $stored = array_keys((new \FloCMS\Admin\Settings\SettingsStore($db))->all());
+                $unknown = array_values(array_diff($stored, array_keys($settings->fields())));
+                if ($unknown !== []) {
+                    $this->caution(count($unknown) . ' stored setting(s) no longer declared: ' . implode(', ', array_slice($unknown, 0, 10)) . (count($unknown) > 10 ? ', …' : ''));
+                }
+                $color = (new \FloCMS\Admin\Settings\SettingsStore($db))->all()['panel.primary_color'] ?? null;
+                if (is_string($color) && preg_match('/^#[0-9a-f]{6}$/D', $color) === 1 && \FloCMS\Admin\Support\Theme::contrastWithWhite($color) < 4.5) {
+                    $this->caution(sprintf('Saved brand colour %s gives white button text a contrast of %.1f:1; choose a darker colour in Settings → Admin panel.', $color, \FloCMS\Admin\Support\Theme::contrastWithWhite($color)));
+                }
+            } catch (Throwable $e) {
+                $this->bad('Table "' . $table . '": ' . $e->getMessage());
+            }
+        }
+
+        $columns = $this->columns($db, 'admin_user_preferences');
+        if ($columns === null) {
+            $this->caution('Table "admin_user_preferences" not found: personal preferences last only until logout (run php flo admin:install, then php flo migrate)');
+        } elseif (array_diff(['user_id', 'key', 'value'], array_keys($columns)) !== []) {
+            $this->bad('Table "admin_user_preferences" does not have the columns user_id, key, value');
+        } else {
+            $this->ok('Table "admin_user_preferences"');
         }
     }
 

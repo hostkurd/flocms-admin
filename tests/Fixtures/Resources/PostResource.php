@@ -46,11 +46,11 @@ class PostResource extends Resource
     {
         return $table->columns([
             TextColumn::make('id')->sortable(),
-            TextColumn::make('title')->searchable()->sortable(),
+            TextColumn::make('title')->searchable()->sortable()->toggleable(), // the title column: never hidden
             TextColumn::make('slug')->searchable(),
             BadgeColumn::make('status')->colors(['published' => 'green'])->labels(['draft' => 'Draft', 'published' => 'Published']),
-            BooleanColumn::make('featured'),
-            DateColumn::make('updated_at')->sortable(),
+            BooleanColumn::make('featured')->toggleable(),
+            DateColumn::make('updated_at')->sortable()->toggleable(),
         ])->defaultSort('id', 'desc')->perPage(3);
     }
 }

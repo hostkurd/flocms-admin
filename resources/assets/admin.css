@@ -783,3 +783,61 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 [dir="rtl"] .fa-editor.is-slide-over[open]{animation-name:fa-slide-in-rtl}
 @keyframes fa-slide-in-rtl{from{transform:translateX(-100%)}}
 @media (prefers-reduced-motion:reduce){.fa-panel .fa-editor.is-slide-over[open]{animation:none}.fa-section-chevron{transition:none}}
+
+/* 0.14 Settings pages: vertical page list, page-level language switch */
+.fa-settings-layout{display:grid;grid-template-columns:minmax(13rem,17rem) minmax(0,1fr);gap:24px;align-items:start}
+.fa-settings-nav{position:sticky;inset-block-start:88px;min-width:0}
+.fa-settings-tabs{list-style:none;margin:0;padding:6px;display:flex;flex-direction:column;gap:2px;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow)}
+.fa-panel .fa-settings-tab{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:var(--fa-radius);color:var(--fa-text);text-decoration:none;border-inline-start:3px solid transparent}
+.fa-panel .fa-settings-tab:hover{background:var(--fa-surface-2,color-mix(in srgb,var(--fa-primary-soft) 40%,transparent))}
+.fa-panel .fa-settings-tab.is-active{background:var(--fa-primary-soft);border-inline-start-color:var(--fa-primary);color:var(--fa-primary-text)}
+.fa-settings-tab:focus-visible{outline:2px solid var(--fa-focus);outline-offset:1px}
+.fa-settings-tab-icon{flex:none;display:inline-flex;margin-block-start:1px;color:var(--fa-muted)}
+.fa-settings-tab.is-active .fa-settings-tab-icon{color:var(--fa-primary-text)}
+.fa-settings-tab-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fa-settings-tab-label{font-weight:600;font-size:14px}
+.fa-settings-tab-sub{font-size:12.5px;line-height:1.35;color:var(--fa-muted)}
+.fa-settings-tab.is-active .fa-settings-tab-sub{color:color-mix(in srgb,var(--fa-primary-text) 75%,var(--fa-muted))}
+.fa-settings-body{min-width:0;display:flex;flex-direction:column;gap:16px}
+.fa-settings-body > .fa-form-grid:has(> .fa-field,> .fa-tabs){padding:20px 24px;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow)}
+.fa-settings-body > .fa-form-grid:not(:has(> .fa-field,> .fa-tabs)) > .fa-form-section{padding:20px 24px;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow)}
+.fa-settings-body > .fa-form-grid:not(:has(> .fa-field,> .fa-tabs)) > .fa-form-section + .fa-form-section{border-block-start:1px solid var(--fa-border);padding-block-start:20px}
+.fa-settings-picker select{width:100%}
+.fa-editing{display:inline-flex;align-items:center;gap:8px;padding:4px 4px 4px 10px;border:1px solid var(--fa-primary-border);background:var(--fa-primary-soft);border-radius:var(--fa-radius);color:var(--fa-primary-text)}
+.fa-editing[hidden]{display:none}
+.fa-editing-label{font:600 11px/1 var(--fa-font);letter-spacing:.06em;text-transform:uppercase}
+.fa-editing-select{min-height:32px;padding-block:4px;font-weight:600;width:auto}
+.fa-settings-empty{padding:28px;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg)}
+.fa-code-sample{padding:10px 14px;border-radius:var(--fa-radius);background:var(--fa-bg);border:1px solid var(--fa-border);font:13px/1.4 var(--fa-mono);overflow:auto}
+/* One input per language: all shown (with codes) until the switch takes over */
+.fa-lang-panes{display:flex;flex-direction:column;gap:10px}
+.fa-lang-pane{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fa-lang-pane-code{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--fa-muted)}
+.fa-settings.is-switching .fa-lang-pane:not(.is-current){display:none}
+.fa-settings.is-switching .fa-lang-pane-code{display:none}
+.fa-settings.is-switching .fa-rich-tabs{display:none}
+.fa-label-dots{margin-inline-start:6px;vertical-align:middle;color:var(--fa-primary-text)}
+.fa-field.is-locked > :not(.fa-label):not(.fa-same-note){opacity:.55}
+.fa-same-note{display:inline-flex;margin:0 0 6px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--fa-surface-3);color:var(--fa-muted)}
+.fa-same-note[hidden]{display:none}
+.fa-upload-preview.is-fallback{opacity:.6;border-style:dashed}
+.fa-upload-fallback{margin:0}
+/* Colour picker */
+.fa-color{display:flex;align-items:center;gap:8px}
+.fa-color-swatch{flex:none;inline-size:40px;block-size:38px;padding:3px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius-sm);background:var(--fa-surface);cursor:pointer}
+.fa-color-text{font-family:var(--fa-mono);max-inline-size:10rem}
+@media (max-width:900px){
+  .fa-settings-layout{grid-template-columns:minmax(0,1fr);gap:16px}
+  .fa-settings-nav{position:static}
+  .fa-settings-nav:has(.fa-settings-picker:not([hidden])) .fa-settings-tabs{display:none}
+}
+@media (min-width:901px){.fa-settings-picker{display:none}}
+.fa-field.is-locked > .fa-label{display:inline-block;margin-inline-end:8px}
+/* Table density: compact list pages (Admin panel settings or My preferences) */
+.fa-panel[data-density="compact"] .fa-table th,.fa-panel[data-density="compact"] .fa-table td{padding:6px 12px}
+.fa-panel[data-density="compact"] .fa-table th{padding-block:7px}
+.fa-panel[data-density="compact"] .fa-table{font-size:13.5px}
+/* Columns button */
+.fa-columns-list{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:12rem}
+.fa-columns-legend{padding:0;margin-block-end:4px;font-size:12.5px;font-weight:600;color:var(--fa-muted)}
+.fa-columns-dot{color:var(--fa-primary)}

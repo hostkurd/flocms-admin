@@ -1,0 +1,44 @@
+<?php
+declare(strict_types=1);
+
+/*
+ * Website settings pages (flocms-admin). Each field is stored as
+ * "<page>.<field>" and read on the website with setting():
+ *
+ *     {{ setting('site.title') }}            current language, then the default one
+ *     <img src="{{ setting('site.logo') }}"> public URL of the uploaded image
+ *     setting('contact.phone', '—')          default when nothing is saved
+ *
+ * Every field type and layout of resource forms works here. Permission:
+ * settings.manage (or ->permission('...') per page).
+ */
+
+use FloCMS\Admin\Form\Fields\ImageUpload;
+use FloCMS\Admin\Form\Fields\Textarea;
+use FloCMS\Admin\Form\Fields\TextInput;
+use FloCMS\Admin\Form\Layout\Section;
+use FloCMS\Admin\Settings\SettingsPage;
+
+return [
+    SettingsPage::make('site')
+        ->label('General')
+        ->icon('settings')
+        ->description('Name, tagline and logo')
+        ->schema([
+            TextInput::make('title')->translatable()->required()->rules('max:120'),
+            Textarea::make('tagline')->translatable(),
+            ImageUpload::make('logo')->translatable()->help('One image per language: a language without its own logo uses the default one.'),
+        ]),
+
+    SettingsPage::make('contact')
+        ->label('Contact & locations')
+        ->icon('map-pin')
+        ->description('Email, phone and address')
+        ->schema([
+            Section::make('office')->label('Office')->schema([
+                TextInput::make('email')->email(),
+                TextInput::make('phone')->tel(),
+                Textarea::make('address')->translatable()->columnSpan('full'),
+            ]),
+        ]),
+];

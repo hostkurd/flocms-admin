@@ -62,7 +62,7 @@ final class PanelView
         return [
             't' => PageView::translator(),
             'title' => $title,
-            'brand' => AdminLang::label(Admin::config()->brand()),
+            'brand' => \FloCMS\Admin\Support\Appearance::brand(),
             'page' => $page,
             'nav' => $nav,
             'notifications' => \FloCMS\Admin\Notifications\NotificationView::pending(),
@@ -73,6 +73,9 @@ final class PanelView
             'dashboardActive' => $activeSlug === 'dashboard',
             'usersUrl' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
             'usersActive' => $activeSlug === 'accounts',
+            'settingsUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
+            'settingsActive' => $activeSlug === 'settings',
+            'settingsIcon' => Icons::svg('settings'),
             'profileUrl' => $usersEnabled ? Admin::url('profile') : null,
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
@@ -83,11 +86,12 @@ final class PanelView
             'assets' => \FloCMS\Admin\Assets::tags(),
             'navigation' => Admin::config()->reactiveEnabled(),
             'panelBase' => Admin::url(),
-            'theme' => Admin::config()->theme(),
-            'sidebar' => Admin::config()->sidebar(),
-            'contentWidth' => Admin::config()->contentWidth(),
-            'logo' => Admin::config()->logo(),
-            'brandInitial' => self::initial(AdminLang::label(Admin::config()->brand())),
+            'theme' => \FloCMS\Admin\Support\Appearance::theme(),
+            'sidebar' => \FloCMS\Admin\Support\Appearance::sidebar(),
+            'contentWidth' => \FloCMS\Admin\Support\Appearance::contentWidth(),
+            'density' => \FloCMS\Admin\Support\Appearance::density(),
+            'logo' => \FloCMS\Admin\Support\Appearance::logo(),
+            'brandInitial' => self::initial(\FloCMS\Admin\Support\Appearance::brand()),
             'userInitial' => self::initial($user),
             'breadcrumbs' => $this->breadcrumbs($title, $activeSlug),
             'languages' => self::languageLinks($lang),
@@ -123,6 +127,11 @@ final class PanelView
     {
         if ($activeSlug === null || in_array($activeSlug, ['dashboard', 'profile'], true)) {
             return [['label' => $title, 'url' => null]];
+        }
+        if ($activeSlug === 'settings') {
+            $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => AdminLang::get('settings.title'), 'url' => null]];
+            if ($title !== AdminLang::get('settings.title')) { $items[] = ['label' => $title, 'url' => null]; }
+            return $items;
         }
         if ($activeSlug === 'accounts') {
             return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];
@@ -165,7 +174,7 @@ final class PanelView
             $links[] = [
                 'code' => $code,
                 'name' => Languages::name($code),
-                'url' => $base . '/' . rawurlencode($code) . '/admin' . ($rest !== '' ? '/' . $rest : '') . (is_string($query) && $query !== '' ? '?' . $query : ''),
+                'url' => $base . '/' . rawurlencode($code) . '/admin' . ($rest !== '' ? '/' . $rest : '') . '?' . (is_string($query) && $query !== '' ? $query . '&' : '') . PanelController::SWITCH_MARKER . '=1',
                 'current' => $code === $current,
             ];
         }

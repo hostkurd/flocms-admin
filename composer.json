@@ -56,12 +56,13 @@
                 "FloCMS\\Admin\\Console\\InstallCommand",
                 "FloCMS\\Admin\\Console\\MakeResourceCommand",
                 "FloCMS\\Admin\\Console\\MakeWidgetCommand",
+                "FloCMS\\Admin\\Console\\MakeSettingsCommand",
                 "FloCMS\\Admin\\Console\\ListCommand",
                 "FloCMS\\Admin\\Console\\DoctorCommand"
             ]
         },
         "branch-alias": {
-            "dev-main": "0.13-dev"
+            "dev-main": "0.14-dev"
         }
     },
     "scripts": {

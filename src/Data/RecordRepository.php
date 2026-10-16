@@ -177,6 +177,7 @@ final class RecordRepository
         $statement = $this->db->pdo()->prepare('DELETE FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where);
         $statement->execute($bindings);
         if ($statement->rowCount() !== 1) { $this->conflict(); }
+        $this->resource->afterDelete($original);
     }
 
     private function originalCondition(string $id, object $original): array
@@ -207,7 +208,9 @@ final class RecordRepository
 
     public function delete(string $id): void
     {
+        $record = $this->find($id);
         $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->delete();
+        if ($record !== null) { $this->resource->afterDelete($record); }
     }
 
     /** Whether $value exists in $column in a row other than $exceptId. */

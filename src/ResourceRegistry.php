@@ -15,7 +15,7 @@ final class ResourceRegistry
     public const RESERVED = ['users', 'pages'];
 
     /** URL segments of this package's own pages. */
-    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile'];
+    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings'];
 
     /** @var array<string, class-string<Resource>> slug => class */
     private array $resources = [];
@@ -71,6 +71,17 @@ final class ResourceRegistry
                 $this->problems[] = $class . ': ' . $error;
             }
             return false;
+        }
+
+        try {
+            foreach ((new $class())->form(new \FloCMS\Admin\Form\Form())->fields() as $field) {
+                if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && $field->isTranslatable()) {
+                    $this->problems[] = $class . ': field "' . $field->getName() . '" is a translatable upload; translatable uploads are supported on settings pages only';
+                    return false;
+                }
+            }
+        } catch (\Throwable) {
+            // A form that cannot be built here is reported where it is used (admin:doctor, the page)
         }
 
         $slug = $class::getSlug();

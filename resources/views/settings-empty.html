@@ -1,0 +1,8 @@
+<div class="fa-page-head"><h1 class="fa-page-title">{{ $title }}</h1></div>
+<div class="fa-empty fa-settings-empty">
+    <p>{{ $t('settings.empty', ['file' => $file]) }}</p>
+    <pre class="fa-code-sample"><code>php flo make:admin-settings</code></pre>
+    @if(count($problems) > 0)
+    <div class="fa-alert fa-alert-warning" role="status"><p>{{ $t('settings.problems') }}</p><ul>@foreach($problems as $problem)<li>{{ $problem }}</li>@endforeach</ul></div>
+    @endif
+</div>

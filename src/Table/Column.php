@@ -20,6 +20,8 @@ abstract class Column
     protected bool $searchable = false;
     protected ?bool $translatable = null;
     protected ?Closure $formatter = null;
+    protected bool $toggleable = false;
+    protected bool $hiddenByDefault = false;
 
     final public function __construct(string $name)
     {
@@ -61,6 +63,28 @@ abstract class Column
     {
         $this->translatable = $translatable;
         return $this;
+    }
+
+    /**
+     * Let each user show or hide this column with the list's Columns button.
+     * hiddenByDefault: hidden until the user shows it. The column that titles a
+     * row (the first searchable one) can never be hidden.
+     */
+    public function toggleable(bool $toggleable = true, bool $hiddenByDefault = false): static
+    {
+        $this->toggleable = $toggleable;
+        $this->hiddenByDefault = $toggleable && $hiddenByDefault;
+        return $this;
+    }
+
+    public function isToggleable(): bool
+    {
+        return $this->toggleable;
+    }
+
+    public function isHiddenByDefault(): bool
+    {
+        return $this->hiddenByDefault;
     }
 
     /** Custom display text: fn (mixed $value, object $record): string (escaped). */

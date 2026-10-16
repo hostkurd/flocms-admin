@@ -20,7 +20,7 @@
         <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
     </form>
     @endif
-    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '')
+    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0)
     <div class="fa-list-toolbar">
         @if(count($table->searchableColumns()) > 0)
         <form class="fa-search" data-rx-submit="refresh" role="search">
@@ -33,6 +33,21 @@
         <span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span>
         <span class="fa-toolbar-spacer"></span>
         @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
+        @if(count($columnChoices) > 0)
+        <details class="fa-popover" id="{{ $prefix }}-columns-menu" data-admin-popover>
+            <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>
+            <form class="fa-popover-panel fa-columns" data-rx-submit="applyColumns" data-admin-columns aria-label="{{ $t('columns.title') }}">
+                <input type="hidden" value="[]" data-rx-bind="columns">
+                <fieldset class="fa-columns-list"><legend class="fa-columns-legend">{{ $t('columns.legend') }}</legend>
+                    @foreach($columnChoices as $choice)<label class="fa-check"><input type="checkbox" value="{{ $choice['name'] }}" data-admin-column@if($choice['visible']) checked @endif> {{ $choice['label'] }}</label>@endforeach
+                </fieldset>
+                <div class="fa-popover-foot">
+                    <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="resetColumns">{{ $t('columns.reset') }}</button>
+                    <button class="fa-btn fa-btn-primary fa-btn-sm" type="submit">{{ $t('columns.apply') }}</button>
+                </div>
+            </form>
+        </details>
+        @endif
         @if($filterFields !== '')
         <details class="fa-popover" id="{{ $prefix }}-filters-menu" data-admin-popover @if($filterErrors) open @endif>
             <summary class="fa-btn">{!! $filterIcon !!}<span>{{ $t('filters.title') }}</span>@if($filterCount > 0)<span class="fa-count">{{ $filterCount }}</span>@endif</summary>
@@ -58,7 +73,7 @@
     <div class="fa-table-wrap"><table class="fa-table fa-table-list">
         <thead><tr>
             @if(count($bulkActions) > 0)<th class="fa-selection-col"><label class="fa-select-page"><input type="checkbox" data-admin-select-page aria-label="{{ $t('bulk.select_page') }}"><span class="fa-select-page-label" aria-hidden="true">{{ $t('bulk.select_page') }}</span></label></th>@endif
-            @foreach($table->getColumns() as $name => $column)
+            @foreach($visibleColumns as $name => $column)
             <th scope="col" class="{{ $column->cellClass() }}" aria-sort="{{ $result['sort'] === $name ? ($result['dir'] === 'asc' ? 'ascending' : 'descending') : 'none' }}">
                 @if($column->isSortable())<button class="fa-sort{{ $result['sort'] === $name ? ' is-' . $result['dir'] : '' }}" type="button" data-rx-action="sortBy" data-rx-set="selectedSort" data-rx-value="{{ $name }}">{{ $column->getLabel() }}</button>@else{{ $column->getLabel() }}@endif
             </th>
@@ -69,7 +84,7 @@
             @foreach($result['data'] as $record)
             <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}"@if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) class="is-selected"@endif>
                 @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" data-admin-select value="{{ $record->{$resource::getPrimaryKey()} }}" aria-label="{{ $t('bulk.select_record', ['id' => $record->{$resource::getPrimaryKey()}]) }}" @if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) checked @endif></td>@endif
-                @foreach($table->getColumns() as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">{!! $column->render($record) !!}</td>@endforeach
+                @foreach($visibleColumns as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">{!! $column->render($record) !!}</td>@endforeach
                 <td class="fa-actions">{!! $rowActions($record) !!}</td>
             </tr>
             @endforeach

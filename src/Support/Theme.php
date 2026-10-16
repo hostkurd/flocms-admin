@@ -17,7 +17,7 @@ final class Theme
     /** File name for the configured colour, or null when the default colour is used. */
     public static function fileName(): ?string
     {
-        $color = Admin::config()->primaryColor();
+        $color = Appearance::primaryColor();
         return $color === null ? null : 'theme-' . substr(hash('sha256', $color . '|v1'), 0, 12) . '.css';
     }
 
