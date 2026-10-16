@@ -2,6 +2,19 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.10.0 - 2026-10-16
+
+Rich text. Additions only; existing resources, fields and settings are unchanged. Requires `hostkurd/flocms-reactive` **^0.5.0** (for `data-rx-ignore`).
+
+- New `RichEditor` field: headings, bold/italic/underline/strike, links (checked, optional new tab), lists, quotes, code blocks, dividers, undo/redo, images, videos and YouTube/Vimeo embeds. `toolbar()`, `images()`, `videos()`, `embeds()`, `maxImageSize()`, `maxVideoSize()`, `maxLength()`. See [docs/rich-text.md](docs/rich-text.md).
+- Translatable rich text shows language tabs (EN · AR · KU) with filled/empty/invalid dots; each language has its own editor and writes in its own direction. Single-language sites get no tabs.
+- Clean HTML: `RichText::clean()` removes scripts, event handlers, styles, unknown tags and unsafe URLs on the server before validation and saving; embeds are rebuilt from the video ID as sandboxed, lazy `youtube-nocookie.com` / `player.vimeo.com` iframes. `RichText::plain()` for excerpts. Empty formatting counts as empty for `required`.
+- Media uploads through flocms-uploader to a public folder (new `media` setting, default `public/uploads/editor` at `/uploads/editor`): images stored as one web version of at most 1920 px; MP4/WebM videos sent in 1 MiB parts (not limited by `upload_max_filesize`), owned by the uploading user and session. New CSRF-protected endpoint `/admin/<resource>/media/<field>/…` for people who may create or edit the resource.
+- The editor script (`admin-editor-v0.10.0.js`, Tiptap 3.31.4, MIT; see `THIRD_PARTY_NOTICES.md`) loads only on pages with an editor and works under a strict CSP. In the admin, embeds show as cards instead of third-party frames. Keyboard: one tab stop toolbar with arrow keys, Enter applies and Escape closes insert panels.
+- In Reactive dialogs the editor keeps its content and undo history while the dialog updates; new errors for the field rebuild it from the submitted text and move focus into it.
+- `admin:doctor` checks that the media folder is writable and that GD or Imagick is available when a resource uses rich text media.
+- New icons for the toolbar; new strings `editor.*` and `validation.rich_text_long` in en/ar/ku.
+
 ## 0.9.0 - 2026-10-16
 
 The panel redesign, matching the approved mockup. Additions only (new optional settings, `Resource::$description`, icons and strings); no existing resource, form, table, action or configuration API changed, so existing sites keep working and only look different. Browser tests or scripts that clicked row actions, filters or the bulk select may need updating (see the List page section).

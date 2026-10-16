@@ -15,6 +15,14 @@ final class Assets
         $url = $base . '/' . $lang . 'flo-admin/asset/admin-v' . Admin::VERSION;
         return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '">' . \FloCMS\Admin\Support\Theme::tag() . '<script defer src="' . Str::e($url . '.js') . '"></script>';
     }
+    /** The rich text editor script, loaded on demand by admin.js. */
+    public static function editorUrl(): string
+    {
+        $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
+        $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
+        return $base . '/' . $lang . 'flo-admin/asset/admin-editor-v' . Admin::VERSION . '.js';
+    }
+
     public static function tags(): string
     {
         $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';

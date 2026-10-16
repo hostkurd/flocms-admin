@@ -55,6 +55,7 @@ final class ResourceController extends PanelController
             'admin_bulk' => $class::permission('view'),
             'admin_upload' => $class::permission('view'),
             'admin_file' => $class::permission('view'),
+            'admin_media' => $class::permission('view'),
         ];
     }
 
@@ -245,7 +246,8 @@ final class ResourceController extends PanelController
         $title = $action->getTitle($this->resource);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
-            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record)))->render($form),
+            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record),
+                mediaUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/media') : null))->render($form),
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '')),
             'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),
@@ -281,6 +283,56 @@ final class ResourceController extends PanelController
             return \FloCMS\Core\Http\Response::json(['error' => AdminLang::get('uploads.invalid')], 422)->header('Cache-Control', 'no-store');
         }
         return \FloCMS\Core\Http\Response::json(['value' => $value, 'url' => (\FloCMS\Admin\Uploads\Uploads::url($this->resource, $record))($field, $value)])->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Rich text media: POST /admin/<slug>/media/<field>/<step>, where step is
+     * image (one request), or start, chunk, complete and abort for a video sent
+     * in parts. Media is public once stored; only people who may create or edit
+     * this resource can upload, and only into a RichEditor that allows it.
+     */
+    public function admin_media(): \FloCMS\Core\Http\Response
+    {
+        if (!$this->isPost()) { throw new HttpException(405); }
+        if (count($this->params) !== 2) { throw new HttpException(404); }
+        [$fieldName, $step] = $this->params;
+        if (!$this->can('create') && !$this->can('update')) { throw new HttpException(403); }
+        $field = $this->form()->fields()[$fieldName] ?? null;
+        if (!$field instanceof \FloCMS\Admin\Form\Fields\RichEditor || $field->isDisabled()) { throw new HttpException(404); }
+        $video = in_array($step, ['start', 'chunk', 'complete', 'abort'], true);
+        if (($step === 'image' && !$field->allowsImages()) || ($video && !$field->allowsVideos()) || ($step !== 'image' && !$video)) { throw new HttpException(404); }
+        $slug = $this->resource::getSlug();
+        $media = \FloCMS\Admin\Uploads\EditorMedia::class;
+        $json = static fn (array $data, int $status = 200): \FloCMS\Core\Http\Response => \FloCMS\Core\Http\Response::json($data, $status)->header('Cache-Control', 'no-store');
+        $id = static function (mixed $value): string {
+            if (!is_string($value) || preg_match('/^[a-f0-9]{32}$/D', $value) !== 1) { throw new HttpException(400); }
+            return $value;
+        };
+        $number = static function (mixed $value): int {
+            $number = is_string($value) ? filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]) : false;
+            if ($number === false) { throw new HttpException(400); }
+            return $number;
+        };
+        $chunk = static function (): array {
+            $file = $_FILES['chunk'] ?? null;
+            if (!is_array($file) || ($file['error'] ?? null) !== UPLOAD_ERR_OK || !is_string($file['tmp_name'] ?? null) || !is_uploaded_file($file['tmp_name'])) { throw new HttpException(400); }
+            return $file;
+        };
+        try {
+            return match ($step) {
+                'image' => $json($media::image(is_array($_FILES['file'] ?? null) ? $_FILES['file'] : [], $field, $slug)),
+                'start' => $json($media::start($field, $slug, is_string($name = $this->request->input('name')) ? mb_substr($name, 0, 200) : '', $number($this->request->input('size')))),
+                'chunk' => $json($media::append($field, $slug, $id($this->request->input('upload_id')), $number($this->request->input('offset')), $chunk())),
+                'complete' => $json($media::complete($field, $slug, $id($this->request->input('upload_id')))),
+                'abort' => (function () use ($media, $field, $slug, $id, $json) { $media::abort($field, $slug, $id($this->request->input('upload_id'))); return $json(['ok' => true]); })(),
+            };
+        } catch (\FloCMS\Uploader\Exceptions\ChunkOffsetException $e) {
+            return $json(['error' => 'offset', 'received' => $e->expectedOffset()], 409);
+        } catch (\FloCMS\Uploader\Exceptions\ValidationException) {
+            return $json(['error' => AdminLang::get($step === 'image' ? 'editor.image_invalid' : 'editor.video_invalid')], 422);
+        } catch (\FloCMS\Uploader\Exceptions\UploadException) {
+            return $json(['error' => AdminLang::get('editor.upload_failed')], 500);
+        }
     }
 
     /** Managed files are private; recheck the current record policy on every read. */
@@ -363,7 +415,7 @@ final class ResourceController extends PanelController
             }
         }
 
-        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record));
+        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record), mediaUrl: Admin::url($this->resource::getSlug() . '/media'));
         $view = new PageView($class);
         $title = $isEdit
             ? AdminLang::get('form.edit_title', ['label' => $class::getLabel()])

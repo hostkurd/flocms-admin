@@ -65,6 +65,7 @@ final class DoctorCommand extends Command
             $this->caution("sidebar must be 'light' or 'dark'; using 'light'.");
         }
 
+        $this->checkMedia($config);
         $this->checkLayout();
         if ($config->loginThemeEnabled()) {
             $login = $project->path('views/users/admin_login.html');
@@ -259,6 +260,33 @@ final class DoctorCommand extends Command
         }
 
         $this->bad('No layouts/admin.html in templates/' . $template . '/ or templates/default/');
+    }
+
+    /** Rich text uploads go to a public folder: it must be writable and reachable by the web server. */
+    private function checkMedia(\FloCMS\Admin\AdminConfig $config): void
+    {
+        $uses = false;
+        foreach (Admin::registry()->all() as $class) {
+            try { $form = (new $class())->form(new \FloCMS\Admin\Form\Form()); } catch (\Throwable) { continue; }
+            foreach ($form->fields() as $field) {
+                if ($field instanceof \FloCMS\Admin\Form\Fields\RichEditor && ($field->allowsImages() || $field->allowsVideos())) { $uses = true; break 2; }
+            }
+        }
+        if (!$uses) { return; }
+        $media = $config->media();
+        $folder = $media['root'];
+        $parent = $folder;
+        while (!is_dir($parent) && dirname($parent) !== $parent) { $parent = dirname($parent); }
+        if (!is_writable($parent)) {
+            $this->bad('Rich text media folder ' . $folder . ' is not writable: editors cannot upload images or videos.');
+        } elseif (!str_contains(str_replace('\\', '/', $folder), '/public/')) {
+            $this->caution('Rich text media folder ' . $folder . ' is outside public/: make sure the web server serves it at ' . $media['url'] . '.');
+        } else {
+            $this->ok('Rich text media: ' . $folder . ' (served at ' . $media['url'] . ')');
+        }
+        if (!extension_loaded('gd') && !extension_loaded('imagick')) {
+            $this->bad('Rich text images need the GD or Imagick PHP extension to make their web size.');
+        }
     }
 
     private function ok(string $text): void

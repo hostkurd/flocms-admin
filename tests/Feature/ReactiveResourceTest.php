@@ -175,7 +175,7 @@ final class ReactiveResourceTest extends RequestTestCase
         $page = self::request('GET', '/en/admin/posts', $disabled);
         self::assertSame(200, $page['status']);
         self::assertStringNotContainsString('data-rx-component=', $page['body']);
-        self::assertStringNotContainsString('reactive-v0.4.0.js', $page['body']);
+        self::assertDoesNotMatchRegularExpression('/reactive-v\d+\.\d+\.\d+\.js/', $page['body']);
         self::assertStringContainsString('data-admin-navigation="false"', $page['body']);
         self::assertStringContainsString('/en/admin/posts/edit/1', $page['body']);
     }
@@ -184,8 +184,8 @@ final class ReactiveResourceTest extends RequestTestCase
     {
         $result = self::request('GET', '/en/admin/dashboard', ['headers' => ['X-Flo-Admin' => 'navigate'], 'admin_config' => ['reactive' => true]]);
         self::assertStringNotContainsString('<html>', $result['body']);
-        self::assertStringContainsString('admin-v0.9.0.js', $result['body']);
-        self::assertStringContainsString('reactive-v0.4.0.js', $result['body']);
+        self::assertStringContainsString('admin-v' . \FloCMS\Admin\Admin::VERSION . '.js', $result['body']);
+        self::assertMatchesRegularExpression('/reactive-v\d+\.\d+\.\d+\.js/', $result['body']);
         self::assertStringNotContainsString('<script>', $result['body']);
         self::assertSame(404, self::request('GET', '/en/flo-admin/asset/unknown.js')['status']);
     }

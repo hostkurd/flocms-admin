@@ -17,7 +17,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` ^2.3.2 and `hostkurd/flocms-reactive` ^0.4.0 (installed by Composer)
+- `hostkurd/flocms-core` ^2.3.2, `hostkurd/flocms-reactive` ^0.5.0 and `hostkurd/flocms-uploader` ^1.2.0 (installed by Composer)
 - A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
@@ -168,6 +168,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | --- | --- | --- |
 | `TextInput` | text | `->email()`, `->url()`, `->tel()`, `->numeric()`, `->password()`, `->maxLength(190)`; text and URL inputs can be translatable |
 | `Textarea` | textarea | `->rows(8)`; translatable; full width by default |
+| `RichEditor` | visual editor | Formatting, links, images, videos, YouTube/Vimeo; clean HTML; translatable with language tabs ([guide](docs/rich-text.md)) |
 | `Select` | select | `->options([...])` or `->options(fn () => [...])`; only listed values are accepted |
 | `Toggle` | checkbox | Stored as `1` / `0`; an unchecked box saves `0` |
 | `Date` | date | Stored as `Y-m-d`, empty as `NULL` |
@@ -313,6 +314,10 @@ See the [Actions and Notifications guide](docs/actions-and-notifications.md) for
 
 Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resource CRUD forms, including Reactive dialogs and no-JavaScript pages. Files use private managed storage with editor-authorized downloads, server-side validation, retained selections on validation errors, and transaction-aware replacement/removal. See the [Uploads guide](docs/uploads.md) for configuration, limits, permissions and cleanup.
 
+## Rich text
+
+Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`); videos upload in parts. See the [Rich text guide](docs/rich-text.md).
+
 ## Dashboard widgets
 
 Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
@@ -324,6 +329,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - Completed through 0.7: table filters, bulk actions, richer Forms, and single image/file fields
 - Completed in 0.8: configurable dashboard widgets
 - 0.9: the redesign: tokens, light/dark/auto theme, shipped fonts, new list page, dialogs and forms, sidebar and topbar with brand settings, phone layouts and dashboard polish
+- 0.10: `RichEditor` with image/video uploads and YouTube/Vimeo embeds
 - Next: relationship fields and managers
 - Later: relationships, a settings page, more generators
 

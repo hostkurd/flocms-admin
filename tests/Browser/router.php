@@ -46,7 +46,7 @@ if (!Session::get('fixture')) {
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light'], true, ROOT);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor']], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -63,9 +63,21 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='propertie
     $pdo->exec('CREATE TABLE properties (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, country TEXT, city TEXT, listing_type TEXT, price DECIMAL(12,2), lease_months INTEGER, access_code TEXT, status TEXT, published_on DATE)');
     App::$db->table('properties')->insert(['title' => '{"en":"Villa"}', 'description' => '{"en":"Description"}', 'country' => 'iq', 'city' => 'sulaimani', 'listing_type' => 'sale', 'price' => 100, 'status' => 'draft']);
 }
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='articles'")->fetchColumn()) {
+    $pdo->exec('CREATE TABLE articles (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, body TEXT, note TEXT)');
+    App::$db->table('articles')->insert(['title' => '{"en":"Welcome","ar":"أهلاً"}', 'body' => '{"en":"<p>Hello <strong>world</strong></p>","ar":"<p>مرحبا</p>"}', 'note' => null]);
+}
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='assets'")->fetchColumn()) {
     $pdo->exec('CREATE TABLE assets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, kind TEXT, cover TEXT, attachment TEXT, internal TEXT, extra TEXT)');
     App::$db->table('assets')->insert(['title'=>'Villa media', 'kind'=>'normal']);
+}
+// Editor media, as a web server would serve public/uploads (the public folder is the web root).
+if (preg_match('~^/uploads/editor/([A-Za-z0-9/_.-]+)$~', (string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), $media) === 1 && !str_contains($media[1], '..')) {
+    $file = ROOT . '/public/uploads/editor/' . $media[1];
+    if (!is_file($file)) { http_response_code(404); exit; }
+    header('Content-Type: ' . ((new finfo(FILEINFO_MIME_TYPE))->file($file) ?: 'application/octet-stream'));
+    header('X-Content-Type-Options: nosniff');
+    readfile($file); exit;
 }
 if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
