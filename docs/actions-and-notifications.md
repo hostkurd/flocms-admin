@@ -12,7 +12,7 @@ There are three resource-list placements:
 | `Table::headerActions(array $actions)` | Table toolbar | `null` |
 | `Table::actions(array $actions)` | Each row | Current scoped record |
 
-`Table::actions()` replaces the default row actions; include `EditAction::make()` and `DeleteAction::make()` when keeping them. Return `CreateAction::make()` from an overridden `Resource::headerActions()` to retain Create. Empty definitions remove those workflows, including their corresponding default CRUD routes. Names must be unique within a placement and use lowercase letters, digits, underscores or hyphens, starting with a letter. The same name can exist in separate placements.
+In the list, an action named `edit` is shown as an icon button on each row; all other row actions are in the row's **More actions** menu, with `danger` actions last. `Table::actions()` replaces the default row actions; include `EditAction::make()` and `DeleteAction::make()` when keeping them. Return `CreateAction::make()` from an overridden `Resource::headerActions()` to retain Create. Empty definitions remove those workflows, including their corresponding default CRUD routes. Names must be unique within a placement and use lowercase letters, digits, underscores or hyphens, starting with a letter. The same name can exist in separate placements.
 
 ```php
 use FloCMS\Admin\Actions\{Action, ActionContext, EditAction, DeleteAction};

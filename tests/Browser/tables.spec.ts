@@ -5,6 +5,14 @@ async function ready(page: Page) {
   await page.goto('/en/admin/posts');
   await page.evaluate(() => { (window as any).documentMarker = 'tables'; });
 }
+// Filters live in a popover; bulk actions are buttons in the selection bar.
+async function filters(page: Page) {
+  const menu = page.locator('details.fa-popover');
+  if (!(await menu.evaluate(element => (element as HTMLDetailsElement).open))) await menu.locator('> summary').click();
+}
+async function bulk(page: Page, name: string) {
+  await page.locator(`[data-admin-bulk-action="${name}"]`).click();
+}
 async function select(page: Page, id: number) {
   await page.locator(`[data-admin-select][value="${id}"]`).check();
   await expect(page.locator('[data-rx-component]')).toHaveAttribute('aria-busy', 'false');
@@ -12,6 +20,7 @@ async function select(page: Page, id: number) {
 
 test('filters restore through bookmarks and back/forward without replacing the document', async ({ page }) => {
   await ready(page);
+  await filters(page);
   await page.locator('[data-admin-filter=status]').selectOption('published');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await expect(page.locator('tbody tr')).toHaveCount(0);
@@ -39,8 +48,7 @@ test('selection persists across pages; select this page does not include other m
   await expect(selected(page)).toHaveText('3 records selected');
   await page.locator('[data-admin-select-page]').check();
   await expect(selected(page)).toHaveText('6 records selected');
-  await page.locator('[data-admin-bulk-name]').selectOption('delete');
-  await page.getByRole('button', { name: 'Review action', exact: true }).click();
+  await bulk(page, 'delete');
   await expect(editor(page)).toContainText('6 selected records');
   await page.keyboard.press('Escape');
   await expect(editor(page)).not.toBeVisible();
@@ -52,8 +60,7 @@ test('bulk publish validates then updates only the explicit selection', async ({
   await ready(page);
   await select(page, 8);
   await expect(selected(page)).toHaveText('1 records selected');
-  await page.locator('[data-admin-bulk-name]').selectOption('publish');
-  await page.getByRole('button', { name: 'Review action', exact: true }).click();
+  await bulk(page, 'publish');
   await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(editor(page).locator('[name=reason]')).toHaveAttribute('aria-invalid', 'true');
   await editor(page).locator('[name=reason]').fill('Reviewed selection');
@@ -70,8 +77,7 @@ test('stale bulk selection keeps every other row and Cancel remains available', 
   await ready(page);
   await page.locator('[data-admin-select-page]').check();
   await expect(selected(page)).toHaveText('3 records selected');
-  await page.locator('[data-admin-bulk-name]').selectOption('delete');
-  await page.getByRole('button', { name: 'Review action', exact: true }).click();
+  await bulk(page, 'delete');
   await expect(editor(page)).toBeVisible();
   await page.request.post('/__test/change', { form: { id: 7 } });
   await editor(page).getByRole('button', { name: 'Delete selected', exact: true }).click();
@@ -84,6 +90,7 @@ test('stale bulk selection keeps every other row and Cancel remains available', 
 
 test('filter and search changes clear selection', async ({ page }) => {
   await ready(page); await select(page, 8);
+  await filters(page);
   await page.locator('[data-admin-filter=featured]').selectOption('0');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await expect(selected(page)).toHaveText('0 records selected');
@@ -99,12 +106,12 @@ test('full-page filters and bulk deletion work with JavaScript disabled', async 
   const page = await context.newPage();
   try {
     await page.goto('http://127.0.0.1:8083/en/admin/posts?static=1');
+    await page.locator('details.fa-popover > summary').click();
     await page.locator('[name="filter[status]"]').selectOption('draft');
     await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
     await expect(page).toHaveURL(/static=1/);
     await page.locator('[name="ids[]"][value="8"]').check();
-    await page.locator('[name=action]').selectOption('delete');
-    await page.getByRole('button', { name: 'Review action', exact: true }).click();
+    await page.locator('[data-admin-bulk-action=delete]').click();
     await expect(page.locator('form')).toContainText('1 selected records');
     await page.getByRole('button', { name: 'Delete selected', exact: true }).click();
     await expect(page.locator('tbody')).not.toContainText('Studio');
@@ -126,16 +133,59 @@ test('bulk unpublish leaves unselected published rows intact', async ({ page }) 
   await expect(page.locator('[data-rx-component]')).toHaveAttribute('aria-busy', 'false');
   await page.locator('[data-admin-select-page]').check();
   await expect(selected(page)).toHaveText('3 records selected');
-  await page.locator('[data-admin-bulk-name]').selectOption('publish');
-  await page.getByRole('button', { name: 'Review action', exact: true }).click();
+  await bulk(page, 'publish');
   await editor(page).locator('[name=reason]').fill('Approved for publication');
   await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
   await select(page, 5);
-  await page.locator('[data-admin-bulk-name]').selectOption('unpublish');
-  await page.getByRole('button', { name: 'Review action', exact: true }).click();
+  await bulk(page, 'unpublish');
   await editor(page).getByRole('button', { name: 'Unpublish', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator('#fa-admin-resource-row-5')).toContainText('Draft');
   await expect(page.locator('#fa-admin-resource-row-3')).toContainText('Published');
+});
+
+test('bulk bar appears only while rows are selected', async ({ page }) => {
+  await ready(page);
+  const bar = page.locator('[data-admin-bulk]');
+  await expect(bar).toBeHidden();
+  await select(page, 8);
+  await expect(bar).toBeVisible();
+  await expect(page.locator('#fa-admin-resource-row-8')).toHaveClass(/is-selected/);
+  await page.getByRole('button', { name: 'Clear selection', exact: true }).click();
+  await expect(page.locator('[data-rx-component]')).toHaveAttribute('aria-busy', 'false');
+  await expect(bar).toBeHidden();
+});
+
+test('active filters show as chips that remove one filter at a time', async ({ page }) => {
+  await ready(page);
+  await filters(page);
+  await page.locator('[data-admin-filter=status]').selectOption('draft');
+  await page.locator('[data-admin-filter=featured]').selectOption('1');
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await expect(page.locator('.fa-chip')).toHaveCount(2);
+  await expect(page.locator('details.fa-popover')).not.toHaveAttribute('open', '');
+  await expect(page.locator('details.fa-popover .fa-count')).toHaveText('2');
+  await page.getByRole('button', { name: 'Remove filter Status: Draft' }).click();
+  await expect(page.locator('.fa-chip')).toHaveCount(1);
+  await expect(page.locator('.fa-chip')).toContainText('Featured');
+  await expect(page.locator('[data-admin-filter=status]')).toHaveValue('');
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
+  await expect(page.locator('.fa-chip')).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).documentMarker)).toBe('tables');
+});
+
+test('row menu opens, closes with Escape or an outside click, and keeps focus on its button', async ({ page }) => {
+  await ready(page);
+  const menu = page.locator('#fa-admin-resource-menu-8');
+  await menu.locator('> summary').click();
+  await expect(menu.locator('[data-admin-action=delete]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu.locator('[data-admin-action=delete]')).toBeHidden();
+  await expect(menu.locator('> summary')).toBeFocused();
+  await menu.locator('> summary').click();
+  await page.locator('h1').click();
+  await expect(menu.locator('[data-admin-action=delete]')).toBeHidden();
+  // Destructive actions come last in the menu.
+  await expect(menu.locator('.fa-menu-item').last()).toHaveAttribute('data-admin-action', 'delete');
 });

@@ -94,6 +94,7 @@ for(const language of ['ar','ku'])test(`mobile ${language} tab navigation respec
 test('custom and bulk action dialogs reuse dependent fields without reloading', async ({ page }) => {
   await page.goto('/en/admin/properties');
   await page.evaluate(() => { (window as any).formsMarker = 'actions'; });
+  await page.locator('#fa-admin-resource-menu-1 > summary').click();
   await page.locator('#fa-admin-resource-relocate-1').click();
   await editor(page).locator('[name=country]').selectOption('gr');
   await expect(editor(page).locator('[name=city] option[value=athens]')).toHaveCount(1); await idle(page);
@@ -101,8 +102,7 @@ test('custom and bulk action dialogs reuse dependent fields without reloading', 
   await editor(page).getByRole('button', {name:'Relocate',exact:true}).click();
   await expect(editor(page)).not.toBeVisible(); await expect(page.locator('tbody')).toContainText('athens');
   await page.locator('[data-admin-select][value="1"]').check(); await idle(page);
-  await page.locator('[data-admin-bulk-name]').selectOption('relocate');
-  await page.getByRole('button',{name:'Review action',exact:true}).click();
+  await page.locator('[data-admin-bulk-action=relocate]').click();
   await editor(page).locator('[name=country]').selectOption('iq');
   await expect(editor(page).locator('[name=city] option[value=erbil]')).toHaveCount(1); await idle(page);
   await editor(page).locator('[name=city]').selectOption('erbil');

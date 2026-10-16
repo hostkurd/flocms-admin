@@ -35,6 +35,37 @@ final class FilterSet
         return array_filter($this->values, static fn ($value): bool => is_array($value) ? implode('', $value) !== '' : $value !== '');
     }
     public function json(): string { return json_encode((object) $this->active(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); }
+    /**
+     * Active filters as removable chips: label, readable value, and the filter
+     * state (JSON) and query values that remain when that one filter is removed.
+     *
+     * @return list<array{name: string, label: string, value: string, without: string, query: array<string, mixed>}>
+     */
+    public function chips(): array
+    {
+        if ($this->errors !== []) { return []; }
+        $chips = [];
+        $active = $this->active();
+        foreach ($this->table->getFilters() as $name => $filter) {
+            if (!array_key_exists($name, $active)) { continue; }
+            $value = $active[$name];
+            if ($filter instanceof SelectFilter) {
+                $options = $filter->getOptions();
+                $text = AdminLang::label((string) ($options[$value] ?? $value));
+            } else {
+                $from = (string) ($value['from'] ?? ''); $until = (string) ($value['until'] ?? '');
+                $text = match (true) {
+                    $from !== '' && $until !== '' => $from . ' – ' . $until,
+                    $from !== '' => AdminLang::get('filters.from') . ' ' . $from,
+                    default => AdminLang::get('filters.until') . ' ' . $until,
+                };
+            }
+            $remaining = $active; unset($remaining[$name]);
+            $chips[] = ['name' => $name, 'label' => $filter->getLabel(), 'value' => $text,
+                'without' => json_encode((object) $remaining, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'query' => $remaining];
+        }
+        return $chips;
+    }
     public function render(string $prefix): string
     {
         $html = '';

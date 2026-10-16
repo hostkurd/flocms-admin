@@ -5,6 +5,7 @@ import { initializeTranslations } from './translations';
 import { initializeSelection } from './selection';
 import { initializeLogin } from './login';
 import { initializeForms } from './forms';
+import './popovers';
 import '../assets/admin.css';
 
 let navigating = false;
@@ -114,7 +115,10 @@ document.addEventListener('submit', event => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
   if (form.hasAttribute('data-admin-bulk')) {
-    form.querySelector<HTMLInputElement>('[data-rx-bind="selectedBulk"]')!.value = form.querySelector<HTMLSelectElement>('[data-admin-bulk-name]')!.value;
+    // Bulk actions are buttons that set selectedBulk themselves; keep an
+    // application's own <select data-admin-bulk-name> working too.
+    const select = form.querySelector<HTMLSelectElement>('[data-admin-bulk-name]');
+    if (select) form.querySelector<HTMLInputElement>('[data-rx-bind="selectedBulk"]')!.value = select.value;
     return;
   }
   if (form.hasAttribute('data-admin-filters')) {

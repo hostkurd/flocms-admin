@@ -159,4 +159,7 @@ return [
     'login.logout' => 'تسجيل الخروج للمتابعة',
     'filters.not_applied' => 'لم تُطبق التصفية. صحح القيم المحددة.',
     'filters.no_results' => 'لا توجد سجلات تطابق هذه التصفية.',
+    'table.more_actions' => 'مزيد من الإجراءات',
+    'table.page' => 'الصفحة :page',
+    'filters.remove' => 'إزالة عامل التصفية :label: :value',
 ];

@@ -52,6 +52,16 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['theme' => 'sepia']])['body']);
     }
 
+    public function testRowActionsAreAnIconButtonAndANoScriptMenu(): void
+    {
+        $body = self::request('GET', '/en/admin/posts?static=1')['body'];
+        // Edit stays one click away; the other actions are in a <details> menu that works without JavaScript.
+        self::assertMatchesRegularExpression('~<div class="fa-row-actions"><a class="fa-icon-action" title="Edit" href="https://example.test/en/admin/posts/edit/1">~', $body);
+        self::assertStringContainsString('<details class="fa-menu" id="fa-admin-resource-menu-1" data-admin-popover><summary class="fa-icon-action" aria-label="More actions"', $body);
+        self::assertMatchesRegularExpression('~<div class="fa-menu-panel">.*?action="https://example.test/en/admin/posts/delete/1".*?<button type="submit" class="fa-menu-item is-danger">~s', $body);
+        self::assertStringContainsString('<form class="fa-search" method="get"', $body);
+    }
+
     public function testSearchAndSort(): void
     {
         $body = self::request('GET', '/admin/posts?q=cabin&sort=title&dir=asc')['body'];
