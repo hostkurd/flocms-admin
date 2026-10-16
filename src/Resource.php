@@ -46,6 +46,16 @@ abstract class Resource
 
     protected static int $navigationSort = 0;
 
+    /**
+     * How Create and Edit open from the list: 'page' (a full page with room for
+     * a sidebar, the default), 'modal' (a dialog over the list, best for small
+     * records such as categories) or 'slide-over' (a panel from the side).
+     * A single action can differ: CreateAction::make()->modal().
+     */
+    protected static string $formMode = 'page';
+
+    public const FORM_MODES = ['page', 'modal', 'slide-over'];
+
     /** Prefix of the permission names; default "<config permission_prefix>.<slug>". */
     protected static ?string $permissionPrefix = null;
 
@@ -175,6 +185,18 @@ abstract class Resource
     public static function getDescription(): ?string
     {
         return static::$description === null || static::$description === '' ? null : AdminLang::label(static::$description);
+    }
+
+    /** 'page', 'modal' or 'slide-over'; an unknown value falls back to 'page' (admin:doctor reports it). */
+    public static function getFormMode(): string
+    {
+        return in_array(static::$formMode, self::FORM_MODES, true) ? static::$formMode : 'page';
+    }
+
+    /** The configured value as written, for admin:doctor. */
+    public static function configuredFormMode(): string
+    {
+        return static::$formMode;
     }
 
     public static function getNavigationSort(): int

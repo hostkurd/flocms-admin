@@ -77,7 +77,7 @@ test('standard forms retain all sections and dependency refresh with JavaScript 
     await page.getByRole('button', {name:'Update fields',exact:true}).click();
     await expect(page.locator('[name=city] option[value=athens]')).toHaveCount(1);
     await page.locator('[name=city]').selectOption('athens');
-    await page.getByRole('button', {name:'Save changes',exact:true}).click();
+    await page.getByRole('button', {name: 'Save and close',exact:true}).click();
     await expect(page.locator('tbody')).toContainText('athens');
   } finally { await context.close(); }
 });

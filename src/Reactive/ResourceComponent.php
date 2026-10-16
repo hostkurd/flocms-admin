@@ -184,6 +184,17 @@ final class ResourceComponent extends Component
     private function executor(): ActionExecutor { return new ActionExecutor($this->resource(), $this->repository()); }
     private function bulkExecutor(): \FloCMS\Admin\Actions\BulkExecutor { return new \FloCMS\Admin\Actions\BulkExecutor($this->resource(), $this->repository()); }
 
+    /** This list with its search, filters, sort and page, for page-mode forms to return to. */
+    private function listUrl(string $slug): string
+    {
+        $key = $this->instanceKey;
+        return Admin::url($slug, [
+            $key . '_q' => $this->search, $key . '_page' => $this->page > 1 ? $this->page : null,
+            $key . '_sort' => $this->sort, $key . '_dir' => $this->sort !== '' ? $this->direction : null,
+            $key . '_filters' => $this->filters !== '{}' ? $this->filters : null,
+        ]);
+    }
+
     public function render(): string
     {
         $resource = $this->resource(); $table = $resource->table(new Table());
@@ -212,6 +223,7 @@ final class ResourceComponent extends Component
         }
         $prefix = 'fa-' . $this->instanceKey;
         $renderer = new ActionRenderer($resource, $registry);
+        $listUrl = $this->listUrl($resource::getSlug());
         return $this->view(dirname(__DIR__, 2) . '/resources/views/reactive-resource.html', [
             't' => \FloCMS\Admin\Http\PageView::translator(), 'resource' => $resource, 'table' => $table, 'result' => $result,
             'search' => $this->search, 'page' => $this->page, 'last' => $last, 'prefix' => $prefix, 'mode' => $this->mode,
@@ -223,8 +235,9 @@ final class ResourceComponent extends Component
             'bulkActions' => $bulkActions, 'selected' => $selected, 'selectedIds' => $this->selectedIds, 'selectedBulk' => $this->selectedBulk,
             'selectionLabel' => AdminLang::get('bulk.selected', ['count' => count($selected)]),
             'fullPageUrl' => Admin::url($resource::getSlug(), ['static' => 1, 'q' => $this->search, 'sort' => $this->sort, 'dir' => $this->direction, 'page' => $this->page, 'filter' => $filters->active()]),
-            'pageActions' => $renderer->render('page', prefix: $prefix), 'tableActions' => $renderer->render('table', prefix: $prefix),
-            'rowActions' => static fn (object $row): string => $renderer->render('row', $row, prefix: $prefix),
+            'pageActions' => $renderer->render('page', prefix: $prefix, backUrl: $listUrl), 'tableActions' => $renderer->render('table', prefix: $prefix, backUrl: $listUrl),
+            'rowActions' => static fn (object $row): string => $renderer->render('row', $row, prefix: $prefix, backUrl: $listUrl),
+            'dialogStyle' => $action !== null && $action->getMode($resource) === 'slide-over' ? 'slide-over' : 'modal',
             'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? AdminLang::get('bulk.confirm', ['count' => count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))]) : ($action?->getDescription() ?? ''),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
             'uploadUrl' => Admin::url($resource::getSlug() . '/upload'), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),

@@ -1,5 +1,5 @@
 {!! $assets !!}
-<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
+<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-width="{{ $contentWidth }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
 
     <aside id="fa-sidebar" class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
         <a class="fa-brand" href="{{ $dashboardUrl }}">
@@ -67,6 +67,14 @@
         <div class="fa-dialog-foot">
             <button type="button" class="fa-btn" data-confirm-no>{{ $t('actions.cancel') }}</button>
             <button type="button" class="fa-btn fa-btn-danger" data-confirm-yes>{{ $t('actions.delete') }}</button>
+        </div>
+    </dialog>
+    <dialog class="fa-confirm" id="fa-leave" aria-labelledby="fa-leave-title" aria-describedby="fa-leave-text">
+        <h2 class="fa-dialog-title" id="fa-leave-title">{{ $t('form.leave_title') }}</h2>
+        <p class="fa-confirm-text" id="fa-leave-text">{{ $t('form.leave_text') }}</p>
+        <div class="fa-dialog-foot">
+            <button type="button" class="fa-btn" data-leave-stay>{{ $t('form.leave_stay') }}</button>
+            <button type="button" class="fa-btn fa-btn-danger" data-leave-go>{{ $t('form.leave_go') }}</button>
         </div>
     </dialog>
 </div>

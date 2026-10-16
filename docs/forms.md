@@ -42,6 +42,44 @@ public function form(Form $form): Form
 
 Tabs support native buttons, ARIA selection/panel relationships, Home/End and direction-aware Arrow keys. Validation reveals the tab containing an invalid field; existing translation dialogs still open for secondary-language errors. Tab selection survives live form refreshes. Without JavaScript, the tab buttons remain hidden and every tab is a normal visible section, including translation fallbacks.
 
+## Pages, dialogs and slide-overs (0.12)
+
+Create and Edit open as a **full page** by default: room for long forms, a sidebar, and a header with **Cancel · Save · Save and close** (plus **Save and create another** on new records) that stays visible while scrolling. Small records read better in a dialog over the list; choose per resource:
+
+```php
+protected static string $formMode = 'page';       // default
+protected static string $formMode = 'modal';      // a dialog over the list (categories, tags)
+protected static string $formMode = 'slide-over'; // a panel from the side of the window
+```
+
+or per action: `CreateAction::make()->modal()`, `EditAction::make()->slideOver()`, `EditAction::make()->page()`. Delete and custom actions are short confirmations and stay dialogs (a custom action may use `slideOver()`). An unknown `$formMode` falls back to `'page'` and `admin:doctor` reports it. Without Reactive (`'reactive' => false`), Create and Edit are always pages.
+
+On the page:
+
+- **Save** (also Enter in a field and Ctrl/⌘+S) saves and stays on the record. **Save and close** returns to the list exactly as it was (search, filters, sort, page). **Save and create another** opens an empty form. **Cancel** goes back without saving.
+- Leaving with unsaved changes — a sidebar link, the Back button, closing the tab — asks first. A form shown again after a validation error counts as unsaved.
+- The page opens without a full reload, and works without JavaScript too.
+- On phones the buttons sit in a bar at the bottom of the screen.
+- The 64 KB limit of dialog drafts does not apply to pages.
+
+### A sidebar for secondary fields
+
+```php
+return $form->schema([
+    Section::make('project')->label('Project')->schema([/* name, summary, rich text */]),
+    Section::make('seo')->label('SEO')->collapsed()->schema([TextInput::make('meta_title')]),
+])->aside([
+    Section::make('publishing')->label('Publishing')->schema([Select::make('status')->options([...]), Toggle::make('featured')]),
+    Section::make('timeline')->label('Timeline')->schema([Date::make('starts_on')]),
+]);
+```
+
+`aside()` takes the same fields and layouts as `schema()`; names stay unique across both. On the page the aside is a column on the end side (it flips in right-to-left languages) that stays in view while scrolling; below 1100 px it moves under the main fields. In a dialog it follows the main fields. Each top-level section is drawn as its own card.
+
+### Folding sections
+
+`Section::make('seo')->collapsible()` adds a fold control (open by default); `->collapsed()` starts it folded. It is a native `<details>`, so it works without JavaScript, and a section that holds a validation error always opens.
+
 ## Dependent and conditional fields
 
 `Select::optionsFor('country', Closure(string): array)` declares its parent and computes its current allowed options on the server. It receives the canonical parent value, or an empty string when unavailable/invalid. Return an empty array for missing parents. Keep callbacks read-only and scope database queries to the current user/tenant with bound values; they can run multiple times while processing a request. Existing zero-argument `options(Closure)` remains supported.

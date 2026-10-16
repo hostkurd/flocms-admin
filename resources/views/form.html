@@ -1,20 +1,34 @@
-<div class="fa-page-head">
-    <h1 class="fa-page-title">{{ $title }}</h1>
-    @if($deleteUrl !== null)
-    <form method="post" enctype="multipart/form-data" action="{{ $deleteUrl }}" data-confirm>
-        {!! $csrf !!}
-        <button type="submit" class="fa-btn fa-btn-danger-ghost">{{ $t('actions.delete') }}</button>
-    </form>
-    @endif
-</div>
-<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-card fa-form" novalidate>
+@if($deleteUrl !== null)
+<form method="post" action="{{ $deleteUrl }}" id="fa-record-delete" class="fa-inline" data-confirm>
     {!! $csrf !!}
-    {!! $fields !!}
-    <div class="fa-form-actions">
-        <button type="submit" class="fa-btn fa-btn-primary">{{ $isEdit ? $t('actions.save_changes') : $t('actions.create') }}</button>
-        @if($canContinue)
-        <button type="submit" name="_continue" value="1" class="fa-btn">{{ $isEdit ? $t('actions.save_continue') : $t('actions.create_continue') }}</button>
-        @endif
-        <a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('actions.cancel') }}</a>
+    <input type="hidden" name="_back" value="{{ $backUrl }}">
+</form>
+@endif
+<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-record{{ $hasAside ? ' has-aside' : '' }}" id="fa-record-form" novalidate data-admin-record-form data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}">
+    {!! $csrf !!}
+    <input type="hidden" name="_back" value="{{ $backUrl }}">
+    <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $t('actions.save') }}</button>
+    <div class="fa-record-head">
+        <div class="fa-record-heading">
+            <h1 class="fa-page-title">{{ $title }}</h1>
+            @if($description !== null)<p class="fa-page-description">{{ $description }}</p>@endif
+        </div>
+        <div class="fa-record-actions">
+            <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
+            @if($deleteUrl !== null)
+            <button type="submit" form="fa-record-delete" class="fa-btn fa-btn-danger-ghost">{!! $trashIcon !!}<span>{{ $t('actions.delete') }}</span></button>
+            @endif
+            <a class="fa-btn fa-btn-ghost" href="{{ $backUrl }}" data-admin-cancel>{{ $t('actions.cancel') }}</a>
+            @if($canAnother)
+            <button type="submit" name="_another" value="1" class="fa-btn">{{ $t('actions.save_another') }}</button>
+            @endif
+            @if($canContinue)
+            <button type="submit" name="_continue" value="1" class="fa-btn" data-admin-save title="{{ $t('form.save_shortcut') }}">{{ $t('actions.save') }}</button>
+            @endif
+            <button type="submit" name="_close" value="1" class="fa-btn fa-btn-primary">{{ $canContinue ? $t('actions.save_close') : $t('actions.save') }}</button>
+        </div>
+    </div>
+    <div class="fa-record-body">
+        {!! $fields !!}
     </div>
 </form>

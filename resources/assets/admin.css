@@ -130,7 +130,8 @@ body:has(> .fa-panel){margin:0}
 .fa-topbar-title{font-weight:600}
 .fa-topbar-spacer{flex:1}
 .fa-panel .fa-topbar-link{display:inline-flex;align-items:center;gap:6px;color:var(--fa-text-2);font-size:13.5px;font-weight:500}
-.fa-content{padding:28px;max-width:1280px;width:100%}
+.fa-content{padding:28px;width:100%}
+.fa-panel[data-width="boxed"] .fa-content{max-width:1280px;margin-inline:auto}
 .fa-page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-block-end:20px;flex-wrap:wrap}
 .fa-page-title{font-size:24px;font-weight:650;line-height:1.25;letter-spacing:-.01em}
 .fa-breadcrumb{font-size:13.5px;margin-block-end:4px !important}
@@ -293,9 +294,10 @@ body:has(> .fa-panel){margin:0}
 .fa-field{position:relative}
 .fa-input-row{position:relative;display:block}
 /* The badge sits inside the input's end edge (top corner for long text). */
-.fa-panel .fa-input-row > .fa-input{padding-inline-end:76px}
-.fa-panel .fa-input-row.is-many > .fa-input{padding-inline-end:120px}
-.fa-lang-badge{position:absolute;inset-inline-end:5px;inset-block-start:5px;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 8px;border:0;border-radius:var(--fa-radius-sm);background:var(--fa-primary-soft);cursor:pointer;font:600 11px/1 var(--fa-mono);text-transform:uppercase;color:var(--fa-primary-text)}
+.fa-panel .fa-input-row > .fa-input{padding-inline-end:96px}
+.fa-panel .fa-input-row.is-many > .fa-input{padding-inline-end:140px}
+.fa-lang-badge{position:absolute;inset-inline-end:5px;inset-block-start:5px;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px;border:0;border-radius:var(--fa-radius-sm);background:var(--fa-primary-soft);cursor:pointer;font:650 15px/1 var(--fa-mono);letter-spacing:.02em;text-transform:uppercase;color:var(--fa-primary-text)}
+.fa-lang-badge .fa-dot{width:7px;height:7px}
 .fa-lang-badge:hover{background:color-mix(in srgb,var(--fa-primary-soft) 70%,var(--fa-primary-border))}
 .fa-lang-badge.is-invalid{background:var(--fa-danger-soft);color:var(--fa-danger)}
 .fa-input-row > textarea.fa-input + .fa-lang-badge{inset-block-start:6px}
@@ -672,3 +674,70 @@ body:has(> .fa-login){margin:0}
   .fa-rich-toolbar::-webkit-scrollbar{display:none}
   .fa-rich-sep{flex:none}
 }
+
+
+/* ---- Record page: full-page create/edit with a sticky header and an optional sidebar ---- */
+.fa-default-submit{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);border:0;opacity:0;pointer-events:none}
+.fa-record-head{position:sticky;inset-block-start:0;z-index:6;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;margin:0 -28px 24px;padding:14px 28px;background:color-mix(in srgb,var(--fa-bg) 94%,transparent);border-block-end:1px solid var(--fa-border);backdrop-filter:blur(8px)}
+.fa-record-heading{min-width:0}
+.fa-record-heading .fa-page-title{margin:0}
+.fa-record-heading .fa-page-description{margin:4px 0 0}
+.fa-record-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fa-record-actions .fa-btn{display:inline-flex;align-items:center;gap:6px}
+.fa-record-actions .fa-btn .fa-icon{width:16px;height:16px}
+.fa-record-state{font-size:12.5px;color:var(--fa-muted);white-space:nowrap}
+.fa-record-state:not(:empty)::before{content:"";display:inline-block;width:7px;height:7px;margin-inline-end:6px;border-radius:999px;background:var(--fa-warning-solid,var(--fa-warning));vertical-align:1px}
+.fa-record-state:empty{display:none}
+.fa-record-body > .fa-form-grid,.fa-form-main > .fa-form-grid{gap:20px}
+/* Loose fields or tabs: the whole form is one card. Only sections: one card each. */
+.fa-record-body > .fa-form-grid:has(> .fa-field,> .fa-tabs),.fa-form-main > .fa-form-grid:has(> .fa-field,> .fa-tabs){padding:24px;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow)}
+.fa-record-body > .fa-form-grid:not(:has(> .fa-field,> .fa-tabs)) > .fa-form-section,.fa-form-main > .fa-form-grid:not(:has(> .fa-field,> .fa-tabs)) > .fa-form-section,.fa-record .fa-form-aside > .fa-form-grid > .fa-form-section,.fa-record .fa-form-aside > .fa-form-grid > .fa-field{padding:20px 24px;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow)}
+.fa-record-body > .fa-form-grid:not(:has(> .fa-field,> .fa-tabs)) > .fa-form-section + .fa-form-section,.fa-form-main > .fa-form-grid:not(:has(> .fa-field,> .fa-tabs)) > .fa-form-section + .fa-form-section,.fa-record .fa-form-aside .fa-form-section + .fa-form-section{border-block-start:1px solid var(--fa-border);padding-block-start:20px}
+.fa-record .fa-form-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:24px;align-items:start}
+.fa-record .fa-form-aside{position:sticky;inset-block-start:96px;min-width:0}
+.fa-record .fa-form-aside > .fa-form-grid{display:flex;flex-direction:column;gap:16px}
+.fa-record .fa-form-aside .fa-section-title{font-size:15px}
+/* In a dialog the sidebar follows the main fields. */
+.fa-form-layout{display:block}
+.fa-editor .fa-form-aside,.fa-form:not(.fa-record) .fa-form-aside{margin-block-start:20px;padding-block-start:20px;border-block-start:1px solid var(--fa-border)}
+@media (max-width:1100px){
+  .fa-record .fa-form-layout{grid-template-columns:minmax(0,1fr)}
+  .fa-record .fa-form-aside{position:static}
+}
+@media (max-width:900px){
+  .fa-record-head{margin-inline:-16px;padding:12px 16px}
+}
+@media (max-width:640px){
+  /* Phones: the title scrolls away, the buttons stay in a bar at the bottom of the screen. */
+  .fa-record-head{position:static;background:none;border:0;margin-block-end:16px;padding-block:0;backdrop-filter:none}
+  .fa-record-actions{position:fixed;inset-inline:0;inset-block-end:0;z-index:20;flex-wrap:nowrap;gap:6px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--fa-surface);border-block-start:1px solid var(--fa-border);box-shadow:0 -4px 16px rgba(16,24,40,.08)}
+  .fa-record-actions .fa-btn{flex:1 1 auto;min-width:0;justify-content:center;padding-inline:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fa-record-actions .fa-btn-danger-ghost{flex:none}
+  .fa-record-actions .fa-btn-danger-ghost span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .fa-record-actions [name="_another"],.fa-record-state{display:none}
+  .fa-record-body{padding-block-end:72px}
+  .fa-record-body > .fa-form-grid:has(> .fa-field,> .fa-tabs),.fa-form-main > .fa-form-grid:has(> .fa-field,> .fa-tabs){padding:16px}
+}
+
+/* Collapsible sections (a native <details>). */
+details.fa-form-section > summary{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;border-radius:var(--fa-radius-sm)}
+details.fa-form-section > summary::-webkit-details-marker{display:none}
+details.fa-form-section > summary:focus-visible{outline:2px solid var(--fa-focus);outline-offset:4px}
+details.fa-form-section[open] > summary{margin-block-end:16px}
+.fa-section-heading{display:grid;gap:4px;min-width:0}
+.fa-section-heading .fa-section-title{display:block;margin:0!important;font-weight:650;font-size:16px;color:var(--fa-text)}
+.fa-section-heading .fa-help{margin:0}
+.fa-section-chevron{flex:none;width:18px;height:18px;margin-block-start:2px;color:var(--fa-muted);transition:transform .15s}
+details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)}
+[dir="rtl"] details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(90deg)}
+
+/* Slide-over: the record dialog as a panel from the end side of the window. */
+.fa-panel .fa-editor.is-slide-over{inset-inline-start:auto;inset-inline-end:0;margin:0;width:min(640px,100vw);height:100dvh;max-height:100dvh;border-radius:0;border-block:0;border-inline-end:0}
+.fa-panel .fa-editor.is-slide-over[open]{display:flex;flex-direction:column;animation:fa-slide-in .2s ease-out}
+.fa-editor.is-slide-over > form{display:flex;flex-direction:column;flex:1;min-height:0}
+.fa-editor.is-slide-over .fa-dialog-body{flex:1;max-height:none;overflow-y:auto}
+.fa-editor.is-slide-over .fa-dialog-foot{border-radius:0}
+@keyframes fa-slide-in{from{transform:translateX(100%)}}
+[dir="rtl"] .fa-editor.is-slide-over[open]{animation-name:fa-slide-in-rtl}
+@keyframes fa-slide-in-rtl{from{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.fa-panel .fa-editor.is-slide-over[open]{animation:none}.fa-section-chevron{transition:none}}

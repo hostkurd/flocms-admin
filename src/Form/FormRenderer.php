@@ -47,6 +47,11 @@ final class FormRenderer
     {
         $resolved = $form->evaluate($this->state);
         $html = $this->nodes($form->components(), $resolved, $form->getColumns(), $form->liveFields(), 'layout');
+        if ($form->asideComponents() !== []) {
+            // On the full page the aside is a sidebar; in a dialog it follows the main fields.
+            $aside = $this->nodes($form->asideComponents(), $resolved, 1, $form->liveFields(), 'aside');
+            $html = '<div class="fa-form-layout"><div class="fa-form-main">' . $html . '</div><div class="fa-form-aside">' . $aside . '</div></div>';
+        }
         if ($form->liveFields() !== []) {
             $html .= $this->reactive ? '<button type="button" data-rx-action="refreshForm" data-admin-form-refresh hidden></button>'
                 : '<button class="fa-btn" type="submit" name="_refresh" value="1" data-admin-form-refresh>' . Str::e(AdminLang::get('form.update_fields')) . '</button>';
@@ -81,10 +86,35 @@ final class FormRenderer
             } else {
                 $title = $node instanceof \FloCMS\Admin\Form\Layout\Grid ? '' : '<h3 class="fa-section-title" id="' . Str::e($id . '-title') . '">' . $label . '</h3>';
                 $description = $node->getDescription() === null ? '' : '<p class="fa-help">' . Str::e($node->getDescription()) . '</p>';
-                $html .= '<section class="fa-form-section fa-span-full"' . ($title !== '' ? ' aria-labelledby="' . Str::e($id . '-title') . '"' : '') . '>' . $title . $description . $this->nodes($node->children(), $form, $node->getColumns(), $live, $id) . '</section>';
+                $body = $this->nodes($node->children(), $form, $node->getColumns(), $live, $id);
+                if ($node instanceof \FloCMS\Admin\Form\Layout\Section && $node->isCollapsible()) {
+                    // A native <details>: works without JavaScript; a section with an error opens.
+                    $open = !$node->isCollapsed() || $this->hasErrors($node);
+                    $html .= '<details class="fa-form-section fa-span-full is-collapsible" id="' . Str::e($id) . '"' . ($open ? ' open' : '') . '>'
+                        . '<summary class="fa-section-summary"><span class="fa-section-heading"><span class="fa-section-title" id="' . Str::e($id . '-title') . '">' . $label . '</span>' . $description . '</span>'
+                        . Icons::svg('chevron-down', 'fa-icon fa-section-chevron') . '</summary>' . $body . '</details>';
+                } else {
+                    $html .= '<section class="fa-form-section fa-span-full"' . ($title !== '' ? ' aria-labelledby="' . Str::e($id . '-title') . '"' : '') . '>' . $title . $description . $body . '</section>';
+                }
             }
         }
         return '<div class="fa-form-grid fa-grid-' . $columns . '">' . $html . '</div>';
+    }
+
+    private function hasErrors(\FloCMS\Admin\Form\Layout\Layout $layout): bool
+    {
+        foreach ($layout->children() as $child) {
+            if ($child instanceof \FloCMS\Admin\Form\Layout\Layout ? $this->hasErrors($child) : $this->fieldHasError($child->getName())) { return true; }
+        }
+        return false;
+    }
+
+    private function fieldHasError(string $name): bool
+    {
+        foreach (array_keys($this->errors) as $key) {
+            if ($key === $name || str_starts_with((string) $key, $name . '.')) { return true; }
+        }
+        return false;
     }
 
     public function field(Field $field, int $columns = 2): string

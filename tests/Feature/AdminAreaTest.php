@@ -64,10 +64,10 @@ final class AdminAreaTest extends RequestTestCase
         $body = self::request('GET', '/en/admin/accounts', ['session' => self::ADMIN])['body'];
 
         self::assertStringContainsString('Root', $body);
-        self::assertStringContainsString('/en/admin/accounts/edit/1"', $body, 'Editor: lower role');
-        self::assertStringContainsString('/en/admin/accounts/edit/4"', $body, 'User: lower role');
-        self::assertStringNotContainsString('/en/admin/accounts/edit/3"', $body, 'Super Admin: higher role');
-        self::assertStringNotContainsString('/en/admin/accounts/edit/2"', $body, 'yourself: same role');
+        self::assertStringContainsString('/en/admin/accounts/edit/1?back=', $body, 'Editor: lower role');
+        self::assertStringContainsString('/en/admin/accounts/edit/4?back=', $body, 'User: lower role');
+        self::assertStringNotContainsString('/en/admin/accounts/edit/3?back=', $body, 'Super Admin: higher role');
+        self::assertStringNotContainsString('/en/admin/accounts/edit/2?back=', $body, 'yourself: same role');
         self::assertStringNotContainsString('/en/admin/accounts/delete/2"', $body);
 
         self::assertSame(403, self::request('GET', '/admin/accounts/edit/3', ['session' => self::ADMIN])['status']);

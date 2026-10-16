@@ -96,7 +96,7 @@ test('secondary-language validation opens the translation dialog and supports co
 test('full-page translation controls retain Save and Cancel behavior after panel navigation', async ({ page }) => {
   await page.goto('/en/admin/posts?static=1');
   await page.evaluate(() => { (window as any).documentMarker = 'translations'; });
-  await page.locator('a[href="/en/admin/posts/edit/8"]').click();
+  await page.locator('a[href^="/en/admin/posts/edit/8?"]').click();
   await expect(page.locator('[name="title[en]"]')).toBeVisible();
   await page.locator('[data-dialog="d-title"]').click();
   await page.locator('#d-title [name="title[ar]"]').fill('Discarded');
@@ -111,7 +111,10 @@ test('full-page translation controls retain Save and Cancel behavior after panel
   await page.locator('#d-title [data-mirror]').fill('Full-page studio');
   await page.locator('#d-title [name="title[ar]"]').fill('محفوظ');
   await page.locator('#d-title [data-dialog-save]').click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  // Save and close returns to the list the page was opened from (here the standard list).
+  await page.getByRole('button', { name: 'Save and close', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/posts\?static=1/);
+  await page.locator('.fa-nav a[href="/en/admin/posts"]').click();
   await page.locator('#fa-admin-resource-edit-8').click();
   await expect(editor(page).locator('[name="title[en]"]')).toHaveValue('Full-page studio');
   await badge(page).click();
@@ -127,9 +130,12 @@ test('oversized drafts retain text and expose the full-page fallback only when n
   await expect(editor(page).locator('[data-rx-status]')).toContainText('Copy any unsaved text');
   await expect(editor(page).locator('[name="body[en]"]')).toHaveValue('x'.repeat(65000));
   await editor(page).getByRole('link', { name: 'Continue on full page' }).click();
-  await page.locator('a[href="/en/admin/posts/edit/8"]').click();
+  await page.locator('a[href^="/en/admin/posts/edit/8?"]').click();
   await page.locator('[name="body[en]"]').fill('x'.repeat(65000));
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  // Save and close returns to the list the page was opened from (here the standard list).
+  await page.getByRole('button', { name: 'Save and close', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/posts\?static=1/);
+  await page.locator('.fa-nav a[href="/en/admin/posts"]').click();
   await page.locator('#fa-admin-resource-edit-8').click();
   await expect(page.locator('#fa-admin-resource-error')).toContainText('too large');
   await expect(page.getByRole('link', { name: 'Continue on full page' })).toBeVisible();

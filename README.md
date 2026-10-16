@@ -144,6 +144,7 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$icon` | `'list'` | `list`, `file`, `newspaper`, `book`, `folder`, `building`, `home`, `map-pin`, `users`, `user`, `tag`, `image`, `camera`, `video`, `calendar`, `mail`, `message`, `phone`, `bell`, `box`, `cart`, `credit-card`, `truck`, `briefcase`, `chart`, `grid`, `layers`, `link`, `globe`, `key`, `shield`, `heart`, `star`, `settings` |
 | `$description` | `null` | One line under the list page title: text, or a key of the site's lang files |
 | `$navigationSort` | `0` | Order in the sidebar |
+| `$formMode` | `'page'` | How Create and Edit open: `'page'` (full page with an optional sidebar), `'modal'` (dialog) or `'slide-over'` (panel from the side). See [Forms](docs/forms.md#pages-dialogs-and-slide-overs-012) |
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
 
@@ -267,6 +268,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `primary_color` | `null` | Brand colour as `#rrggbb` for buttons, links and highlights; `null` keeps the default blue. Buttons use white text, so `admin:doctor` warns below a 4.5:1 contrast |
 | `logo` | `null` | Logo image URL (absolute, or a path starting with `/`) for the sidebar and login page; `null` shows the brand's first letter |
 | `sidebar` | `'light'` | `'light'` or `'dark'` |
+| `content_width` | `'full'` | `'full'` uses the whole window; `'boxed'` centres pages at most 1280 px wide |
 | `per_page` | `25` | Rows per page |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |

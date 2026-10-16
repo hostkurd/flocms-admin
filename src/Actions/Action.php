@@ -25,6 +25,7 @@ class Action
     private ?Closure $uniqueness = null;
     private bool $confirmation = true;
     private ?string $description = null;
+    private ?string $mode = null;
 
     protected function __construct(private readonly string $name)
     {
@@ -62,6 +63,22 @@ class Action
     public function action(Closure $callback): static { $this->customOnly(); $this->handler = $callback; return $this; }
     public function requiresConfirmation(bool $value = true): static { $this->confirmation = $value; return $this; }
     public function modalDescription(string $description): static { $this->description = $description; return $this; }
+    /** Open in a dialog over the list. */
+    public function modal(): static { $this->mode = 'modal'; return $this; }
+    /** Open in a panel that slides in from the side of the window. */
+    public function slideOver(): static { $this->mode = 'slide-over'; return $this; }
+    /** Open as a full page (Create and Edit only; other actions are short confirmations). */
+    public function page(): static
+    {
+        if (!in_array($this->kind, ['create', 'edit'], true)) { throw new \LogicException('Only Create and Edit actions open as a page.'); }
+        $this->mode = 'page'; return $this;
+    }
+    /** 'page', 'modal' or 'slide-over'. Create and Edit follow the resource's $formMode unless set here. */
+    public function getMode(Resource $resource): string
+    {
+        if ($this->mode !== null) { return $this->mode; }
+        return in_array($this->kind, ['create', 'edit'], true) ? $resource::getFormMode() : 'modal';
+    }
 
     public function getName(): string { return $this->name; }
     public function getKind(): string { return $this->kind; }

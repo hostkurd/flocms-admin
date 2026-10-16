@@ -64,6 +64,9 @@ final class DoctorCommand extends Command
         if (array_key_exists('sidebar', $values) && !in_array($values['sidebar'], \FloCMS\Admin\AdminConfig::SIDEBARS, true)) {
             $this->caution("sidebar must be 'light' or 'dark'; using 'light'.");
         }
+        if (array_key_exists('content_width', $values) && !in_array($values['content_width'], \FloCMS\Admin\AdminConfig::WIDTHS, true)) {
+            $this->caution("content_width must be 'full' or 'boxed'; using 'full'.");
+        }
 
         $this->checkMedia($config);
         $this->checkLayout();
@@ -137,6 +140,9 @@ final class DoctorCommand extends Command
     private function checkResource(string $slug, string $class, ?Database $db, array $extraColumns = []): void
     {
         $this->section($class . '  (/admin/' . $slug . ')');
+        if (!in_array($class::configuredFormMode(), Resource::FORM_MODES, true)) {
+            $this->caution('formMode "' . $class::configuredFormMode() . "\" is not valid: use 'page', 'modal' or 'slide-over'; using 'page'.");
+        }
 
         try {
             $resource = new $class();

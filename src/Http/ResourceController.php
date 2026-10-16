@@ -401,10 +401,16 @@ final class ResourceController extends PanelController
                 $id = $submission->save($form, $state, $record);
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
-                $continue = $this->request->input('_continue') !== null && $this->can('update');
+                // Save and close → back to the list it came from; Save and create
+                // another → a new form; Save (the default, also Enter) → stay on the record.
+                $back = $this->backUrl();
+                $returnTo = $back !== Admin::url($class::getSlug()) ? $back : null;
+                if ($this->request->input('_another') !== null && $this->can('create') && $this->resource->canCreate()) {
+                    $this->redirect(Admin::url($class::getSlug() . '/create', ['back' => $returnTo]));
+                }
                 $saved = $id !== '' ? $this->repository()->find($id) : null;
-                $continue = $continue && $saved !== null && $this->resource->canEdit($saved);
-                $this->redirect($continue && $id !== '' ? Admin::url($class::getSlug() . '/edit/' . $id) : Admin::url($class::getSlug()));
+                $stay = $this->request->input('_close') === null && $this->can('update') && $saved !== null && $this->resource->canEdit($saved);
+                $this->redirect($stay ? Admin::url($class::getSlug() . '/edit/' . $id, ['back' => $returnTo]) : $back);
             }
 
             if (!$refreshing) { Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger'); }
@@ -425,8 +431,11 @@ final class ResourceController extends PanelController
             ? Admin::url($class::getSlug() . '/delete/' . $this->recordId())
             : null;
 
-        $action = $isEdit ? Admin::url($class::getSlug() . '/edit/' . $this->recordId()) : Admin::url($class::getSlug() . '/create');
-        $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== []);
+        $back = $this->backUrl();
+        $returnTo = $back !== Admin::url($class::getSlug()) ? $back : null;
+        $action = Admin::url($class::getSlug() . ($isEdit ? '/edit/' . $this->recordId() : '/create'), ['back' => $returnTo]);
+        $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
+            !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== []);
 
         return $this->panel($title, $html, $class::getSlug());
     }
@@ -491,6 +500,14 @@ final class ResourceController extends PanelController
         $value = $this->request->queryValue($key, $default);
 
         return is_scalar($value) ? trim((string) $value) : $default;
+    }
+
+    /** Where Cancel and Save and close return to: the list with its search, filters and page. */
+    private function backUrl(): string
+    {
+        $value = $this->isPost() ? $this->request->input('_back') : $this->request->queryValue('back', '');
+        if ($this->isPost() && !is_string($value)) { $value = $this->request->queryValue('back', ''); }
+        return $this->safeBackUrl(is_string($value) ? $value : '') ?? Admin::url($this->resourceClass::getSlug());
     }
 
     /** Only same-site admin list URLs are accepted as a place to go back to. */

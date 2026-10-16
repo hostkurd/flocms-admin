@@ -85,6 +85,14 @@ final class AdminConfig
 
     public const THEMES = ['light', 'dark', 'auto'];
     public const SIDEBARS = ['light', 'dark'];
+    public const WIDTHS = ['full', 'boxed'];
+
+    /** Page content width: 'full' (default, uses the whole window) or 'boxed' (centred, at most 1280 px). */
+    public function contentWidth(): string
+    {
+        $width = $this->values['content_width'] ?? 'full';
+        return is_string($width) && in_array($width, self::WIDTHS, true) ? $width : 'full';
+    }
 
     /** Brand colour as #rrggbb (from #rgb or #rrggbb), or null for the default blue. Invalid values are ignored; admin:doctor reports them. */
     public function primaryColor(): ?string

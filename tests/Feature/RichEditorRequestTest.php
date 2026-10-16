@@ -17,7 +17,7 @@ final class RichEditorRequestTest extends RequestTestCase
         $page = self::request('GET', '/en/admin/articles/edit/1', $this->options());
         self::assertSame(200, $page['status']);
         $body = $page['body'];
-        self::assertMatchesRegularExpression('~data-admin-rich-editor data-script="https://example\.test/en/flo-admin/asset/admin-editor-v0\.11\.0\.js"~', $body);
+        self::assertMatchesRegularExpression('~data-admin-rich-editor data-script="https://example\.test/en/flo-admin/asset/admin-editor-v0\.12\.0\.js"~', $body);
         self::assertStringContainsString('<textarea id="f-body" name="body[en]" dir="ltr" lang="en"', $body);
         self::assertStringContainsString('name="body[ar]" dir="rtl" lang="ar"', $body);
         self::assertStringContainsString('&lt;p&gt;Hello&lt;/p&gt;</textarea>', $body);

@@ -42,6 +42,9 @@ return [
     // Sidebar style: 'light' or 'dark'
     'sidebar' => 'light',
 
+    // Page width: 'full' uses the whole window, 'boxed' centres pages at most 1280 px wide
+    'content_width' => 'full',
+
     // Rich text editor uploads: folder (relative to the project) and its public URL.
     // The folder must be inside the web root and writable; admin:doctor checks it.
     'media' => [

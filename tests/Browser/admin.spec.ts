@@ -141,9 +141,9 @@ test('expired CSRF never writes and Escape closes locally', async ({ page }) => 
 
 test('standard large forms also save without replacing the document', async ({ page }) => {
   await ready(page, '/en/admin/posts?static=1');
-  await page.locator('a[href="/en/admin/posts/edit/8"]').click();
+  await page.locator('a[href^="/en/admin/posts/edit/8?"]').click();
   await page.locator('[name="body[en]"]').fill('x'.repeat(9000));
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.getByRole('button', { name: 'Save and close', exact: true }).click();
   await expect(page.locator('h1')).toHaveText('Posts');
   await stable(page);
 });
@@ -172,7 +172,7 @@ test('accounts and profile forms navigate and save without reload', async ({ pag
   await page.locator('.fa-topbar-user').click();
   await expect(page.locator('[name=full_name]')).toHaveValue('Sara');
   await page.locator('[name=full_name]').fill('Sara Updated');
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.fa-user-name')).toHaveText('Sara Updated');
   await stable(page);
 });
@@ -213,9 +213,9 @@ test('standard translations and mobile navigation remain usable without JavaScri
     await expect(page.locator('.fa-nav a[href="/en/admin/dashboard"]')).toBeVisible();
     await expect(page.locator('[name="title[ar]"]')).toBeVisible();
     await page.locator('[name="title[ar]"]').fill('عنوان جديد');
-    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await page.getByRole('button', { name: 'Save and close', exact: true }).click();
     await page.getByRole('link', { name: 'Continue on full page' }).click();
-    await page.locator('a[href="/en/admin/posts/edit/8"]').click();
+    await page.locator('a[href^="/en/admin/posts/edit/8?"]').click();
     await expect(page.locator('[name="title[ar]"]')).toHaveValue('عنوان جديد');
   } finally { await context.close(); }
 });

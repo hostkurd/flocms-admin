@@ -14,6 +14,8 @@ final class Form
     private array $fields = [];
 
     private array $components = [];
+    /** @var list<Field|\FloCMS\Admin\Form\Layout\Layout> secondary fields shown in a sidebar on the full page */
+    private array $aside = [];
     private int $columns = 2;
     public function columns(int $columns): self
     {
@@ -22,11 +24,26 @@ final class Form
     }
     public function getColumns(): int { return $this->columns; }
     public function components(): array { return $this->components; }
+    public function asideComponents(): array { return $this->aside; }
 
     /** Fields may be grouped in layouts while retaining flat, unique names. */
     public function schema(array $fields): self
     {
-        $components = array_merge($this->components, $fields);
+        return $this->index(array_merge($this->components, $fields), $this->aside);
+    }
+
+    /**
+     * Secondary fields (publishing, relations, dates) in a sidebar beside the
+     * main fields on the full-page form; in a dialog they follow the main fields.
+     * Same field types and layouts as schema(); names stay unique across both.
+     */
+    public function aside(array $fields): self
+    {
+        return $this->index($this->components, array_merge($this->aside, $fields));
+    }
+
+    private function index(array $components, array $aside): self
+    {
         $flat = []; $count = 0;
         $walk = function (array $nodes, int $depth = 0) use (&$walk, &$flat, &$count): void {
             if ($depth > 8) { throw new InvalidArgumentException('Form layouts are nested too deeply.'); }
@@ -39,7 +56,8 @@ final class Form
                 } else { throw new InvalidArgumentException('Form::schema() expects fields or layouts.'); }
             }
         };
-        $walk($components); $this->components = $components; $this->fields = $flat; return $this;
+        $walk($components); $walk($aside);
+        $this->components = $components; $this->aside = $aside; $this->fields = $flat; return $this;
     }
 
     /** Resolve dependencies in order; hidden submitted values never control other fields. */

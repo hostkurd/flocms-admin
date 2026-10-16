@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.12.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.12.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration or dependency change is needed.
+
+- Create and Edit now open as full pages. To keep the dialog for a resource, add `protected static string $formMode = 'modal';` (or `'slide-over'`).
+- Full-page forms: the default submit (Enter, or the first submit button) now saves and **stays** on the record; **Save and close** (`_close`) returns to the list. Scripts that posted the form and expected the list should send `_close=1`. Browser tests that clicked "Save changes" on a page click "Save and close" (or "Save") now; edit links carry `?back=…`, so match them with `a[href^=".../edit/8?"]`.
+- Pages now use the full window width. Add `'content_width' => 'boxed'` to `config/admin.php` for the previous centred layout.
+
+---
+
 # Upgrading to Admin 0.11.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.11.0" -W`, then run `php flo view:clear` and reload open Admin pages. Composer ships `admin-v0.11.0.css`/`.js` and `admin-editor-v0.11.0.js`; no Node build, migration, configuration or dependency change is needed.

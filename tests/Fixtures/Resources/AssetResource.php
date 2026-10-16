@@ -6,6 +6,8 @@ final class AssetResource extends Resource
 {
     protected static string $table = 'assets';
     protected static string $slug = 'assets';
+    // The browser tests drive these records in the list dialog.
+    protected static string $formMode = 'modal';
     protected static ?string $icon = 'image';
     protected static string $label = 'Asset';
     protected static string $pluralLabel = 'Assets';

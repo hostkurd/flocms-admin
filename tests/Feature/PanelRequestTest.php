@@ -32,7 +32,8 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringContainsString('Sea view villa', $body);
         self::assertStringContainsString('Mountain cabin', $body);
         self::assertStringContainsString('<span class="fa-badge fa-badge-green">Published</span>', $body);
-        self::assertStringContainsString('href="https://example.test/en/admin/posts/edit/1"', $body);
+        // Edit and New open the full page and carry the list to return to.
+        self::assertStringContainsString('href="https://example.test/en/admin/posts/edit/1?back=https%3A%2F%2Fexample.test%2Fen%2Fadmin%2Fposts%3Fsort%3Did%26dir%3Ddesc"', $body);
         self::assertStringContainsString('action="https://example.test/en/admin/posts/delete/1"', $body);
         self::assertStringContainsString('<input type="hidden" name="_token" value="tok">', $body);
         self::assertStringContainsString('New Post', $body);
@@ -50,13 +51,16 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringContainsString('data-theme="dark"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['theme' => 'dark']])['body']);
         self::assertStringContainsString('data-theme="auto"', self::request('GET', '/ku/admin/posts', ['admin_config' => $config + ['theme' => 'auto']])['body']);
         self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['theme' => 'sepia']])['body']);
+        // Content width: full by default, boxed on request.
+        self::assertStringContainsString('data-width="full"', self::request('GET', '/en/admin/posts')['body']);
+        self::assertStringContainsString('data-width="boxed"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['content_width' => 'boxed']])['body']);
     }
 
     public function testRowActionsAreAnIconButtonAndANoScriptMenu(): void
     {
         $body = self::request('GET', '/en/admin/posts?static=1')['body'];
         // Edit stays one click away; the other actions are in a <details> menu that works without JavaScript.
-        self::assertMatchesRegularExpression('~<div class="fa-row-actions"><a class="fa-icon-action" title="Edit" href="https://example.test/en/admin/posts/edit/1">~', $body);
+        self::assertMatchesRegularExpression('~<div class="fa-row-actions"><a class="fa-icon-action" title="Edit" id="fa-admin-resource-edit-1" data-admin-action="edit" href="https://example.test/en/admin/posts/edit/1\?back=https%3A%2F%2Fexample.test%2Fen%2Fadmin%2Fposts%3Fsort%3Did%26dir%3Ddesc">~', $body);
         self::assertStringContainsString('<details class="fa-menu" id="fa-admin-resource-menu-1" data-admin-popover><summary class="fa-icon-action" aria-label="More actions"', $body);
         self::assertMatchesRegularExpression('~<div class="fa-menu-panel">.*?action="https://example.test/en/admin/posts/delete/1".*?<button type="submit" class="fa-menu-item is-danger">~s', $body);
         self::assertStringContainsString('<form class="fa-search" method="get"', $body);

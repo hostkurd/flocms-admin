@@ -2,6 +2,26 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.12.0 - 2026-10-16
+
+Full-page forms for complex records, dialogs for small ones, and a full-width panel. No new dependency or migration.
+
+### Forms
+
+- Create and Edit now open as a **full page** by default instead of a dialog over the list. New `Resource::$formMode`: `'page'` (default), `'modal'` or `'slide-over'` (a panel from the side of the window); per action `->page()`, `->modal()`, `->slideOver()`. Delete and custom actions stay dialogs. See [docs/forms.md](docs/forms.md#pages-dialogs-and-slide-overs-012).
+- The record page has a sticky header with the title, **Delete**, **Cancel**, **Save** (stays on the record), **Save and close** (back to the list with its search, filters, sort and page) and, on new records, **Save and create another**. Enter in a field and Ctrl/⌘+S save. On phones the buttons sit in a bar at the bottom of the screen.
+- Unsaved changes: the header shows "Unsaved changes", and leaving through a panel link, the Back button or closing the tab asks first (new leave dialog). A form shown again after errors counts as unsaved.
+- New `Form::aside([...])`: secondary fields in a sidebar on the end side of the page (below the main fields on narrow screens and in dialogs). Top-level sections are drawn as cards.
+- New `Section::collapsible()` and `Section::collapsed()`: folding sections (native `<details>`); a section with an error opens.
+- The default full-page save (the first submit button) now stays on the record; `_close` returns to the list and `_another` opens a new form. `_continue` still works.
+- `make:admin-resource` writes `$formMode = 'page'` into new resources; `admin:doctor` reports an unknown `$formMode` or `content_width`.
+
+### Panel
+
+- New `content_width` setting: `'full'` (default, the whole window) or `'boxed'` (centred, at most 1280 px). Pages were boxed before.
+- The language badge in translatable fields is larger (15 px text, bigger dots), and fields leave room for it.
+- New strings `actions.save_close`, `actions.save_another`, `form.leave_title`, `form.leave_text`, `form.leave_stay`, `form.leave_go`, `form.unsaved_state`, `form.save_shortcut` in en/ar/ku.
+
 ## 0.11.0 - 2026-10-16
 
 A more professional editor, a page progress bar and widget commands. Additions only; no resource, field or configuration API changed, and no new dependency.
