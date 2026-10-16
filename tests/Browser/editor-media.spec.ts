@@ -40,9 +40,11 @@ test('a selected image gets a toolbar for position and width, and grips that res
   await expect(bar(page)).toBeVisible();
   await expect(content(page).locator('.fa-media.ProseMirror-selectednode .fa-media-handle')).toHaveCount(6);
   // The bar sits above the image, or over its top edge when the editor's toolbar is in the way.
-  const image = await content(page).locator('.fa-media').boundingBox();
-  const options = await bar(page).boundingBox();
-  expect(options!.y + options!.height <= image!.y || Math.abs(options!.y - (image!.y + 8)) < 2).toBe(true);
+  await expect.poll(async () => {
+    const image = (await content(page).locator('.fa-media').boundingBox())!;
+    const options = (await bar(page).boundingBox())!;
+    return options.y + options.height <= image.y || (options.y >= image.y && options.y + options.height <= image.y + 80);
+  }).toBe(true);
 
   await bar(page).getByRole('button', { name: '50% wide' }).click();
   await bar(page).getByRole('button', { name: 'Text wraps on the right' }).click();

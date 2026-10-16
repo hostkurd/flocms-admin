@@ -497,6 +497,8 @@ class RichField {
       buttons[(index + step + buttons.length) % buttons.length].focus();
     });
     const reposition = () => this.refreshMedia();
+    // An image that finishes loading changes the layout under the bar.
+    this.root.addEventListener('load', reposition, { capture: true, signal: this.listeners.signal });
     window.addEventListener('resize', reposition, { signal: this.listeners.signal });
     window.addEventListener('scroll', reposition, { signal: this.listeners.signal, passive: true, capture: true });
   }
