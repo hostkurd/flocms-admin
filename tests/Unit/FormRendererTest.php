@@ -35,8 +35,11 @@ final class FormRendererTest extends TestCase
         // Other languages, with their direction
         self::assertMatchesRegularExpression('/name="title\[ar\]"[^>]*dir="rtl" lang="ar"[^>]*value="فيلا"/', $html);
         self::assertMatchesRegularExpression('/name="title\[ku\]"[^>]*dir="rtl" lang="ku"/', $html);
-        // Badge: default, filled and empty languages
-        self::assertStringContainsString('<span class="fa-code is-default">en</span><span class="fa-code is-filled">ar</span><span class="fa-code is-empty">ku</span>', $html);
+        // Badge: the default language, then one dot per other language (filled / empty)
+        self::assertStringContainsString('<span class="fa-code is-default">en</span><span class="fa-dots" aria-hidden="true"><span class="fa-dot is-filled" data-lang="ar"></span><span class="fa-dot is-empty" data-lang="ku"></span></span>', $html);
+        self::assertStringContainsString('aria-label="Translations of Title. Missing: ku"', $html);
+        // The badge row follows the content language's direction, not the page's.
+        self::assertStringContainsString('<div class="fa-input-row" dir="ltr">', $html);
         self::assertStringContainsString('title="Missing: ku"', $html);
         self::assertStringContainsString('<dialog class="fa-lang-dialog" id="d-title"', $html);
         self::assertStringContainsString('default language', $html);
@@ -53,7 +56,7 @@ final class FormRendererTest extends TestCase
 
         self::assertStringContainsString('fa-lang-badge is-invalid', $html);
         self::assertStringContainsString('data-open-on-load="1"', $html);
-        self::assertStringContainsString('<span class="fa-code is-filled is-invalid">ar</span>', $html);
+        self::assertStringContainsString('<span class="fa-dot is-filled is-invalid" data-lang="ar"></span>', $html);
         self::assertStringContainsString('<p class="fa-error" role="alert">Too long</p>', $html);
     }
 
@@ -73,5 +76,18 @@ final class FormRendererTest extends TestCase
         self::assertMatchesRegularExpression('~data-dialog-cancel>.*?</button><button type="button" class="fa-btn fa-btn-primary fa-btn-sm" data-dialog-save>~s', $html);
         self::assertStringContainsString('<code class="fa-lang-code is-default">en</code> <span class="fa-lang-name">', $html);
         self::assertStringContainsString('<code class="fa-lang-code">ar</code> <span class="fa-lang-name">', $html);
+    }
+
+    public function testOneLanguageSitesGetPlainInputsThatKeepTheTranslatableShape(): void
+    {
+        $form = (new \FloCMS\Admin\Form\Form())->schema([
+            \FloCMS\Admin\Form\Fields\TextInput::make('title')->translatable()->required(),
+            \FloCMS\Admin\Form\Fields\Textarea::make('body')->translatable(),
+        ]);
+        $html = (new FormRenderer(['title' => ['en' => 'Villa'], 'body' => []], ['title' => 'Required'], ['en'], 'en'))->render($form);
+        self::assertStringNotContainsString('fa-lang-badge', $html);
+        self::assertStringNotContainsString('<dialog', $html);
+        self::assertMatchesRegularExpression('/<input id="f-title" name="title\[en\]"[^>]*dir="ltr" lang="en"[^>]*aria-invalid="true"[^>]*value="Villa"/', $html);
+        self::assertMatchesRegularExpression('/<textarea id="f-body" name="body\[en\]"/', $html);
     }
 }

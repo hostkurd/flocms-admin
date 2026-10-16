@@ -6,6 +6,8 @@ Update with `composer require "hostkurd/flocms-admin:^0.9.0" -W`, then run `php 
 - Optional: add `'theme' => 'light'` (or `'dark'`, `'auto'`) to `config/admin.php`. Without it the panel stays light.
 - The sidebar is now light. Add `'sidebar' => 'dark'` to keep a dark one, `'primary_color' => '#rrggbb'` for your brand colour and `'logo' => '/path/logo.svg'` for a logo (see the README).
 - The topbar links (View site, your name, Log out) moved into the account menu; profile is "My profile" there.
+- On phones, list rows are shown as cards; the card title is the first `searchable()` column. Make your title column searchable (it usually is) so cards are titled by it rather than by the ID.
+- On a site with a single language, translatable fields are now plain inputs; stored values keep the same JSON shape.
 - If a strict `font-src` Content-Security-Policy is set, allow `'self'`; the fonts are served from the site's own `/flo-admin/asset/` route.
 
 ---

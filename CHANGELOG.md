@@ -4,7 +4,7 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 
 ## 0.9.0 - 2026-10-16
 
-The panel redesign, matching the approved mockup. No resource, form, table, action or configuration API changes; existing sites keep working and only look different.
+The panel redesign, matching the approved mockup. Additions only (new optional settings, `Resource::$description`, icons and strings); no existing resource, form, table, action or configuration API changed, so existing sites keep working and only look different. Browser tests or scripts that clicked row actions, filters or the bulk select may need updating (see the List page section).
 
 ### Foundation
 
@@ -40,6 +40,14 @@ The panel redesign, matching the approved mockup. No resource, form, table, acti
 - Optional `Resource::$description`, shown under the list page title. The "Content" eyebrow above list titles is gone (the breadcrumb carries it).
 - 22 more icons for resources and actions (`newspaper`, `folder`, `map-pin`, `cart`, `credit-card`, `chart`, `message`, `bell`, `key`, `shield`, `layers`, `briefcase`, `book`, `camera`, `video`, `heart`, `link`, `phone`, `truck`, `grid`, `globe`, `user`), plus `chevron-down` and `external` for the topbar.
 - New strings `nav.admin`, `nav.breadcrumb`, `nav.language`, `nav.account` in en/ar/ku.
+
+### Phones, dashboard and translations
+- Phones (640 px and narrower): list rows become cards. The first searchable column (else the first column) is the card's title next to the row actions, and the other columns follow as label / value pairs. "Select this page" stays visible above the cards. Dashboard widget tables are unaffected.
+- Breakpoints reduced from seven to three: 640, 900 and 1024 px.
+- Charts: labels are HTML text at a fixed 12 px (they used to scale with the widget's width, from about 8 px to 18 px), with dashed gridlines and a middle value. Bars and lines stretch to the widget's width; lines and points keep their thickness. Still free of inline styles.
+- Stat tiles with a coloured accent bar, a larger value and a hover state when linked; a smaller Refresh dashboard button with an icon, aligned to the end.
+- The translation badge sits inside the input's end edge (the top corner of a textarea) and shows only the default language plus one dot per other language: filled when translated, hollow when empty, red when invalid. Its accessible label names the missing languages and updates as you type. The badge follows the content language's direction, so it never covers the start of the text on a page in the other direction.
+- Sites with a single language: translatable fields render as plain inputs, with no badge or translation dialog. Values are still saved as `{"en": "…"}`, so adding a language later needs no migration.
 
 Ship `admin-v0.9.0.css` and `admin-v0.9.0.js`.
 

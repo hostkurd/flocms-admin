@@ -13,13 +13,15 @@ function refresh(dialog: HTMLDialogElement): void {
   controls(dialog).forEach(input => {
     const filled = input.value.trim() !== '';
     if (!filled) missing.push(input.lang);
-    const code = [...button.querySelectorAll('.fa-code')].find(code => code.textContent === input.lang);
-    if (code && !code.classList.contains('is-default')) {
-      code.classList.toggle('is-filled', filled);
-      code.classList.toggle('is-empty', !filled);
+    const dot = [...button.querySelectorAll<HTMLElement>('.fa-dot')].find(dot => dot.dataset.lang === input.lang);
+    if (dot) {
+      dot.classList.toggle('is-filled', filled);
+      dot.classList.toggle('is-empty', !filled);
     }
   });
   button.title = missing.length ? (button.dataset.missingText || 'Missing: ') + missing.join(', ') : (button.dataset.completeText || '');
+  // The dots are hidden from assistive technology; the label carries the same status.
+  if (button.dataset.openText) button.setAttribute('aria-label', `${button.dataset.openText}. ${button.title}`);
 }
 
 function open(dialog: HTMLDialogElement): void {

@@ -56,10 +56,10 @@
     @endif
     @if(count($rows) > 0)
     <div class="fa-table-wrap">
-        <table class="fa-table">
+        <table class="fa-table fa-table-list">
             <thead>
                 <tr>
-                    @if(count($bulkActions) > 0)<th class="fa-selection-col"><input type="checkbox" data-admin-select-page-standard aria-label="{{ $t('bulk.select_page') }}"></th>@endif
+                    @if(count($bulkActions) > 0)<th class="fa-selection-col"><label class="fa-select-page"><input type="checkbox" data-admin-select-page-standard aria-label="{{ $t('bulk.select_page') }}"><span class="fa-select-page-label" aria-hidden="true">{{ $t('bulk.select_page') }}</span></label></th>@endif
                     @foreach($columns as $column)
                     <th scope="col" class="{{ $column['class'] }}" aria-sort="{{ $column['aria'] }}">
                         @if($column['sortUrl'] !== null)
@@ -79,7 +79,7 @@
                 <tr>
                     @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" form="fa-list-bulk" name="ids[]" value="{{ $row['id'] }}" aria-label="{{ $t('bulk.select_record', ['id' => $row['id']]) }}"></td>@endif
                     @foreach($row['cells'] as $cell)
-                    <td class="{{ $cell['class'] }}">{!! $cell['html'] !!}</td>
+                    <td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>
                     @endforeach
                     @if($hasActions)
                     <td class="fa-actions">{!! $row['actions'] !!}</td>
