@@ -70,4 +70,4 @@ The editor is Tiptap 3, bundled as `admin-editor-v<version>.js` (about 126 KB gz
 
 Keyboard: the toolbar is one tab stop (arrow keys, Home, End move inside it); Ctrl/⌘+B, I, U and Z work in the text; Enter applies an open link/image/embed panel and Escape closes it. Without JavaScript each language is a plain HTML textarea.
 
-In Reactive dialogs the editor keeps its own state while the dialog updates (validation errors on other fields do not reset it or its undo history), using Reactive 0.5's `data-rx-ignore`. Very long content (over 64 KB for the whole form) continues on the full-page form, as for other large forms.
+In Reactive dialogs the editor keeps its own state while the dialog updates (validation errors on other fields do not reset it or its undo history), using Reactive 0.5.1's `data-rx-ignore`. Very long content (over 64 KB for the whole form) continues on the full-page form, as for other large forms.
