@@ -2,6 +2,37 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.14.0 - 2026-10-17
+
+Website settings, panel settings, personal preferences and a Columns button. Two new tables, created by migrations that `php flo admin:install` writes; nothing changes until they are migrated. See the [Settings guide](docs/settings.md).
+
+### Website settings pages
+
+- `SettingsPage::make('site')->label('General')->icon('settings')->description('…')->schema([...])` pages declared in `admin/settings.php` (`settings_path`), with every field type and layout of resource forms. `->permission()` per page (default `settings.manage`), `->beforeSave()`, `->afterSave()`, `->columns()`.
+- `/admin/settings`: a vertical list of pages (icon, label, description; a select on phones), one form per page at `/admin/settings/edit/<page>`, Saved/Unsaved state, Ctrl/⌘+S, the leave dialog, and a Settings entry in the sidebar.
+- A page-level **Editing: language** switch: translatable fields show the chosen language's input; all languages are saved together; fields that are the same in every language are locked and marked "All languages" while another language is chosen; a failed save opens the language that needs fixing; dots after each translatable label show the filled languages. `->translationBadges()` uses the resource badge and dialog instead.
+- Values in one key–value table (`settings_table`, default `settings`) as JSON, keyed `<page>.<field>`; empty values are removed so the declared default applies again.
+- Website helpers `setting('site.title')`, `setting('contact.phone', '—')`, `setting('site.title', lang: 'ar')`, `settings('site')`, and `Settings::translations()`. The first read of a request loads `storage/cache/flocms-admin-settings.php`; saving or changing `admin/settings.php` rebuilds it, `php flo cache:clear` removes it. Without the table they return the defaults.
+- Files uploaded on settings pages are public (`public/uploads/settings`, `settings_uploads`), stored through flocms-uploader with random names. `ImageUpload::make('logo')->translatable()` keeps one image per language; a language without its own uses the default language's. Translatable uploads are refused on resource forms.
+- New `ColorPicker` field (`#rrggbb`, a swatch beside a text input).
+- `php flo make:admin-settings`; `admin:install` writes the settings and preferences migrations once (and adds them on existing installations); `admin:doctor` checks the pages, tables, a foreign `settings` table, undeclared stored keys and the uploads folder; `admin:list` lists the pages and their permissions.
+
+### Admin panel settings
+
+- Built-in **Admin panel** page (`settings.panel`): panel name and logo (per language), brand colour, default theme, sidebar style, content width and table density. A saved value overrides `config/admin.php`; an empty one falls back to it. `'panel_settings' => false` turns the page off. The login page follows the same values.
+- New table density (`density`: `comfortable`, `compact`).
+- A newly saved brand colour applies at once during panel navigation.
+
+### My preferences
+
+- `/admin/profile` gets two tabs: Account and **My preferences** (theme, panel language, table density), kept per user in `admin_user_preferences`, or in the session until that table exists.
+- A preferred panel language opens panel pages in that language; choosing a language from the top-bar menu (links now carry `?switch_language=1`) updates the preference.
+- `Resource::afterDelete(object $record)` hook; deleting a user deletes their preferences.
+
+### Columns button
+
+- `Column::toggleable(hiddenByDefault: false)`; a **Columns** popover beside Filters in the Reactive and full-page lists. Choices are a personal preference stored as changes from the defaults; the title column can never be hidden; sorting by a hidden column falls back to the default sort.
+
 ## 0.13.1 - 2026-10-16
 
 Fixes for resizing and positioning media in the rich text editor.

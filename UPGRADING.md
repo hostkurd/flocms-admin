@@ -1,3 +1,27 @@
+# Upgrading to Admin 0.14.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.14.0" -W`, then:
+
+```bash
+php flo admin:install     # adds the two new migrations; leaves config/admin.php alone
+php flo migrate           # creates `settings` and `admin_user_preferences`
+php flo view:clear
+php flo admin:doctor
+```
+
+Reload open Admin pages. Until the tables exist the panel works as before, the Settings page asks you to migrate, and preferences last until logout.
+
+- **A `settings` table already exists?** Before migrating, add `'settings_table' => 'site_settings'` (any free name) to `config/admin.php`, then run `php flo admin:install` again; the doctor reports a foreign `settings` table.
+- **A resource with the slug `settings`?** That URL now belongs to the panel: give the resource another `$slug` (the doctor and debug log name it).
+- **Who sees Settings:** website pages need `settings.manage`, the Admin panel page `settings.panel`. The skeleton's Admin (`settings.*`) and Super admin (`*`) roles have both; give them to other roles if needed.
+- **Settings files are public.** If your web root is not `public/`, set `settings_uploads` (`['root' => …, 'url' => …]`) in `config/admin.php`.
+- **Brand settings move to the browser (optional).** `brand`, `logo`, `primary_color`, `theme`, `sidebar`, `content_width` in `config/admin.php` keep working as defaults; a value saved in Settings → Admin panel overrides them. Add `'panel_settings' => false` to keep config-only branding.
+- **Language links:** the top-bar language links now end with `?switch_language=1`. Browser tests that matched those URLs exactly need updating.
+- **Browser tests** that located the Filters menu with a generic `details.fa-popover` should use `details.fa-popover[id$="-filters-menu"]`: tables with toggleable columns now have a second popover.
+- **Profile page:** it now uses the settings layout with Account and My preferences tabs; the form fields are unchanged.
+
+---
+
 # Upgrading to Admin 0.13.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.13.1" -W` and reload open Admin pages. Nothing else changes; if your site sends a Content-Security-Policy, allow `frame-src https://www.youtube-nocookie.com https://player.vimeo.com` on admin pages so embeds show their player.

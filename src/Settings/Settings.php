@@ -181,7 +181,8 @@ final class Settings
             $data['pages'][$page->getName()][] = $field->getName();
             if ($field instanceof FileUpload) { $data['files'][$key] = true; continue; }
             try {
-                $default = $field->stateFromRecord(null, Languages::default());
+                // The same shape as a saved value (a Toggle default is 1, not '1')
+                $default = SettingsEditor::storable($field, $field->stateFromRecord(null, Languages::default()));
             } catch (Throwable) {
                 $default = null;
             }

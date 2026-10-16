@@ -112,9 +112,11 @@ final class SettingsTest extends TestCase
 
     public function testDeclaredDefaultIsUsedUntilAValueIsStored(): void
     {
-        $this->declare("[SettingsPage::make('site')->schema([TextInput::make('title')->translatable()->default('Default title')])]");
+        $this->declare("[SettingsPage::make('site')->schema([TextInput::make('title')->translatable()->default('Default title'), Toggle::make('open')->default(true), Toggle::make('closed')])]");
         $this->database();
         self::assertSame('Default title', Settings::get('site.title'));
+        self::assertSame(1, Settings::get('site.open'), 'a default has the same shape as a saved value');
+        self::assertSame(0, Settings::get('site.closed'));
     }
 
     public function testCacheFileIsWrittenAndRebuiltWhenDeclarationsChange(): void

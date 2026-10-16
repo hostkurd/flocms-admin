@@ -317,4 +317,5 @@ return [
     'columns.title' => 'Columns',
     'columns.legend' => 'Show these columns',
     'columns.reset' => 'Reset',
+    'columns.apply' => 'Apply',
 ];
