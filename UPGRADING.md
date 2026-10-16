@@ -1,6 +1,6 @@
 # Upgrading to Admin 0.10.0
 
-Update with `composer require "hostkurd/flocms-admin:^0.10.0" -W` (this also brings `hostkurd/flocms-reactive` 0.5), then run `php flo view:clear` and reload open Admin pages. Composer ships `admin-v0.10.0.css`/`.js` and `admin-editor-v0.10.0.js`; no Node build or migration is needed, and nothing changes until a resource uses `RichEditor`.
+Update with `composer require "hostkurd/flocms-admin:^0.10.0" -W` (this also brings `hostkurd/flocms-reactive` 0.5.1), then run `php flo view:clear` and reload open Admin pages. Composer ships `admin-v0.10.0.css`/`.js` and `admin-editor-v0.10.0.js`; no Node build or migration is needed, and nothing changes until a resource uses `RichEditor`.
 
 - To use rich text, replace `Textarea::make('body')` with `RichEditor::make('body')` (keep `->translatable()`). Existing plain text shows as one paragraph and is saved as HTML from then on; print the column with `{!! RichText::clean($value) !!}` on the website instead of escaping it.
 - Image and video uploads need a public, writable folder. The default is `public/uploads/editor`, served at `/uploads/editor`; set `media` in `config/admin.php` if your web root differs, and run `php flo admin:doctor`. Images need PHP's GD or Imagick extension.

@@ -17,7 +17,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` ^2.3.2, `hostkurd/flocms-reactive` ^0.5.0 and `hostkurd/flocms-uploader` ^1.2.0 (installed by Composer)
+- `hostkurd/flocms-core` ^2.3.2, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.0 (installed by Composer)
 - A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
