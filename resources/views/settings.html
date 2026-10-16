@@ -22,9 +22,9 @@
         </div>
     </div>
     <div class="fa-settings-layout">
-        <nav class="fa-settings-nav" aria-label="{{ $t('settings.pages') }}">
+        <nav class="fa-settings-nav" aria-label="{{ $pagesLabel }}">
             <div class="fa-settings-picker" data-settings-picker data-admin-untracked hidden>
-                <label class="fa-sr" for="fa-settings-picker">{{ $t('settings.pages') }}</label>
+                <label class="fa-sr" for="fa-settings-picker">{{ $pagesLabel }}</label>
                 <select class="fa-input fa-select" id="fa-settings-picker" data-settings-nav>
                     @foreach($pages as $item)<option value="{{ $item['url'] }}"@if($item['active']) selected @endif>{{ $item['label'] }}</option>@endforeach
                 </select>
@@ -40,6 +40,7 @@
         </nav>
         <div class="fa-settings-body">
             @if(!$ready)<div class="fa-alert fa-alert-warning" role="status">{{ $t('settings.not_ready') }}</div>@endif
+            @if($notice !== null)<p class="fa-alert fa-alert-info" role="status">{{ $notice }}</p>@endif
             @if($switch)<p class="fa-alert fa-alert-info fa-settings-other" data-settings-other data-template="{{ $t('settings.editing_other', ['language' => ':language', 'default' => $defaultName]) }}" hidden></p>@endif
             {!! $fields !!}
         </div>

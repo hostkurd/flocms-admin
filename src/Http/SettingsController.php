@@ -97,6 +97,8 @@ final class SettingsController extends PanelController
             'defaultName' => Languages::name(Languages::default()),
             'ready' => $editor->ready(),
             'dirty' => $errors !== [],
+            'pagesLabel' => AdminLang::get('settings.pages'),
+            'notice' => null,
         ]);
 
         return $this->panel($title, $html, 'settings');

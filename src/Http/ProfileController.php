@@ -26,7 +26,7 @@ use FloCMS\Core\TemplateEngine;
  */
 final class ProfileController extends PanelController
 {
-    protected array $actionPermissions = ['admin_index' => null];
+    protected array $actionPermissions = ['admin_index' => null, 'admin_preferences' => null];
 
     public function admin_index(): string|\FloCMS\Core\Http\Response
     {
@@ -82,27 +82,93 @@ final class ProfileController extends PanelController
         }
 
         $title = AdminLang::get('profile.title');
-        $html = TemplateEngine::renderFile(PageView::viewPath('form'), [
-            't' => PageView::translator(),
-            'title' => $title,
-            'action' => Admin::url('profile'),
-            'fields' => (new FormRenderer($state, $errors, [], Languages::default(), true))->render($form),
-            'csrf' => \FloCMS\Core\Csrf::field(),
-            'listUrl' => Admin::url('dashboard'),
-            'listLabel' => AdminLang::get('nav.dashboard'),
-            'deleteUrl' => null,
-            'isEdit' => true,
-            'canContinue' => false,
-            'hasErrors' => $errors !== [],
-            'backUrl' => Admin::url('dashboard'),
-            'canAnother' => false,
-            'dirty' => $errors !== [],
-            'hasAside' => false,
-            'description' => null,
-            'trashIcon' => '',
-        ]);
+        $html = self::page($title, null, Admin::url('profile'),
+            (new FormRenderer($state, $errors, [], Languages::default(), true))->render($form), 'account', $errors !== []);
 
         return $this->panel($title, $html, 'profile');
+    }
+
+    /**
+     * /admin/profile/preferences: the user's own theme, panel language and
+     * table density. "Panel default" (empty) follows the panel settings.
+     */
+    public function admin_preferences(): string|\FloCMS\Core\Http\Response
+    {
+        $preferences = \FloCMS\Admin\Preferences\Preferences::current() ?? throw new HttpException(404);
+        $form = self::preferencesForm();
+        $errors = [];
+        if ($this->isPost()) {
+            $state = [];
+            foreach ($form->fields() as $name => $field) {
+                $state[$name] = $field->stateFromInput($this->request->all(), []);
+            }
+            $errors = (new FormValidator([], Languages::default(), null, true))->validate($form, $state);
+            if ($errors === []) {
+                foreach ($form->fields() as $name => $field) {
+                    $preferences->set($name, (string) $state[$name]);
+                }
+                Session::setFlash(AdminLang::get('preferences.saved'), 'success');
+                $language = (string) ($state['language'] ?? '');
+                $this->redirect($language !== '' ? self::inLanguage(Admin::url('profile/preferences'), $language) : Admin::url('profile/preferences'));
+            }
+            Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger');
+        } else {
+            $state = [];
+            foreach ($form->fields() as $name => $field) {
+                $value = $preferences->get($name);
+                $state[$name] = is_string($value) ? $value : '';
+            }
+        }
+
+        $title = AdminLang::get('preferences.title');
+        $html = self::page($title, AdminLang::get('preferences.description'), Admin::url('profile/preferences'),
+            (new FormRenderer($state, $errors, [], Languages::default(), true))->render($form), 'preferences', $errors !== [],
+            $preferences->persistent() ? null : AdminLang::get('preferences.session_only'));
+
+        return $this->panel($title, $html, 'profile');
+    }
+
+    private static function preferencesForm(): Form
+    {
+        $default = static fn (string $value): string => AdminLang::get('preferences.panel_default', ['value' => $value]);
+        $choices = static fn (array $values, string $prefix): array => array_combine($values, array_map(static fn (string $v): string => AdminLang::get($prefix . $v), $values));
+        $fields = [
+            \FloCMS\Admin\Form\Fields\Select::make('theme')->label(AdminLang::get('preferences.theme'))
+                ->options($choices(\FloCMS\Admin\AdminConfig::THEMES, 'theme.'))
+                ->placeholder($default(AdminLang::get('theme.' . \FloCMS\Admin\Support\Appearance::panelDefault('theme')))),
+        ];
+        if (count(Languages::all()) > 1) {
+            $names = [];
+            foreach (Languages::all() as $code) { $names[$code] = Languages::name($code); }
+            $fields[] = \FloCMS\Admin\Form\Fields\Select::make('language')->label(AdminLang::get('preferences.language'))
+                ->options($names)->placeholder(AdminLang::get('preferences.language_default'))->help(AdminLang::get('preferences.language_help'));
+        }
+        $fields[] = \FloCMS\Admin\Form\Fields\Select::make('density')->label(AdminLang::get('preferences.density'))
+            ->options($choices(\FloCMS\Admin\Settings\PanelSettings::DENSITIES, 'density.'))
+            ->placeholder($default(AdminLang::get('density.' . \FloCMS\Admin\Support\Appearance::panelDefault('density'))));
+
+        return (new Form())->columns(1)->schema($fields);
+    }
+
+    /** The same admin URL in another language: /en/admin/x → /ku/admin/x. */
+    public static function inLanguage(string $url, string $lang): string
+    {
+        return (string) preg_replace('~/[a-z]{2,3}(-[a-z0-9]{2,8})?/admin(?=/|$|\?)~', '/' . rawurlencode($lang) . '/admin', $url, 1);
+    }
+
+    /** The profile's two tabs around a form (same layout as the settings pages). */
+    private static function page(string $title, ?string $description, string $action, string $fields, string $current, bool $dirty, ?string $notice = null): string
+    {
+        $tabs = [];
+        foreach (['account' => ['profile', 'profile.account', 'profile.account_description', 'user'], 'preferences' => ['profile/preferences', 'preferences.title', 'preferences.tab_description', 'settings']] as $name => [$path, $label, $sub, $icon]) {
+            $tabs[] = ['name' => $name, 'label' => AdminLang::get($label), 'description' => AdminLang::get($sub), 'url' => Admin::url($path), 'icon' => \FloCMS\Admin\Support\Icons::svg($icon), 'active' => $name === $current];
+        }
+        return TemplateEngine::renderFile(PageView::viewPath('settings'), [
+            't' => PageView::translator(), 'title' => $title, 'description' => $description, 'action' => $action,
+            'fields' => $fields, 'csrf' => \FloCMS\Core\Csrf::field(), 'pages' => $tabs, 'pagesLabel' => AdminLang::get('nav.profile'),
+            'switch' => false, 'languages' => [], 'editing' => Languages::default(), 'defaultLang' => Languages::default(),
+            'defaultName' => Languages::name(Languages::default()), 'ready' => true, 'dirty' => $dirty, 'notice' => $notice,
+        ]);
     }
 
     private function form(object $user): Form

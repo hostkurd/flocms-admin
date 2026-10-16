@@ -147,6 +147,16 @@ final class UsersResource extends Resource
     }
 
     /** @return array<int, string> role number => label, from Config 'roles' */
+    /** A deleted user's personal preferences go too. */
+    public function afterDelete(object $record): void
+    {
+        $id = (string) ($record->id ?? '');
+        $store = \FloCMS\Admin\Preferences\Preferences::store();
+        if ($id !== '' && $store instanceof \FloCMS\Admin\Preferences\DatabasePreferenceStore) {
+            $store->forget($id);
+        }
+    }
+
     public static function roles(): array
     {
         $roles = Config::get('roles');

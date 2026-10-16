@@ -174,7 +174,7 @@ final class PanelView
             $links[] = [
                 'code' => $code,
                 'name' => Languages::name($code),
-                'url' => $base . '/' . rawurlencode($code) . '/admin' . ($rest !== '' ? '/' . $rest : '') . (is_string($query) && $query !== '' ? '?' . $query : ''),
+                'url' => $base . '/' . rawurlencode($code) . '/admin' . ($rest !== '' ? '/' . $rest : '') . '?' . (is_string($query) && $query !== '' ? $query . '&' : '') . PanelController::SWITCH_MARKER . '=1',
                 'current' => $code === $current,
             ];
         }

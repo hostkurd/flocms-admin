@@ -299,4 +299,18 @@ return [
     'panel_settings.density' => 'Table density',
     'panel_settings.density_help' => 'Compact shows more rows on list pages. Each user can change it in My preferences.',
     'panel_settings.use_default' => 'Default (:value)',
+    // 0.14: personal preferences
+    'profile.account' => 'Account',
+    'profile.account_description' => 'Name, email and password',
+    'preferences.title' => 'My preferences',
+    'preferences.tab_description' => 'Theme, language and density',
+    'preferences.description' => 'How the panel looks for you. Other users are not affected.',
+    'preferences.saved' => 'Preferences saved.',
+    'preferences.theme' => 'Theme',
+    'preferences.language' => 'Panel language',
+    'preferences.language_default' => 'Language of the address',
+    'preferences.language_help' => 'The panel opens in this language. Choosing another language from the top bar changes it.',
+    'preferences.density' => 'Table density',
+    'preferences.panel_default' => 'Panel default (:value)',
+    'preferences.session_only' => 'Your preferences are kept until you log out: the preferences table does not exist yet (php flo admin:install, then php flo migrate).',
 ];
