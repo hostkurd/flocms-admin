@@ -1,0 +1,27 @@
+<?php
+declare(strict_types=1);
+
+namespace {{ namespace }};
+{{ imports }}
+use FloCMS\Admin\Widgets\ChartWidget;
+use FloCMS\Admin\Widgets\WidgetContext;
+
+/**
+ * Dashboard chart: one series of up to 60 points, drawn as SVG.
+ * Registered in config/admin.php under 'widgets'.
+ */
+final class {{ class }} extends ChartWidget
+{
+    protected string $title = '{{ title }}'; // plain text or a site language key
+
+    // Every resource read below; users without its view permission do not see the widget.
+    protected array $resources = [{{ resources }}];
+
+    protected string $type = 'bar'; // bar or line
+    protected int|string $columnSpan = 1; // 1-4 or 'full'
+
+    protected function data(WidgetContext $context): array
+    {
+{{ body }}
+    }
+}

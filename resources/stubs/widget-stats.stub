@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+
+namespace {{ namespace }};
+{{ imports }}
+use FloCMS\Admin\Widgets\Stat;
+use FloCMS\Admin\Widgets\StatsWidget;
+use FloCMS\Admin\Widgets\WidgetContext;
+
+/**
+ * Dashboard statistics: up to eight Stat cards.
+ * Registered in config/admin.php under 'widgets'.
+ */
+final class {{ class }} extends StatsWidget
+{
+    protected string $title = '{{ title }}'; // plain text or a site language key
+
+    // Every resource read below; users without its view permission do not see the widget.
+    protected array $resources = [{{ resources }}];
+
+    protected int|string $columnSpan = 'full'; // 1-4 or 'full'
+    protected int $sort = 0;
+
+    protected function stats(WidgetContext $context): array
+    {
+{{ body }}
+    }
+}

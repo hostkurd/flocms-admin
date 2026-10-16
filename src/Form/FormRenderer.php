@@ -6,6 +6,7 @@ namespace FloCMS\Admin\Form;
 use FloCMS\Admin\Form\Fields\Hidden;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Support\Icons;
+use FloCMS\Admin\Support\EditorIcons;
 use FloCMS\Admin\Support\Str;
 use FloCMS\Admin\Translation\Languages;
 
@@ -283,7 +284,9 @@ final class FormRenderer
         $t = static fn (string $key, array $replace = []): string => AdminLang::get('editor.' . $key, $replace);
         $strings = [];
         foreach (['uploading', 'image_invalid', 'video_invalid', 'upload_failed', 'embed_invalid', 'link_invalid', 'too_large', 'progress',
-            'youtube', 'vimeo', 'video_file', 'empty', 'filled'] as $key) { $strings[$key] = $t($key); }
+            'youtube', 'vimeo', 'video_file', 'empty', 'filled', 'link_title', 'link_edit_title', 'image_title', 'image_edit_title', 'insert', 'save',
+            'words', 'cancelled', 'uploaded'] as $key) { $strings[$key] = $t($key); }
+        $strings['placeholder'] = $field->getPlaceholder() ?? $t('placeholder');
 
         $attributes = ' id="' . Str::e($id . '-rich') . '" data-admin-rich-editor data-script="' . Str::e(\FloCMS\Admin\Assets::editorUrl()) . '"'
             . ' data-config="' . Str::e(json_encode($config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)) . '"'
@@ -311,13 +314,13 @@ final class FormRenderer
             $html .= '</div>';
         }
 
-        // Toolbar and insert panels are shown by the script once the editor runs.
+        // Toolbar, menus and dialogs are shown by the script once the editor runs.
         if (!$field->isDisabled()) {
-            $buttons = ['heading2' => ['H2', 'heading2'], 'heading3' => ['H3', 'heading3'], 'bold' => ['bold', 'bold'], 'italic' => ['italic', 'italic'],
-                'underline' => ['underline', 'underline'], 'strike' => ['strike', 'strike'], 'link' => ['link', 'link'], 'bulletList' => ['list', 'bullet_list'],
-                'orderedList' => ['list-ordered', 'ordered_list'], 'blockquote' => ['quote', 'blockquote'], 'codeBlock' => ['code', 'code_block'],
-                'horizontalRule' => ['minus', 'horizontal_rule'], 'image' => ['image', 'image'], 'video' => ['video', 'video'], 'embed' => ['play', 'embed'],
-                'undo' => ['undo', 'undo'], 'redo' => ['redo', 'redo']];
+            $keys = ['bold' => 'Ctrl+B', 'italic' => 'Ctrl+I', 'underline' => 'Ctrl+U', 'strike' => 'Ctrl+Shift+S', 'link' => 'Ctrl+K', 'undo' => 'Ctrl+Z', 'redo' => 'Ctrl+Shift+Z',
+                'bulletList' => 'Ctrl+Shift+8', 'orderedList' => 'Ctrl+Shift+7', 'blockquote' => 'Ctrl+Shift+B', 'codeBlock' => 'Ctrl+Alt+C', 'heading2' => 'Ctrl+Alt+2', 'heading3' => 'Ctrl+Alt+3'];
+            $labels = ['heading2' => 'heading2', 'heading3' => 'heading3', 'bold' => 'bold', 'italic' => 'italic', 'underline' => 'underline', 'strike' => 'strike', 'link' => 'link',
+                'bulletList' => 'bullet_list', 'orderedList' => 'ordered_list', 'blockquote' => 'blockquote', 'codeBlock' => 'code_block', 'horizontalRule' => 'horizontal_rule',
+                'image' => 'image', 'video' => 'video', 'embed' => 'embed', 'undo' => 'undo', 'redo' => 'redo'];
             $groups = [['heading2', 'heading3'], ['bold', 'italic', 'underline', 'strike', 'link'], ['bulletList', 'orderedList', 'blockquote', 'codeBlock', 'horizontalRule'], ['image', 'video', 'embed'], ['undo', 'redo']];
             $html .= '<div class="fa-rich-toolbar" role="toolbar" aria-label="' . Str::e($t('toolbar', ['field' => $field->getLabel()])) . '" data-rich-toolbar hidden>';
             $first = true;
@@ -326,16 +329,27 @@ final class FormRenderer
                 if ($items === []) { continue; }
                 if (!$first) { $html .= '<span class="fa-rich-sep" aria-hidden="true"></span>'; }
                 $first = false;
+                $html .= '<span class="fa-rich-group">';
                 foreach ($items as $command) {
-                    [$icon, $key] = $buttons[$command];
-                    $label = $t($key);
-                    $content = str_starts_with($icon, 'H') ? '<span class="fa-rich-heading" aria-hidden="true">' . $icon . '</span>' : Icons::svgFor($icon);
+                    $label = $t($labels[$command]);
+                    $tip = $label . (isset($keys[$command]) ? ' (' . $keys[$command] . ')' : '');
                     $toggle = !in_array($command, ['image', 'video', 'embed', 'undo', 'redo', 'horizontalRule'], true);
-                    $html .= '<button type="button" class="fa-rich-btn" data-command="' . $command . '" title="' . Str::e($label) . '" aria-label="' . Str::e($label) . '"'
-                        . ($toggle ? ' aria-pressed="false"' : '') . ' tabindex="-1">' . $content . '</button>';
+                    // With uploads, Image offers "Upload" and "From a link" in a small menu.
+                    $menu = $command === 'image' && $config['uploads'];
+                    $html .= '<button type="button" class="fa-rich-btn' . ($menu ? ' has-menu' : '') . '" data-command="' . $command . '" title="' . Str::e($tip) . '" aria-label="' . Str::e($label) . '"'
+                        . ($toggle ? ' aria-pressed="false"' : '') . ($menu ? ' aria-haspopup="menu" aria-expanded="false" aria-controls="' . Str::e($id . '-image-menu') . '"' : '')
+                        . (in_array($command, ['link', 'embed'], true) || ($command === 'image' && !$menu) ? ' aria-haspopup="dialog"' : '') . ' tabindex="-1">'
+                        . EditorIcons::svg($command) . ($menu ? '<svg class="fa-rich-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>' : '') . '</button>';
+                    if ($menu) {
+                        $html .= '<div class="fa-rich-menu" id="' . Str::e($id . '-image-menu') . '" role="menu" aria-label="' . Str::e($label) . '" data-rich-menu="image" hidden>'
+                            . '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-upload" tabindex="-1">' . EditorIcons::svg('upload') . '<span><strong>' . Str::e($t('image_upload')) . '</strong><small>' . Str::e($t('image_limit', ['size' => $this->bytes($field->getMaxImageBytes())])) . '</small></span></button>'
+                            . '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-link" tabindex="-1">' . EditorIcons::svg('fromLink') . '<span><strong>' . Str::e($t('image_from_link')) . '</strong><small>' . Str::e($t('image_from_link_help')) . '</small></span></button>'
+                            . '</div>';
+                    }
                 }
+                $html .= '</span>';
             }
-            $html .= '</div>' . $this->richInsertPanels($field, $id, $config, $toolbar, $t);
+            $html .= '</div>' . $this->richDialogs($field, $id, $config, $toolbar, $t);
         }
 
         foreach ($languages as $lang) {
@@ -364,47 +378,63 @@ final class FormRenderer
         return $html . '</div>';
     }
 
-    /** @param array<string, mixed> $config */
-    private function richInsertPanels(Fields\RichEditor $field, string $id, array $config, array $toolbar, \Closure $t): string
+    private function bytes(int $bytes): string
     {
-        $size = static fn (int $bytes): string => $bytes >= 1048576 ? round($bytes / 1048576, 1) . ' MB' : (int) ceil($bytes / 1024) . ' KB';
-        $button = static fn (string $attribute, string $text, string $style = ''): string => '<button type="button" class="fa-btn fa-btn-sm' . ($style === '' ? '' : ' ' . $style) . '" ' . $attribute . '>' . Str::e($text) . '</button>';
-        $input = static fn (string $key, string $label, string $type, string $attribute, string $extra = ''): string => '<label class="fa-rich-insert-label" for="' . Str::e($id . '-' . $key) . '">' . Str::e($label) . '</label>'
-            . '<input class="fa-input" type="' . $type . '" id="' . Str::e($id . '-' . $key) . '" ' . $attribute . $extra . '>';
-        $actions = static fn (string $apply, string $extra = ''): string => '<div class="fa-rich-insert-actions">' . $extra . '<span class="fa-spacer"></span>'
-            . $button('data-insert-cancel', AdminLang::get('actions.cancel'), 'fa-btn-ghost') . $button('data-insert-apply', $apply, 'fa-btn-primary') . '</div>';
-        $status = '<p class="fa-help" role="status" data-insert-status></p>';
+        return $bytes >= 1048576 ? round($bytes / 1048576, 1) . ' MB' : (int) ceil($bytes / 1024) . ' KB';
+    }
+
+    /**
+     * Modal dialogs for the link, image-from-link and video-link inputs, the
+     * hidden file pickers, and the upload status bar. The dialogs are native
+     * <dialog> elements opened with showModal() above the form (or the
+     * resource dialog), and use plain buttons: a <form> cannot sit inside a form.
+     *
+     * @param array<string, mixed> $config
+     * @param list<string> $toolbar
+     */
+    private function richDialogs(Fields\RichEditor $field, string $id, array $config, array $toolbar, \Closure $t): string
+    {
+        $dialog = function (string $name, string $title, string $body, string $apply, string $extra = '') use ($id, $t): string {
+            $dialogId = $id . '-' . $name . '-dialog';
+            return '<dialog class="fa-rich-dialog" id="' . Str::e($dialogId) . '" data-rich-dialog="' . $name . '" aria-labelledby="' . Str::e($dialogId . '-title') . '">'
+                . '<div class="fa-rich-dialog-head"><h2 class="fa-rich-dialog-title" id="' . Str::e($dialogId . '-title') . '">' . Str::e($title) . '</h2>'
+                . '<button type="button" class="fa-rich-dialog-close" data-rich-cancel aria-label="' . Str::e(AdminLang::get('actions.cancel')) . '">' . EditorIcons::svg('close') . '</button></div>'
+                . '<div class="fa-rich-dialog-body">' . $body . '<p class="fa-rich-dialog-error" role="alert" data-rich-error hidden></p></div>'
+                . '<div class="fa-rich-dialog-foot">' . $extra . '<span class="fa-spacer"></span>'
+                . '<button type="button" class="fa-btn" data-rich-cancel>' . Str::e(AdminLang::get('actions.cancel')) . '</button>'
+                . '<button type="button" class="fa-btn fa-btn-primary" data-rich-apply>' . Str::e($apply) . '</button></div></dialog>';
+        };
+        $input = static fn (string $key, string $label, string $type, string $attributes, string $help = ''): string => '<div class="fa-rich-dialog-field">'
+            . '<label class="fa-rich-dialog-label" for="' . Str::e($id . '-' . $key) . '">' . Str::e($label) . '</label>'
+            . '<input class="fa-input" type="' . $type . '" id="' . Str::e($id . '-' . $key) . '" ' . $attributes . '>'
+            . ($help === '' ? '' : '<p class="fa-help">' . Str::e($help) . '</p>') . '</div>';
         $html = '';
         if (in_array('link', $toolbar, true)) {
-            $html .= '<div class="fa-rich-insert" data-insert="link" hidden>'
-                . $input('link', $t('link_url'), 'url', 'data-insert-url', ' inputmode="url" autocomplete="url" placeholder="https://"')
-                . '<label class="fa-check"><input type="checkbox" data-insert-blank> ' . Str::e($t('link_new_tab')) . '</label>' . $status
-                . $actions($t('apply'), $button('data-insert-remove', $t('link_remove'), 'fa-btn-ghost')) . '</div>';
+            $html .= $dialog('link', $t('link_title'),
+                $input('link-url', $t('link_url'), 'url', 'data-rich-url inputmode="url" autocomplete="url" placeholder="https://"')
+                . '<label class="fa-check fa-rich-check"><input type="checkbox" data-rich-blank> ' . Str::e($t('link_new_tab')) . '</label>',
+                $t('apply'), '<button type="button" class="fa-btn fa-btn-ghost fa-btn-danger-text" data-rich-remove>' . EditorIcons::svg('unlink') . '<span>' . Str::e($t('link_remove')) . '</span></button>');
         }
         if (in_array('image', $toolbar, true)) {
-            $upload = $config['uploads'] ? '<label class="fa-btn fa-btn-sm fa-rich-file">' . Icons::svgFor('upload') . '<span>' . Str::e($t('image_upload')) . '</span>'
-                . '<input type="file" class="fa-sr" accept="image/jpeg,image/png,image/gif,image/webp" data-insert-file></label>'
-                . '<p class="fa-help">' . Str::e($t('image_limit', ['size' => $size($field->getMaxImageBytes())])) . '</p><p class="fa-rich-or">' . Str::e($t('or')) . '</p>' : '';
-            $html .= '<div class="fa-rich-insert" data-insert="image" hidden>' . $upload
-                . $input('image-url', $t('image_url'), 'url', 'data-insert-url', ' inputmode="url" placeholder="https://"')
-                . $input('image-alt', $t('image_alt'), 'text', 'data-insert-alt', ' maxlength="300"')
-                . '<p class="fa-help">' . Str::e($t('image_alt_help')) . '</p>' . $status . $actions($t('insert')) . '</div>';
-        }
-        if (in_array('video', $toolbar, true)) {
-            $html .= '<div class="fa-rich-insert" data-insert="video" hidden>'
-                . '<label class="fa-btn fa-btn-sm fa-rich-file">' . Icons::svgFor('upload') . '<span>' . Str::e($t('video_upload')) . '</span>'
-                . '<input type="file" class="fa-sr" accept="video/mp4,video/webm" data-insert-file></label>'
-                . '<p class="fa-help">' . Str::e($t('video_limit', ['size' => $size($field->getMaxVideoBytes())])) . '</p>'
-                . '<progress class="fa-rich-progress" max="100" value="0" data-insert-progress hidden></progress>' . $status
-                . '<div class="fa-rich-insert-actions"><span class="fa-spacer"></span>' . $button('data-insert-cancel', AdminLang::get('actions.cancel'), 'fa-btn-ghost') . '</div></div>';
+            $html .= $dialog('image', $t('image_title'),
+                $input('image-url', $t('image_url'), 'url', 'data-rich-url inputmode="url" placeholder="https://"')
+                . $input('image-alt', $t('image_alt'), 'text', 'data-rich-alt maxlength="300"', $t('image_alt_help')), $t('insert'));
         }
         if (in_array('embed', $toolbar, true)) {
             $providers = implode(' / ', array_map(static fn (string $p): string => $p === 'youtube' ? 'YouTube' : 'Vimeo', $field->getEmbeds()));
-            $html .= '<div class="fa-rich-insert" data-insert="embed" hidden>'
-                . $input('embed', $t('embed_url', ['providers' => $providers]), 'url', 'data-insert-url', ' inputmode="url" placeholder="https://www.youtube.com/watch?v=…"')
-                . '<p class="fa-help">' . Str::e($t('embed_help')) . '</p>' . $status . $actions($t('insert')) . '</div>';
+            $html .= $dialog('embed', $t('embed_title'),
+                $input('embed-url', $t('embed_url', ['providers' => $providers]), 'url', 'data-rich-url inputmode="url" placeholder="https://www.youtube.com/watch?v=…"', $t('embed_help')), $t('insert'));
         }
-        return $html;
+        if ($config['uploads'] && in_array('image', $toolbar, true)) {
+            $html .= '<input type="file" class="fa-rich-file-input" accept="image/jpeg,image/png,image/gif,image/webp" data-rich-file="image" tabindex="-1" aria-hidden="true" hidden>';
+        }
+        if ($config['uploads'] && in_array('video', $toolbar, true)) {
+            $html .= '<input type="file" class="fa-rich-file-input" accept="video/mp4,video/webm" data-rich-file="video" tabindex="-1" aria-hidden="true" hidden>';
+        }
+        // Upload progress and errors, at the bottom edge of the editor.
+        return $html . '<div class="fa-rich-status" data-rich-status hidden><span class="fa-rich-status-text" role="status" aria-live="polite" data-rich-status-text></span>'
+            . '<span class="fa-rich-status-bar" aria-hidden="true"><span data-rich-status-bar></span></span>'
+            . '<button type="button" class="fa-rich-status-close" data-rich-status-cancel aria-label="' . Str::e(AdminLang::get('actions.cancel')) . '">' . EditorIcons::svg('close') . '</button></div>';
     }
 
     /** @return array<string, string> lang => message (other languages; the default one is reported on the field) */

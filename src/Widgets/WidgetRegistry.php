@@ -33,7 +33,11 @@ final class WidgetRegistry
         $seen = [];
         foreach ($classes as $class) {
             try {
-                if (!is_string($class) || !is_subclass_of($class, Widget::class) || !(new \ReflectionClass($class))->isInstantiable()) { throw new \InvalidArgumentException('must be an instantiable Widget subclass'); }
+                if (!is_string($class)) { throw new \InvalidArgumentException('list widget classes as Name::class strings'); }
+                $class = ltrim($class, '\\');
+                if (!class_exists($class)) { throw new \InvalidArgumentException(self::missing($class, $namespace, $path, $config->root())); }
+                if (!is_subclass_of($class, Widget::class)) { throw new \InvalidArgumentException('does not extend StatsWidget, RecordsWidget or ChartWidget'); }
+                if (!(new \ReflectionClass($class))->isInstantiable()) { throw new \InvalidArgumentException('is abstract; register a concrete widget class'); }
                 $class = (new \ReflectionClass($class))->getName();
                 if (isset($seen[$class])) { throw new \InvalidArgumentException('duplicate widget class'); } $seen[$class] = true;
                 $widget = new $class();
@@ -45,6 +49,23 @@ final class WidgetRegistry
         usort($result->widgets, static fn (Widget $a, Widget $b): int => $a->sort() <=> $b->sort());
         return $result;
     }
+    /** Why a listed class was not found, and where it was looked for. */
+    private static function missing(string $class, string $namespace, string $path, string $root): string
+    {
+        $prefix = $namespace . '\\';
+        if ($namespace === '' || !str_starts_with($class, $prefix)) {
+            return 'class not found: it is outside widgets_namespace (' . $namespace . '), so Composer must autoload it';
+        }
+        $file = $path . '/' . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+        $shown = str_starts_with($file, rtrim($root, '/\\') . '/') ? substr($file, strlen(rtrim($root, '/\\')) + 1) : $file;
+        if (!is_file($file)) {
+            $near = glob(dirname($file) . '/' . basename($file, '.php') . '*') ?: [];
+            $hint = $near !== [] ? ' (found ' . basename($near[0]) . ': the file must be named ' . basename($file) . ')' : ' (create it with: php flo make:admin-widget ' . basename($file, '.php') . ')';
+            return 'class not found: expected the file ' . $shown . $hint;
+        }
+        return 'class not found in ' . $shown . ': check its namespace (' . substr($class, 0, (int) strrpos($class, '\\')) . ') and class name (' . substr($class, (int) strrpos($class, '\\') + 1) . ')';
+    }
+
     public function configured(): bool { return $this->configured; }
     public function all(): array { return $this->widgets; }
     public function problems(): array { return $this->problems; }

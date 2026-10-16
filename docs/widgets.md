@@ -13,7 +13,17 @@ The dashboard's resource-count cards remain the default. Register project-owned 
 'widget_columns' => 2, // 1–4; mobile stacks all widgets
 ```
 
-Create the PHP files in `admin/Widgets`. Admin registers an autoloader for that directory/namespace; no application Composer autoload change is needed. Only explicitly listed classes load as widgets. Register every source Resource in Admin too. The built-in `FloCMS\Admin\Users\UsersResource` is also available while user management is enabled, with its normal `users.manage` permission. The examples below assume an existing `App\Admin\Resources\PostResource` with `status`, `title`, `views`, and the usual primary key; adapt the columns and values to your schema. No example table, migration or widget is installed automatically.
+Create a widget with the CLI, which writes the class and adds it to `'widgets'`:
+
+```
+php flo make:admin-widget ContentOverview --resource=Post
+php flo make:admin-widget RecentPosts --type=records --resource=Post
+php flo make:admin-widget PublicationChart --type=chart --resource=Post
+```
+
+`--type` is `stats` (default), `records` or `chart`; `--resource` names the resource it reads (required for `records`). If `config/admin.php` has a `'widgets'` list the command can't edit safely, it prints the line to add. `php flo admin:list` shows the registered widgets. If a listed class is not found, `php flo admin:doctor` names the file it expected (for example `admin/Widgets/ContentOverview.php`).
+
+Or create the PHP files in `admin/Widgets` by hand. Admin registers an autoloader for that directory/namespace; no application Composer autoload change is needed. Only explicitly listed classes load as widgets. Register every source Resource in Admin too. The built-in `FloCMS\Admin\Users\UsersResource` is also available while user management is enabled, with its normal `users.manage` permission. The examples below assume an existing `App\Admin\Resources\PostResource` with `status`, `title`, `views`, and the usual primary key; adapt the columns and values to your schema. No example table, migration or widget is installed automatically.
 
 ## Statistics
 
