@@ -833,3 +833,7 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 }
 @media (min-width:901px){.fa-settings-picker{display:none}}
 .fa-field.is-locked > .fa-label{display:inline-block;margin-inline-end:8px}
+/* Table density: compact list pages (Admin panel settings or My preferences) */
+.fa-panel[data-density="compact"] .fa-table th,.fa-panel[data-density="compact"] .fa-table td{padding:6px 12px}
+.fa-panel[data-density="compact"] .fa-table th{padding-block:7px}
+.fa-panel[data-density="compact"] .fa-table{font-size:13.5px}

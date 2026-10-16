@@ -26,7 +26,7 @@ final class AssetController extends Controller
             $type = 'text/css; charset=utf-8';
         } elseif (($theme = \FloCMS\Admin\Support\Theme::fileName()) !== null && $name === $theme) {
             // Only the stylesheet for the currently configured colour exists.
-            return Response::make(\FloCMS\Admin\Support\Theme::css((string) Admin::config()->primaryColor()))
+            return Response::make(\FloCMS\Admin\Support\Theme::css((string) \FloCMS\Admin\Support\Appearance::primaryColor()))
                 ->header('Content-Type', 'text/css; charset=utf-8')
                 ->header('Cache-Control', 'public, max-age=31536000, immutable')->header('X-Content-Type-Options', 'nosniff');
         } elseif (in_array($name, self::FONTS, true)) {

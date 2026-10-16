@@ -155,6 +155,7 @@ final class Admin
         self::$registry = null;
         self::$settings = null;
         \FloCMS\Admin\Settings\Settings::reset();
+        \FloCMS\Admin\Preferences\Preferences::reset();
         self::$problemsLogged = false;
         Languages::reset();
     }

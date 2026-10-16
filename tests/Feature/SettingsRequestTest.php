@@ -112,4 +112,49 @@ final class SettingsRequestTest extends RequestTestCase
         self::assertSame('ئەکمی|Acme|Homes by the sea|none', implode("\n", $output));
         self::assertFileExists(self::$root . '/storage/cache/flocms-admin-settings.php');
     }
+
+    public function testPanelSettingsOverrideTheConfigUntilCleared(): void
+    {
+        $before = self::request('GET', '/en/admin/dashboard', self::CONFIG + ['session' => self::ADMIN])['body'];
+        self::assertStringContainsString('data-theme="light"', $before);
+        self::assertStringContainsString('data-density="comfortable"', $before);
+        self::assertStringContainsString('Test Panel', $before);
+
+        $saved = self::post('/en/admin/settings/edit/panel', ['brand' => ['en' => 'Acme Admin', 'ku' => 'ئەکمی'], 'primary_color' => '#0a5', 'theme' => 'dark',
+            'sidebar' => 'dark', 'content_width' => 'boxed', 'density' => 'compact'], self::CONFIG + ['session' => self::ADMIN]);
+        self::assertTrue($saved['redirected'], $saved['body']);
+        self::assertSame('#00aa55', self::value('panel.primary_color'));
+
+        $after = self::request('GET', '/en/admin/dashboard', self::CONFIG + ['session' => self::ADMIN])['body'];
+        foreach (['data-theme="dark"', 'data-sidebar="dark"', 'data-width="boxed"', 'data-density="compact"', 'Acme Admin', '/flo-admin/asset/theme-'] as $expected) {
+            self::assertStringContainsString($expected, $after);
+        }
+        self::assertStringContainsString('ئەکمی', self::request('GET', '/ku/admin/dashboard', self::CONFIG + ['session' => self::ADMIN])['body']);
+
+        // An empty value falls back to config/admin.php again
+        self::post('/en/admin/settings/edit/panel', ['brand' => ['en' => ''], 'theme' => '', 'density' => ''], self::CONFIG + ['session' => self::ADMIN]);
+        $cleared = self::request('GET', '/en/admin/dashboard', self::CONFIG + ['session' => self::ADMIN]);
+        self::assertStringContainsString('data-theme="light"', $cleared['body']);
+        self::assertStringContainsString('Test Panel', $cleared['body']);
+
+        // Turned off: the page is gone and saved values are ignored
+        self::post('/en/admin/settings/edit/panel', ['theme' => 'dark'], self::CONFIG + ['session' => self::ADMIN]);
+        $off = ['admin_config' => self::CONFIG['admin_config'] + ['panel_settings' => false], 'session' => self::ADMIN];
+        self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/dashboard', $off)['body']);
+        self::assertSame(404, self::request('GET', '/en/admin/settings/edit/panel', $off)['status']);
+    }
+
+    public function testPanelPageNeedsSettingsPanelAndRejectsBadValues(): void
+    {
+        $permissions = self::PERMISSIONS;
+        $permissions[1] = ['content.*', 'settings.manage'];
+        self::assertSame(403, self::request('GET', '/en/admin/settings/edit/panel', self::CONFIG + ['permissions' => $permissions])['status']);
+        $body = self::request('GET', '/en/admin/settings/edit/site', self::CONFIG + ['permissions' => $permissions])['body'];
+        self::assertStringNotContainsString('Admin panel', $body);
+
+        $response = self::post('/en/admin/settings/edit/panel', ['primary_color' => 'blue', 'theme' => 'neon'], self::CONFIG + ['session' => self::ADMIN]);
+        self::assertFalse($response['redirected']);
+        self::assertStringContainsString('must be a colour such as', $response['body']);
+        self::assertNull(self::value('panel.theme'));
+    }
 }

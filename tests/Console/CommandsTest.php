@@ -206,6 +206,12 @@ final class CommandsTest extends TestCase
         self::assertSame('<?php return [];', file_get_contents($file));
     }
 
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
     public function testDoctorFlagsAForeignSettingsTableAndUndeclaredKeys(): void
     {
         file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
@@ -215,8 +221,9 @@ final class CommandsTest extends TestCase
         file_put_contents($this->root . '/admin/settings.php', "<?php return [\\FloCMS\\Admin\\Settings\\SettingsPage::make('site')->schema([\\FloCMS\\Admin\\Form\\Fields\\TextInput::make('title')])];");
         $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
         $pdo->exec('CREATE TABLE settings (id INTEGER PRIMARY KEY, name TEXT, val TEXT)');
-        $display = $this->runCommand(new DoctorCommand())->getDisplay();
-        self::assertStringContainsString("is not a flocms-admin settings table", $display);
+        $tester = $this->runCommand(new DoctorCommand());
+        $display = $tester->getDisplay();
+        self::assertStringContainsString("is not a flocms-admin settings table", $display, $tester->getErrorOutput());
         self::assertStringContainsString("'settings_table' => 'site_settings'", $display);
         self::assertStringContainsString('Settings pages: site (settings.manage)', $display);
 
