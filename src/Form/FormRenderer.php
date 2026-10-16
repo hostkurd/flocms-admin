@@ -183,8 +183,8 @@ final class FormRenderer
             $isDefault = $lang === $default;
             $html .= '<div class="fa-lang-row' . ($isDefault ? ' fa-mirror-row' : '') . (isset($langErrors[$lang]) ? ' has-error' : '') . '">';
             $html .= '<label class="fa-lang-label" for="' . Str::e($inputId) . '">'
-                . '<span class="fa-lang-name">' . Str::e(Languages::name($lang)) . '</span> '
-                . '<code class="fa-lang-code">' . Str::e($lang) . '</code>'
+                . '<code class="fa-lang-code' . ($isDefault ? ' is-default' : '') . '">' . Str::e($lang) . '</code> '
+                . '<span class="fa-lang-name">' . Str::e(Languages::name($lang)) . '</span>'
                 . ($isDefault ? ' <small class="fa-lang-hint">' . Str::e(AdminLang::get('translations.default_language')) . '</small>' : '')
                 . '</label>';
 
@@ -210,8 +210,8 @@ final class FormRenderer
         }
 
         $html .= '</div><div class="fa-dialog-foot">'
-            . '<button type="button" class="fa-btn fa-btn-primary" data-dialog-save>' . Str::e(AdminLang::get('actions.save')) . '</button>'
-            . '<button type="button" class="fa-btn" data-dialog-cancel>' . Str::e(AdminLang::get('actions.cancel')) . '</button>'
+            . '<button type="button" class="fa-btn fa-btn-sm" data-dialog-cancel>' . Str::e(AdminLang::get('actions.cancel')) . '</button>'
+            . '<button type="button" class="fa-btn fa-btn-primary fa-btn-sm" data-dialog-save>' . Str::e(AdminLang::get('actions.save')) . '</button>'
             . '</div></dialog>';
 
         return $html;

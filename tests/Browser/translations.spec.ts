@@ -55,11 +55,12 @@ test('translation Cancel and Escape restore drafts, contain focus and leave the 
   await expect(badge(page)).toBeFocused();
   await badge(page).click();
   await expect(translation(page).locator('[name="title[ar]"]')).toHaveValue('منزل 7');
-  await translation(page).locator('[data-dialog-cancel]').focus();
+  // Save is the last control; Tab wraps to the first language input and back.
+  await translation(page).locator('[data-dialog-save]').focus();
   await page.keyboard.press('Tab');
   await expect(translation(page).locator('[data-mirror]')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(translation(page).locator('[data-dialog-cancel]')).toBeFocused();
+  await expect(translation(page).locator('[data-dialog-save]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(translation(page)).not.toBeVisible();
   expect(await editor(page).evaluate(dialog => dialog.matches(':modal'))).toBe(true);

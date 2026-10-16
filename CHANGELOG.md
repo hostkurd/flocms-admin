@@ -26,6 +26,13 @@ The panel redesign, matching the approved mockup. No resource, form, table, acti
 - New icons: `pencil`, `trash`, `more`, `filter`, `x`, `chevron-left`, `chevron-right`. New strings `table.more_actions`, `table.page`, `filters.remove` in en/ar/ku.
 - Fix: the Reactive list's search field was missing its search icon.
 
+### Modal and forms
+- Dialogs end with Cancel followed by a filled primary button (Save changes, Create, or the action's own colour) on the end side; the close button is a proper icon. Delete confirmation uses the same order.
+- Standard (full-page) forms keep the primary button first so Enter still submits rather than cancels; their actions sit in a sticky bar at the bottom of the card. Standard action and bulk confirmation pages use the primary style too.
+- `Toggle` fields render as switches (the same checkbox underneath, so submitted values and no-JS behaviour are unchanged), mirrored in right-to-left languages.
+- The translation badge joins its input like an add-on; for long text it sits on the label line. The translation dialog is a compact panel whose rows start with the language code, and ends with Cancel, then Save.
+- Section descriptions sit directly under their heading, and consecutive sections are separated by a line.
+
 Ship `admin-v0.9.0.css` and `admin-v0.9.0.js`.
 
 ## 0.8.1 - 2026-10-16
