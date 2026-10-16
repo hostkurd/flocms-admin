@@ -315,4 +315,5 @@ return [
     'columns.legend' => 'إظهار هذه الأعمدة',
     'columns.reset' => 'إعادة الضبط',
     'columns.apply' => 'تطبيق',
+    'settings.choose_again' => 'لم يُحفظ هذا الملف بسبب الأخطاء: اختره مرة أخرى.',
 ];

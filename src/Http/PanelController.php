@@ -46,27 +46,35 @@ abstract class PanelController extends Controller
         $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
         $path = (string) (parse_url($uri, PHP_URL_PATH) ?: '');
         parse_str((string) (parse_url($uri, PHP_URL_QUERY) ?? ''), $query);
+        // The admin page itself ("posts/edit/5"), wherever the site lives
+        if (preg_match('~/admin(?:/([^?#]*))?$~', $path, $match) !== 1) {
+            return null;
+        }
+        $page = trim($match[1] ?? '', '/');
         $current = \FloCMS\Admin\Support\AdminLang::language();
-        $preferred = $preferences->get('language');
         $languages = \FloCMS\Admin\Translation\Languages::all();
-        $base = defined('SITE_URI') ? rtrim((string) constant('SITE_URI'), '/') : '';
-        $build = static function (string $lang) use ($path, $query, $base): string {
-            unset($query[self::SWITCH_MARKER]);
-            $url = (string) preg_replace('~/[a-z]{2,3}(-[a-z0-9]{2,8})?/admin(?=/|$)~', '/' . rawurlencode($lang) . '/admin', $path, 1);
-            $prefix = $base !== '' && str_starts_with($base, 'http') ? (string) preg_replace('~^(https?://[^/]+).*$~', '$1', $base) : '';
-            return $prefix . $url . ($query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
-        };
+        $preferred = $preferences->get('language');
+        $switching = ($query[self::SWITCH_MARKER] ?? null) === '1';
+        unset($query[self::SWITCH_MARKER]);
 
-        if (($query[self::SWITCH_MARKER] ?? null) === '1') {
+        if ($switching) {
             if (is_string($preferred) && $preferred !== '' && in_array($current, $languages, true)) {
                 $preferences->set('language', $current);
             }
-            return $build($current);
+            $target = $current;
+        } elseif (is_string($preferred) && $preferred !== $current && in_array($preferred, $languages, true)) {
+            $target = $preferred;
+        } else {
+            return null;
         }
-        if (is_string($preferred) && $preferred !== $current && in_array($preferred, $languages, true) && preg_match('~/admin(/|$)~', $path) === 1) {
-            return $build($preferred);
-        }
-        return null;
+
+        // Built like Admin::url(): the site's own address, never one taken from the request
+        $base = defined('SITE_URI') ? rtrim((string) constant('SITE_URI'), '/') : '';
+        $url = $base . '/' . rawurlencode($target) . '/admin' . ($page !== '' ? '/' . implode('/', array_map('rawurlencode', array_map('rawurldecode', explode('/', $page)))) : '');
+        $url .= $query === [] ? '' : '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+
+        $here = (preg_match('~^https?://[^/]+~i', $base, $origin) === 1 ? $origin[0] : '') . $uri;
+        return !$switching && $url === $here ? null : $url;
     }
 
     protected function isPost(): bool

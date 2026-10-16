@@ -73,6 +73,17 @@ final class ResourceRegistry
             return false;
         }
 
+        try {
+            foreach ((new $class())->form(new \FloCMS\Admin\Form\Form())->fields() as $field) {
+                if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && $field->isTranslatable()) {
+                    $this->problems[] = $class . ': field "' . $field->getName() . '" is a translatable upload; translatable uploads are supported on settings pages only';
+                    return false;
+                }
+            }
+        } catch (\Throwable) {
+            // A form that cannot be built here is reported where it is used (admin:doctor, the page)
+        }
+
         $slug = $class::getSlug();
 
         if (isset($this->resources[$slug])) {

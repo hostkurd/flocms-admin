@@ -66,6 +66,10 @@ final class PreferencesRequestTest extends RequestTestCase
         self::assertStringContainsString('/ku/admin/', self::request('GET', '/ku/admin/dashboard', ['session' => self::ADMIN])['body']);
         self::assertFalse(self::request('GET', '/ku/admin/dashboard', ['session' => self::ADMIN])['redirected']);
 
+        // A URL without a language segment (the default language) redirects once, not in a loop.
+        $bare = self::request('GET', '/admin/dashboard', ['session' => self::ADMIN]);
+        self::assertTrue($bare['redirected']);
+
         // Language links in the top bar carry the marker; following one updates the preference.
         self::assertStringContainsString('/en/admin/dashboard?switch_language=1', self::request('GET', '/ku/admin/dashboard', ['session' => self::ADMIN])['body']);
         $switched = self::request('GET', '/en/admin/dashboard?switch_language=1', ['session' => self::ADMIN]);

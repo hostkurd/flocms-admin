@@ -139,4 +139,31 @@ final class SettingsEditorTest extends TestCase
         self::assertSame(['contact.email' => 'a@b.test', 'site.title' => 'ACME'], $this->store->all());
         self::assertSame(['title' => 'ACME'], $seen);
     }
+
+    public function testDisabledFieldsShowTheirStoredValueAndAreNeverWritten(): void
+    {
+        $this->store->put(['site.code' => 'ABC']);
+        $page = SettingsPage::make('site')->schema([TextInput::make('title'), TextInput::make('code')->disabled()]);
+        $editor = new SettingsEditor($page, $this->store);
+        self::assertSame('ABC', $editor->initialState()['code']);
+        $editor->submit(['title' => 'Acme', 'code' => 'HACKED'], []);
+        self::assertSame('ABC', $this->store->all()['site.code']);
+    }
+
+    public function testAFileKeptByBeforeSaveIsNotDeleted(): void
+    {
+        $this->submit(['title' => ['en' => 'Acme']], self::files(['logo' => ['en' => $this->png()]]));
+        $old = $this->store->all()['site.logo']['en'];
+        $page = $this->page()->beforeSave(static function (array $values) use ($old): array { $values['logo'] = ['en' => $old]; return $values; });
+        (new SettingsEditor($page, $this->store))->submit(['title' => ['en' => 'Acme'], '_remove_upload' => ['logo' => ['en' => '1']]], [], static fn (): bool => true);
+        self::assertSame(['en' => $old], $this->store->all()['site.logo']);
+        self::assertFileExists($this->root . '/public/uploads/settings/' . $old);
+    }
+
+    public function testResourcesRefuseTranslatableUploads(): void
+    {
+        $registry = new \FloCMS\Admin\ResourceRegistry();
+        self::assertFalse($registry->add(\FloCMS\Admin\Tests\Fixtures\Settings\TranslatableUploadResource::class));
+        self::assertStringContainsString('translatable uploads are supported on settings pages only', $registry->problems()[0]);
+    }
 }

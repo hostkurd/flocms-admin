@@ -146,7 +146,6 @@ final class UsersResource extends Resource
         return $data;
     }
 
-    /** @return array<int, string> role number => label, from Config 'roles' */
     /** A deleted user's personal preferences go too. */
     public function afterDelete(object $record): void
     {
@@ -157,6 +156,7 @@ final class UsersResource extends Resource
         }
     }
 
+    /** @return array<int, string> role number => label, from Config 'roles' */
     public static function roles(): array
     {
         $roles = Config::get('roles');

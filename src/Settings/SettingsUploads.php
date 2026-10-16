@@ -76,6 +76,9 @@ final class SettingsUploads
             $html .= $isImage ? '<img class="fa-upload-preview is-fallback" src="' . Str::e(Settings::url($fallback)) . '" alt="">' : '';
             $html .= '<p class="fa-help fa-upload-fallback">' . Str::e(AdminLang::get('settings.uses_default_file', ['language' => Languages::name(Languages::default())])) . '</p>';
         }
+        if ($path === self::PENDING) {
+            $html .= '<p class="fa-help fa-upload-again">' . Str::e(AdminLang::get('settings.choose_again')) . '</p>';
+        }
         $html .= $file . '<p class="fa-help">' . Str::e(AdminLang::get('uploads.limit', ['size' => (string) intdiv($field->getMaxBytes(), 1024)])) . '</p>';
         if ($present && !$field->isDisabled()) {
             $html .= '<label class="fa-upload-remove"><input type="checkbox" name="_remove_upload' . self::bracket($name) . '" value="1"> ' . Str::e(AdminLang::get('uploads.remove')) . '</label>';
@@ -156,14 +159,30 @@ final class SettingsUploads
                     $value = (string) $result->path();
                     $this->created[] = $value;
                 }
-                $old = $lang === null ? ($stored[$name] ?? '') : ($stored[$name][$lang] ?? '');
-                if (is_string($old) && $old !== '' && $old !== $value && self::managed($old, $page, $field)) {
-                    $this->replaced[] = $old;
-                }
                 if ($lang === null) { $state[$name] = $value; } else { $state[$name][$lang] = $value; }
             }
         }
         return $state;
+    }
+
+    /**
+     * Files of the page that the final values no longer use (replaced, removed,
+     * or left over when a field became translatable), deleted after commit.
+     *
+     * @param array<string, FileUpload> $fields
+     * @param array<string, mixed> $stored values before the save, by field name
+     * @param array<string, mixed> $values values being stored (after beforeSave), by field name
+     */
+    public function replaced(SettingsPage $page, array $fields, array $stored, array $values): void
+    {
+        $paths = static fn (mixed $value): array => array_values(array_filter(is_array($value) ? array_map(static fn ($v): string => is_string($v) ? $v : '', $value) : [is_string($value) ? $value : ''], static fn (string $v): bool => $v !== ''));
+        foreach ($fields as $name => $field) {
+            if (!array_key_exists($name, $values)) { continue; }
+            $kept = $paths($values[$name]);
+            foreach ($paths($stored[$name] ?? null) as $old) {
+                if (!in_array($old, $kept, true) && self::managed($old, $page, $field)) { $this->replaced[] = $old; }
+            }
+        }
     }
 
     /** The save is committed: delete replaced and removed files. */

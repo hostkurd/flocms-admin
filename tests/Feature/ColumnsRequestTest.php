@@ -25,11 +25,16 @@ final class ColumnsRequestTest extends RequestTestCase
     {
         $list = self::request('GET', '/en/admin/posts')['body'];
         self::assertStringContainsString('id="fa-list-columns-menu"', $list);
+        self::assertMatchesRegularExpression('~class="fa-popover-panel fa-columns" method="post"~', $list);
         self::assertStringContainsString('name="columns[]" value="featured"', $list);
         self::assertStringNotContainsString('name="columns[]" value="title"', $list, 'the title column is never offered');
         self::assertStringContainsString('data-label="Featured"', $list);
 
-        $applied = self::request('GET', '/en/admin/posts?q=villa&sort=updated_at&dir=desc&_columns=apply&columns[]=updated_at');
+        // A GET never writes the choice; the form posts with the CSRF token.
+        self::request('GET', '/en/admin/posts?_columns=apply&columns[]=updated_at');
+        self::assertNull(self::stored(1, 'columns.posts'));
+        self::assertSame(419, self::request('POST', '/en/admin/posts', ['post' => ['_columns' => 'apply', 'columns' => ['updated_at']], 'expect_error' => true])['status']);
+        $applied = self::post('/en/admin/posts', ['_columns' => 'apply', 'columns' => ['updated_at'], '_back' => 'https://evil.test/']);
         self::assertTrue($applied['redirected']);
         self::assertSame(['featured' => false], self::stored(1, 'columns.posts'));
 
@@ -40,12 +45,12 @@ final class ColumnsRequestTest extends RequestTestCase
         self::assertStringContainsString('data-label="Featured"', self::request('GET', '/en/admin/posts', ['session' => self::SUPER])['body'], 'other users keep their own columns');
 
         // Sorting by a column the user hid falls back to the default sort
-        self::request('GET', '/en/admin/posts?_columns=apply&columns[]=featured');
+        self::post('/en/admin/posts', ['_columns' => 'apply', 'columns' => ['featured']]);
         $sorted = self::request('GET', '/en/admin/posts?sort=updated_at&dir=desc')['body'];
         self::assertStringContainsString('name="sort" value="id"', $sorted, 'the default sort (id) is used');
         self::assertStringNotContainsString('data-label="Updated at"', $sorted);
 
-        self::request('GET', '/en/admin/posts?_columns_reset=1');
+        self::post('/en/admin/posts', ['_columns' => 'apply', '_columns_reset' => '1']);
         self::assertNull(self::stored(1, 'columns.posts'));
     }
 

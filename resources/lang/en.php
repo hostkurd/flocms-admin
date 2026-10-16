@@ -318,4 +318,5 @@ return [
     'columns.legend' => 'Show these columns',
     'columns.reset' => 'Reset',
     'columns.apply' => 'Apply',
+    'settings.choose_again' => 'This file was not saved because of the errors: choose it again.',
 ];

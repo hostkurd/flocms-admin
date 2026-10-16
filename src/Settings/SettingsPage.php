@@ -157,10 +157,10 @@ final class SettingsPage
         return (new Form())->columns($this->columns)->schema($this->components);
     }
 
-    /** @return array<string, Field> fields whose value is stored, by name */
+    /** @return array<string, Field> fields with a stored value, by name (disabled ones are shown read-only and never written) */
     public function storedFields(): array
     {
-        return array_filter($this->form()->fields(), static fn (Field $f): bool => !$f instanceof \FloCMS\Admin\Form\Fields\Placeholder && !$f->isDisabled());
+        return array_filter($this->form()->fields(), static fn (Field $f): bool => !$f instanceof \FloCMS\Admin\Form\Fields\Placeholder);
     }
 
     public function key(string $field): string

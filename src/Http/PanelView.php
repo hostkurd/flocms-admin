@@ -73,7 +73,7 @@ final class PanelView
             'dashboardActive' => $activeSlug === 'dashboard',
             'usersUrl' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
             'usersActive' => $activeSlug === 'accounts',
-            'settingsUrl' => \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
+            'settingsUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
             'settingsActive' => $activeSlug === 'settings',
             'settingsIcon' => Icons::svg('settings'),
             'profileUrl' => $usersEnabled ? Admin::url('profile') : null,

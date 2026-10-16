@@ -140,6 +140,19 @@ final class SettingsTest extends TestCase
         self::assertSame('Hello', Settings::get('site.motto'));
     }
 
+    public function testAReadOlderThanASaveDoesNotWriteTheCache(): void
+    {
+        $this->declare("[SettingsPage::make('site')->schema([TextInput::make('title')])]");
+        $store = new SettingsStore($this->database());
+        $store->put(['site.title' => 'Old']);
+        // Simulate: the read happened, then a save bumped the version before the cache was written
+        $method = new \ReflectionMethod(Settings::class, 'write');
+        $method->setAccessible(true);
+        Settings::forget();
+        $method->invoke(null, ['values' => ['site.title' => 'Old'], 'defaults' => [], 'files' => [], 'pages' => [], 'format' => 1, 'stamp' => 'x'], 'stale-version');
+        self::assertFileDoesNotExist(Settings::cacheFile());
+    }
+
     public function testWithoutTableOrDatabaseDefaultsAreReturnedAndNothingIsCached(): void
     {
         $this->declare("[SettingsPage::make('site')->schema([TextInput::make('title')->default('Fallback')])]");

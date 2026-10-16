@@ -84,14 +84,18 @@ final class ResourceController extends PanelController
 
         // The Columns button: save the user's choice, then show the list without its parameters.
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $class::getSlug());
-        if ($this->query('_columns_reset', '') === '1' || $this->query('_columns', '') === 'apply') {
-            if ($this->query('_columns_reset', '') === '1') {
+        if ($this->isPost()) {
+            if (($this->request->input('_columns') ?? '') !== 'apply') { throw new HttpException(400); }
+            if (($this->request->input('_columns_reset') ?? '') === '1') {
                 $visibility->reset();
             } else {
-                $chosen = $this->request->queryValue('columns', []);
+                $chosen = $this->request->input('columns', []);
                 $visibility->save(array_values(array_filter(is_array($chosen) ? $chosen : [], 'is_string')));
             }
-            $this->redirect(Admin::url($class::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $sort, 'dir' => $dir]));
+            // Back to the same list (search, filters, sort, page); only this resource's own list URL.
+            $back = (string) ($this->request->input('_back') ?? '');
+            $list = Admin::url($class::getSlug());
+            $this->redirect($back === $list || str_starts_with($back, $list . '?') ? $back : $list);
         }
         // Sorting by a column the user hid falls back to the default sort.
         if ($sort !== null && $visibility->isHidden($sort)) {

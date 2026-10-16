@@ -88,7 +88,6 @@ final class SettingsEditor
         }
         $uploads = SettingsUploads::receive($uploadFields, $this->stored(), $input, $files, $isUploaded);
         $state += $uploads['state'];
-        $state = array_replace(array_intersect_key($state, $this->form->fields()), $state);
 
         $resolved = $this->form->evaluate($state, $record);
         foreach ($resolved->fields() as $field) { $state = $field->prepare($state, Languages::default()); }
@@ -118,6 +117,7 @@ final class SettingsEditor
                 if (!isset($this->page->storedFields()[$name])) { continue; }
                 $rows[$this->page->key((string) $name)] = $value;
             }
+            $batch->replaced($this->page, $uploadFields, $this->stored(), $values);
             $this->store->put($rows);
         } catch (\Throwable $error) {
             $batch->rollback();

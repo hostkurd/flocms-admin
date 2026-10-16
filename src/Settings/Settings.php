@@ -99,6 +99,11 @@ final class Settings
     public static function forget(): void
     {
         self::$data = null;
+        // A request that read the table before this save must not write its (older) cache afterwards.
+        $marker = self::versionFile();
+        if (is_dir(dirname($marker)) || @mkdir(dirname($marker), 0775, true)) {
+            @file_put_contents($marker, bin2hex(random_bytes(8)), LOCK_EX);
+        }
         $file = self::cacheFile();
         if (is_file($file)) {
             @unlink($file);
@@ -110,6 +115,18 @@ final class Settings
     public static function reset(): void
     {
         self::$data = null;
+    }
+
+    private static function versionFile(): string
+    {
+        return Admin::config()->root() . '/storage/cache/flocms-admin-settings.version';
+    }
+
+    private static function version(): string
+    {
+        $file = self::versionFile();
+        clearstatcache(true, $file);
+        return is_file($file) ? (string) @file_get_contents($file) : '';
     }
 
     public static function cacheFile(): string
@@ -193,13 +210,16 @@ final class Settings
         if ($store === null || !$store->exists()) {
             return $data;
         }
+        $version = self::version();
         $data['values'] = $store->all();
-        self::write($data + ['format' => self::FORMAT, 'stamp' => $stamp]);
+        if (self::version() === $version) {
+            self::write($data + ['format' => self::FORMAT, 'stamp' => $stamp], $version);
+        }
 
         return $data;
     }
 
-    private static function write(array $data): void
+    private static function write(array $data, string $version): void
     {
         $file = self::cacheFile();
         $dir = dirname($file);
@@ -209,6 +229,11 @@ final class Settings
         $temp = $dir . '/.flocms-admin-settings-' . bin2hex(random_bytes(6)) . '.tmp';
         $code = "<?php\n// flocms-admin settings cache: rebuilt automatically, safe to delete.\nreturn " . var_export($data, true) . ";\n";
         if (@file_put_contents($temp, $code, LOCK_EX) === false) {
+            return;
+        }
+        // A save happened meanwhile: keep its fresh state (no cache) instead of these values.
+        if (self::version() !== $version) {
+            @unlink($temp);
             return;
         }
         if (!@rename($temp, $file)) {

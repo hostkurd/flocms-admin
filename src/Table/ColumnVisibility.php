@@ -78,6 +78,6 @@ final class ColumnVisibility
 
     private function key(): string
     {
-        return 'columns.' . $this->slug;
+        return 'columns.' . (strlen($this->slug) <= 90 ? $this->slug : substr(hash('sha256', $this->slug), 0, 32));
     }
 }

@@ -34,15 +34,9 @@
         @if(count($columnChoices) > 0)
         <details class="fa-popover" id="fa-list-columns-menu" data-admin-popover>
             <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>
-            <form class="fa-popover-panel fa-columns" method="get" action="{{ $listUrl }}" aria-label="{{ $t('columns.title') }}">
-                @if($static !== null)<input type="hidden" name="static" value="1">@endif
-                <input type="hidden" name="q" value="{{ $search }}">
-                @foreach($filterState as $name => $value)
-                @if(is_array($value))
-                @foreach($value as $part => $item)<input type="hidden" name="filter[{{ $name }}][{{ $part }}]" value="{{ $item }}">@endforeach
-                @else<input type="hidden" name="filter[{{ $name }}]" value="{{ $value }}">@endif
-                @endforeach
-                @if($sort !== null)<input type="hidden" name="sort" value="{{ $sort }}"><input type="hidden" name="dir" value="{{ $dir }}">@endif
+            <form class="fa-popover-panel fa-columns" method="post" action="{{ $listUrl }}" aria-label="{{ $t('columns.title') }}">
+                {!! $csrf !!}
+                <input type="hidden" name="_back" value="{{ $backUrl }}">
                 <input type="hidden" name="_columns" value="apply">
                 <fieldset class="fa-columns-list"><legend class="fa-columns-legend">{{ $t('columns.legend') }}</legend>
                     @foreach($columnChoices as $choice)<label class="fa-check"><input type="checkbox" name="columns[]" value="{{ $choice['name'] }}"@if($choice['visible']) checked @endif> {{ $choice['label'] }}</label>@endforeach
