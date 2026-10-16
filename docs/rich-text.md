@@ -105,7 +105,7 @@ Uploads need a create or edit form of the resource; elsewhere (custom action for
 
 ## In the browser
 
-The editor is Tiptap 3, bundled as `admin-editor-v<version>.js` (about 126 KB gzipped) and loaded only on pages with an editor. It works under a strict Content-Security-Policy (`script-src 'self'; style-src 'self'`): no inline scripts or style elements, and embeds show as cards in the admin, so no third-party frames load there. On the website, allow the embed hosts if you set a CSP: `frame-src https://www.youtube-nocookie.com https://player.vimeo.com`.
+The editor is Tiptap 3, bundled as `admin-editor-v<version>.js` (about 126 KB gzipped) and loaded only on pages with an editor. It works under a strict Content-Security-Policy (`script-src 'self'; style-src 'self'`): no inline scripts or style elements. Since 0.13.1 an embed shows its real player in the editor (sandboxed, under a transparent shield so a click selects it); if your site sends a CSP, allow the embed hosts for both the admin and the website: `frame-src https://www.youtube-nocookie.com https://player.vimeo.com`.
 
 Links, images from a link and YouTube/Vimeo links are entered in native modal dialogs above the form or record dialog (plain buttons, no nested `<form>`). The footer shows the word count of the current language; the field's `placeholder()` (default "Start writing…") shows in an empty editor.
 

@@ -15,6 +15,8 @@ img[class*="rt-"],video[class*="rt-"]{height:auto;max-width:100%}
 
 /* Media position. Left and right are as on screen, also in right-to-left text. */
 .rt-align-left,.rt-align-center,.rt-align-right{display:block;margin-top:0;margin-bottom:1em}
+/* A figure, video or embed after a wrapped image sits beside it or below it, never under it. */
+.rt-figure,video[class*="rt-"],div[data-embed]{display:flow-root}
 .rt-align-left{margin-left:0;margin-right:auto}
 .rt-align-center{margin-left:auto;margin-right:auto}
 .rt-align-right{margin-left:auto;margin-right:0}
@@ -29,8 +31,8 @@ img[class*="rt-"],video[class*="rt-"]{height:auto;max-width:100%}
 
 /* YouTube and Vimeo embeds keep a 16:9 frame at any width. */
 div[data-embed]{position:relative;aspect-ratio:16/9;max-width:100%;margin-bottom:1em}
+div[data-embed].rt-wrap-left:not([class*="rt-w-"]),div[data-embed].rt-wrap-right:not([class*="rt-w-"]){width:50%}
 div[data-embed] iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-video[class*="rt-"]{display:block}
 
 /* Paragraphs and headings. */
 .rt-text-left{text-align:left}.rt-text-center{text-align:center}.rt-text-right{text-align:right}.rt-text-justify{text-align:justify}

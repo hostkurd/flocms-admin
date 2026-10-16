@@ -653,13 +653,22 @@ body:has(> .fa-login){margin:0}
 .fa-rich-content .ProseMirror-selectednode:not(.fa-media){outline:2px solid var(--fa-primary-text);outline-offset:2px}
 /* Media in the editor: a frame with grips; the rt-* classes of rich-text.css set width and position. */
 .fa-media{position:relative;width:fit-content;max-width:100%;margin:0 0 .75em;line-height:0}
+/* A media block never runs under a floated (wrapped) one: it starts its own formatting
+   context, so it sits beside the float or below it, and its frame and grips are its own. */
+.fa-rich-content .fa-media:not(.rt-wrap-left):not(.rt-wrap-right){display:flow-root}
 .fa-media[class*="rt-w-"]{max-width:none}
-.fa-media.rt-wrap-left,.fa-media.rt-wrap-right{line-height:0}
+.fa-media.is-resizing{max-width:none}
 .fa-media-frame{position:relative;border-radius:var(--fa-radius-sm)}
-.fa-media img,.fa-media video{display:block;max-width:100%;height:auto;margin:0;border-radius:var(--fa-radius-sm);cursor:pointer}
-.fa-media[class*="rt-w-"] img,.fa-media[class*="rt-w-"] video,.fa-media[data-kind="embed"] .fa-rich-embed{width:100%}
-.fa-media[data-kind="embed"]{width:100%}
-.fa-media[data-kind="embed"][class*="rt-w-"]{width:auto}
+/* The media fills its frame; without a width the frame shrinks to the media's own size. */
+.fa-media img,.fa-media video{display:block;width:100%;max-width:100%;height:auto;margin:0;border-radius:var(--fa-radius-sm);cursor:pointer}
+.fa-media:not([class*="rt-w-"]):not(.is-resizing) img,.fa-media:not([class*="rt-w-"]):not(.is-resizing) video{width:auto}
+.fa-media[data-kind="embed"]:not([class*="rt-w-"]){width:100%}
+.fa-media[data-kind="embed"].rt-wrap-left:not([class*="rt-w-"]),.fa-media[data-kind="embed"].rt-wrap-right:not([class*="rt-w-"]){width:50%}
+/* Embeds: the real player, 16:9, under a transparent shield so a click selects instead of playing. */
+.fa-rich-player{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:var(--fa-radius-sm);background:#0f1115}
+.fa-rich-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.fa-rich-player-shield{position:absolute;inset:0;z-index:1;cursor:pointer}
+.fa-rich-player-label{position:absolute;inset-inline-start:8px;inset-block-end:8px;z-index:1;display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;background:rgba(16,24,40,.72);color:#fff;font:600 11.5px/1.3 var(--fa-font);pointer-events:none}
 .fa-media-caption{display:block;margin-top:6px;font-size:13px;line-height:1.4;color:var(--fa-muted);text-align:center}
 .fa-media-caption[hidden]{display:none}
 .fa-media.ProseMirror-selectednode .fa-media-frame{outline:2px solid var(--fa-primary);outline-offset:2px}
