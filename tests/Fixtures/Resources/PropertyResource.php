@@ -59,7 +59,7 @@ final class PropertyResource extends Resource
     }
     public function table(Table $table): Table
     {
-        return $table->columns([TextColumn::make('title')->searchable()->sortable(), TextColumn::make('country'), TextColumn::make('city')])->defaultSort('id', 'desc')->actions([
+        return $table->columns([TextColumn::make('title')->searchable()->sortable(), TextColumn::make('country'), TextColumn::make('city')->toggleable()])->defaultSort('id', 'desc')->actions([
             \FloCMS\Admin\Actions\EditAction::make(), \FloCMS\Admin\Actions\DeleteAction::make(),
             \FloCMS\Admin\Actions\Action::make('relocate')->form(fn (Form $form): Form => $this->tableActionsForm($form))
                 ->authorize(fn (?object $record): bool => $record !== null && $this->canEdit($record))

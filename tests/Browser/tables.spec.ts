@@ -7,7 +7,7 @@ async function ready(page: Page) {
 }
 // Filters live in a popover; bulk actions are buttons in the selection bar.
 async function filters(page: Page) {
-  const menu = page.locator('details.fa-popover');
+  const menu = page.locator('details.fa-popover[id$="-filters-menu"]');
   if (!(await menu.evaluate(element => (element as HTMLDetailsElement).open))) await menu.locator('> summary').click();
 }
 async function bulk(page: Page, name: string) {
@@ -106,7 +106,7 @@ test('full-page filters and bulk deletion work with JavaScript disabled', async 
   const page = await context.newPage();
   try {
     await page.goto('http://127.0.0.1:8083/en/admin/posts?static=1');
-    await page.locator('details.fa-popover > summary').click();
+    await page.locator('details.fa-popover[id$="-filters-menu"] > summary').click();
     await page.locator('[name="filter[status]"]').selectOption('draft');
     await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
     await expect(page).toHaveURL(/static=1/);
@@ -164,8 +164,8 @@ test('active filters show as chips that remove one filter at a time', async ({ p
   await page.locator('[data-admin-filter=featured]').selectOption('1');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await expect(page.locator('.fa-chip')).toHaveCount(2);
-  await expect(page.locator('details.fa-popover')).not.toHaveAttribute('open', '');
-  await expect(page.locator('details.fa-popover .fa-count')).toHaveText('2');
+  await expect(page.locator('details.fa-popover[id$="-filters-menu"]')).not.toHaveAttribute('open', '');
+  await expect(page.locator('details.fa-popover[id$="-filters-menu"] .fa-count')).toHaveText('2');
   await page.getByRole('button', { name: 'Remove filter Status: Draft' }).click();
   await expect(page.locator('.fa-chip')).toHaveCount(1);
   await expect(page.locator('.fa-chip')).toContainText('Featured');

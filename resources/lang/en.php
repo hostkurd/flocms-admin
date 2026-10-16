@@ -313,4 +313,8 @@ return [
     'preferences.density' => 'Table density',
     'preferences.panel_default' => 'Panel default (:value)',
     'preferences.session_only' => 'Your preferences are kept until you log out: the preferences table does not exist yet (php flo admin:install, then php flo migrate).',
+    // 0.14: Columns button
+    'columns.title' => 'Columns',
+    'columns.legend' => 'Show these columns',
+    'columns.reset' => 'Reset',
 ];

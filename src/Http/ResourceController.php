@@ -82,6 +82,23 @@ final class ResourceController extends PanelController
         $dir = $this->query('dir', '') ?: null;
         $perPage = $table->getPerPage() ?? Admin::config()->perPage();
 
+        // The Columns button: save the user's choice, then show the list without its parameters.
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $class::getSlug());
+        if ($this->query('_columns_reset', '') === '1' || $this->query('_columns', '') === 'apply') {
+            if ($this->query('_columns_reset', '') === '1') {
+                $visibility->reset();
+            } else {
+                $chosen = $this->request->queryValue('columns', []);
+                $visibility->save(array_values(array_filter(is_array($chosen) ? $chosen : [], 'is_string')));
+            }
+            $this->redirect(Admin::url($class::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $sort, 'dir' => $dir]));
+        }
+        // Sorting by a column the user hid falls back to the default sort.
+        if ($sort !== null && $visibility->isHidden($sort)) {
+            $sort = null;
+            $dir = null;
+        }
+
         $result = $this->repository()->paginate($table, $search, $sort, $dir, $page, $perPage, AdminLang::language(), $filters);
 
         // Past the last page (e.g. after deleting its last row): go to the last one

@@ -11,7 +11,7 @@
         </span>
     </form>
     @endif
-    @if($hasSearch || $filterFields !== '' || $tableActions !== '')
+    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0)
     <div class="fa-list-toolbar">
         @if($hasSearch)
         <form class="fa-search" method="get" action="{{ $listUrl }}" role="search">
@@ -31,6 +31,29 @@
         @endif
         <span class="fa-toolbar-spacer"></span>
         @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
+        @if(count($columnChoices) > 0)
+        <details class="fa-popover" id="fa-list-columns-menu" data-admin-popover>
+            <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>
+            <form class="fa-popover-panel fa-columns" method="get" action="{{ $listUrl }}" aria-label="{{ $t('columns.title') }}">
+                @if($static !== null)<input type="hidden" name="static" value="1">@endif
+                <input type="hidden" name="q" value="{{ $search }}">
+                @foreach($filterState as $name => $value)
+                @if(is_array($value))
+                @foreach($value as $part => $item)<input type="hidden" name="filter[{{ $name }}][{{ $part }}]" value="{{ $item }}">@endforeach
+                @else<input type="hidden" name="filter[{{ $name }}]" value="{{ $value }}">@endif
+                @endforeach
+                @if($sort !== null)<input type="hidden" name="sort" value="{{ $sort }}"><input type="hidden" name="dir" value="{{ $dir }}">@endif
+                <input type="hidden" name="_columns" value="apply">
+                <fieldset class="fa-columns-list"><legend class="fa-columns-legend">{{ $t('columns.legend') }}</legend>
+                    @foreach($columnChoices as $choice)<label class="fa-check"><input type="checkbox" name="columns[]" value="{{ $choice['name'] }}"@if($choice['visible']) checked @endif> {{ $choice['label'] }}</label>@endforeach
+                </fieldset>
+                <div class="fa-popover-foot">
+                    <button class="fa-btn fa-btn-ghost fa-btn-sm" type="submit" name="_columns_reset" value="1">{{ $t('columns.reset') }}</button>
+                    <button class="fa-btn fa-btn-primary fa-btn-sm" type="submit">{{ $t('filters.apply') }}</button>
+                </div>
+            </form>
+        </details>
+        @endif
         @if($filterFields !== '')
         <details class="fa-popover" id="fa-list-filters-menu" data-admin-popover @if($filterErrors) open @endif>
             <summary class="fa-btn">{!! $filterIcon !!}<span>{{ $t('filters.title') }}</span>@if($filterCount > 0)<span class="fa-count">{{ $filterCount }}</span>@endif</summary>

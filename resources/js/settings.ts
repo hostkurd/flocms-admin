@@ -70,7 +70,8 @@ export function initializeSettings(root: HTMLElement): void {
     picker.hidden = false;
     pages.addEventListener('change', () => {
       // Follow the page's own link: the panel's navigation asks first when there are unsaved changes.
-      const link = [...form.querySelectorAll<HTMLAnchorElement>('.fa-settings-tab')].find(a => a.href === pages.value);
+      const target = new URL(pages.value, location.href).href;
+      const link = [...form.querySelectorAll<HTMLAnchorElement>('.fa-settings-tab')].find(a => a.href === target);
       const current = form.querySelector<HTMLAnchorElement>('.fa-settings-tab[aria-current="page"]');
       if (current) pages.value = current.href;
       link?.click();

@@ -84,6 +84,7 @@ async function navigate(url: URL, options: { method?: string; body?: URLSearchPa
     // Navigation never evaluates HTML scripts and never caches private page bodies.
     next.querySelectorAll('script, link[rel="stylesheet"]').forEach(element => element.remove());
     current?.replaceWith(next);
+    syncBrandColour(documentNext);
     initialize();
     const finalUrl = response.url || url.href;
     if (options.history !== false) history[options.replace || options.method === 'POST' ? 'replaceState' : 'pushState'](null, '', finalUrl);
@@ -132,6 +133,11 @@ document.addEventListener('submit', event => {
     // application's own <select data-admin-bulk-name> working too.
     const select = form.querySelector<HTMLSelectElement>('[data-admin-bulk-name]');
     if (select) form.querySelector<HTMLInputElement>('[data-rx-bind="selectedBulk"]')!.value = select.value;
+    return;
+  }
+  if (form.hasAttribute('data-admin-columns')) {
+    const chosen = [...form.querySelectorAll<HTMLInputElement>('[data-admin-column]')].filter(box => box.checked).map(box => box.value);
+    form.querySelector<HTMLInputElement>('[data-rx-bind="columns"]')!.value = JSON.stringify(chosen);
     return;
   }
   if (form.hasAttribute('data-admin-filters')) {
@@ -233,6 +239,29 @@ document.addEventListener('htmx:beforeSwap', ((event: CustomEvent) => {
   const element = event.detail.elt as HTMLElement | undefined;
   if (element?.hasAttribute('data-rx-component') && !element.isConnected) event.stopImmediatePropagation();
 }) as EventListener, true);
+
+/**
+ * The brand colour is a small versioned stylesheet next to the panel (its name
+ * changes with the colour). After saving a new colour in Settings → Admin panel,
+ * use the stylesheet of the page just loaded, or none for the default colour.
+ */
+function syncBrandColour(next: Document): void {
+  const selector = 'link[rel="stylesheet"][href*="/flo-admin/asset/theme-"]';
+  const wanted = next.querySelector<HTMLLinkElement>(selector);
+  const current = [...document.querySelectorAll<HTMLLinkElement>(selector)];
+  if (wanted && current.some(link => link.getAttribute('href') === wanted.getAttribute('href'))) return;
+  if (wanted) {
+    const href = new URL(wanted.getAttribute('href') || '', location.href);
+    if (href.origin !== location.origin || !/\/flo-admin\/asset\/theme-[a-f0-9]{12}\.css$/.test(href.pathname)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href.href;
+    // After the panel's own stylesheet, so the brand colour overrides its defaults.
+    const main = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href*="/flo-admin/asset/admin-v"]');
+    if (main) main.after(link); else document.head.appendChild(link);
+  }
+  current.forEach(link => link.remove());
+}
 
 function updateMenu(open: boolean): void {
   const root = panel();

@@ -79,6 +79,7 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='projects'
 }
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='settings'")->fetchColumn()) {
     $pdo->exec('CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)');
+    $pdo->exec('CREATE TABLE admin_user_preferences (`user_id` INTEGER NOT NULL, `key` VARCHAR(100) NOT NULL, `value` TEXT NULL, `updated_at` DATETIME NULL, PRIMARY KEY (`user_id`, `key`))');
 }
 // Each browser session has its own database, so the shared settings cache is rebuilt on every request.
 @unlink(ROOT . '/storage/cache/flocms-admin-settings.php');

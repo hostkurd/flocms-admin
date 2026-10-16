@@ -20,6 +20,7 @@ final class ResourceComponent extends Component
     #[State(rules: 'in:asc,desc', query: 'dir')] public string $direction = 'asc';
     #[State(rules: 'max:2000', query: 'filters')] public string $filters = '{}';
     #[State(rules: 'max:3500')] public string $selectedIds = '[]';
+    #[State(rules: 'max:2000')] public string $columns = '[]';
     #[State(rules: 'max:64')] public string $selectedBulk = '';
     #[State(writable: false)] public string $bulkIds = '[]';
     #[State(rules: 'max:100')] public string $selectedSort = '';
@@ -54,6 +55,19 @@ final class ResourceComponent extends Component
             if (!class_exists(ValidationException::class)) { class_exists(\FloCMS\Core\Validator::class); }
             throw new ValidationException(['_form' => AdminLang::get('filters.not_applied')]);
         }
+    }
+    /** The Columns button: $columns holds the names of the toggleable columns to show (JSON). */
+    #[Action] public function applyColumns(): void
+    {
+        $chosen = json_decode($this->columns, true);
+        if (!is_array($chosen) || !array_is_list($chosen)) { throw new HttpException(400); }
+        $this->visibility()->save(array_values(array_filter($chosen, 'is_string')));
+        $this->columns = '[]';
+    }
+    #[Action] public function resetColumns(): void { $this->visibility()->reset(); $this->columns = '[]'; }
+    private function visibility(): \FloCMS\Admin\Table\ColumnVisibility
+    {
+        return new \FloCMS\Admin\Table\ColumnVisibility($this->resource()->table(new Table()), $this->resource()::getSlug());
     }
     #[Action] public function clearFilters(): void { $this->filters = '{}'; $this->page = 1; $this->selectedIds = '[]'; }
     #[Action] public function clearSelection(): void { $this->selectedIds = '[]'; }
@@ -201,6 +215,9 @@ final class ResourceComponent extends Component
         $filters = new \FloCMS\Admin\Table\FilterSet($table, $this->filters);
         $resourceForm = $resource->form(new Form());
         foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $resourceForm->translatableNames(), true)); }
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $resource::getSlug());
+        // Sorting by a column the user hid falls back to the default sort.
+        if ($this->sort !== '' && $visibility->isHidden($this->sort)) { $this->sort = ''; $this->direction = 'asc'; }
         $result = $this->repository()->paginate($table, $this->search, $this->sort ?: null, $this->direction, $this->page,
             $table->getPerPage() ?? Admin::config()->perPage(), AdminLang::language(), $filters);
         $last = max(1, (int) $result['pagination']['last_page']);
@@ -226,6 +243,8 @@ final class ResourceComponent extends Component
         $listUrl = $this->listUrl($resource::getSlug());
         return $this->view(dirname(__DIR__, 2) . '/resources/views/reactive-resource.html', [
             't' => \FloCMS\Admin\Http\PageView::translator(), 'resource' => $resource, 'table' => $table, 'result' => $result,
+            'visibleColumns' => $visibility->visibleColumns(), 'columnsChanged' => $visibility->changed(), 'columnsIcon' => \FloCMS\Admin\Support\Icons::svg('columns'),
+            'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
             'search' => $this->search, 'page' => $this->page, 'last' => $last, 'prefix' => $prefix, 'mode' => $this->mode,
             'filterFields' => $filters->render($prefix), 'filters' => $this->filters, 'hasActiveFilters' => $filters->active() !== [],
             'filterErrors' => $filters->errors !== [], 'filterCount' => count($filters->active()), 'chips' => $filters->chips(),
