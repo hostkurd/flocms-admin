@@ -11,7 +11,7 @@ php flo admin:doctor
 
 Reload open Admin pages. Until the tables exist the panel works as before, the Settings page asks you to migrate, and preferences last until logout.
 
-- **A `settings` table already exists?** Before migrating, add `'settings_table' => 'site_settings'` (any free name) to `config/admin.php`, then run `php flo admin:install` again; the doctor reports a foreign `settings` table.
+- **One settings table.** Settings pages use FloCMS's own `settings` table (`param`, `value`, `lang`), the one core reads for `offline_mode`. Each admin setting is one row with an empty `lang` and a JSON value; existing rows are left alone. Sites that already have the table keep it (the migration only creates it when missing); `admin:doctor` checks its columns.
 - **A resource with the slug `settings`?** That URL now belongs to the panel: give the resource another `$slug` (the doctor and debug log name it).
 - **Who sees Settings:** website pages need `settings.manage`, the Admin panel page `settings.panel`. The skeleton's Admin (`settings.*`) and Super admin (`*`) roles have both; give them to other roles if needed.
 - **Settings files are public.** If your web root is not `public/`, set `settings_uploads` (`['root' => …, 'url' => …]`) in `config/admin.php`.

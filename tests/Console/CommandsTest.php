@@ -128,14 +128,14 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('auth.login_view presentation hook', $display);
 
         self::assertStringContainsString('Table "users" not found', $display, 'users management is on by default');
-        self::assertStringContainsString('Table "settings" not found: run php flo admin:install, then php flo migrate', $display);
+        self::assertStringContainsString('Settings table "settings" not found: run php flo admin:install, then php flo migrate', $display);
         self::assertStringContainsString('Table "admin_user_preferences" not found', $display);
         self::assertStringContainsString('/admin shows the skeleton\'s page', $display, 'skeleton before 1.8: no admin.home');
 
         $pdo->exec('ALTER TABLE properties ADD COLUMN title TEXT');
         $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, full_name TEXT, email TEXT, login TEXT, password TEXT,
             role INTEGER, status INTEGER, phone TEXT, is_verified INTEGER, verify_type INTEGER, token TEXT)');
-        $pdo->exec('CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)');
+        $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
         $pdo->exec('CREATE TABLE admin_user_preferences (user_id INTEGER, `key` VARCHAR(100), `value` TEXT NULL, updated_at DATETIME NULL, PRIMARY KEY (user_id, `key`))');
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
@@ -173,20 +173,22 @@ final class CommandsTest extends TestCase
 
     public function testInstallWritesTheSettingsAndPreferencesMigrationsOnce(): void
     {
-        file_put_contents($this->root . '/config/admin.php', "<?php return ['settings_table' => 'site_settings'];");
         $tester = $this->runCommand(new InstallCommand());
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
-        $settings = glob($this->root . '/database/migrations/*_create_site_settings_table.php');
+        $settings = glob($this->root . '/database/migrations/*_create_settings_table.php');
         $preferences = glob($this->root . '/database/migrations/*_create_admin_user_preferences_table.php');
         self::assertCount(1, $settings);
         self::assertCount(1, $preferences);
-        self::assertStringContainsString('CREATE TABLE IF NOT EXISTS `site_settings`', (string) file_get_contents($settings[0]));
+        $code = (string) file_get_contents($settings[0]);
+        self::assertStringContainsString('CREATE TABLE IF NOT EXISTS `settings`', $code);
+        self::assertStringContainsString('PRIMARY KEY (`param`, `lang`)', $code);
+        self::assertStringNotContainsString('DROP TABLE', $code, 'the table is FloCMS\'s: rolling back never drops it');
         $this->lint($settings[0]);
         $this->lint($preferences[0]);
 
         $again = $this->runCommand(new InstallCommand());
-        self::assertStringContainsString('A migration for "site_settings" already exists', $again->getDisplay());
-        self::assertCount(1, glob($this->root . '/database/migrations/*_create_site_settings_table.php'));
+        self::assertStringContainsString('A migration for "settings" already exists', $again->getDisplay());
+        self::assertCount(1, glob($this->root . '/database/migrations/*_create_settings_table.php'));
     }
 
     public function testMakeSettingsWritesTheFileOnce(): void
@@ -223,13 +225,12 @@ final class CommandsTest extends TestCase
         $pdo->exec('CREATE TABLE settings (id INTEGER PRIMARY KEY, name TEXT, val TEXT)');
         $tester = $this->runCommand(new DoctorCommand());
         $display = $tester->getDisplay();
-        self::assertStringContainsString("is not a flocms-admin settings table", $display, $tester->getErrorOutput());
-        self::assertStringContainsString("'settings_table' => 'site_settings'", $display);
+        self::assertStringContainsString("does not have the columns param, value and lang", $display, $tester->getErrorOutput());
         self::assertStringContainsString('Settings pages: site (settings.manage)', $display);
 
         $pdo->exec('DROP TABLE settings');
-        $pdo->exec('CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)');
-        $pdo->exec("INSERT INTO settings (`key`, `value`) VALUES ('site.title', '\"A\"'), ('old.thing', '\"B\"')");
+        $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
+        $pdo->exec("INSERT INTO settings (`param`, `value`, `lang`) VALUES ('site.title', '\"A\"', ''), ('old.thing', '\"B\"', ''), ('offline_mode', '0', 'en')");
         $display = $this->runCommand(new DoctorCommand())->getDisplay();
         self::assertStringContainsString('1 stored setting(s) no longer declared: old.thing', $display);
 

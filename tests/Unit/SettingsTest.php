@@ -46,7 +46,7 @@ final class SettingsTest extends TestCase
     {
         $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
         if ($table) {
-            $pdo->exec('CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)');
+            $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
         }
         return App::$db = new Database($pdo);
     }
@@ -87,9 +87,25 @@ final class SettingsTest extends TestCase
         $store->put(['site.title' => ['en' => 'Acme', 'ar' => 'أكمي'], 'site.phone' => '123', 'site.on' => '1']);
         $store->put(['site.phone' => null, 'site.on' => '0']);
         self::assertSame(['site.title' => ['en' => 'Acme', 'ar' => 'أكمي'], 'site.on' => '0'], $store->all());
-        $raw = App::$db->pdo()->query("SELECT value FROM settings WHERE `key` = 'site.title'")->fetchColumn();
-        self::assertSame('{"en":"Acme","ar":"أكمي"}', $raw);
+        $raw = App::$db->pdo()->query("SELECT value FROM settings WHERE `param` = 'site.title' AND `lang` = ''")->fetchColumn();
+        self::assertSame('{"en":"Acme","ar":"أكمي"}', $raw, 'one row per key, JSON value, empty lang');
+        self::assertSame(2, (int) App::$db->pdo()->query('SELECT COUNT(*) FROM settings')->fetchColumn());
         self::assertFalse((new SettingsStore($this->database(false)))->exists());
+    }
+
+    public function testCoreRowsOfTheSharedTableAreNeverTouched(): void
+    {
+        $db = $this->database();
+        $db->pdo()->exec("INSERT INTO settings (param, value, lang) VALUES ('offline_mode', '0', 'en'), ('offline_mode', '0', 'ku'), ('site_name', 'Old site', ''), ('site.title', 'not json', 'en')");
+        $store = new SettingsStore($db);
+        self::assertSame([], $store->all(), 'only admin rows: "<page>.<field>", empty lang, JSON value');
+        $store->put(['site.title' => 'Acme']);
+        $store->put(['site.title' => null]);
+        self::assertSame(4, (int) $db->pdo()->query('SELECT COUNT(*) FROM settings')->fetchColumn());
+        self::assertSame('0', \FloCMS\Core\Config::getSetting('offline_mode') ?: '0');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $store->put(['offline_mode' => '1']);
     }
 
     public function testGetResolvesLanguagesDefaultsAndFiles(): void

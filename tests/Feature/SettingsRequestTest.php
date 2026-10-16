@@ -12,13 +12,13 @@ final class SettingsRequestTest extends RequestTestCase
         parent::setUp();
         $pdo = self::pdo();
         $pdo->exec('DROP TABLE IF EXISTS settings');
-        $pdo->exec('CREATE TABLE settings (`key` VARCHAR(190) NOT NULL PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)');
+        $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
         exec('rm -rf ' . escapeshellarg(self::$root . '/storage/cache'));
     }
 
     private static function value(string $key): mixed
     {
-        $statement = self::pdo()->prepare('SELECT `value` FROM settings WHERE `key` = ?');
+        $statement = self::pdo()->prepare("SELECT `value` FROM settings WHERE `param` = ? AND `lang` = ''");
         $statement->execute([$key]);
         $value = $statement->fetchColumn();
         return $value === false ? null : json_decode((string) $value, true);

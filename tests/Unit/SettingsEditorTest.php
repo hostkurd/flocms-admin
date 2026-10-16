@@ -31,7 +31,7 @@ final class SettingsEditorTest extends TestCase
         Admin::useConfig(['panel_settings' => false], true, $this->root);
         $this->previousDb = App::$db;
         $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $pdo->exec('CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)');
+        $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
         App::$db = new Database($pdo);
         $this->store = new SettingsStore(App::$db);
         Admin::settings()->add($this->page());

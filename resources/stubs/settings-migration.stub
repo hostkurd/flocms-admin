@@ -5,23 +5,27 @@ use FloCMS\CLI\Database\Migration;
 use FloCMS\Core\Database;
 
 /**
- * Values of the admin settings pages (flocms-admin). One row per key
- * ("site.title"); the value is JSON: "Acme", {"en":"Acme","ar":"أكمي"}.
- * Read on the website with setting('site.title').
+ * FloCMS's settings table (param, value, lang), shared by flocms-core
+ * (Config::getSetting(), offline_mode) and flocms-admin's settings pages.
+ * Created only when the site does not have it yet. Each admin setting is one
+ * row with an empty lang and a JSON value: param 'site.title',
+ * value {"en":"Acme","ar":"أكمي"}. Read on the website with setting('site.title').
  */
 return new class extends Migration
 {
     public function up(Database $db): void
     {
         $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
-            `key` VARCHAR(190) NOT NULL PRIMARY KEY,
+            `param` VARCHAR(190) NOT NULL,
             `value` TEXT NULL,
-            `updated_at` DATETIME NULL
+            `lang` VARCHAR(10) NOT NULL DEFAULT \'\',
+            PRIMARY KEY (`param`, `lang`)
         )' . $this->tableOptions($db));
     }
 
+    /** The table belongs to FloCMS: rolling back removes only the admin's own rows. */
     public function down(Database $db): void
     {
-        $db->query('DROP TABLE IF EXISTS `{{ table }}`');
+        $db->query("DELETE FROM `{{ table }}` WHERE `lang` = '' AND `param` LIKE '%.%'");
     }
 };

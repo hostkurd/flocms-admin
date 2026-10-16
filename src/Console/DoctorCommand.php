@@ -299,21 +299,21 @@ final class DoctorCommand extends Command
             return;
         }
 
-        $table = $config->settingsTable();
+        $table = \FloCMS\Admin\Settings\SettingsStore::TABLE;
         $columns = $this->columns($db, $table);
         if ($columns === null) {
-            $this->bad('Table "' . $table . '" not found: run php flo admin:install, then php flo migrate');
-        } elseif (array_diff(['key', 'value', 'updated_at'], array_keys($columns)) !== []) {
-            $this->bad('Table "' . $table . '" exists but is not a flocms-admin settings table (columns key, value, updated_at): set another name in config/admin.php, e.g. \'settings_table\' => \'site_settings\'');
+            $this->bad('Settings table "' . $table . '" not found: run php flo admin:install, then php flo migrate');
+        } elseif (array_diff(['param', 'value', 'lang'], array_keys($columns)) !== []) {
+            $this->bad('Table "' . $table . '" does not have the columns param, value and lang of FloCMS\'s settings table');
         } else {
             $this->ok('Table "' . $table . '"');
             try {
-                $stored = array_keys((new \FloCMS\Admin\Settings\SettingsStore($db, $table))->all());
+                $stored = array_keys((new \FloCMS\Admin\Settings\SettingsStore($db))->all());
                 $unknown = array_values(array_diff($stored, array_keys($settings->fields())));
                 if ($unknown !== []) {
                     $this->caution(count($unknown) . ' stored setting(s) no longer declared: ' . implode(', ', array_slice($unknown, 0, 10)) . (count($unknown) > 10 ? ', …' : ''));
                 }
-                $color = (new \FloCMS\Admin\Settings\SettingsStore($db, $table))->all()['panel.primary_color'] ?? null;
+                $color = (new \FloCMS\Admin\Settings\SettingsStore($db))->all()['panel.primary_color'] ?? null;
                 if (is_string($color) && preg_match('/^#[0-9a-f]{6}$/D', $color) === 1 && \FloCMS\Admin\Support\Theme::contrastWithWhite($color) < 4.5) {
                     $this->caution(sprintf('Saved brand colour %s gives white button text a contrast of %.1f:1; choose a darker colour in Settings → Admin panel.', $color, \FloCMS\Admin\Support\Theme::contrastWithWhite($color)));
                 }

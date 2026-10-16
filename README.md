@@ -34,7 +34,7 @@ php flo admin:install
 
 - `config/admin.php`, the package's settings (deleting it switches the panel off);
 - `admin/Resources/`, where your resource classes live;
-- two migrations, for the `settings` table (settings pages) and `admin_user_preferences` (personal preferences).
+- two migrations: FloCMS's `settings` table, which the settings pages share with core (created only if the site lacks it), and `admin_user_preferences` (personal preferences).
 
 Then create the tables, a resource and, if you like, website settings pages:
 
@@ -280,7 +280,6 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `density` | `'comfortable'` | List rows: `'comfortable'` or `'compact'` |
 | `panel_settings` | `true` | The "Admin panel" settings page; its saved values override `brand`, `logo`, `primary_color`, `theme`, `sidebar`, `content_width` and `density` |
 | `settings_path` | `'admin/settings.php'` | File that declares the website settings pages |
-| `settings_table` | `'settings'` | Table of the settings values |
 | `settings_uploads` | `public/uploads/settings` at `/uploads/settings` | `['root' => …, 'url' => …]`: where files uploaded on settings pages are stored (public) |
 | `per_page` | `25` | Rows per page |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
@@ -320,7 +319,7 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 composer remove hostkurd/flocms-admin
 ```
 
-Then delete `config/admin.php` and `admin/` (your own code, so the package never deletes it). The `settings` and `admin_user_preferences` tables stay until you drop them (`DROP TABLE settings, admin_user_preferences;`), and so do files in `public/uploads/settings/`. Templates that call `localized()`, `setting()` or `settings()` need a replacement first.
+Then delete `config/admin.php` and `admin/` (your own code, so the package never deletes it). The `admin_user_preferences` table and the admin's rows in FloCMS's `settings` table stay until you remove them (`DROP TABLE admin_user_preferences;` and `DELETE FROM settings WHERE lang = '' AND param LIKE '%.%';`; keep the table itself, core uses it), and so do files in `public/uploads/settings/`. Templates that call `localized()`, `setting()` or `settings()` need a replacement first.
 
 ## Actions and Notifications
 

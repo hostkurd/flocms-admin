@@ -9,22 +9,28 @@ use PDO;
 use Throwable;
 
 /**
- * The settings table: one row per key, the value always JSON encoded
- * ("Acme", {"en":"Acme","ar":"أكمي"}, "1"), so plain and translatable values
- * need no type column.
+ * FloCMS's own settings table (param, value, lang), shared with core
+ * (Config::getSetting(), offline_mode). Each admin setting is one row:
  *
- *     CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL)
+ *     param = 'site.title'   lang = ''   value = '{"en":"Acme","ar":"أكمي"}'
+ *
+ * The value is always JSON, so plain and translatable values need no type
+ * column, and the empty lang marks a row that holds every language. Core's
+ * own per-language rows are never read or changed here.
  */
 final class SettingsStore
 {
+    /** Admin keys are "<page>.<field>"; rows of other shapes belong to core or the site. */
+    public const KEY_PATTERN = '/^[a-z][a-z0-9_]{0,63}\.[A-Za-z_][A-Za-z0-9_]{0,120}$/D';
+
+    /** The one settings table of a FloCMS site (core reads it too). */
+    public const TABLE = 'settings';
+
     private readonly string $table;
 
-    public function __construct(private readonly Database $db, string $table = 'settings')
+    public function __construct(private readonly Database $db)
     {
-        if (preg_match('/^[A-Za-z0-9_]{1,64}$/D', $table) !== 1) {
-            throw new InvalidArgumentException('Invalid settings table name "' . $table . '".');
-        }
-        $this->table = $table;
+        $this->table = self::TABLE;
     }
 
     public function table(): string
@@ -32,11 +38,11 @@ final class SettingsStore
         return $this->table;
     }
 
-    /** Whether the table exists and has the expected columns. */
+    /** Whether the table exists and has the columns param, value and lang. */
     public function exists(): bool
     {
         try {
-            $this->db->pdo()->query('SELECT `key`, `value`, `updated_at` FROM `' . $this->table . '` WHERE 1 = 0');
+            $this->db->pdo()->query('SELECT `param`, `value`, `lang` FROM `' . $this->table . '` WHERE 1 = 0');
             return true;
         } catch (Throwable) {
             return false;
@@ -44,16 +50,17 @@ final class SettingsStore
     }
 
     /**
-     * Every stored value, decoded. Rows whose value is not valid JSON are skipped.
+     * Every admin setting, decoded. Rows that are not admin settings (another
+     * language, another key shape, a value that is not JSON) are skipped.
      *
      * @return array<string, mixed>
      */
     public function all(): array
     {
         $values = [];
-        $statement = $this->db->pdo()->query('SELECT `key`, `value` FROM `' . $this->table . '`');
+        $statement = $this->db->pdo()->query("SELECT `param`, `value` FROM `" . $this->table . "` WHERE `lang` = ''");
         foreach ($statement->fetchAll(PDO::FETCH_NUM) as [$key, $value]) {
-            if (!is_string($value)) { continue; }
+            if (!is_string($value) || preg_match(self::KEY_PATTERN, (string) $key) !== 1) { continue; }
             try {
                 $values[(string) $key] = json_decode($value, true, 16, JSON_THROW_ON_ERROR);
             } catch (\JsonException) {
@@ -72,15 +79,14 @@ final class SettingsStore
     {
         $pdo = $this->db->pdo();
         $table = '`' . $this->table . '`';
-        $now = date('Y-m-d H:i:s');
-        $this->db->transaction(function () use ($pdo, $table, $values, $now): void {
-            $exists = $pdo->prepare('SELECT COUNT(*) FROM ' . $table . ' WHERE `key` = ?');
-            $update = $pdo->prepare('UPDATE ' . $table . ' SET `value` = ?, `updated_at` = ? WHERE `key` = ?');
-            $insert = $pdo->prepare('INSERT INTO ' . $table . ' (`key`, `value`, `updated_at`) VALUES (?, ?, ?)');
-            $delete = $pdo->prepare('DELETE FROM ' . $table . ' WHERE `key` = ?');
+        $this->db->transaction(function () use ($pdo, $table, $values): void {
+            $exists = $pdo->prepare('SELECT COUNT(*) FROM ' . $table . " WHERE `param` = ? AND `lang` = ''");
+            $update = $pdo->prepare('UPDATE ' . $table . " SET `value` = ? WHERE `param` = ? AND `lang` = ''");
+            $insert = $pdo->prepare('INSERT INTO ' . $table . " (`param`, `value`, `lang`) VALUES (?, ?, '')");
+            $delete = $pdo->prepare('DELETE FROM ' . $table . " WHERE `param` = ? AND `lang` = ''");
             foreach ($values as $key => $value) {
                 $key = (string) $key;
-                if (strlen($key) > 190) { throw new InvalidArgumentException('Settings key too long: ' . $key); }
+                if (preg_match(self::KEY_PATTERN, $key) !== 1) { throw new InvalidArgumentException('Invalid settings key: ' . $key); }
                 if ($value === null) {
                     $delete->execute([$key]);
                     continue;
@@ -90,9 +96,9 @@ final class SettingsStore
                 $found = (int) $exists->fetchColumn() > 0;
                 $exists->closeCursor();
                 if ($found) {
-                    $update->execute([$json, $now, $key]);
+                    $update->execute([$json, $key]);
                 } else {
-                    $insert->execute([$key, $json, $now]);
+                    $insert->execute([$key, $json]);
                 }
             }
         });

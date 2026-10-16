@@ -39,9 +39,8 @@ final class InstallCommand extends Command
         }
 
         // Tables of the settings pages and of personal preferences (written once)
-        \FloCMS\Admin\Admin::setRoot($project->root());
-        $table = \FloCMS\Admin\Admin::config()->settingsTable();
-        foreach (['settings-migration' => $table, 'preferences-migration' => 'admin_user_preferences'] as $stub => $name) {
+        // (the settings table is FloCMS's own: a site that already has a migration for it keeps that one)
+        foreach (['settings-migration' => \FloCMS\Admin\Settings\SettingsStore::TABLE, 'preferences-migration' => 'admin_user_preferences'] as $stub => $name) {
             $existing = glob($project->path('database/migrations') . DIRECTORY_SEPARATOR . '*_create_' . $name . '_table.php') ?: [];
             if ($existing !== []) {
                 $this->note('A migration for "' . $name . '" already exists: ' . basename($existing[0]));

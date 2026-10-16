@@ -120,11 +120,21 @@ Without a database or before `php flo migrate`, `setting()` returns the defaults
 
 ### Storage
 
+Settings pages use FloCMS's own `settings` table, the one flocms-core reads with `Config::getSetting()` (for example `offline_mode`, written by `php flo down`). A site has one settings table for everything:
+
 ```sql
-CREATE TABLE settings (`key` VARCHAR(190) PRIMARY KEY, `value` TEXT NULL, `updated_at` DATETIME NULL);
+CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT '', PRIMARY KEY (`param`, `lang`));
 ```
 
-Values are JSON: `"Acme"`, `{"en":"Acme","ar":"أكمي"}`, `1`, `{"en":"site/logo/1a2b….png"}`. Saving a page writes only its own keys, in one transaction; empty values are removed. If your site already has a `settings` table, set `'settings_table' => 'site_settings'` before running the migration. `admin:doctor` lists stored keys that no page declares any more.
+Each admin setting is **one row**: `param` is the key (`site.title`), `lang` is empty (the row holds every language) and `value` is JSON: `"Acme"`, `{"en":"Acme","ar":"أكمي"}`, `1`, `{"en":"site/logo/1a2b….png"}`.
+
+| param | value | lang |
+| --- | --- | --- |
+| `offline_mode` | `0` | `en` (core's own rows, one per language: never touched by the admin) |
+| `site.title` | `{"en":"Acme","ku":"ئەکمی"}` | (empty) |
+| `contact.phone` | `"+30 210 000"` | (empty) |
+
+Saving a page writes only its own keys, in one transaction; empty values are removed. The migration written by `admin:install` creates the table only when the site does not have it yet, and rolling it back deletes only the admin's rows, never the table. Read admin settings with `setting()`: core's `Config::getSetting()` reads its own per-language rows. `admin:doctor` checks the columns and lists stored keys that no page declares any more.
 
 ## Admin panel settings
 

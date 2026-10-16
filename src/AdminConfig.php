@@ -154,13 +154,6 @@ final class AdminConfig
         return ['root' => $root, 'url' => $url];
     }
 
-    /** Table of the settings pages' values (default "settings"). */
-    public function settingsTable(): string
-    {
-        $table = $this->values['settings_table'] ?? 'settings';
-        return is_string($table) && preg_match('/^[A-Za-z0-9_]{1,64}$/D', $table) === 1 ? $table : 'settings';
-    }
-
     /** Absolute path of the file that declares the settings pages (default admin/settings.php). */
     public function settingsPath(): string
     {

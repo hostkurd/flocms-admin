@@ -138,7 +138,7 @@ final class Settings
     public static function store(): ?SettingsStore
     {
         $db = App::db();
-        return $db === null ? null : new SettingsStore($db, Admin::config()->settingsTable());
+        return $db === null ? null : new SettingsStore($db);
     }
 
     /** Language map → one value. */
@@ -249,6 +249,6 @@ final class Settings
         $config = Admin::config();
         $file = $config->settingsPath();
         $source = is_file($file) ? filemtime($file) . ':' . filesize($file) : '-';
-        return Admin::VERSION . '|' . $config->settingsTable() . '|' . ($config->panelSettingsEnabled() ? 'p' : '-') . '|' . $source;
+        return Admin::VERSION . '|' . SettingsStore::TABLE . '|' . ($config->panelSettingsEnabled() ? 'p' : '-') . '|' . $source;
     }
 }
