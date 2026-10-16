@@ -30,11 +30,12 @@ final class WidgetsRequestTest extends RequestTestCase
     {
         @unlink(self::$root.'/storage/logs/app.log');
         $response=self::request('GET','/en/admin/dashboard',$this->options());
-        // This test has failed intermittently on CI (PHP 8.1 / MySQL 8) without a readable cause: GitHub cuts
-        // the message to the page's opening HTML. Put the widget error log and any request error first.
+        // Put the widget error log and any request error first: GitHub cuts long messages to the page's opening HTML.
         $why=self::diagnosis($response);
         self::assertSame(200,$response['status'],$why);
-        self::assertStringContainsString('Content overview',$response['body'],$why);self::assertStringContainsString('Sea view villa',$response['body'],$why);self::assertStringNotContainsString('Secret row',$response['body'],$why);self::assertStringNotContainsString('999',$response['body'],$why);self::assertStringContainsString('>12<',$response['body'],$why);self::assertStringContainsString('View chart data',$response['body'],$why);
+        self::assertStringContainsString('Content overview',$response['body'],$why);self::assertStringContainsString('Sea view villa',$response['body'],$why);self::assertStringNotContainsString('Secret row',$response['body'],$why);
+        // Look for the hidden row's value only as page text: the signed snapshot is random hex and can contain "999".
+        self::assertDoesNotMatchRegularExpression('/>\\s*999\\s*</',$response['body'],$why);self::assertStringContainsString('>12<',$response['body'],$why);self::assertStringContainsString('View chart data',$response['body'],$why);
         $ar=self::request('GET','/ar/admin/dashboard',$this->options());self::assertStringContainsString('فيلا',$ar['body']);self::assertStringContainsString('dir="rtl"',$ar['body']);
     }
     public function testRefreshReadsCurrentDataAndPermissionRevocationRemovesWidgets():void
