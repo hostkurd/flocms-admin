@@ -320,7 +320,7 @@ Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resourc
 
 ## Rich text
 
-Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). See the [Rich text guide](docs/rich-text.md).
+Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
 
 ## Dashboard widgets
 

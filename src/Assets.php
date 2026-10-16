@@ -23,6 +23,14 @@ final class Assets
         return $base . '/' . $lang . 'flo-admin/asset/admin-editor-v' . Admin::VERSION . '.js';
     }
 
+    /** The rich text stylesheet for the website (RichText::stylesheet() prints its tag). */
+    public static function richTextUrl(): string
+    {
+        $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
+        $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
+        return $base . '/' . $lang . 'flo-admin/asset/rich-text-v' . Admin::VERSION . '.css';
+    }
+
     public static function tags(): string
     {
         $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';

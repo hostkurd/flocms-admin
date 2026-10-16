@@ -2,6 +2,28 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.13.0 - 2026-10-16
+
+Layout tools for the rich text editor. Existing content and toolbars keep working; new buttons appear in the default toolbar. No new dependency or migration.
+
+### Images, videos and embeds
+
+- Select one to get **corner and side grips**: drag to resize in 5 % steps of the text column (proportions kept, a width label while dragging).
+- A **floating toolbar** above the selected item: Left, Centre, Right, text wrapping on either side, 25/50/75/100 % widths, and for images **Edit image**, **Replace image** (keeps description, caption, link, size and position) and **Remove**.
+- Images can have a **caption** and a **link** (new fields in the image dialog), saved as `<figure class="rt-figure"><a><img></a><figcaption>`.
+- Saved as classes, not styles (`rt-w-60`, `rt-align-center`, `rt-wrap-left`), so the website works under a strict CSP. New `RichText::stylesheet()` links the package's `rich-text.css` (served at `/flo-admin/asset/rich-text-v0.13.0.css`) for the website; it also gives embeds a responsive 16:9 frame.
+- An empty paragraph always follows the last image or embed, so typing can continue below it.
+
+### Paragraphs
+
+- New toolbar buttons (also in `RichEditor::BUTTONS`): **Text alignment** menu (left, centre, right, justify), **Switch text direction** (a right-to-left paragraph in left-to-right text, or the reverse), **Increase / Decrease indent** (lists nest; paragraphs indent up to four steps), **Clear formatting** (Ctrl/⌘+\\).
+- Pasting from Word or other office programs drops their hidden markup, styles and list bullets, and keeps alignment.
+
+### Server
+
+- `RichText::clean()` keeps only the presentation classes of `rich-text.css` (one width and one position per media element; alignment and indent on paragraphs and headings), `dir="rtl|ltr"` on blocks, and figures with one image, a checked link and a plain-text caption. Everything else is still removed.
+- New strings `editor.text_align`, `editor.direction`, `editor.indent`, `editor.outdent`, `editor.clear_formatting`, `editor.align_*`, `editor.caption`, `editor.caption_help`, `editor.image_link`, `editor.image_link_help`, `editor.media_*`, `editor.wrap_*`, `editor.width_to`, `editor.width_now`, `editor.resize`, `editor.image_replace` in en/ar/ku.
+
 ## 0.12.0 - 2026-10-16
 
 Full-page forms for complex records, dialogs for small ones, and a full-width panel. No new dependency or migration.

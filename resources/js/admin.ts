@@ -10,6 +10,7 @@ import './popovers';
 import { startProgress, finishProgress } from './progress';
 import { initializeRecord, isDirty, confirmLeave } from './record';
 import '../assets/admin.css';
+import '../assets/rich-text.css';
 
 let navigating = false;
 let navigation: AbortController | undefined;

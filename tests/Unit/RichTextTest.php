@@ -53,6 +53,44 @@ final class RichTextTest extends TestCase
         self::assertSame('', RichText::clean('<p><br></p><p>&nbsp;</p>'));
     }
 
+    public function testPresentationClassesAreKeptOnlyFromTheAllowList(): void
+    {
+        // One width (5 % steps) and one position per media element; nothing else.
+        self::assertSame('<img src="/a.png" alt="" class="rt-w-50 rt-wrap-left" loading="lazy">', RichText::clean('<img src="/a.png" class="rt-w-33 rt-w-50 rt-wrap-left rt-align-right evil" style="x" onerror="y">'));
+        self::assertSame('<video src="/v.mp4" class="rt-w-75 rt-align-center" controls preload="metadata"></video>', RichText::clean('<video src="/v.mp4" class="rt-w-75 rt-align-center rt-w-5"></video>'));
+        self::assertStringStartsWith('<div data-embed="youtube" data-id="dQw4w9WgXcQ" class="rt-w-60 rt-align-right"><iframe ', RichText::clean('<div data-embed="youtube" data-id="dQw4w9WgXcQ" class="rt-w-60 rt-align-right x"><iframe src="https://evil.test"></iframe></div>'));
+        // Paragraph alignment, indent and direction; lists and quotes keep only the direction.
+        self::assertSame('<p class="rt-text-center rt-indent-2" dir="rtl">Hi</p><h3 class="rt-text-justify">T</h3><ul dir="ltr"><li dir="rtl">x</li></ul><blockquote dir="rtl"><p>q</p></blockquote><blockquote><p>r</p></blockquote>',
+            RichText::clean('<p class="rt-text-center rt-indent-2 rt-indent-9 other" dir="rtl" style="color:red">Hi</p><h3 class="rt-text-justify">T</h3><ul dir="ltr" class="rt-text-center"><li dir="rtl">x</li></ul><blockquote dir="rtl"><p>q</p></blockquote><blockquote dir="auto"><p>r</p></blockquote>'));
+        self::assertSame('<p>x</p>', RichText::clean('<p dir="auto" class="rt-w-50">x</p>'));
+    }
+
+    public function testFiguresKeepOneImageItsLinkAndItsCaption(): void
+    {
+        self::assertSame('<figure class="rt-figure rt-w-60 rt-align-center"><a href="https://x.test" target="_blank" rel="noopener noreferrer"><img src="/a.png" alt="A" width="10" loading="lazy"></a><figcaption>Cap tion</figcaption></figure>',
+            RichText::clean('<figure class="rt-figure rt-w-60 rt-align-center bad" onclick="x"><a href="https://x.test" target="_blank"><img src="/a.png" alt="A" width="10" class="rt-w-20"></a><figcaption>Cap <b>tion</b><script>x</script></figcaption><p>dropped</p></figure>'));
+        self::assertSame('<figure class="rt-figure"><img src="/a.png" alt="" loading="lazy"><figcaption>Only a caption</figcaption></figure>', RichText::clean('<figure><a href="javascript:alert(1)"><img src="/a.png"></a><figcaption>Only a caption</figcaption></figure>'));
+        self::assertSame('', RichText::clean('<figure><figcaption>no image</figcaption></figure>'));
+        self::assertSame('<p>a</p>caption', RichText::clean('<p>a</p><figure><img src="/a.png"><figcaption>caption</figcaption></figure>', images: false));
+        self::assertFalse(RichText::isEmpty('<figure class="rt-figure"><img src="/a.png" alt=""></figure>'));
+    }
+
+    public function testTheWebsiteStylesheetIsServedAndLinked(): void
+    {
+        $controller = (new \ReflectionClass(AssetController::class))->newInstanceWithoutConstructor();
+        $property = new \ReflectionProperty(\FloCMS\Core\Controller::class, 'params');
+        $property->setAccessible(true);
+        $property->setValue($controller, ['rich-text-v' . Admin::VERSION . '.css']);
+        $controller->setRequest(new Request([], [], ['REQUEST_METHOD' => 'GET'], [], []));
+        $response = $controller->asset();
+        self::assertSame(200, $response->status());
+        self::assertStringContainsString('.rt-w-55{width:55%}', $response->body());
+        self::assertStringNotContainsString('url(', $response->body());
+        self::assertSame('<link rel="stylesheet" href="/flo-admin/asset/rich-text-v' . Admin::VERSION . '.css">', RichText::stylesheet());
+        // Every width the sanitizer keeps has a rule.
+        foreach (RichText::WIDTHS as $width) { self::assertStringContainsString('.rt-w-' . $width . '{width:' . $width . '%}', $response->body()); }
+    }
+
     public function testMediaCanBeSwitchedOff(): void
     {
         $html = '<p>a</p><img src="/a.jpg"><video src="/v.mp4"></video><div data-embed="vimeo" data-id="76979871"></div>';
@@ -155,7 +193,7 @@ final class RichTextTest extends TestCase
         self::assertStringNotContainsString('data-command="video"', $html);
         self::assertStringNotContainsString('data-rich-file', $html);
         // Without uploads the Image button opens the link dialog directly: no menu.
-        self::assertStringNotContainsString('data-rich-menu', $html);
+        self::assertStringNotContainsString('data-rich-menu="image"', $html);
         self::assertMatchesRegularExpression('~data-command="image" title="Image" aria-label="Image" aria-haspopup="dialog"~', $html);
         self::assertStringContainsString('<dialog class="fa-rich-dialog" id="p-f-body-image-dialog" data-rich-dialog="image"', $html);
         self::assertStringContainsString('&quot;uploads&quot;:false', $html);

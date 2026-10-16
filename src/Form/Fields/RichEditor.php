@@ -24,7 +24,8 @@ final class RichEditor extends Field
 {
     /** Toolbar buttons, in their default order. */
     public const BUTTONS = ['heading2', 'heading3', 'bold', 'italic', 'underline', 'strike', 'link',
-        'bulletList', 'orderedList', 'blockquote', 'codeBlock', 'horizontalRule', 'image', 'video', 'embed', 'undo', 'redo'];
+        'bulletList', 'orderedList', 'outdent', 'indent', 'textAlign', 'direction', 'blockquote', 'codeBlock', 'horizontalRule',
+        'image', 'video', 'embed', 'clearFormatting', 'undo', 'redo'];
 
     /** @var list<string> */
     private array $toolbar = self::BUTTONS;

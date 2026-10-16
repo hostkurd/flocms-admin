@@ -20,6 +20,10 @@ final class AssetController extends Controller
         if (in_array($name, ['admin-v' . Admin::VERSION . '.js', 'admin-v' . Admin::VERSION . '.css', 'admin-editor-v' . Admin::VERSION . '.js'], true)) {
             $file = $root . '/dist/' . $name;
             $type = str_ends_with($name, '.js') ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8';
+        } elseif ($name === 'rich-text-v' . Admin::VERSION . '.css') {
+            // Presentation of rich text on the website (widths, positions, captions, alignment).
+            $file = $root . '/resources/assets/rich-text.css';
+            $type = 'text/css; charset=utf-8';
         } elseif (($theme = \FloCMS\Admin\Support\Theme::fileName()) !== null && $name === $theme) {
             // Only the stylesheet for the currently configured colour exists.
             return Response::make(\FloCMS\Admin\Support\Theme::css((string) Admin::config()->primaryColor()))

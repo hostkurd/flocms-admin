@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.13.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.13.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration or dependency change is needed.
+
+- Add `{!! \FloCMS\Admin\Support\RichText::stylesheet() !!}` to the `<head>` of the website's layout, and print rich text inside an element with class `rt-content`. Without the stylesheet, sizes, positions, captions and alignment set in the editor are saved but not shown.
+- Fields with their own `toolbar([...])` keep exactly their buttons; add `textAlign`, `direction`, `indent`, `outdent` or `clearFormatting` to offer the new ones.
+- Browser tests that pressed End in the editor toolbar now land on Clear formatting (the last enabled button) instead of the embed button.
+
+---
+
 # Upgrading to Admin 0.12.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.12.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration or dependency change is needed.

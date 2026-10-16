@@ -1,0 +1,43 @@
+/*
+ * flocms-admin rich text presentation (RichEditor content on the website).
+ * Classes only, no inline styles, so it works under a strict Content-Security-Policy.
+ * Include it with {!! \FloCMS\Admin\Support\RichText::stylesheet() !!}, or copy these rules.
+ * Wrap printed content in an element with class "rt-content" so floated images stay inside it.
+ */
+.rt-content{display:flow-root}
+
+/* Media width, as a share of the text column. */
+.rt-w-10{width:10%}.rt-w-15{width:15%}.rt-w-20{width:20%}.rt-w-25{width:25%}.rt-w-30{width:30%}
+.rt-w-35{width:35%}.rt-w-40{width:40%}.rt-w-45{width:45%}.rt-w-50{width:50%}.rt-w-55{width:55%}
+.rt-w-60{width:60%}.rt-w-65{width:65%}.rt-w-70{width:70%}.rt-w-75{width:75%}.rt-w-80{width:80%}
+.rt-w-85{width:85%}.rt-w-90{width:90%}.rt-w-95{width:95%}.rt-w-100{width:100%}
+img[class*="rt-"],video[class*="rt-"]{height:auto;max-width:100%}
+
+/* Media position. Left and right are as on screen, also in right-to-left text. */
+.rt-align-left,.rt-align-center,.rt-align-right{display:block;margin-top:0;margin-bottom:1em}
+.rt-align-left{margin-left:0;margin-right:auto}
+.rt-align-center{margin-left:auto;margin-right:auto}
+.rt-align-right{margin-left:auto;margin-right:0}
+.rt-wrap-left{float:left;margin:.25em 1.25em 1em 0;max-width:50%}
+.rt-wrap-right{float:right;margin:.25em 0 1em 1.25em;max-width:50%}
+.rt-wrap-left[class*="rt-w-"],.rt-wrap-right[class*="rt-w-"]{max-width:none}
+
+/* Images with a caption or a link. */
+.rt-figure{margin:0 0 1em}
+.rt-figure img{display:block;width:100%;height:auto}
+.rt-figure figcaption{margin-top:.5em;font-size:.875em;line-height:1.4;color:#667085;text-align:center}
+
+/* YouTube and Vimeo embeds keep a 16:9 frame at any width. */
+div[data-embed]{position:relative;aspect-ratio:16/9;max-width:100%;margin-bottom:1em}
+div[data-embed] iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+video[class*="rt-"]{display:block}
+
+/* Paragraphs and headings. */
+.rt-text-left{text-align:left}.rt-text-center{text-align:center}.rt-text-right{text-align:right}.rt-text-justify{text-align:justify}
+.rt-indent-1{margin-inline-start:2em}.rt-indent-2{margin-inline-start:4em}.rt-indent-3{margin-inline-start:6em}.rt-indent-4{margin-inline-start:8em}
+
+/* Phones: wrapped media stand on their own line at full width. */
+@media (max-width:600px){
+  .rt-wrap-left,.rt-wrap-right{float:none;display:block;width:100%;max-width:100%;margin:0 0 1em}
+  .rt-indent-3,.rt-indent-4{margin-inline-start:4em}
+}

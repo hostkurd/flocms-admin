@@ -315,7 +315,7 @@ final class FormRenderer
         $strings = [];
         foreach (['uploading', 'image_invalid', 'video_invalid', 'upload_failed', 'embed_invalid', 'link_invalid', 'too_large', 'progress',
             'youtube', 'vimeo', 'video_file', 'empty', 'filled', 'link_title', 'link_edit_title', 'image_title', 'image_edit_title', 'insert', 'save',
-            'words', 'cancelled', 'uploaded'] as $key) { $strings[$key] = $t($key); }
+            'words', 'cancelled', 'uploaded', 'resize', 'width_now', 'align_left', 'align_center', 'align_right', 'align_justify'] as $key) { $strings[$key] = $t($key); }
         $strings['placeholder'] = $field->getPlaceholder() ?? $t('placeholder');
 
         $attributes = ' id="' . Str::e($id . '-rich') . '" data-admin-rich-editor data-script="' . Str::e(\FloCMS\Admin\Assets::editorUrl()) . '"'
@@ -347,13 +347,18 @@ final class FormRenderer
         // Toolbar, menus and dialogs are shown by the script once the editor runs.
         if (!$field->isDisabled()) {
             $keys = ['bold' => 'Ctrl+B', 'italic' => 'Ctrl+I', 'underline' => 'Ctrl+U', 'strike' => 'Ctrl+Shift+S', 'link' => 'Ctrl+K', 'undo' => 'Ctrl+Z', 'redo' => 'Ctrl+Shift+Z',
-                'bulletList' => 'Ctrl+Shift+8', 'orderedList' => 'Ctrl+Shift+7', 'blockquote' => 'Ctrl+Shift+B', 'codeBlock' => 'Ctrl+Alt+C', 'heading2' => 'Ctrl+Alt+2', 'heading3' => 'Ctrl+Alt+3'];
+                'bulletList' => 'Ctrl+Shift+8', 'orderedList' => 'Ctrl+Shift+7', 'blockquote' => 'Ctrl+Shift+B', 'codeBlock' => 'Ctrl+Alt+C', 'heading2' => 'Ctrl+Alt+2', 'heading3' => 'Ctrl+Alt+3',
+                'clearFormatting' => 'Ctrl+\\'];
             $labels = ['heading2' => 'heading2', 'heading3' => 'heading3', 'bold' => 'bold', 'italic' => 'italic', 'underline' => 'underline', 'strike' => 'strike', 'link' => 'link',
                 'bulletList' => 'bullet_list', 'orderedList' => 'ordered_list', 'blockquote' => 'blockquote', 'codeBlock' => 'code_block', 'horizontalRule' => 'horizontal_rule',
-                'image' => 'image', 'video' => 'video', 'embed' => 'embed', 'undo' => 'undo', 'redo' => 'redo'];
-            $groups = [['heading2', 'heading3'], ['bold', 'italic', 'underline', 'strike', 'link'], ['bulletList', 'orderedList', 'blockquote', 'codeBlock', 'horizontalRule'], ['image', 'video', 'embed'], ['undo', 'redo']];
+                'image' => 'image', 'video' => 'video', 'embed' => 'embed', 'undo' => 'undo', 'redo' => 'redo', 'textAlign' => 'text_align', 'direction' => 'direction',
+                'indent' => 'indent', 'outdent' => 'outdent', 'clearFormatting' => 'clear_formatting'];
+            $groups = [['heading2', 'heading3'], ['bold', 'italic', 'underline', 'strike', 'link'], ['bulletList', 'orderedList', 'outdent', 'indent'],
+                ['textAlign', 'direction'], ['blockquote', 'codeBlock', 'horizontalRule'], ['image', 'video', 'embed'], ['clearFormatting', 'undo', 'redo']];
+            $caret = '<svg class="fa-rich-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>';
             $html .= '<div class="fa-rich-toolbar" role="toolbar" aria-label="' . Str::e($t('toolbar', ['field' => $field->getLabel()])) . '" data-rich-toolbar hidden>';
             $first = true;
+            $menus = '';
             foreach ($groups as $group) {
                 $items = array_values(array_intersect($group, $toolbar));
                 if ($items === []) { continue; }
@@ -363,22 +368,30 @@ final class FormRenderer
                 foreach ($items as $command) {
                     $label = $t($labels[$command]);
                     $tip = $label . (isset($keys[$command]) ? ' (' . $keys[$command] . ')' : '');
-                    $toggle = !in_array($command, ['image', 'video', 'embed', 'undo', 'redo', 'horizontalRule'], true);
-                    // With uploads, Image offers "Upload" and "From a link" in a small menu.
-                    $menu = $command === 'image' && $config['uploads'];
-                    $html .= '<button type="button" class="fa-rich-btn' . ($menu ? ' has-menu' : '') . '" data-command="' . $command . '" title="' . Str::e($tip) . '" aria-label="' . Str::e($label) . '"'
-                        . ($toggle ? ' aria-pressed="false"' : '') . ($menu ? ' aria-haspopup="menu" aria-expanded="false" aria-controls="' . Str::e($id . '-image-menu') . '"' : '')
-                        . (in_array($command, ['link', 'embed'], true) || ($command === 'image' && !$menu) ? ' aria-haspopup="dialog"' : '') . ' tabindex="-1">'
-                        . EditorIcons::svg($command) . ($menu ? '<svg class="fa-rich-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>' : '') . '</button>';
-                    if ($menu) {
-                        $html .= '<div class="fa-rich-menu" id="' . Str::e($id . '-image-menu') . '" role="menu" aria-label="' . Str::e($label) . '" data-rich-menu="image" hidden>'
+                    $toggle = !in_array($command, ['image', 'video', 'embed', 'undo', 'redo', 'horizontalRule', 'textAlign', 'indent', 'outdent', 'clearFormatting'], true);
+                    // With uploads, Image offers "Upload" and "From a link" in a small menu; alignment is a menu too.
+                    $menu = ($command === 'image' && $config['uploads']) || $command === 'textAlign' ? ($command === 'image' ? 'image' : 'align') : null;
+                    $html .= '<button type="button" class="fa-rich-btn' . ($menu !== null ? ' has-menu' : '') . '" data-command="' . $command . '" title="' . Str::e($tip) . '" aria-label="' . Str::e($label) . '"'
+                        . ($toggle ? ' aria-pressed="false"' : '') . ($menu !== null ? ' aria-haspopup="menu" aria-expanded="false" aria-controls="' . Str::e($id . '-' . $menu . '-menu') . '"' : '')
+                        . (in_array($command, ['link', 'embed'], true) || ($command === 'image' && $menu === null) ? ' aria-haspopup="dialog"' : '') . ' tabindex="-1">'
+                        . '<span class="fa-rich-btn-icon" data-rich-icon>' . EditorIcons::svg($command === 'textAlign' ? 'alignLeft' : $command) . '</span>' . ($menu !== null ? $caret : '') . '</button>';
+                    if ($menu === 'image') {
+                        $menus .= '<div class="fa-rich-menu" id="' . Str::e($id . '-image-menu') . '" role="menu" aria-label="' . Str::e($label) . '" data-rich-menu="image" hidden>'
                             . '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-upload" tabindex="-1">' . EditorIcons::svg('upload') . '<span><strong>' . Str::e($t('image_upload')) . '</strong><small>' . Str::e($t('image_limit', ['size' => $this->bytes($field->getMaxImageBytes())])) . '</small></span></button>'
                             . '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-link" tabindex="-1">' . EditorIcons::svg('fromLink') . '<span><strong>' . Str::e($t('image_from_link')) . '</strong><small>' . Str::e($t('image_from_link_help')) . '</small></span></button>'
                             . '</div>';
                     }
+                    if ($menu === 'align') {
+                        $menus .= '<div class="fa-rich-menu is-compact" id="' . Str::e($id . '-align-menu') . '" role="menu" aria-label="' . Str::e($label) . '" data-rich-menu="align" hidden>';
+                        foreach (['left' => 'alignLeft', 'center' => 'alignCenter', 'right' => 'alignRight', 'justify' => 'alignJustify'] as $align => $icon) {
+                            $menus .= '<button type="button" role="menuitemradio" aria-checked="false" class="fa-rich-menuitem" data-rich-action="align-' . $align . '" tabindex="-1">' . EditorIcons::svg($icon) . '<span><strong>' . Str::e($t('align_' . $align)) . '</strong></span></button>';
+                        }
+                        $menus .= '</div>';
+                    }
                 }
                 $html .= '</span>';
             }
+            $html .= $menus;
             $html .= '</div>' . $this->richDialogs($field, $id, $config, $toolbar, $t);
         }
 
@@ -448,7 +461,9 @@ final class FormRenderer
         if (in_array('image', $toolbar, true)) {
             $html .= $dialog('image', $t('image_title'),
                 $input('image-url', $t('image_url'), 'url', 'data-rich-url inputmode="url" placeholder="https://"')
-                . $input('image-alt', $t('image_alt'), 'text', 'data-rich-alt maxlength="300"', $t('image_alt_help')), $t('insert'));
+                . $input('image-alt', $t('image_alt'), 'text', 'data-rich-alt maxlength="300"', $t('image_alt_help'))
+                . $input('image-caption', $t('caption'), 'text', 'data-rich-caption maxlength="300"', $t('caption_help'))
+                . $input('image-href', $t('image_link'), 'url', 'data-rich-href inputmode="url" placeholder="https://"', $t('image_link_help')), $t('insert'));
         }
         if (in_array('embed', $toolbar, true)) {
             $providers = implode(' / ', array_map(static fn (string $p): string => $p === 'youtube' ? 'YouTube' : 'Vimeo', $field->getEmbeds()));
@@ -461,6 +476,22 @@ final class FormRenderer
         if ($config['uploads'] && in_array('video', $toolbar, true)) {
             $html .= '<input type="file" class="fa-rich-file-input" accept="video/mp4,video/webm" data-rich-file="video" tabindex="-1" aria-hidden="true" hidden>';
         }
+        // Options for a selected image, video or embed: position, width, edit, replace, remove.
+        $media = static fn (string $action, string $icon, string $label, string $extra = ''): string => '<button type="button" class="fa-rich-btn" data-media="' . $action . '" title="' . Str::e($label) . '" aria-label="' . Str::e($label) . '"' . $extra . ' tabindex="-1">' . ($icon !== '' ? EditorIcons::svg($icon) : '') . '</button>';
+        $bar = '<span class="fa-rich-group">';
+        foreach (['left' => 'mediaLeft', 'center' => 'mediaCenter', 'right' => 'mediaRight'] as $position => $icon) { $bar .= $media('align-' . $position, $icon, $t('media_' . $position), ' aria-pressed="false"'); }
+        $bar .= '</span><span class="fa-rich-sep" aria-hidden="true"></span><span class="fa-rich-group">';
+        foreach (['left' => 'wrapLeft', 'right' => 'wrapRight'] as $position => $icon) { $bar .= $media('wrap-' . $position, $icon, $t('wrap_' . $position), ' aria-pressed="false"'); }
+        $bar .= '</span><span class="fa-rich-sep" aria-hidden="true"></span><span class="fa-rich-group fa-rich-sizes">';
+        foreach ([25, 50, 75, 100] as $width) {
+            $bar .= '<button type="button" class="fa-rich-btn fa-rich-size" data-media="width-' . $width . '" aria-pressed="false" title="' . Str::e($t('width_to', ['size' => $width])) . '" aria-label="' . Str::e($t('width_to', ['size' => $width])) . '" tabindex="-1">' . $width . '%</button>';
+        }
+        $bar .= '</span><span class="fa-rich-sep" aria-hidden="true" data-media-only="image"></span><span class="fa-rich-group" data-media-only="image">' . $media('edit', 'edit', $t('image_edit_title'))
+            . ($config['uploads'] ? $media('replace', 'replace', $t('image_replace')) : '') . '</span><span class="fa-rich-sep" aria-hidden="true"></span><span class="fa-rich-group">' . $media('remove', 'trash', $t('media_remove')) . '</span>';
+        if (array_intersect(['image', 'video', 'embed'], $toolbar) !== []) {
+            $html .= '<div class="fa-rich-mediabar" role="toolbar" aria-label="' . Str::e($t('media_toolbar')) . '" data-rich-mediabar hidden>' . $bar . '</div>';
+        }
+
         // Upload progress and errors, at the bottom edge of the editor.
         return $html . '<div class="fa-rich-status" data-rich-status hidden><span class="fa-rich-status-text" role="status" aria-live="polite" data-rich-status-text></span>'
             . '<span class="fa-rich-status-bar" aria-hidden="true"><span data-rich-status-bar></span></span>'

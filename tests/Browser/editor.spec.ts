@@ -86,7 +86,7 @@ test('the toolbar is one tab stop, arrow keys move inside it, and links are chec
   // Undo and Redo are disabled with nothing to undo: End stops at the last usable button.
   await expect(tool(page, 'Redo')).toBeDisabled();
   await page.keyboard.press('End');
-  await expect(tool(page, 'YouTube or Vimeo video')).toBeFocused();
+  await expect(tool(page, 'Clear formatting')).toBeFocused();
 
   await tool(page, 'Link').click();
   // A modal dialog above the record dialog, not a panel inside the editor.
