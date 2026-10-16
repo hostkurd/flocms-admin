@@ -15,11 +15,15 @@ export function initializeSelection(root: Element): void {
     master.checked = count > 0 && count === pageRows.length;
     master.indeterminate = count > 0 && count < pageRows.length;
   }
+  pageRows.forEach(row => row.closest('tr')?.classList.toggle('is-selected', row.checked));
   const form = root.querySelector<HTMLElement>('[data-admin-bulk]');
   const count = form?.querySelector<HTMLElement>('[data-admin-selection-count]');
   if (count) count.textContent = (form?.dataset.selectedText || ':count selected').replace(':count', String(selected.size));
-  const button = form?.querySelector<HTMLButtonElement>('[data-admin-bulk-open]');
-  if (button) button.disabled = selected.size === 0 || root.getAttribute('aria-busy') === 'true';
+  // The bulk bar appears only while records are selected.
+  if (form) form.hidden = selected.size === 0;
+  form?.querySelectorAll<HTMLButtonElement>('[data-admin-bulk-action]').forEach(button => {
+    button.disabled = selected.size === 0 || root.getAttribute('aria-busy') === 'true';
+  });
 }
 
 function updateStandard(form: HTMLFormElement): void {
@@ -27,6 +31,8 @@ function updateStandard(form: HTMLFormElement): void {
   const selected = checkboxes.filter(checkbox => checkbox.checked).length;
   const label = form.querySelector<HTMLElement>('[data-admin-selection-count]');
   if (label) label.textContent = (form.dataset.selectedText || ':count selected').replace(':count', String(selected));
+  form.hidden = selected === 0;
+  checkboxes.forEach(checkbox => checkbox.closest('tr')?.classList.toggle('is-selected', checkbox.checked));
   const master = document.querySelector<HTMLInputElement>('[data-admin-select-page-standard]');
   if (master) { master.checked = selected > 0 && selected === checkboxes.length; master.indeterminate = selected > 0 && selected < checkboxes.length; }
 }

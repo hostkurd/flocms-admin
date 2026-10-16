@@ -4,48 +4,55 @@
 </div>
 <div class="fa-card">
     @if(count($bulkActions) > 0)
-    <form class="fa-toolbar fa-bulk-toolbar" id="fa-list-bulk" data-admin-standard-bulk method="get" action="{{ $bulkUrl }}" data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}">
-        <span data-admin-selection-count role="status">{{ $t('bulk.selected', ['count' => 0]) }}</span>
-        <label class="fa-sr" for="fa-list-bulk-action">{{ $t('bulk.action') }}</label>
-        <select id="fa-list-bulk-action" name="action" class="fa-input">
-            @foreach($bulkActions as $bulk)<option value="{{ $bulk->getName() }}">{{ $bulk->getLabel($resource) }}</option>@endforeach
-        </select>
-        <button class="fa-btn" type="submit">{{ $t('bulk.run') }}</button>
+    <form class="fa-bulk-toolbar" id="fa-list-bulk" data-admin-standard-bulk method="get" action="{{ $bulkUrl }}" data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}">
+        <span class="fa-bulk-count" data-admin-selection-count role="status">{{ $t('bulk.selected', ['count' => 0]) }}</span>
+        <span class="fa-bulk-actions" role="group" aria-label="{{ $t('bulk.action') }}">
+            @foreach($bulkActions as $bulk)<button class="fa-btn fa-btn-sm{{ $bulk->getColor() === 'danger' ? ' fa-btn-danger-outline' : '' }}" type="submit" name="action" value="{{ $bulk->getName() }}" data-admin-bulk-action="{{ $bulk->getName() }}">{{ $bulk->getLabel($resource) }}</button>@endforeach
+        </span>
     </form>
     @endif
-    @if($filterFields !== '')
-    <form class="fa-toolbar fa-filters" method="get" action="{{ $listUrl }}" aria-label="{{ $t('filters.title') }}">
-        @if($static !== null)<input type="hidden" name="static" value="1">@endif
-        <input type="hidden" name="q" value="{{ $search }}">
-        @if($sort !== null)<input type="hidden" name="sort" value="{{ $sort }}"><input type="hidden" name="dir" value="{{ $dir }}">@endif
-        {!! $filterFields !!}
-        <button class="fa-btn" type="submit">{{ $t('filters.apply') }}</button>
-        @if($hasActiveFilters)<a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>@endif
-    </form>
-    @endif
-    @if($tableActions !== '')<div class="fa-toolbar fa-action-group">{!! $tableActions !!}</div>@endif
-    @if($hasSearch)
-    <form class="fa-toolbar" method="get" action="{{ $listUrl }}" role="search">
-        @if($static !== null)<input type="hidden" name="static" value="1">@endif
-        @foreach($filterState as $name => $value)
-        @if(is_array($value))
-        @foreach($value as $part => $item)<input type="hidden" name="filter[{{ $name }}][{{ $part }}]" value="{{ $item }}">@endforeach
-        @else<input type="hidden" name="filter[{{ $name }}]" value="{{ $value }}">@endif
-        @endforeach
-        <label class="fa-search">
+    @if($hasSearch || $filterFields !== '' || $tableActions !== '')
+    <div class="fa-list-toolbar">
+        @if($hasSearch)
+        <form class="fa-search" method="get" action="{{ $listUrl }}" role="search">
+            @if($static !== null)<input type="hidden" name="static" value="1">@endif
+            @foreach($filterState as $name => $value)
+            @if(is_array($value))
+            @foreach($value as $part => $item)<input type="hidden" name="filter[{{ $name }}][{{ $part }}]" value="{{ $item }}">@endforeach
+            @else<input type="hidden" name="filter[{{ $name }}]" value="{{ $value }}">@endif
+            @endforeach
+            @if($sort !== null)<input type="hidden" name="sort" value="{{ $sort }}"><input type="hidden" name="dir" value="{{ $dir }}">@endif
             {!! $searchIcon !!}
-            <span class="fa-sr">{{ $t('table.search') }}</span>
-            <input type="search" name="q" value="{{ $search }}" placeholder="{{ $t('table.search') }}" class="fa-input">
-        </label>
-        @if($sort !== null)
-        <input type="hidden" name="sort" value="{{ $sort }}">
-        <input type="hidden" name="dir" value="{{ $dir }}">
+            <label class="fa-sr" for="fa-list-search">{{ $t('table.search') }}</label>
+            <input type="search" id="fa-list-search" name="q" value="{{ $search }}" placeholder="{{ $t('table.search') }}" class="fa-input">
+            <button type="submit" class="fa-sr">{{ $t('table.search_button') }}</button>
+            @if($search !== '')<a class="fa-search-clear" href="{{ $listUrl }}" aria-label="{{ $t('table.clear') }}" title="{{ $t('table.clear') }}">{!! $removeIcon !!}</a>@endif
+        </form>
         @endif
-        <button type="submit" class="fa-btn">{{ $t('table.search_button') }}</button>
-        @if($search !== '')
-        <a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('table.clear') }}</a>
+        <span class="fa-toolbar-spacer"></span>
+        @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
+        @if($filterFields !== '')
+        <details class="fa-popover" id="fa-list-filters-menu" data-admin-popover @if($filterErrors) open @endif>
+            <summary class="fa-btn">{!! $filterIcon !!}<span>{{ $t('filters.title') }}</span>@if($filterCount > 0)<span class="fa-count">{{ $filterCount }}</span>@endif</summary>
+            <form class="fa-popover-panel fa-filters" method="get" action="{{ $listUrl }}" aria-label="{{ $t('filters.title') }}">
+                @if($static !== null)<input type="hidden" name="static" value="1">@endif
+                <input type="hidden" name="q" value="{{ $search }}">
+                @if($sort !== null)<input type="hidden" name="sort" value="{{ $sort }}"><input type="hidden" name="dir" value="{{ $dir }}">@endif
+                {!! $filterFields !!}
+                <div class="fa-popover-foot">
+                    @if($hasActiveFilters)<a class="fa-btn fa-btn-ghost fa-btn-sm" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>@endif
+                    <button class="fa-btn fa-btn-primary fa-btn-sm" type="submit">{{ $t('filters.apply') }}</button>
+                </div>
+            </form>
+        </details>
         @endif
-    </form>
+    </div>
+    @endif
+    @if(count($chips) > 0)
+    <div class="fa-chips" aria-label="{{ $t('filters.title') }}">
+        @foreach($chips as $chip)<span class="fa-chip"><span class="fa-chip-label">{{ $chip['label'] }}</span> {{ $chip['value'] }}<a class="fa-chip-remove" href="{{ $chip['url'] }}" aria-label="{{ $t('filters.remove', ['label' => $chip['label'], 'value' => $chip['value']]) }}">{!! $removeIcon !!}</a></span>@endforeach
+        <a class="fa-btn fa-btn-ghost fa-btn-sm" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>
+    </div>
     @endif
     @if(count($rows) > 0)
     <div class="fa-table-wrap">
@@ -75,9 +82,7 @@
                     <td class="{{ $cell['class'] }}">{!! $cell['html'] !!}</td>
                     @endforeach
                     @if($hasActions)
-                    <td class="fa-actions">
-                        {!! $row['actions'] !!}
-                    </td>
+                    <td class="fa-actions">{!! $row['actions'] !!}</td>
                     @endif
                 </tr>
                 @endforeach
@@ -88,21 +93,17 @@
         <span class="fa-muted">{{ $summary }}</span>
         @if(count($pages) > 0)
         <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
-            @if($prevUrl !== null)
-            <a class="fa-page-link" href="{{ $prevUrl }}" rel="prev">{{ $t('table.previous') }}</a>
-            @endif
+            @if($prevUrl !== null)<a class="fa-page-link fa-page-step" href="{{ $prevUrl }}" rel="prev" aria-label="{{ $t('table.previous') }}" title="{{ $t('table.previous') }}">{!! $prevIcon !!}</a>@else<span class="fa-page-link fa-page-step is-disabled" aria-hidden="true">{!! $prevIcon !!}</span>@endif
             @foreach($pages as $link)
             @if($link['current'])
             <span class="fa-page-link is-current" aria-current="page">{{ $link['label'] }}</span>
             @elseif($link['url'] !== null)
-            <a class="fa-page-link" href="{{ $link['url'] }}">{{ $link['label'] }}</a>
+            <a class="fa-page-link" href="{{ $link['url'] }}" aria-label="{{ $t('table.page', ['page' => $link['label']]) }}">{{ $link['label'] }}</a>
             @else
             <span class="fa-page-gap">{{ $link['label'] }}</span>
             @endif
             @endforeach
-            @if($nextUrl !== null)
-            <a class="fa-page-link" href="{{ $nextUrl }}" rel="next">{{ $t('table.next') }}</a>
-            @endif
+            @if($nextUrl !== null)<a class="fa-page-link fa-page-step" href="{{ $nextUrl }}" rel="next" aria-label="{{ $t('table.next') }}" title="{{ $t('table.next') }}">{!! $nextIcon !!}</a>@else<span class="fa-page-link fa-page-step is-disabled" aria-hidden="true">{!! $nextIcon !!}</span>@endif
         </nav>
         @endif
     </div>

@@ -4,7 +4,9 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 
 ## 0.9.0 - 2026-10-16
 
-First step of the panel redesign: the visual foundation. No resource, form, table or configuration API changes; existing sites keep working and only look different.
+The panel redesign, matching the approved mockup. No resource, form, table, action or configuration API changes; existing sites keep working and only look different.
+
+### Foundation
 
 - Design tokens: every colour, radius and shadow in `admin.css` is now a CSS custom property (`--fa-*`). The 70 hard-coded colour values outside the token definitions are gone (white text on solid buttons excepted).
 - New `theme` setting in `config/admin.php`: `'light'` (default), `'dark'`, or `'auto'` (follows the operating system). Applies to the panel, the optional login page and toasts. Unknown values fall back to light; `admin:doctor` reports them.
@@ -13,7 +15,18 @@ First step of the panel redesign: the visual foundation. No resource, form, tabl
 - Refreshed buttons, inputs, cards, badges, alerts, tables, pagination, tabs, dialogs, toasts, login page and dashboard widgets on the tokens (radius, spacing, weights, softer borders).
 - Fix: Reactive's own dialog and status styles, which load after the admin's, no longer force a white dialog background or a fixed red status colour inside the panel.
 - Fix: toasts used their own font stack and colours; they now use the panel's font and theme.
-- Ship `admin-v0.9.0.css` and `admin-v0.9.0.js`. The browser fixture accepts `FLO_ADMIN_THEME=dark|auto` for local testing.
+- The browser fixture accepts `FLO_ADMIN_THEME=dark|auto` for local testing.
+
+### List page
+- One toolbar: search with its icon and a clear button, table actions, and a **Filters** button showing the number of active filters. Filters open in a popover (a native `<details>`, so it works without JavaScript) and re-open by themselves when a value is invalid.
+- Active filters appear as chips under the toolbar; each chip removes its own filter, and **Clear filters** removes all.
+- The bulk bar appears only while rows are selected and offers each bulk action as a button (danger actions in red outline). Without JavaScript it stays visible and its buttons submit the same request as before. Selected rows are highlighted.
+- Row actions: Edit is a quiet icon button; the other actions are in a **More actions** (`⋯`) menu, destructive ones last after a divider. The menu works without JavaScript; with it, it closes on Escape or an outside click, follows its button while scrolling instead of being clipped by the table, and returns focus to its button when an action's dialog closes.
+- Numbered pagination with previous/next arrows (mirrored in right-to-left languages) in both the Reactive and standard lists.
+- New icons: `pencil`, `trash`, `more`, `filter`, `x`, `chevron-left`, `chevron-right`. New strings `table.more_actions`, `table.page`, `filters.remove` in en/ar/ku.
+- Fix: the Reactive list's search field was missing its search icon.
+
+Ship `admin-v0.9.0.css` and `admin-v0.9.0.js`.
 
 ## 0.8.1 - 2026-10-16
 

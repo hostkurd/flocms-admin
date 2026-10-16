@@ -9,8 +9,14 @@ async function ready(page: Page, path = '/en/admin/posts') {
 async function stable(page: Page) {
   expect(await page.evaluate(() => (window as any).documentMarker)).toBe('actions');
 }
+// Row actions other than Edit sit in the row's "More actions" menu.
+async function rowAction(page: Page, name: string, id: number, prefix = 'fa-admin-resource') {
+  const button = page.locator(`[data-admin-action="${name}"][data-admin-record="${id}"]`);
+  if (!(await button.isVisible())) await page.locator(`#${prefix}-menu-${id} > summary`).click();
+  return button;
+}
 async function open(page: Page, name: string, id = 8) {
-  await page.locator(`[data-admin-action="${name}"][data-admin-record="${id}"]`).click();
+  await (await rowAction(page, name, id)).click();
   await expect(editor(page)).toBeVisible();
 }
 async function publish(page: Page) {
@@ -35,7 +41,7 @@ test('publish action validates, preserves list state and delivers once across na
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator('input[type=search]')).toHaveValue('Studio');
   await expect(page.locator('tbody')).toContainText('Published');
-  await expect(page.locator('[data-admin-action=unpublish][data-admin-record="8"]')).toBeVisible();
+  await expect(page.locator('[data-admin-action=unpublish][data-admin-record="8"]')).toBeAttached();
   await expect(notices(page)).toHaveCount(1);
   const id = await notices(page).getAttribute('data-admin-notification');
   await page.locator('.fa-nav a[href="/en/admin/dashboard"]').click();
@@ -58,13 +64,14 @@ test('unpublish confirmation cancels with Escape and executes on explicit confir
   await open(page, 'unpublish');
   await page.keyboard.press('Escape');
   await expect(editor(page)).not.toBeVisible();
-  await expect(page.locator('#fa-admin-resource-unpublish-8')).toBeFocused();
+  // Focus returns to the row menu that opened the dialog.
+  await expect(page.locator('#fa-admin-resource-menu-8 > summary')).toBeFocused();
   await expect(page.locator('tbody')).toContainText('Published');
   await expect(notices(page)).toHaveCount(1);
   await open(page, 'unpublish');
   await editor(page).getByRole('button', { name: 'Unpublish', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
-  await expect(page.locator('#fa-admin-resource-publish-8')).toBeVisible();
+  await expect(page.locator('#fa-admin-resource-publish-8')).toBeAttached();
   await expect(notices(page)).toHaveCount(2);
   await expect(notices(page).last()).toHaveAttribute('role', 'alert');
   await expect(notices(page).last()).toContainText('Post unpublished.');
@@ -151,6 +158,7 @@ test('standard custom action forms also validate and save with JavaScript disabl
   const page = await context.newPage();
   try {
     await page.goto('http://127.0.0.1:8083/en/admin/posts?static=1');
+    await page.locator('#fa-admin-resource-menu-8 > summary').click();
     await page.locator('a[href="/en/admin/posts/action/row/publish/8"]').click();
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.locator('[name=reason]')).toHaveAttribute('aria-invalid', 'true');
@@ -158,6 +166,6 @@ test('standard custom action forms also validate and save with JavaScript disabl
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.locator('[data-admin-notification]')).toContainText('Post published.');
     await page.getByRole('link', { name: 'Continue on full page' }).click();
-    await expect(page.locator('a[href="/en/admin/posts/action/row/unpublish/8"]')).toBeVisible();
+    await expect(page.locator('a[href="/en/admin/posts/action/row/unpublish/8"]')).toBeAttached();
   } finally { await context.close(); }
 });

@@ -9,34 +9,50 @@
 @endif
 <div class="fa-card" id="{{ $prefix }}-table">
     @if(count($bulkActions) > 0)
-    <form class="fa-toolbar fa-bulk-toolbar" data-rx-submit="openBulk" data-admin-bulk data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}" data-limit-text="{{ $t('bulk.limit') }}">
+    <form class="fa-bulk-toolbar" data-rx-submit="openBulk" data-admin-bulk data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}" data-limit-text="{{ $t('bulk.limit') }}"@if(count($selected) === 0) hidden @endif>
         <input type="hidden" value="{{ $selectedIds }}" data-rx-bind="selectedIds">
         <input type="hidden" value="{{ $selectedBulk }}" data-rx-bind="selectedBulk">
-        <span data-admin-selection-count role="status">{{ $selectionLabel }}</span>
-        <label class="fa-sr" for="{{ $prefix }}-bulk-action">{{ $t('bulk.action') }}</label>
-        <select id="{{ $prefix }}-bulk-action" class="fa-input" data-admin-bulk-name>
-            @foreach($bulkActions as $bulk)<option value="{{ $bulk->getName() }}" @if($selectedBulk === $bulk->getName()) selected @endif>{{ $bulk->getLabel($resource) }}</option>@endforeach
-        </select>
-        <button class="fa-btn" type="submit" data-admin-bulk-open @if(count($selected) === 0) disabled @endif>{{ $t('bulk.run') }}</button>
-        <button class="fa-btn fa-btn-ghost" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
+        <span class="fa-bulk-count" data-admin-selection-count role="status">{{ $selectionLabel }}</span>
+        <span class="fa-bulk-actions" role="group" aria-label="{{ $t('bulk.action') }}">
+            @foreach($bulkActions as $bulk)<button type="button" class="fa-btn fa-btn-sm{{ $bulk->getColor() === 'danger' ? ' fa-btn-danger-outline' : '' }}" id="{{ $prefix }}-bulk-{{ $bulk->getName() }}" data-admin-bulk-action="{{ $bulk->getName() }}" data-rx-set="selectedBulk" data-rx-value="{{ $bulk->getName() }}" data-rx-action="openBulk" data-rx-dialog-trigger="editor" @if(count($selected) === 0) disabled @endif>{{ $bulk->getLabel($resource) }}</button>@endforeach
+        </span>
+        <span class="fa-toolbar-spacer"></span>
+        <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
     </form>
     @endif
-    @if($filterFields !== '')
-    <form class="fa-toolbar fa-filters" data-rx-submit="applyFilters" data-admin-filters aria-label="{{ $t('filters.title') }}">
-        <input type="hidden" value="{{ $filters }}" data-rx-bind="filters">
-        {!! $filterFields !!}
-        <button class="fa-btn" type="submit">{{ $t('filters.apply') }}</button>
-        @if($hasActiveFilters)<button class="fa-btn fa-btn-ghost" type="button" data-rx-action="clearFilters">{{ $t('filters.clear') }}</button>@endif
-    </form>
+    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '')
+    <div class="fa-list-toolbar">
+        @if(count($table->searchableColumns()) > 0)
+        <form class="fa-search" data-rx-submit="refresh" role="search">
+            {!! $searchIcon !!}
+            <label class="fa-sr" for="{{ $prefix }}-search">{{ $t('table.search') }}</label>
+            <input type="search" id="{{ $prefix }}-search" class="fa-input" value="{{ $search }}" data-rx-bind="search" data-rx-reset="page:1" data-rx-focus-fallback maxlength="100" placeholder="{{ $t('table.search') }}">
+            @if($search !== '')<button type="button" class="fa-search-clear" data-rx-action="clear" aria-label="{{ $t('table.clear') }}" title="{{ $t('table.clear') }}">{!! $removeIcon !!}</button>@endif
+        </form>
+        @endif
+        <span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span>
+        <span class="fa-toolbar-spacer"></span>
+        @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
+        @if($filterFields !== '')
+        <details class="fa-popover" id="{{ $prefix }}-filters-menu" data-admin-popover @if($filterErrors) open @endif>
+            <summary class="fa-btn">{!! $filterIcon !!}<span>{{ $t('filters.title') }}</span>@if($filterCount > 0)<span class="fa-count">{{ $filterCount }}</span>@endif</summary>
+            <form class="fa-popover-panel fa-filters" data-rx-submit="applyFilters" data-admin-filters aria-label="{{ $t('filters.title') }}">
+                <input type="hidden" value="{{ $filters }}" data-rx-bind="filters">
+                {!! $filterFields !!}
+                <div class="fa-popover-foot">
+                    @if($hasActiveFilters)<button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearFilters">{{ $t('filters.clear') }}</button>@endif
+                    <button class="fa-btn fa-btn-primary fa-btn-sm" type="submit">{{ $t('filters.apply') }}</button>
+                </div>
+            </form>
+        </details>
+        @endif
+    </div>
     @endif
-    @if($tableActions !== '')<div class="fa-toolbar fa-action-group">{!! $tableActions !!}</div>@endif
-    @if(count($table->searchableColumns()) > 0)
-    <form class="fa-toolbar" data-rx-submit="refresh" role="search">
-        <label class="fa-search"><span class="fa-sr">{{ $t('table.search') }}</span><input type="search" id="{{ $prefix }}-search" class="fa-input" value="{{ $search }}" data-rx-bind="search" data-rx-reset="page:1" data-rx-focus-fallback maxlength="100" placeholder="{{ $t('table.search') }}"></label>
-        <button type="submit" class="fa-btn">{{ $t('table.search_button') }}</button>
-        @if($search !== '')<button type="button" class="fa-btn fa-btn-ghost" data-rx-action="clear">{{ $t('table.clear') }}</button>@endif
-        <span data-rx-loading class="fa-muted">{{ $t('reactive.loading') }}</span>
-    </form>
+    @if(count($chips) > 0)
+    <div class="fa-chips" aria-label="{{ $t('filters.title') }}">
+        @foreach($chips as $chip)<span class="fa-chip"><span class="fa-chip-label">{{ $chip['label'] }}</span> {{ $chip['value'] }}<button type="button" class="fa-chip-remove" data-rx-set="filters" data-rx-value="{{ $chip['without'] }}" data-rx-action="applyFilters" aria-label="{{ $t('filters.remove', ['label' => $chip['label'], 'value' => $chip['value']]) }}">{!! $removeIcon !!}</button></span>@endforeach
+        <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearFilters">{{ $t('filters.clear') }}</button>
+    </div>
     @endif
     @if(count($result['data']) > 0)
     <div class="fa-table-wrap"><table class="fa-table">
@@ -44,30 +60,34 @@
             @if(count($bulkActions) > 0)<th class="fa-selection-col"><input type="checkbox" data-admin-select-page aria-label="{{ $t('bulk.select_page') }}"></th>@endif
             @foreach($table->getColumns() as $name => $column)
             <th scope="col" class="{{ $column->cellClass() }}" aria-sort="{{ $result['sort'] === $name ? ($result['dir'] === 'asc' ? 'ascending' : 'descending') : 'none' }}">
-                @if($column->isSortable())<button class="fa-sort" type="button" data-rx-action="sortBy" data-rx-set="selectedSort" data-rx-value="{{ $name }}">{{ $column->getLabel() }}</button>@else{{ $column->getLabel() }}@endif
+                @if($column->isSortable())<button class="fa-sort{{ $result['sort'] === $name ? ' is-' . $result['dir'] : '' }}" type="button" data-rx-action="sortBy" data-rx-set="selectedSort" data-rx-value="{{ $name }}">{{ $column->getLabel() }}</button>@else{{ $column->getLabel() }}@endif
             </th>
             @endforeach
             <th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th>
         </tr></thead>
         <tbody>
             @foreach($result['data'] as $record)
-            <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}">
+            <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}"@if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) class="is-selected"@endif>
                 @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" data-admin-select value="{{ $record->{$resource::getPrimaryKey()} }}" aria-label="{{ $t('bulk.select_record', ['id' => $record->{$resource::getPrimaryKey()}]) }}" @if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) checked @endif></td>@endif
                 @foreach($table->getColumns() as $column)<td class="{{ $column->cellClass() }}">{!! $column->render($record) !!}</td>@endforeach
-                <td class="fa-actions">
-                    {!! $rowActions($record) !!}
-                </td>
+                <td class="fa-actions">{!! $rowActions($record) !!}</td>
             </tr>
             @endforeach
         </tbody>
     </table></div>
     @else<div class="fa-blank"><p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : ($hasActiveFilters ? $t('filters.no_results') : $t('table.no_records')) }}</p></div>@endif
     <div class="fa-table-foot"><span class="fa-muted">{{ $t('table.summary', ['from' => count($result['data']) === 0 ? 0 : ($page - 1) * $result['pagination']['per_page'] + 1, 'to' => min($page * $result['pagination']['per_page'], $result['pagination']['items_count']), 'total' => $result['pagination']['items_count']]) }}</span>
+        @if($last > 1)
         <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
-            <button type="button" class="fa-page-link" data-rx-action="paginate" data-rx-set="page" data-rx-value="{{ max(1, $page - 1) }}" @if($page <= 1) disabled @endif>{{ $t('table.previous') }}</button>
-            <span class="fa-page-link" dir="ltr">{{ $page }} / {{ $last }}</span>
-            <button type="button" class="fa-page-link" data-rx-action="paginate" data-rx-set="page" data-rx-value="{{ $page + 1 }}" @if($page >= $last) disabled @endif>{{ $t('table.next') }}</button>
+            <button type="button" class="fa-page-link fa-page-step" data-rx-action="paginate" data-rx-set="page" data-rx-value="{{ max(1, $page - 1) }}" aria-label="{{ $t('table.previous') }}" title="{{ $t('table.previous') }}" @if($page <= 1) disabled @endif>{!! $prevIcon !!}</button>
+            @foreach($pageNumbers as $number)
+            @if($number === null)<span class="fa-page-gap">…</span>
+            @elseif($number === $page)<span class="fa-page-link is-current" aria-current="page">{{ $number }}</span>
+            @else<button type="button" class="fa-page-link" data-rx-action="paginate" data-rx-set="page" data-rx-value="{{ $number }}" aria-label="{{ $t('table.page', ['page' => $number]) }}">{{ $number }}</button>@endif
+            @endforeach
+            <button type="button" class="fa-page-link fa-page-step" data-rx-action="paginate" data-rx-set="page" data-rx-value="{{ $page + 1 }}" aria-label="{{ $t('table.next') }}" title="{{ $t('table.next') }}" @if($page >= $last) disabled @endif>{!! $nextIcon !!}</button>
         </nav>
+        @endif
     </div>
 </div>
 <dialog class="fa-editor" id="{{ $prefix }}-editor" data-rx-dialog="editor" data-rx-open="{{ $mode !== '' ? 'true' : 'false' }}" data-rx-close="cancel" aria-labelledby="{{ $prefix }}-editor-title">

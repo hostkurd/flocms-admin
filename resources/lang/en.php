@@ -160,4 +160,7 @@ return [
     'login.logout' => 'Sign out to continue',
     'filters.not_applied' => 'Filters were not applied. Correct the highlighted values.',
     'filters.no_results' => 'No records match these filters.',
+    'table.more_actions' => 'More actions',
+    'table.page' => 'Page :page',
+    'filters.remove' => 'Remove filter :label: :value',
 ];

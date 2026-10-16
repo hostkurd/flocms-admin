@@ -72,6 +72,7 @@ test('create and delete use modal actions and no reload', async ({ page }) => {
   await editor(page).getByRole('button', { name: 'Create', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator('tbody')).toContainText('New property');
+  await page.locator('#fa-admin-resource-menu-9 > summary').click();
   await page.locator('#fa-admin-resource-delete-9').click();
   await expect(editor(page)).toBeVisible();
   await editor(page).getByRole('button', { name: 'Delete', exact: true }).click();

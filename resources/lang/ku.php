@@ -159,4 +159,7 @@ return [
     'login.logout' => 'دەرچوون بۆ بەردەوامبوون',
     'filters.not_applied' => 'فلتەرەکان جێبەجێ نەکران. بەها دیاریکراوەکان ڕاست بکەرەوە.',
     'filters.no_results' => 'هیچ تۆمارێک لەگەڵ ئەم فلتەرانە ناگونجێت.',
+    'table.more_actions' => 'کرداری زیاتر',
+    'table.page' => 'پەڕەی :page',
+    'filters.remove' => 'لابردنی فلتەری :label: :value',
 ];

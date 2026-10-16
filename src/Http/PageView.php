@@ -116,6 +116,13 @@ final class PageView
             'backUrl' => $backUrl,
             'searchIcon' => Icons::svg('search'),
             'plusIcon' => Icons::svg('plus'),
+            'filterIcon' => Icons::svg('filter'),
+            'removeIcon' => Icons::svg('x'),
+            'prevIcon' => Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'),
+            'nextIcon' => Icons::svg('chevron-right', 'fa-icon fa-flip-rtl'),
+            'filterErrors' => $filters->errors !== [],
+            'filterCount' => count($filters->active()),
+            'chips' => array_map(static fn (array $chip): array => $chip + ['url' => Admin::url($slug, array_replace($state, ['filter' => $chip['query']]))], $filters->chips()),
         ]);
     }
 
@@ -152,30 +159,40 @@ final class PageView
      */
     private static function pageLinks(string $slug, array $state, int $page, int $last): array
     {
+        $links = [];
+        foreach (self::pageNumbers($page, $last) as $n) {
+            $links[] = $n === null
+                ? ['label' => '…', 'url' => null, 'current' => false]
+                : ['label' => (string) $n, 'url' => $n === $page ? null : Admin::url($slug, $state + ['page' => $n > 1 ? $n : null]), 'current' => $n === $page];
+        }
+
+        return $links;
+    }
+
+    /**
+     * Page numbers around the current page, null for a gap: 1 … 4 5 [6] 7 8 … 20.
+     * Shared by the standard and Reactive lists. Empty for a single page.
+     *
+     * @return list<int|null>
+     */
+    public static function pageNumbers(int $page, int $last): array
+    {
         if ($last <= 1) {
             return [];
         }
-
         $numbers = array_unique(array_filter(
             [1, $page - 2, $page - 1, $page, $page + 1, $page + 2, $last],
             static fn (int $n): bool => $n >= 1 && $n <= $last
         ));
         sort($numbers);
-
-        $links = [];
+        $result = [];
         $previous = 0;
         foreach ($numbers as $n) {
-            if ($n - $previous > 1) {
-                $links[] = ['label' => '…', 'url' => null, 'current' => false];
-            }
-            $links[] = [
-                'label' => (string) $n,
-                'url' => $n === $page ? null : Admin::url($slug, $state + ['page' => $n > 1 ? $n : null]),
-                'current' => $n === $page,
-            ];
+            if ($n - $previous > 1) { $result[] = null; }
+            $result[] = $n;
             $previous = $n;
         }
 
-        return $links;
+        return $result;
     }
 }
