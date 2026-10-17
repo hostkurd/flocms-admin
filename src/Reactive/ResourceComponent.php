@@ -248,6 +248,8 @@ final class ResourceComponent extends Component
         return $this->view(dirname(__DIR__, 2) . '/resources/views/reactive-resource.html', [
             't' => \FloCMS\Admin\Http\PageView::translator(), 'resource' => $resource, 'table' => $table, 'result' => $result,
             'visibleColumns' => $visibility->visibleColumns(), 'columnsChanged' => $visibility->changed(), 'columnsIcon' => \FloCMS\Admin\Support\Icons::svg('columns'),
+            'reorderUrl' => \FloCMS\Admin\Http\PageView::reorderUrl($resource, $table, $filters, \FloCMS\Core\Auth::can($resource::permission('update'))),
+            'reorderIcon' => \FloCMS\Admin\Support\Icons::svg('arrows-up-down'),
             'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
             'search' => $this->search, 'page' => $this->page, 'last' => $last, 'prefix' => $prefix, 'mode' => $this->mode,
             'filterFields' => $filters->render($prefix), 'filters' => $this->filters, 'hasActiveFilters' => $filters->active() !== [],

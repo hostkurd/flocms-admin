@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.16.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.16.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration is needed; nothing changes until a table calls `->reorderable()`.
+
+- **Using Reorder**: add an integer column (`ALTER TABLE faqs ADD sort INT NOT NULL DEFAULT 0;` and `CREATE INDEX faqs_sort_index ON faqs (sort);`) and `->reorderable('sort')` to the resource's `table()`. Existing rows keep their current order: the first save numbers them. Remove a `defaultSort()` you no longer want, so the list follows the editors' order. On the website, read the records with `ORDER BY sort, id`. Run `php flo admin:doctor` to check the column.
+- **Custom resources** that already define a method named `canReorder` or `afterReorder` must rename it (the panel now calls them).
+- **Site CSS or tests** that look at the list toolbar: a reorderable list has one more button there (`[data-admin-reorder-link]`).
+
+---
+
 # Upgrading to Admin 0.15.5
 
 Update with `composer require "hostkurd/flocms-admin:^0.15.5" -W`, run `php flo view:clear` and reload open Admin pages. Nothing else changes.

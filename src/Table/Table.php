@@ -19,6 +19,44 @@ final class Table
     private array $headerActions = [];
     private array $filters = [];
     private array $bulkActions = [];
+    private ?string $reorderColumn = null;
+    private bool $newRecordsFirst = false;
+    private int $reorderLimit = 500;
+
+    /** The most rows Reorder mode loads at once. */
+    public const MAX_REORDER_LIMIT = 2000;
+
+    /**
+     * Let editors drag records into their own order, kept in an integer column
+     * of the resource's table. The list then shows a Reorder button.
+     */
+    public function reorderable(string $column = 'sort'): self
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $column) !== 1) {
+            throw new InvalidArgumentException('Table::reorderable() expects a column name.');
+        }
+        $this->reorderColumn = $column;
+        return $this;
+    }
+
+    /** New records go to the top of the order instead of the bottom. */
+    public function newRecordsFirst(bool $first = true): self
+    {
+        $this->newRecordsFirst = $first;
+        return $this;
+    }
+
+    /** How many rows Reorder mode accepts (default 500, at most 2000). */
+    public function reorderLimit(int $limit): self
+    {
+        $this->reorderLimit = max(1, min(self::MAX_REORDER_LIMIT, $limit));
+        return $this;
+    }
+
+    public function isReorderable(): bool { return $this->reorderColumn !== null; }
+    public function getReorderColumn(): ?string { return $this->reorderColumn; }
+    public function addsNewRecordsFirst(): bool { return $this->newRecordsFirst; }
+    public function getReorderLimit(): int { return $this->reorderLimit; }
 
     public function filters(array $filters): self
     {

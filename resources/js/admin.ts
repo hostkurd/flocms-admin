@@ -8,6 +8,7 @@ import { initializeForms } from './forms';
 import { initializeEditors } from './editors';
 import { initializeSettings } from './settings';
 import { initializeRelations } from './relations';
+import { initializeReorder } from './reorder';
 import './popovers';
 import { startProgress, finishProgress } from './progress';
 import { initializeRecord, isDirty, confirmLeave } from './record';
@@ -53,6 +54,7 @@ function initialize(): void {
   initializeRecord(root);
   initializeSettings(root);
   initializeRelations(root);
+  initializeReorder(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;

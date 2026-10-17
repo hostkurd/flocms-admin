@@ -1,0 +1,43 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1>@if(count($rows) > 1)<p class="fa-page-description" id="fa-reorder-help">{{ $t('reorder.help') }}</p>@endif</div>
+    <div class="fa-action-group"><a class="fa-btn fa-btn-primary" href="{{ $doneUrl }}" data-reorder-done>{{ $t('reorder.done') }}</a></div>
+</div>
+<div class="fa-card fa-reorder" data-admin-reorder data-reorder-url="{{ $action }}" data-reorder-csrf="{{ $csrfToken }}" data-reorder-filters="{{ $filtersJson }}"
+    data-text-saving="{{ $t('reorder.saving') }}" data-text-saved="{{ $t('reorder.saved') }}" data-text-failed="{{ $t('reorder.failed') }}"
+    data-text-picked="{{ $t('reorder.picked') }}" data-text-moved="{{ $t('reorder.moved') }}" data-text-dropped="{{ $t('reorder.dropped') }}" data-text-cancelled="{{ $t('reorder.cancelled') }}">
+    @if(count($chips) > 0)
+    <div class="fa-chips fa-reorder-chips" aria-label="{{ $t('filters.title') }}">
+        <span class="fa-muted">{{ $t('reorder.only') }}</span>
+        @foreach($chips as $chip)<span class="fa-chip"><span class="fa-chip-label">{{ $chip['label'] }}</span> {{ $chip['value'] }}</span>@endforeach
+    </div>
+    @endif
+    <p class="fa-reorder-status" role="status" aria-live="polite" data-reorder-status></p>
+    @if($filterErrors)
+    <div class="fa-blank"><p>{{ $t('reorder.invalid_filters') }}</p></div>
+    @elseif($tooMany)
+    <div class="fa-blank"><p>{{ $t('reorder.too_many', ['count' => $total, 'limit' => $limit]) }}</p><div class="fa-action-group"><a class="fa-btn" href="{{ $doneUrl }}">{{ $t('reorder.back') }}</a></div></div>
+    @elseif(count($rows) === 0)
+    <div class="fa-blank"><p>{{ $t('reorder.empty') }}</p></div>
+    @else
+    <form method="post" action="{{ $action }}" class="fa-reorder-form">
+        {!! $csrf !!}
+        <input type="hidden" name="_filters" value="{{ $filtersJson }}">
+        <p class="fa-sr" id="fa-reorder-keys">{{ $t('reorder.keyboard') }}</p>
+        <ol class="fa-reorder-list" data-reorder-list>
+            @foreach($rows as $row)
+            <li class="fa-reorder-item" id="fa-reorder-row-{{ $row['id'] }}" data-reorder-id="{{ $row['id'] }}" data-reorder-title="{{ $row['title'] }}">
+                <button type="button" class="fa-reorder-handle" data-reorder-handle aria-label="{{ $t('reorder.handle', ['title' => $row['title']]) }}" aria-describedby="fa-reorder-keys" hidden>{!! $handleIcon !!}</button>
+                <span class="fa-reorder-position" data-reorder-position aria-hidden="true">{{ $row['position'] }}</span>
+                <span class="fa-reorder-cells">
+                    @foreach($row['cells'] as $cell)<span class="{{ $cell['class'] }}" title="{{ $cell['label'] }}">{!! $cell['html'] !!}</span>@endforeach
+                </span>
+                <span class="fa-reorder-steps" data-reorder-steps>
+                    <button type="submit" class="fa-icon-action" name="move_up" value="{{ $row['id'] }}" aria-label="{{ $t('reorder.up', ['title' => $row['title']]) }}" title="{{ $t('reorder.up', ['title' => $row['title']]) }}"@if($row['first']) disabled @endif@if($row['focus'] === 'up') autofocus @endif>{!! $upIcon !!}</button>
+                    <button type="submit" class="fa-icon-action" name="move_down" value="{{ $row['id'] }}" aria-label="{{ $t('reorder.down', ['title' => $row['title']]) }}" title="{{ $t('reorder.down', ['title' => $row['title']]) }}"@if($row['last']) disabled @endif@if($row['focus'] === 'down') autofocus @endif>{!! $downIcon !!}</button>
+                </span>
+            </li>
+            @endforeach
+        </ol>
+    </form>
+    @endif
+</div>

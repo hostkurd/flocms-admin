@@ -165,6 +165,8 @@ Optional methods:
 | `canCreate(): bool` | False hides New and answers 403 |
 | `canEdit(object $record): bool` | False hides Edit for that record and answers 403 |
 | `canDelete(object $record): bool` | False hides Delete and answers 403 |
+| `canReorder(): bool` | False hides Reorder on a reorderable list and answers 403 |
+| `afterReorder(array $ids): void` | Runs inside the transaction after Reorder changed positions (keys in their new order) |
 | `validate(array $state, ?object $record): array` | Checks after the field rules; return `field => message` |
 | `normalizeState(array $state, ?object $record): array` | Normalize editable state before field/custom validation and password hashing |
 | `beforeSave(array $data, ?object $record): array` | Change dehydrated data inside the save transaction |
@@ -209,6 +211,10 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `RelationColumn` | related titles | `->resource(CityResource::class)`; many-to-many with `->pivot(...)`, `->limit(3)` ([guide](docs/relationships.md)) |
 
 Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
+
+### Drag-and-drop ordering
+
+`->reorderable('sort')` on the table lets editors put records in their own order (menu items, slides, FAQ entries). The order lives in an integer column of the resource's table; the list follows it when the table has no `defaultSort()`, and gets a **Reorder** button that opens Reorder mode: drag rows by their handle (mouse, touch, keyboard), each drop is saved at once. Filter first to order one group on its own. Options: `->newRecordsFirst()`, `->reorderLimit(1000)` (default 500). See the [Reordering guide](docs/reordering.md).
 
 ## Translatable fields
 
@@ -313,10 +319,10 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 | --- | --- |
 | `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings and preferences migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
-| `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration |
+| `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration; `--reorderable` adds a `sort` column and the Reorder button |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns, widgets, settings pages and the settings and preferences tables |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages and the settings and preferences tables |
 
 ## Removing the package
 
@@ -354,6 +360,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.10: `RichEditor` with image/video uploads and YouTube/Vimeo embeds
 - 0.14: website settings pages with `setting()`, Admin panel settings, My preferences, the Columns button
 - 0.15: relationship fields (`BelongsTo`, `BelongsToMany`), relation columns and filters
+- 0.16: drag-and-drop ordering (`->reorderable()`, Reorder mode)
 - Next: has-many managers (editing a record's photos or rooms inside its page), inline "create new" from a relation
 
 ## Development
