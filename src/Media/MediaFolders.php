@@ -153,6 +153,21 @@ final class MediaFolders
         return $parent;
     }
 
+    /**
+     * The folder at this path from the top ("Listings/Villas"), made (with any missing parent)
+     * when it does not exist yet. A media field's ->folder() uses it for its uploads.
+     */
+    public function ensure(string $path): int
+    {
+        $parent = null;
+        $parts = array_values(array_filter(array_map(static fn (string $p): string => self::clean($p), explode('/', $path)), static fn (string $p): bool => $p !== ''));
+        if ($parts === []) { throw self::refusal('folder', 'media.folder_name_required'); }
+        foreach ($parts as $name) {
+            $parent = $this->child($parent, $name) ?? $this->create($name, $parent);
+        }
+        return (int) $parent;
+    }
+
     public function create(string $name, ?int $parentId): int
     {
         $name = $this->validName($name);

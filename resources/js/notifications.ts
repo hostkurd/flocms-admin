@@ -70,3 +70,35 @@ document.addEventListener('click', event => {
 });
 document.addEventListener('flo-reactive:updated', receiveNotifications);
 document.addEventListener('flo-admin:navigated', receiveNotifications);
+
+let counter = 0;
+/** A notification from the browser (media screens): the same look and timing as the server's. */
+export function notify(title: string, level: 'success' | 'danger' | 'warning' | 'info' = 'success'): void {
+  const panel = document.querySelector<HTMLElement>('.fa-panel');
+  if (!panel || !title) return;
+  const payload = document.createElement('div');
+  payload.dataset.adminNotificationPayload = '';
+  payload.hidden = true;
+  const message = document.createElement('div');
+  message.className = `fa-notification fa-alert-${level}`;
+  message.setAttribute('role', level === 'danger' || level === 'warning' ? 'alert' : 'status');
+  message.dataset.adminNotice = '';
+  message.dataset.adminNotification = `browser-${Date.now()}-${++counter}`;
+  message.dataset.adminNotificationDuration = level === 'success' || level === 'info' ? '5' : '0';
+  const text = document.createElement('div');
+  const line = document.createElement('p');
+  line.className = 'fa-notification-title';
+  line.textContent = title;
+  text.append(line);
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.className = 'fa-icon-btn';
+  dismiss.dataset.adminNotificationDismiss = '';
+  dismiss.setAttribute('aria-label', panel.dataset.adminDismiss || 'Dismiss');
+  dismiss.textContent = '×';
+  message.append(text, dismiss);
+  payload.append(message);
+  document.body.append(payload);
+  receiveNotifications();
+  payload.remove();
+}

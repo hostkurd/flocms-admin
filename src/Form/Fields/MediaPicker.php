@@ -16,6 +16,11 @@ use FloCMS\Admin\Support\Str;
  *     MediaPicker::make('cover_id')->label('Cover')->required()     INT column
  *     MediaPicker::make('gallery')->multiple()->max(12)              TEXT column, JSON list in the chosen order
  *     MediaPicker::make('intro_video_id')->videos()                  videos instead of images (->any() for both)
+ *     MediaPicker::make('cover_id')->folder('Listings')->aspectRatio('16:9')   (0.18)
+ *
+ * ->folder(): where files uploaded through the field go, and where its picker opens
+ * (a path like "Listings/Villas", made when the first file arrives). ->aspectRatio():
+ * the shape of a single item's preview (default 4:3, videos 16:9).
  *
  * The website reads them with media($record->cover_id) and media_list($record->gallery).
  * Without JavaScript the field is a select of the newest 200 items.
@@ -28,6 +33,30 @@ class MediaPicker extends Field
     private ?string $kind = 'image';
     private bool $multiple = false;
     private ?int $max = null;
+    private ?string $folder = null;
+    private ?string $aspect = null;
+
+    /** Uploads through this field go to this media folder ("Listings/Villas"); its picker opens there. */
+    public function folder(string $path): static
+    {
+        $path = trim(preg_replace('~\s*/\s*~', '/', trim($path)) ?? '', '/');
+        if ($path === '' || mb_strlen($path) > 255) { throw new \InvalidArgumentException('MediaPicker folder must be a path such as "Listings/Villas".'); }
+        $this->folder = $path;
+        return $this;
+    }
+
+    /** The shape of a single item's preview: "16:9", "4:3", "1:1", "3:2"… */
+    public function aspectRatio(string $ratio): static
+    {
+        if (preg_match('/^([1-9][0-9]{0,2})\s*[:\/]\s*([1-9][0-9]{0,2})$/D', trim($ratio), $parts) !== 1) {
+            throw new \InvalidArgumentException('MediaPicker aspectRatio must look like "16:9".');
+        }
+        $this->aspect = $parts[1] . ' / ' . $parts[2];
+        return $this;
+    }
+
+    public function getFolder(): ?string { return $this->folder; }
+    public function getAspectRatio(): ?string { return $this->aspect; }
 
     public function images(): static { $this->kind = 'image'; return $this; }
     public function videos(): static { $this->kind = 'video'; return $this; }
@@ -139,17 +168,14 @@ class MediaPicker extends Field
             return '<p class="fa-help">' . Str::e(AdminLang::get('media.not_ready')) . '</p>';
         }
         $chosen = $store->findMany($ids);
-        $strings = ['choose' => AdminLang::get($this->multiple ? 'media.add' : ($this->kind === 'video' ? 'media.choose_video' : 'media.choose_image')),
-            'change' => AdminLang::get('media.change'), 'remove' => AdminLang::get('media.remove'), 'title' => AdminLang::get('media.picker_title'),
-            'search' => AdminLang::get('media.search'), 'upload' => AdminLang::get('media.upload'), 'select' => AdminLang::get('media.select'),
-            'cancel' => AdminLang::get('actions.cancel'), 'more' => AdminLang::get('media.more'), 'empty' => AdminLang::get('media.empty'),
-            'loading' => AdminLang::get('reactive.loading'), 'failed' => AdminLang::get('media.failed'), 'uploading' => AdminLang::get('media.uploading'),
-            'moveBefore' => AdminLang::get('media.move_before'), 'moveAfter' => AdminLang::get('media.move_after'), 'moved' => AdminLang::get('media.moved'),
-            'max' => $this->max !== null ? AdminLang::get('media.max', ['max' => (string) $this->max]) : '', 'missing' => AdminLang::get('media.missing_item')];
+        $folder = $this->folder !== null ? MediaLibrary::folders()->resolve($this->folder) : null;
         $html = '<div class="fa-media-field" data-admin-media-field data-kind="' . Str::e($this->kind ?? '') . '" data-multiple="' . ($this->multiple ? 'true' : 'false') . '"'
             . ($this->multiple ? ' data-max="' . ($this->max ?? self::MAX) . '"' : '')
-            . ' data-items="' . Str::e(json_encode(array_map(static fn (MediaItem $item): array => $item->toArray(), $chosen), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '"'
-            . ' data-strings="' . Str::e(json_encode($strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)) . '">';
+            . ($folder !== null ? ' data-folder="' . $folder . '"' : '')
+            . ($this->folder !== null ? ' data-folder-path="' . Str::e($this->folder) . '"' : '')
+            . ($this->aspect !== null ? ' data-aspect="' . Str::e($this->aspect) . '"' : '')
+            . ' data-label="' . Str::e($this->getLabel()) . '"' . ($this->isDisabled() ? ' data-disabled="true"' : '')
+            . ' data-items="' . Str::e(json_encode(array_map(static fn (MediaItem $item): array => $item->toArray(), $chosen), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '">';
 
         // Without JavaScript: a select of the newest items plus the chosen ones (the script replaces it).
         $options = [];
@@ -158,12 +184,12 @@ class MediaPicker extends Field
         $select = ['id' => $id, 'name' => $name === '' ? null : $name . ($this->multiple ? '[]' : ''), 'class' => 'fa-input fa-select fa-media-select',
             'data-media-select' => true, 'multiple' => $this->multiple, 'size' => $this->multiple ? '6' : null, 'disabled' => $this->isDisabled()];
         foreach ($attributes as $key => $attribute) { $select[$key] = $attribute; }
-        $html .= '<select' . self::attributes($select) . '>';
+        $html .= '<div class="fa-media-nojs" data-media-nojs><select' . self::attributes($select) . '>';
         if (!$this->multiple) { $html .= '<option value="">' . Str::e(AdminLang::get('media.none')) . '</option>'; }
         foreach ($options as $item) {
             $html .= '<option value="' . $item->id . '"' . (in_array($item->id, $ids, true) ? ' selected' : '') . '>' . Str::e($item->label() . ' (#' . $item->id . ')') . '</option>';
         }
-        $html .= '</select>';
+        $html .= '</select></div>';
         if ($name !== '') {
             // The script submits this one (it keeps the chosen order); without JavaScript the select is sent.
             $html .= '<input type="hidden" name="' . Str::e($name) . '" value="' . Str::e($value) . '" data-media-value disabled>';
