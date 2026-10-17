@@ -83,7 +83,9 @@ export function mediaView(options: ViewOptions): NodeView {
   if (options.caption) dom.append(caption);
 
   const apply = (current: PMNode) => {
-    dom.className = ['fa-media', ...mediaClasses(current.attrs), dom.classList.contains('ProseMirror-selectednode') ? 'ProseMirror-selectednode' : ''].filter(Boolean).join(' ');
+    // Keep the state classes the node view sets itself (selected, settling after a resize).
+    const keep = ['ProseMirror-selectednode', 'is-settling'].filter(name => dom.classList.contains(name));
+    dom.className = ['fa-media', ...mediaClasses(current.attrs), ...keep].join(' ');
     const text = options.caption?.(current) ?? '';
     caption.textContent = text;
     caption.hidden = text === '';

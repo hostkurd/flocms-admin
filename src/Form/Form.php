@@ -132,7 +132,7 @@ final class Form
             $tab = $tabs[$name] ?? null;
             $places[$name] = $field->getLabel() . ($tab !== null && $tab !== '' ? ' (' . $tab . ')' : '');
         }
-        return implode(', ', array_values($places));
+        return implode(\FloCMS\Admin\Support\AdminLang::get('form.list_separator'), array_values($places));
     }
 
     /** @return array<string, Field> */

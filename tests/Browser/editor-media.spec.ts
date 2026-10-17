@@ -66,6 +66,8 @@ test('a selected image gets a toolbar for position and width, and grips that res
   expect(Number.parseFloat(live) % 5).not.toBe(0);
   await expect(content(page).locator('.fa-media-size')).toHaveText(/\b\d*[05]%$/);
   await page.mouse.up();
+  // It glides to the kept step (the class survives the node's redraw).
+  expect(await content(page).locator('.fa-media').first().evaluate(node => node.classList.contains('is-settling'))).toBe(true);
   const value = await source(page).inputValue();
   const size = Number(/rt-w-(\d+)/.exec(value)![1]);
   expect(size % 5).toBe(0);

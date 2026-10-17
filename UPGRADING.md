@@ -2,7 +2,7 @@
 
 Update with `composer require "hostkurd/flocms-admin:^0.18.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
 
-- The message after a failed save now names the fields ("Please check: Price (Details)." — key `flash.fix_errors_in`); `flash.fix_errors` is still used when an error has no field. Site tests that looked for "Please correct the errors below." on resource forms should look for the new text.
+- The message after a failed save now names the fields ("Please check: Price (Details)." — key `flash.fix_errors_in`); an error that belongs to no field adds its own text to that list. `flash.fix_errors` remains for the rare case with nothing to list. Site tests that looked for "Please correct the errors below." on resource forms should look for the new text.
 - Tab buttons holding an error have the class `has-error` and an `aria-describedby`.
 
 ---
