@@ -38,6 +38,23 @@ final class TrashActivityUnitTest extends TestCase
         \FloCMS\Admin\Admin::reset();
     }
 
+    public function testDialogMinHeights(): void
+    {
+        self::assertSame('240px', \FloCMS\Admin\AdminConfig::cssLength(240));
+        self::assertSame('20rem', \FloCMS\Admin\AdminConfig::cssLength(' 20rem '));
+        self::assertNull(\FloCMS\Admin\AdminConfig::cssLength('20rem; color:red'));
+        self::assertNull(\FloCMS\Admin\AdminConfig::cssLength(-5));
+        self::assertNull(\FloCMS\Admin\AdminConfig::cssLength('calc(10px)'));
+        self::assertNull(\FloCMS\Admin\Admin::useConfig([], true, sys_get_temp_dir())->dialogMinHeight(), 'dialogs fit their content by default');
+        self::assertSame('18rem', \FloCMS\Admin\Admin::useConfig(['dialog_min_height' => '18rem'], true, sys_get_temp_dir())->dialogMinHeight());
+        \FloCMS\Admin\Admin::reset();
+
+        self::assertSame('320px', \FloCMS\Admin\Actions\Action::make('notify')->modalMinHeight(320)->getModalMinHeight());
+        self::assertNull(\FloCMS\Admin\Actions\Action::make('notify')->modalMinHeight(320)->modalMinHeight(null)->getModalMinHeight());
+        $this->expectException(\InvalidArgumentException::class);
+        \FloCMS\Admin\Actions\Action::make('notify')->modalMinHeight('tall');
+    }
+
     public function testRelativeDates(): void
     {
         $now = strtotime('2026-10-17 15:00:00');

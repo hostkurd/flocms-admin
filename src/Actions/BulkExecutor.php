@@ -30,12 +30,13 @@ final class BulkExecutor
     /** The confirmation text of a bulk action: Delete selected says where the records go. */
     public static function confirmText(Resource $resource, ?Action $action, int $count): string
     {
+        $one = $count === 1 ? '_one' : '';
         if ($action instanceof BulkAction && $action->isDeleting() && \FloCMS\Admin\Trash\Trash::enabledFor($resource)) {
             $days = \FloCMS\Admin\Trash\Trash::days();
-            return AdminLang::get($days > 0 ? 'bulk.confirm_trash' : 'bulk.confirm_trash_kept', ['count' => $count, 'days' => $days]);
+            return AdminLang::get(($days > 0 ? 'bulk.confirm_trash' : 'bulk.confirm_trash_kept') . $one, ['count' => $count, 'days' => $days]);
         }
-        if ($action instanceof BulkAction && $action->isDeleting()) { return AdminLang::get('bulk.confirm_delete', ['count' => $count]); }
-        return AdminLang::get('bulk.confirm', ['count' => $count]);
+        if ($action instanceof BulkAction && $action->isDeleting()) { return AdminLang::get('bulk.confirm_delete' . $one, ['count' => $count]); }
+        return AdminLang::get('bulk.confirm' . $one, ['count' => $count]);
     }
 
     private static function digest(array $ids): string { return hash('sha256', json_encode($ids, JSON_THROW_ON_ERROR)); }

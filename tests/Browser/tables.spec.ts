@@ -112,7 +112,7 @@ test('full-page filters and bulk deletion work with JavaScript disabled', async 
     await expect(page).toHaveURL(/static=1/);
     await page.locator('[name="ids[]"][value="8"]').check();
     await page.locator('[data-admin-bulk-action=delete]').click();
-    await expect(page.locator('form')).toContainText('1 selected records');
+    await expect(page.locator('form')).toContainText('Delete the selected record?');
     await page.getByRole('button', { name: 'Delete selected', exact: true }).click();
     await expect(page.locator('tbody')).not.toContainText('Studio');
   } finally { await context.close(); }

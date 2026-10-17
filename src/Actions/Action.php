@@ -26,6 +26,7 @@ class Action
     private bool $confirmation = true;
     private ?string $description = null;
     private ?string $mode = null;
+    private ?string $minHeight = null;
 
     protected function __construct(private readonly string $name)
     {
@@ -63,6 +64,18 @@ class Action
     public function action(Closure $callback): static { $this->customOnly(); $this->handler = $callback; return $this; }
     public function requiresConfirmation(bool $value = true): static { $this->confirmation = $value; return $this; }
     public function modalDescription(string $description): static { $this->description = $description; return $this; }
+    /**
+     * Reserve room in the dialog's body (0.19.1): pixels or a CSS length such as
+     * '20rem'; null fits the content (the default, or the panel's 'dialog_min_height').
+     */
+    public function modalMinHeight(int|string|null $height): static
+    {
+        $length = $height === null ? null : \FloCMS\Admin\AdminConfig::cssLength($height);
+        if ($height !== null && $length === null) { throw new \InvalidArgumentException('modalMinHeight() takes pixels (an int) or a CSS length such as "20rem".'); }
+        $this->minHeight = $length;
+        return $this;
+    }
+    public function getModalMinHeight(): ?string { return $this->minHeight; }
     /** Open in a dialog over the list. */
     public function modal(): static { $this->mode = 'modal'; return $this; }
     /** Open in a panel that slides in from the side of the window. */

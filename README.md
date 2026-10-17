@@ -292,6 +292,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `sidebar` | `'light'` | `'light'` or `'dark'` |
 | `content_width` | `'full'` | `'full'` uses the whole window; `'boxed'` centres pages at most 1280 px wide |
 | `density` | `'comfortable'` | List rows: `'comfortable'` or `'compact'` |
+| `dialog_min_height` | `null` | Least height of the body of form and action dialogs: pixels (`240`) or a CSS length (`'20rem'`); `null` fits the content. One action: `->modalMinHeight(320)` |
 | `panel_settings` | `true` | The "Admin panel" settings page; its saved values override `brand`, `logo`, `primary_color`, `theme`, `sidebar`, `content_width` and `density` |
 | `settings_path` | `'admin/settings.php'` | File that declares the website settings pages |
 | `settings_uploads` | `public/uploads/settings` at `/uploads/settings` | `['root' => …, 'url' => …]`: where files uploaded on settings pages are stored (public) |

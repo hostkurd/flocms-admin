@@ -58,6 +58,9 @@ final class DoctorCommand extends Command
                 $this->ok(sprintf('Brand colour %s (white text contrast %.1f:1)', $color, \FloCMS\Admin\Support\Theme::contrastWithWhite($color)));
             }
         }
+        if (array_key_exists('dialog_min_height', $values) && $values['dialog_min_height'] !== null && $config->dialogMinHeight() === null) {
+            $this->caution("dialog_min_height must be pixels (240) or a CSS length such as '20rem'; dialogs fit their content.");
+        }
         if (array_key_exists('logo', $values) && $values['logo'] !== null && $config->logo() === null) {
             $this->caution('logo must be an absolute URL or a path starting with /; showing the brand letter instead.');
         }

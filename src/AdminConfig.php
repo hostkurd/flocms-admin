@@ -94,6 +94,24 @@ final class AdminConfig
         return is_string($width) && in_array($width, self::WIDTHS, true) ? $width : 'full';
     }
 
+    /**
+     * The least height of the body of the panel's form and action dialogs (0.19.1):
+     * 'dialog_min_height' => 240 (pixels) or a CSS length such as '20rem'. Unset,
+     * a dialog fits its content.
+     */
+    public function dialogMinHeight(): ?string
+    {
+        return self::cssLength($this->values['dialog_min_height'] ?? null);
+    }
+
+    /** A non-negative CSS length (an int is pixels), or null when unset or invalid. */
+    public static function cssLength(mixed $value): ?string
+    {
+        if (is_int($value) && $value >= 0 && $value <= 2000) { return $value . 'px'; }
+        if (is_string($value) && preg_match('/^(?:0|\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh))$/D', trim($value)) === 1) { return trim($value); }
+        return null;
+    }
+
     /** Brand colour as #rrggbb (from #rgb or #rrggbb), or null for the default blue. Invalid values are ignored; admin:doctor reports them. */
     public function primaryColor(): ?string
     {

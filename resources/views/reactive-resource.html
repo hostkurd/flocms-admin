@@ -107,7 +107,7 @@
         @endif
     </div>
 </div>
-<dialog class="fa-editor{{ $dialogStyle === 'slide-over' ? ' is-slide-over' : '' }}" id="{{ $prefix }}-editor" data-rx-dialog="editor" data-rx-open="{{ $mode !== '' ? 'true' : 'false' }}" data-rx-close="cancel" aria-labelledby="{{ $prefix }}-editor-title">
+<dialog class="fa-editor{{ $dialogStyle === 'slide-over' ? ' is-slide-over' : '' }}" id="{{ $prefix }}-editor" data-rx-dialog="editor" data-rx-open="{{ $mode !== '' ? 'true' : 'false' }}" data-rx-close="cancel" aria-labelledby="{{ $prefix }}-editor-title"@if($dialogMinHeight !== null) data-admin-dialog-min-height="{{ $dialogMinHeight }}"@endif>
     <div class="fa-dialog-head"><h2 id="{{ $prefix }}-editor-title" class="fa-dialog-title">{{ $actionTitle }}</h2><button class="fa-icon-action fa-dialog-close" type="button" data-rx-dialog-close="editor" aria-label="{{ $t('actions.cancel') }}" title="{{ $t('actions.cancel') }}">{!! $removeIcon !!}</button></div>
     @if(isset($errors['_form']))<p class="fa-alert fa-alert-danger" role="alert" tabindex="-1" data-rx-error-summary>{{ $errors['_form'] }}</p>@endif
     @if($mode !== '')

@@ -25,7 +25,7 @@ class PostActionResource extends PostResource
     {
         return parent::table($table)->actions([
             EditAction::make(), DeleteAction::make(),
-            Action::make('publish')->label('demo.publish')->icon('file')->color('success')
+            Action::make('publish')->label('demo.publish')->icon('file')->color('success')->modalMinHeight(240)
                 ->visible(static fn (?object $record): bool => $record?->status === 'draft')
                 ->authorize(fn (?object $record): bool => $record !== null && $this->canEdit($record))
                 ->form(static fn (Form $form): Form => $form->schema([TextInput::make('reason')->label('demo.reason')->rules('required|max:60')]))
