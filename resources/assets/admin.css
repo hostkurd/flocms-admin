@@ -871,3 +871,5 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-filters .fa-relation-ui{flex-wrap:wrap}
 .fa-filters .fa-relation-list{position:static;flex-basis:100%;box-shadow:none;margin-block-start:4px}
 .fa-relation-option,.fa-relation-chip>span,.fa-relation-input{unicode-bidi:plaintext}
+/* plaintext would align a Latin title to the left on right-to-left pages; keep the page's side */
+[dir="rtl"] .fa-relation-option,[dir="rtl"] .fa-relation-input{text-align:right}

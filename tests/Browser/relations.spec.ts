@@ -75,6 +75,22 @@ test('right to left: Kurdish titles and keyboard choice', async ({ page }) => {
   expect(Math.abs(box!.x + box!.width - (field!.x + field!.width))).toBeLessThan(2);
 });
 
+test('right to left: Latin titles stay on the right, like other fields', async ({ page }) => {
+  await page.goto('/ku/admin/homes/edit/1');
+  await search(page, 'agent_id').fill('rebin agent 7');
+  const option = page.locator('#f-agent_id-listbox [role="option"]', { hasText: 'Rebin Agent 7' });
+  // The option's text ends at the option's right edge (minus padding), not at its left
+  const gap = await option.evaluate(element => {
+    const range = document.createRange();
+    range.selectNodeContents(element.firstChild!);
+    return element.getBoundingClientRect().right - range.getBoundingClientRect().right;
+  });
+  expect(gap).toBeLessThan(14);
+  await option.click();
+  await expect(search(page, 'agent_id')).toHaveValue('Rebin Agent 7');
+  await expect(search(page, 'agent_id')).toHaveCSS('text-align', 'right');
+});
+
 test('relation filters narrow the list and show chips', async ({ page }) => {
   await page.goto('/en/admin/homes');
   await page.locator('[id$="-filters-menu"] summary').click();

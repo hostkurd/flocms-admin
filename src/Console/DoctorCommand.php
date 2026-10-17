@@ -168,6 +168,7 @@ final class DoctorCommand extends Command
             return;
         }
         $this->ok('Table "' . $class::getTable() . '" (' . count($columns) . ' columns)');
+        $this->checkCharset($db, $class::getTable());
 
         $needed = [$class::getPrimaryKey() => 'primary key'];
         foreach ($form->writableFields() as $name => $field) {
@@ -232,6 +233,7 @@ final class DoctorCommand extends Command
                 $this->bad('Relation ' . $what . ': table "' . $source->table() . '" not found');
                 continue;
             }
+            $this->checkCharset($db, $source->table());
             foreach ([$source->key(), $source->titleColumn()] as $column) {
                 if (!array_key_exists(strtolower($column), $related)) { $this->bad('Relation ' . $what . ': column "' . $column . '" missing in "' . $source->table() . '"'); }
             }
@@ -251,6 +253,43 @@ final class DoctorCommand extends Command
                     . 'ALTER TABLE `' . $class::getTable() . '` ADD FOREIGN KEY (`' . $item->getName() . '`) REFERENCES `' . $source->table() . '` (`' . $source->key() . '`) ON DELETE RESTRICT;');
             }
         }
+    }
+
+    /** @var array<string, true> tables whose character set was checked */
+    private array $charsetChecked = [];
+
+    /** A MySQL/MariaDB table whose text columns cannot hold every language (latin1 saves Arabic as "?"). */
+    private function checkCharset(Database $db, string $table): void
+    {
+        if (isset($this->charsetChecked[strtolower($table)])) { return; }
+        $this->charsetChecked[strtolower($table)] = true;
+        $narrow = self::narrowTextColumns($db, $table);
+        if ($narrow !== []) {
+            $this->bad('Table "' . $table . '" stores text as ' . implode(', ', array_unique(array_values($narrow))) . ' (' . implode(', ', array_keys($narrow)) . '): Arabic, Kurdish and other non-Latin text is saved as "?". '
+                . 'Fix: ALTER TABLE `' . $table . '` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; (text already saved as "?" must be typed again)');
+        }
+    }
+
+    /**
+     * Text columns whose character set is not UTF-8 (MySQL/MariaDB; SQLite is always UTF-8).
+     *
+     * @return array<string, string> column => character set
+     * @internal
+     */
+    public static function narrowTextColumns(Database $db, string $table): array
+    {
+        if ($db->driver() === 'sqlite') { return []; }
+        try {
+            $rows = $db->query("SELECT COLUMN_NAME, CHARACTER_SET_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CHARACTER_SET_NAME IS NOT NULL AND CHARACTER_SET_NAME NOT IN ('utf8mb4', 'utf8mb3', 'utf8') ORDER BY ORDINAL_POSITION", [$table])->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (Throwable) {
+            return [];
+        }
+        $narrow = [];
+        foreach ($rows as $row) {
+            $row = array_change_key_case($row, CASE_LOWER);
+            $narrow[(string) $row['column_name']] = (string) $row['character_set_name'];
+        }
+        return $narrow;
     }
 
     /** Whether $table.$column has a foreign key (MySQL/MariaDB and SQLite). */

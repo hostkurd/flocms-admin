@@ -10,7 +10,7 @@ use FloCMS\CLI\Console\Input\Definition;
 use FloCMS\CLI\Console\Input\Option;
 
 /**
- * php flo make:admin-resource Property [--table=properties] [--slug=properties] [--migration] [--force]
+ * php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--force]
  */
 final class MakeResourceCommand extends Command
 {
@@ -22,6 +22,7 @@ final class MakeResourceCommand extends Command
         'php flo make:admin-resource Property',
         'php flo make:admin-resource Property --migration',
         'php flo make:admin-resource BlogPost --table=posts --slug=posts',
+        'php flo make:admin-resource City --form=modal',
     ];
 
     protected function configure(Definition $definition): void
@@ -30,6 +31,7 @@ final class MakeResourceCommand extends Command
             ->argument('name', Argument::REQUIRED, 'Singular name, e.g. Property or BlogPost')
             ->option('table', 't', Option::VALUE_REQUIRED, 'Database table (default: plural snake case of the name)')
             ->option('slug', 's', Option::VALUE_REQUIRED, 'URL segment (default: the table with hyphens)')
+            ->option('form', null, Option::VALUE_REQUIRED, 'How Create and Edit open: page (default), modal or slide-over')
             ->option('migration', 'm', Option::VALUE_NONE, 'Also create a migration for the table')
             ->option('force', 'f', Option::VALUE_NONE, 'Overwrite an existing resource file');
     }
@@ -50,6 +52,11 @@ final class MakeResourceCommand extends Command
         $slug = (string) ($this->option('slug') ?? str_replace('_', '-', strtolower($table)));
         if (preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $slug) !== 1) {
             $this->invalid('Invalid slug "' . $slug . '": use lower case letters, digits and single hyphens.');
+        }
+
+        $formMode = (string) ($this->option('form') ?? 'page');
+        if (!in_array($formMode, ['page', 'modal', 'slide-over'], true)) {
+            $this->invalid('Invalid --form "' . $formMode . '": use page, modal or slide-over.');
         }
 
         $project = $this->project();
@@ -73,6 +80,7 @@ final class MakeResourceCommand extends Command
             'table' => $table,
             'slug' => $slug,
             'timestamps' => $withMigration ? 'true' : 'false',
+            'formMode' => $formMode,
             'label' => ucfirst(strtolower($label)),
             'pluralLabel' => Str::headline($slug),
             'dateColumn' => $withMigration ? "\n                DateColumn::make('updated_at')->sortable()," : '',

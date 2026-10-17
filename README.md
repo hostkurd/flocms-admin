@@ -313,7 +313,7 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 | --- | --- |
 | `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings and preferences migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
-| `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--migration] [--force]` | Create a resource class, and optionally a migration |
+| `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
 | `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns, widgets, settings pages and the settings and preferences tables |
