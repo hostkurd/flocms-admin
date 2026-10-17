@@ -10,7 +10,7 @@ use FloCMS\CLI\Console\Input\Definition;
 use FloCMS\CLI\Console\Input\Option;
 
 /**
- * php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--force]
+ * php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]
  */
 final class MakeResourceCommand extends Command
 {
@@ -23,6 +23,7 @@ final class MakeResourceCommand extends Command
         'php flo make:admin-resource Property --migration',
         'php flo make:admin-resource BlogPost --table=posts --slug=posts',
         'php flo make:admin-resource City --form=modal',
+        'php flo make:admin-resource Faq --migration --reorderable',
     ];
 
     protected function configure(Definition $definition): void
@@ -33,6 +34,7 @@ final class MakeResourceCommand extends Command
             ->option('slug', 's', Option::VALUE_REQUIRED, 'URL segment (default: the table with hyphens)')
             ->option('form', null, Option::VALUE_REQUIRED, 'How Create and Edit open: page (default), modal or slide-over')
             ->option('migration', 'm', Option::VALUE_NONE, 'Also create a migration for the table')
+            ->option('reorderable', null, Option::VALUE_NONE, 'Let editors drag records into order (a "sort" column)')
             ->option('force', 'f', Option::VALUE_NONE, 'Overwrite an existing resource file');
     }
 
@@ -73,6 +75,7 @@ final class MakeResourceCommand extends Command
         }
 
         $withMigration = (bool) $this->option('migration');
+        $reorderable = (bool) $this->option('reorderable');
         $label = Str::headline($snake);
         $content = Stub::render('resource', [
             'namespace' => $namespace,
@@ -88,11 +91,19 @@ final class MakeResourceCommand extends Command
         if (!$withMigration) {
             $content = str_replace("use FloCMS\\Admin\\Table\\Columns\\DateColumn;\n", '', $content);
         }
+        if ($reorderable) {
+            // Editors' order instead of newest first: the list follows the "sort" column.
+            $content = str_replace("->defaultSort('id', 'desc');", "->reorderable('sort');   // Reorder button; the list follows this column", $content);
+        }
 
         if (!Stub::write($file, $content)) {
             $this->fail('Could not write ' . $directory . '/' . $class . '.php.');
         }
         $this->success('Created ' . $directory . '/' . $class . '.php (URL: /admin/' . $slug . ', table: ' . $table . ')');
+
+        if ($reorderable && !$withMigration) {
+            $this->note('Add the order column: ALTER TABLE `' . $table . '` ADD `sort` INT NOT NULL DEFAULT 0, ADD INDEX (`sort`);');
+        }
 
         if (class_exists(Str::appControllerClass($slug)) || in_array($slug, ['users', 'pages'], true)) {
             $this->warn('The application already has a controller for "' . $slug . '", which wins over the admin. Use --slug to pick another URL.');
@@ -104,7 +115,9 @@ final class MakeResourceCommand extends Command
                 $this->note('A migration for "' . $table . '" already exists: ' . basename($existing[0]));
             } else {
                 $migration = 'database/migrations/' . date('Y_m_d_His') . '_create_' . $table . '_table.php';
-                if (!Stub::write($project->path($migration), Stub::render('migration', ['table' => $table, 'class' => $class]))) {
+                $column = $reorderable ? "\n            `sort` INT NOT NULL DEFAULT 0," : '';
+                $index = $reorderable ? "\n        \$db->query('CREATE INDEX `" . $table . "_sort_index` ON `" . $table . "` (`sort`)');" : '';
+                if (!Stub::write($project->path($migration), Stub::render('migration', ['table' => $table, 'class' => $class, 'reorderColumn' => $column, 'reorderIndex' => $index]))) {
                     $this->fail('Could not write ' . $migration . '.');
                 }
                 $this->success('Created ' . $migration . ' (run: php flo migrate)');

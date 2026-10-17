@@ -192,6 +192,17 @@ final class DoctorCommand extends Command
             }
         }
 
+        if (($order = $table->getReorderColumn()) !== null) {
+            $type = $columns[strtolower($order)] ?? null;
+            if ($type === null) {
+                $this->bad('Column "' . $order . '" (reorderable) is missing: ALTER TABLE `' . $class::getTable() . '` ADD `' . $order . '` INT NOT NULL DEFAULT 0, ADD INDEX (`' . $order . '`);');
+            } elseif (preg_match('/int/i', $type) !== 1) {
+                $this->bad('Column "' . $order . '" (reorderable) is ' . $type . ': use an integer type (INT)');
+            } else {
+                $this->ok('Reorderable by "' . $order . '" (up to ' . $table->getReorderLimit() . ' rows at a time)');
+            }
+        }
+
         $this->checkRelations($class, $form, $table, $db);
 
         foreach ($form->translatableNames() as $name) {

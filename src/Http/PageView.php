@@ -129,9 +129,80 @@ final class PageView
             'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
             'columnsChanged' => $visibility->changed(),
             'columnsIcon' => Icons::svg('columns'),
+            'reorderUrl' => self::reorderUrl($definition, $table, $filters, $canUpdate),
+            'reorderIcon' => Icons::svg('arrows-up-down'),
             'filterErrors' => $filters->errors !== [],
             'filterCount' => count($filters->active()),
             'chips' => array_map(static fn (array $chip): array => $chip + ['url' => Admin::url($slug, array_replace($state, ['filter' => $chip['query']]))], $filters->chips()),
+        ]);
+    }
+
+    /** The Reorder button's link, or null when the list is not reorderable or the user may not reorder. */
+    public static function reorderUrl(\FloCMS\Admin\Resource $resource, Table $table, \FloCMS\Admin\Table\FilterSet $filters, bool $canUpdate): ?string
+    {
+        if (!$table->isReorderable() || !$canUpdate || $filters->errors !== [] || !$resource->canReorder()) { return null; }
+        return Admin::url($resource::getSlug() . '/reorder', ['filter' => $filters->active() ?: null]);
+    }
+
+    /**
+     * Reorder mode: the filtered rows in their saved order, each with a drag
+     * handle and the ↑/↓ buttons used without JavaScript.
+     *
+     * @param array{total: int, data: list<object>} $result
+     */
+    public function reorder(Table $table, \FloCMS\Admin\Table\FilterSet $filters, array $result, string $moved = '', string $step = ''): string
+    {
+        $class = $this->resource;
+        $slug = $class::getSlug();
+        $pk = $class::getPrimaryKey();
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $slug);
+        $visible = $visibility->visibleColumns();
+        foreach ($visible as $column) { $column->prepareRecords($result['data']); }
+        $primary = $table->primaryColumn();
+        $rows = [];
+        $count = count($result['data']);
+        foreach (array_values($result['data']) as $index => $record) {
+            $id = property_exists($record, $pk) ? (string) $record->{$pk} : '';
+            $title = '';
+            $cells = [];
+            foreach ($visible as $name => $column) {
+                $html = $column->render($record);
+                if ($name === $primary) {
+                    $title = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? '');
+                    array_unshift($cells, ['html' => $html, 'class' => 'fa-reorder-title', 'label' => $column->getLabel()]);
+                } else {
+                    $cells[] = ['html' => $html, 'class' => 'fa-reorder-cell', 'label' => $column->getLabel()];
+                }
+            }
+            $title = $title !== '' ? $title : '#' . $id;
+            $rows[] = ['id' => $id, 'title' => $title, 'cells' => $cells, 'position' => $index + 1,
+                'first' => $index === 0, 'last' => $index === $count - 1,
+                // After a move without JavaScript, focus returns to the same button (or its partner at an end).
+                'focus' => $moved !== '' && $moved === $id ? ($step === 'up' && $index === 0 ? 'down' : ($step === 'down' && $index === $count - 1 ? 'up' : $step)) : ''];
+        }
+        $active = $filters->active();
+        $reactive = Admin::config()->reactiveEnabled();
+        $doneUrl = $reactive
+            ? Admin::url($slug, ['admin-resource_filters' => $active !== [] ? $filters->json() : null])
+            : Admin::url($slug, ['filter' => $active ?: null]);
+
+        return TemplateEngine::renderFile(self::viewPath('reorder'), [
+            't' => self::translator(),
+            'title' => AdminLang::get('reorder.title', ['label' => $class::getPluralLabel()]),
+            'rows' => $rows,
+            'total' => $result['total'],
+            'limit' => $table->getReorderLimit(),
+            'tooMany' => $result['total'] > $table->getReorderLimit(),
+            'filterErrors' => $filters->errors !== [],
+            'chips' => $filters->chips(),
+            'filtersJson' => $filters->json(),
+            'action' => Admin::url($slug . '/reorder'),
+            'doneUrl' => $doneUrl,
+            'csrf' => Csrf::field(),
+            'csrfToken' => Csrf::token(),
+            'handleIcon' => Icons::svg('grip', 'fa-icon fa-grip'),
+            'upIcon' => Icons::svg('chevron-up'),
+            'downIcon' => Icons::svg('chevron-down'),
         ]);
     }
 

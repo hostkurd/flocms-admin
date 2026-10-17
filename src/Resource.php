@@ -136,6 +136,25 @@ abstract class Resource
     }
 
     /**
+     * Return false to hide the Reorder button of a reorderable list (the page
+     * answers 403). The update permission is always needed as well.
+     */
+    public function canReorder(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Runs inside the transaction after Reorder changed positions, with the keys
+     * in their new order (e.g. to clear a cached menu). Exceptions roll back.
+     *
+     * @param list<string> $ids
+     */
+    public function afterReorder(array $ids): void
+    {
+    }
+
+    /**
      * Checks after the field rules passed: return field name => message.
      * $state holds the submitted values (translatable ones as ['en' => ...]);
      * $record is null on create.

@@ -11,7 +11,7 @@
         </span>
     </form>
     @endif
-    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0)
+    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null)
     <div class="fa-list-toolbar">
         @if($hasSearch)
         <form class="fa-search" method="get" action="{{ $listUrl }}" role="search">
@@ -31,6 +31,7 @@
         @endif
         <span class="fa-toolbar-spacer"></span>
         @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
+        @if($reorderUrl !== null)<a class="fa-btn" href="{{ $reorderUrl }}" data-admin-reorder-link>{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span></a>@endif
         @if(count($columnChoices) > 0)
         <details class="fa-popover" id="fa-list-columns-menu" data-admin-popover>
             <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>

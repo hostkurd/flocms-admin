@@ -46,7 +46,7 @@ if (!Session::get('fixture')) {
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -75,6 +75,17 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='projects'
     $pdo->exec('CREATE TABLE projects (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, slug TEXT UNIQUE, summary TEXT, detail TEXT, meta_title TEXT, status TEXT, featured INTEGER, starts_on DATE, created_at TEXT, updated_at TEXT)');
     foreach (['Harbour bridge', 'City library', 'River park', 'Old town square', 'Solar farm', 'Airport terminal', 'Metro line'] as $i => $name) {
         App::$db->table('projects')->insert(['name' => json_encode(['en' => $name, 'ar' => 'مشروع ' . $i]), 'slug' => 'project-' . ($i + 1), 'summary' => 'Summary ' . ($i + 1), 'detail' => json_encode(['en' => '<p>Detail</p>']), 'status' => 'planned', 'featured' => 0]);
+    }
+}
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='faqs'")->fetchColumn()) {
+    // Reorder mode: every position starts at 0; 40 rows so dragging has to scroll on a small screen.
+    $pdo->exec('CREATE TABLE faqs (id INTEGER PRIMARY KEY AUTOINCREMENT, question TEXT, category TEXT, sort INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0, created_at TEXT, updated_at TEXT)');
+    $faqs = (int) (Session::get('faq_count') ?: 5);
+    $names = ['Where is my parcel?' => 'أين طردي؟', 'How do I pay?' => 'كيف أدفع؟', 'Can I get a refund?' => 'هل يمكنني استرداد المال؟', 'Do you ship abroad?' => 'هل تشحنون للخارج؟', 'Is VAT included?' => 'هل الضريبة مشمولة؟'];
+    $keys = array_keys($names);
+    for ($i = 0; $i < $faqs; $i++) {
+        $en = $keys[$i] ?? 'Question ' . ($i + 1);
+        App::$db->table('faqs')->insert(['question' => json_encode(['en' => $en, 'ar' => $names[$en] ?? 'سؤال ' . ($i + 1)], JSON_UNESCAPED_UNICODE), 'category' => $i % 2 === 0 ? 'shipping' : 'billing', 'sort' => 0, 'archived' => 0]);
     }
 }
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='settings'")->fetchColumn()) {
@@ -113,6 +124,9 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/widgets': Session::set('widget_demo', true); Session::set('widget_static', ($_POST['static'] ?? '') === '1'); break;
         case '/__test/widget-add': App::$db->table('posts')->insert(['title'=>'{"en":"Fresh widget post"}', 'slug'=>'widget-'.bin2hex(random_bytes(4)), 'status'=>'published', 'featured'=>1, 'views'=>7]); break;
         case '/__test/readonly': Session::set('read_only', true); break;
+        case '/__test/faqs': Session::set('faq_count', max(1, (int) ($_POST['count'] ?? 5))); App::$db->query('DROP TABLE IF EXISTS faqs'); break;
+        case '/__test/faq-add': App::$db->table('faqs')->insert(['question' => '{"en":"Added elsewhere"}', 'category' => 'billing', 'sort' => 99, 'archived' => 0]); break;
+        case '/__test/faq-order': header('Content-Type: application/json'); echo json_encode(array_map('intval', App::$db->query('SELECT id FROM faqs ORDER BY sort, id')->fetchAll(PDO::FETCH_COLUMN))); exit;
         case '/__test/expire': Csrf::rotate(); break;
         case '/__test/asset-change': App::$db->table('assets')->where('id', '=', 1)->update(['title'=>(string) ($_POST['title'] ?? 'Changed elsewhere')]); break;
         case '/__test/change': App::$db->table('posts')->where('id', '=', (int) ($_POST['id'] ?? 1))->update(['title'=>'{"en":"Changed elsewhere"}']); break;

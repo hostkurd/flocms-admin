@@ -68,6 +68,11 @@ final class RecordRepository
         }
 
         $sortColumn = $sort !== null ? $table->sortableColumn($sort) : null;
+        // A reorderable list without its own default sort shows the editors' order.
+        $ordered = $sortColumn === null && $table->getDefaultSort() === null && $table->isReorderable();
+        if ($ordered) {
+            $query = $query->orderBy((string) $table->getReorderColumn(), 'asc');
+        }
         if ($sortColumn === null && $table->getDefaultSort() !== null) {
             // The requested column is not sortable: use the default sort and its direction
             $sortColumn = $table->column((string) $table->getDefaultSort());
@@ -87,7 +92,7 @@ final class RecordRepository
         // A stable order for rows with equal sort values
         $pk = $this->resource::getPrimaryKey();
         if ($sortColumn === null || $sortColumn->getName() !== $pk) {
-            $query = $query->orderBy($pk, $sortColumn === null ? 'desc' : $dir);
+            $query = $query->orderBy($pk, $sortColumn === null ? ($ordered ? 'asc' : 'desc') : $dir);
         }
 
         $result = $query->paginate(max(1, $page), $perPage);
@@ -98,6 +103,12 @@ final class RecordRepository
             'sort' => $sortColumn?->getName(),
             'dir' => $dir,
         ];
+    }
+
+    /** The editors' order of a reorderable table (Reorder mode, new-record positions). */
+    public function order(Table $table): RecordOrder
+    {
+        return new RecordOrder($this->resource, $this->db, $table);
     }
 
     public function find(string $id): ?object

@@ -16,10 +16,10 @@ return new class extends Migration
 
         $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
             ' . $this->id($db) . ',
-            `title` ' . $json . ' NULL,
+            `title` ' . $json . ' NULL,{{ reorderColumn }}
             `created_at` DATETIME NULL,
             `updated_at` DATETIME NULL
-        )' . $this->tableOptions($db));
+        )' . $this->tableOptions($db));{{ reorderIndex }}
     }
 
     public function down(Database $db): void

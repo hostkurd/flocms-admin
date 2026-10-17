@@ -20,7 +20,7 @@
         <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
     </form>
     @endif
-    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0)
+    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null)
     <div class="fa-list-toolbar">
         @if(count($table->searchableColumns()) > 0)
         <form class="fa-search" data-rx-submit="refresh" role="search">
@@ -33,6 +33,7 @@
         <span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span>
         <span class="fa-toolbar-spacer"></span>
         @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
+        @if($reorderUrl !== null)<a class="fa-btn" href="{{ $reorderUrl }}" data-admin-reorder-link>{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span></a>@endif
         @if(count($columnChoices) > 0)
         <details class="fa-popover" id="{{ $prefix }}-columns-menu" data-admin-popover>
             <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>

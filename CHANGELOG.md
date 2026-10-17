@@ -2,6 +2,25 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.16.0 - 2026-10-17
+
+Drag-and-drop ordering. No new dependency, migration or table: the order is an integer column of the resource's own table. See the [Reordering guide](docs/reordering.md).
+
+### Lists
+
+- `Table::reorderable('sort')`: records keep an order chosen by editors. The list follows it when the table has no `defaultSort()` (`ORDER BY sort, id`); sortable column headers still sort.
+- A **Reorder** button (update permission, `Resource::canReorder()`) opens Reorder mode at `/admin/<slug>/reorder`: every record of the current filters on one page, in their saved order, with a grip handle per row. Drag with the mouse, a finger or a pen (the page scrolls near its edges), or with the keyboard: Space/Enter picks a row up, the arrow keys move it, Space/Enter drops it, Escape puts it back; a screen reader hears each step. **Done** returns to the list with its filters.
+- Each drop is saved at once (`POST /admin/<slug>/reorder`): the moved rows hand out the positions they already had, so ordering one filtered group (one menu, one FAQ category) never moves the others. Positions are numbered 1, 2, 3… once when they repeat or are empty (a column just added with `DEFAULT 0`). Only the order column is written: `updated_at` and the save hooks are untouched. A failed save puts the rows back; when another editor changed the list meanwhile, the page reloads and says so.
+- Without JavaScript, each row has ↑/↓ buttons that move it one place.
+- New records go to the end of the order (`->newRecordsFirst()`: the start). Reorder mode takes up to 500 rows (`->reorderLimit()`, at most 2000); above that it asks to filter first.
+- `Resource::afterReorder(array $ids)` runs inside the transaction after positions changed (e.g. to clear a cached menu).
+
+### Other
+
+- `make:admin-resource --reorderable` adds the `sort` column (with an index) to the migration and `->reorderable('sort')` to the resource; without `--migration` it prints the `ALTER TABLE` to run.
+- `admin:doctor` reports a missing or non-integer order column.
+- Icons: `arrows-up-down`, `chevron-up`, `grip`.
+
 ## 0.15.5 - 2026-10-17
 
 ### Changed

@@ -57,6 +57,7 @@ final class ResourceController extends PanelController
             'admin_file' => $class::permission('view'),
             'admin_media' => $class::permission('view'),
             'admin_lookup' => $class::permission('view'),
+            'admin_reorder' => $class::permission('update'),
         ];
     }
 
@@ -329,6 +330,68 @@ final class ResourceController extends PanelController
 
         $results = $source->search($db, $term, \FloCMS\Admin\Relations\RelationSource::LIMIT, $where, $except !== '' ? $except : null);
         return \FloCMS\Core\Http\Response::json(['results' => $results])->header('Cache-Control', 'no-store')->header('X-Content-Type-Options', 'nosniff');
+    }
+
+    /**
+     * Reorder mode: GET shows the filtered rows in their saved order with drag
+     * handles (↑/↓ buttons without JavaScript); POST saves a new order (JSON
+     * for scripts) or moves one row a place (forms).
+     */
+    public function admin_reorder(): string|\FloCMS\Core\Http\Response
+    {
+        if (!$this->request->isMethod('GET', 'HEAD', 'POST')) { header('Allow: GET, POST'); throw new HttpException(405); }
+        if (count($this->params) > 0) { throw new HttpException(404); }
+        $class = $this->resourceClass;
+        $table = $this->table();
+        if (!$table->isReorderable()) { throw new HttpException(404); }
+        if (!$this->resource->canReorder()) { throw new HttpException(403); }
+        $order = $this->repository()->order($table);
+
+        if ($this->isPost()) {
+            $json = $this->request->input('_filters', '{}');
+            if (!is_string($json)) { throw new HttpException(400); }
+            $filters = new \FloCMS\Admin\Table\FilterSet($table, $json === '' ? '{}' : $json);
+            if ($filters->errors !== []) { throw new HttpException(400); }
+            $here = Admin::url($class::getSlug() . '/reorder', ['filter' => $filters->active() ?: null]);
+            $wantsJson = $this->request->acceptsJson();
+            $up = $this->request->input('move_up');
+            $down = $this->request->input('move_down');
+            try {
+                if ($up !== null || $down !== null) {
+                    $id = $up ?? $down;
+                    if (!is_string($id) || preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $id) !== 1) { throw new HttpException(400); }
+                    $order->move($filters, $id, $up !== null ? 'up' : 'down');
+                    if ($wantsJson) { return \FloCMS\Core\Http\Response::json(['ok' => true])->header('Cache-Control', 'no-store'); }
+                    $this->redirect(Admin::url($class::getSlug() . '/reorder', ['filter' => $filters->active() ?: null, 'moved' => $id, 'step' => $up !== null ? 'up' : 'down']));
+                }
+                $ids = json_decode((string) (is_string($this->request->input('order')) ? $this->request->input('order') : ''), true);
+                if (!is_array($ids) || !array_is_list($ids) || count($ids) > $table->getReorderLimit()) { throw new HttpException(400); }
+                foreach ($ids as $index => $id) {
+                    if (!is_string($id) && !is_int($id)) { throw new HttpException(400); }
+                    $ids[$index] = (string) $id;
+                    if (preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $ids[$index]) !== 1) { throw new HttpException(400); }
+                }
+                if (count(array_unique($ids)) !== count($ids)) { throw new HttpException(400); }
+                $order->reorder($filters, $ids);
+            } catch (\FloCMS\Core\ValidationException $error) {
+                $message = implode(' ', array_map(static fn ($m): string => implode(' ', (array) $m), $error->getErrors()));
+                Session::setFlash($message, 'warning');
+                if ($wantsJson) { return \FloCMS\Core\Http\Response::json(['ok' => false, 'message' => $message, 'reload' => true], 409)->header('Cache-Control', 'no-store'); }
+                $this->redirect($here);
+            }
+            if ($wantsJson) { return \FloCMS\Core\Http\Response::json(['ok' => true])->header('Cache-Control', 'no-store'); }
+            $this->redirect($here);
+        }
+
+        $filterInput = $this->request->queryValue('filter', []);
+        if (!is_array($filterInput)) { throw new HttpException(400); }
+        $filters = new \FloCMS\Admin\Table\FilterSet($table, json_encode((object) $filterInput, JSON_THROW_ON_ERROR));
+        $moved = $this->query('moved', '');
+        $step = $this->query('step', '');
+        $html = (new PageView($class))->reorder($table, $filters, $filters->errors === [] ? $order->records($filters) : ['total' => 0, 'data' => []],
+            $moved, in_array($step, ['up', 'down'], true) ? $step : '');
+
+        return $this->panel(AdminLang::get('reorder.title', ['label' => $class::getPluralLabel()]), $html, $class::getSlug());
     }
 
     /** Multipart transport for a declared CRUD action; never a generic upload API. */

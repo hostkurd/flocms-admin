@@ -881,3 +881,31 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-relation-option,.fa-relation-chip>span,.fa-relation-input{unicode-bidi:plaintext}
 /* plaintext would align a Latin title to the left on right-to-left pages; keep the page's side */
 [dir="rtl"] .fa-relation-option,[dir="rtl"] .fa-relation-input{text-align:right}
+
+/* ---- Reorder mode (0.16) ---------------------------------------------------- */
+.fa-reorder-chips{padding-block-start:12px}
+.fa-reorder-status{margin:0;padding:0 16px;min-block-size:0;font-size:13px;color:var(--fa-muted)}
+.fa-reorder-status:not(:empty){padding-block:10px 0}
+.fa-reorder-status.is-error{color:var(--fa-danger)}
+.fa-reorder-form{margin:0}
+.fa-reorder-list{list-style:none;margin:0;padding:8px}
+.fa-reorder-item{display:flex;align-items:center;gap:12px;min-block-size:48px;padding:6px 10px;border:1px solid transparent;border-radius:var(--fa-radius);background:var(--fa-surface)}
+.fa-reorder-item+.fa-reorder-item{border-block-start-color:var(--fa-border)}
+.fa-reorder-item.is-dragging,.fa-reorder-item.is-picked{position:relative;z-index:2;border-color:var(--fa-primary-border);background:var(--fa-primary-soft);box-shadow:var(--fa-shadow-md)}
+.fa-reorder-item.is-dragging+.fa-reorder-item,.fa-reorder-item.is-picked+.fa-reorder-item{border-block-start-color:transparent}
+.fa-reorder-list.is-sorting{user-select:none;-webkit-user-select:none}
+.fa-panel .fa-reorder-handle{display:inline-flex;align-items:center;justify-content:center;flex:none;inline-size:32px;block-size:40px;margin-inline-start:-4px;border:0;border-radius:var(--fa-radius-sm);background:transparent;color:var(--fa-faint);cursor:grab;touch-action:none;padding:0}
+.fa-panel .fa-reorder-handle[hidden]{display:none}
+.fa-panel .fa-reorder-handle:hover,.fa-panel .fa-reorder-handle[aria-pressed="true"]{background:var(--fa-surface-3);color:var(--fa-text)}
+.fa-reorder-list.is-sorting .fa-reorder-handle{cursor:grabbing}
+.fa-reorder-handle .fa-grip{stroke-width:3}
+.fa-reorder-position{flex:none;min-inline-size:2ch;font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--fa-faint);text-align:end}
+.fa-reorder-cells{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;flex:1;min-inline-size:0}
+.fa-reorder-title{font-weight:600;color:var(--fa-text);overflow-wrap:anywhere}
+.fa-reorder-cell{font-size:13px;color:var(--fa-muted)}
+.fa-reorder-steps{display:inline-flex;gap:2px;flex:none}
+.fa-reorder-steps[hidden]{display:none}
+.fa-panel .fa-reorder-steps .fa-icon-action:disabled{opacity:.35;cursor:default;background:transparent}
+@media (max-width:640px){.fa-reorder-list{padding:4px}.fa-reorder-item{gap:8px;padding-inline:6px}.fa-reorder-cell{display:none}}
+/* A Latin title on a right-to-left page keeps its punctuation in place ("How do I pay?") */
+.fa-reorder-title,.fa-reorder-cell{unicode-bidi:plaintext}

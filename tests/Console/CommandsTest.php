@@ -274,6 +274,64 @@ final class CommandsTest extends TestCase
         self::assertStringNotContainsString('Column "features"', $display, 'a pivot field is not a column of homes');
     }
 
+    public function testMakeResourceReorderableWritesTheColumnAndTheCall(): void
+    {
+        $tester = $this->runCommand(new MakeResourceCommand(), ['Faq', '--migration', '--reorderable']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        $file = $this->root . '/admin/Resources/FaqResource.php';
+        $code = (string) file_get_contents($file);
+        self::assertStringContainsString("->reorderable('sort');", $code);
+        self::assertStringNotContainsString('defaultSort', $code, 'the list follows the editors\' order');
+        $this->lint($file);
+
+        $migrations = glob($this->root . '/database/migrations/*_create_faqs_table.php');
+        self::assertCount(1, $migrations);
+        $this->lint($migrations[0]);
+        $db = new \FloCMS\Core\Database(new \PDO('sqlite::memory:', null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]));
+        (require $migrations[0])->up($db);
+        $columns = array_column($db->query('PRAGMA table_info(`faqs`)')->fetchAll(\PDO::FETCH_ASSOC), 'type', 'name');
+        self::assertSame('INT', $columns['sort']);
+        self::assertSame(['faqs_sort_index'], array_column($db->query("PRAGMA index_list(`faqs`)")->fetchAll(\PDO::FETCH_ASSOC), 'name'));
+
+        $tester = $this->runCommand(new MakeResourceCommand(), ['Slide', '--reorderable']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringContainsString('ALTER TABLE `slides` ADD `sort` INT NOT NULL DEFAULT 0, ADD INDEX (`sort`);', $tester->getDisplay());
+        self::assertStringContainsString("->reorderable('sort');", (string) file_get_contents($this->root . '/admin/Resources/SlideResource.php'));
+
+        $plain = (string) file_get_contents($this->root . '/admin/Resources/FaqResource.php');
+        $this->runCommand(new MakeResourceCommand(), ['Page', '--migration']);
+        $migration = (string) file_get_contents(glob($this->root . '/database/migrations/*_create_pages_table.php')[0]);
+        self::assertStringNotContainsString('sort', $migration, 'only with --reorderable');
+        self::assertStringNotContainsString('{{', $migration);
+        self::assertNotSame('', $plain);
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testDoctorChecksTheReorderColumn(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'panel_settings' => false, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Reorder\\FaqResource::class]];");
+        $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
+        $pdo->exec('CREATE TABLE faqs (id INTEGER PRIMARY KEY, question TEXT, category TEXT, archived INTEGER, created_at TEXT, updated_at TEXT)');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Column "sort" (reorderable) is missing: ALTER TABLE `faqs` ADD `sort` INT NOT NULL DEFAULT 0, ADD INDEX (`sort`);', $display);
+
+        $pdo->exec('ALTER TABLE faqs ADD sort TEXT');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Column "sort" (reorderable) is TEXT: use an integer type (INT)', $display);
+
+        $pdo->exec('DROP TABLE faqs');
+        $pdo->exec('CREATE TABLE faqs (id INTEGER PRIMARY KEY, question TEXT, category TEXT, sort INTEGER NOT NULL DEFAULT 0, archived INTEGER, created_at TEXT, updated_at TEXT)');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Reorderable by "sort" (up to 500 rows at a time)', $display);
+    }
+
     private function lint(string $file): void
     {
         exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file), $out, $lint);

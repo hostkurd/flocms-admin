@@ -72,6 +72,9 @@ final class Icons
         'x' => 'M18 6 6 18M6 6l12 12',
         'chevron-left' => 'M15 18l-6-6 6-6',
         'chevron-right' => 'M9 18l6-6-6-6',
+        'chevron-up' => 'M6 15l6-6 6 6',
+        'arrows-up-down' => 'M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4',
+        'grip' => 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
     ];
 
     /** @return list<string> */

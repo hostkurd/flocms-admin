@@ -86,7 +86,15 @@ final class FormSubmission
                 if ($record === null) { $data['created_at'] = $now; }
                 $data['updated_at'] = $now;
             }
-            if ($record === null) { $id = $this->repository->insert($data); }
+            if ($record === null) {
+                // A reorderable resource puts a new record at the end (or the start) of the order.
+                $table = $class->table(new \FloCMS\Admin\Table\Table());
+                $column = $table->getReorderColumn();
+                if ($column !== null && (($data[$column] ?? null) === null || $data[$column] === '')) {
+                    $data[$column] = $this->repository->order($table)->nextPosition();
+                }
+                $id = $this->repository->insert($data);
+            }
             else {
                 $id = (string) $record->{$pk};
                 if ($guarded) { $this->repository->updateUnchanged($id, $data, $record); }
