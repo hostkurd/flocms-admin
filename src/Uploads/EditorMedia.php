@@ -12,7 +12,8 @@ use FloCMS\Uploader\Exceptions\ValidationException;
 /**
  * Images and videos inserted into rich text. They are public (the website shows
  * them), stored under the configured media folder as
- * <resource>/<field>/<yyyy>/<mm>/<random>.<ext>, and checked by content, not by
+ * <resource>/<field>/<yyyy>/<mm>/<random>.<ext> (library/<yyyy>/<mm>/… as media
+ * library items when the library is set up, 0.17), and checked by content, not by
  * name: only JPEG, PNG, GIF and WebP images and MP4 and WebM videos are kept.
  * All checks and storage are flocms-uploader's (Uploader::image(), ::video()).
  *
@@ -39,6 +40,11 @@ final class EditorMedia
      */
     public static function image(array $file, RichEditor $field, string $slug): array
     {
+        // With the media library (0.17) the image becomes a library item, so it can be found and reused.
+        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) {
+            $item = \FloCMS\Admin\Media\MediaLibrary::store()->create(\FloCMS\Admin\Media\MediaFiles::image($file, $field->getMaxImageBytes()), self::userId());
+            return ['url' => $item->url(), 'width' => $item->width, 'height' => $item->height, 'id' => $item->id];
+        }
         foreach (['tmp_name', 'name', 'error'] as $key) { if (!isset($file[$key]) || !is_scalar($file[$key])) { throw new ValidationException('The image did not arrive.'); } }
         if ((int) $file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file((string) $file['tmp_name'])) { throw new ValidationException('The image did not arrive.'); }
         $result = Uploader::image(self::config())->onDisk('editor')->directory($slug . '/' . $field->getName())->useDatePath()
@@ -54,6 +60,7 @@ final class EditorMedia
     {
         // The uploader rejects a wrong extension or size here, before any data is sent.
         $status = self::chunks($slug, $field)->start($filename, $bytes, self::owner());
+        Session::set('media_upload_' . $status['upload_id'], mb_substr($filename, 0, 190));
         return ['upload_id' => $status['upload_id'], 'chunk_size' => self::CHUNK_BYTES, 'received' => $status['received_bytes']];
     }
 
@@ -68,6 +75,12 @@ final class EditorMedia
     public static function complete(RichEditor $field, string $slug, string $id): array
     {
         $result = self::chunks($slug, $field)->complete($id, self::owner());
+        $name = (string) Session::get('media_upload_' . $id, '');
+        Session::delete('media_upload_' . $id);
+        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) {
+            $item = \FloCMS\Admin\Media\MediaLibrary::store()->create(\FloCMS\Admin\Media\MediaFiles::video($result, $name), self::userId());
+            return ['url' => $item->url(), 'id' => $item->id];
+        }
         return ['url' => self::path((string) $result->path())];
     }
 
@@ -84,6 +97,7 @@ final class EditorMedia
 
     private static function chunks(string $slug, RichEditor $field): ChunkedUploader
     {
+        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) { return \FloCMS\Admin\Media\MediaFiles::chunks($field->getMaxVideoBytes()); }
         $directory = self::chunkDirectory();
         if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) { throw new \RuntimeException('Cannot create the video upload folder.'); }
         $video = Uploader::video(self::config())->onDisk('editor')->directory($slug . '/' . $field->getName())->useDatePath()->maxBytes($field->getMaxVideoBytes());
@@ -96,6 +110,12 @@ final class EditorMedia
         if (!is_dir($media['root']) && !mkdir($media['root'], 0755, true) && !is_dir($media['root'])) { throw new \RuntimeException('Cannot create the media folder ' . $media['root'] . '.'); }
         return ['default_disk' => 'editor', 'disks' => ['editor' => ['driver' => 'local', 'root' => $media['root'], 'url' => $media['url'], 'visibility' => 'public']],
             'video' => ['allow_mov' => false]];
+    }
+
+    private static function userId(): ?int
+    {
+        $id = Session::get('user_id');
+        return is_numeric($id) ? (int) $id : null;
     }
 
     /** Only the user and session that started a part upload can continue it. */

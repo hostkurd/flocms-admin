@@ -126,6 +126,10 @@ final class SettingsEditor
         $batch->commit();
         Settings::forget();
         $this->stored = null;
+        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) {
+            \FloCMS\Admin\Media\MediaUsage::recordValues('settings', $this->page->getName(), $this->page->form(), $this->stored());
+            $this->stored = null;
+        }
         $this->page->runAfterSave($values);
 
         return ['state' => $state, 'errors' => [], 'saved' => true];

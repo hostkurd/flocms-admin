@@ -140,6 +140,7 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('Table "users" not found', $display, 'users management is on by default');
         self::assertStringContainsString('Settings table "settings" not found: run php flo admin:install, then php flo migrate', $display);
         self::assertStringContainsString('Table "admin_user_preferences" not found', $display);
+        self::assertStringContainsString('Table "media" not found: run php flo admin:install, then php flo migrate.', $display, 'the media library is on by default');
         self::assertStringContainsString('/admin shows the skeleton\'s page', $display, 'skeleton before 1.8: no admin.home');
 
         $pdo->exec('ALTER TABLE properties ADD COLUMN title TEXT');
@@ -147,6 +148,10 @@ final class CommandsTest extends TestCase
             role INTEGER, status INTEGER, phone TEXT, is_verified INTEGER, verify_type INTEGER, token TEXT)');
         $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
         $pdo->exec('CREATE TABLE admin_user_preferences (user_id INTEGER, `key` VARCHAR(100), `value` TEXT NULL, updated_at DATETIME NULL, PRIMARY KEY (user_id, `key`))');
+        // The media library's migration, as admin:install wrote it
+        $migration = glob($this->root . '/database/migrations/*_create_media_table.php');
+        self::assertCount(1, $migration);
+        (require $migration[0])->up(new \FloCMS\Core\Database($pdo));
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");
@@ -164,6 +169,8 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('make:admin-widget', $list->getDisplay());
         $permissions = $this->runCommand(new ListCommand(), ['--permissions'])->getDisplay();
         self::assertStringContainsString("    'content.properties.view',\n    'content.properties.create',", $permissions);
+        self::assertMatchesRegularExpression('~/admin/media\s+.*media\s+.*content\.media\.view~', $list->getDisplay());
+        self::assertStringContainsString("    'content.media.view',\n    'content.media.create',\n    'content.media.update',\n    'content.media.delete',", $permissions);
 
         // Configuration diagnostics must not invoke a widget's provider.
         file_put_contents($this->root . '/config/admin.php', '<?php return ["widgets" => [\\FloCMS\\Admin\\Tests\\Fixtures\\Widgets\\BrokenStats::class, "MissingWidget"]];');

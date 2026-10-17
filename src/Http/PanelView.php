@@ -71,6 +71,10 @@ final class PanelView
             'lang' => $lang,
             'dashboardUrl' => Admin::url('dashboard'),
             'dashboardActive' => $activeSlug === 'dashboard',
+            'mediaUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media')) && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view') ? Admin::url('media') : null,
+            'mediaActive' => $activeSlug === 'media',
+            'mediaIcon' => Icons::svg('image'),
+            'mediaPicker' => self::mediaPicker(),
             'usersUrl' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
             'usersActive' => $activeSlug === 'accounts',
             'settingsUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
@@ -102,6 +106,26 @@ final class PanelView
         ];
     }
 
+    /** Settings of the media picker (fields, the rich editor), or '' when the library is off for this user. */
+    private static function mediaPicker(): string
+    {
+        if (!\FloCMS\Admin\Media\MediaLibrary::enabled() || !\FloCMS\Admin\Media\MediaLibrary::can('view')) { return ''; }
+        $t = static fn (string $key, array $replace = []): string => AdminLang::get('media.' . $key, $replace);
+        $strings = [];
+        foreach (['picker_title', 'search', 'upload', 'select', 'more', 'empty', 'failed', 'uploading', 'images', 'videos', 'no_results', 'too_big'] as $key) { $strings[$key] = $t($key); }
+        $strings['cancel'] = AdminLang::get('actions.cancel');
+        $strings['loading'] = AdminLang::get('reactive.loading');
+        return (string) json_encode([
+            'lookup' => Admin::url('media/lookup'),
+            'upload' => \FloCMS\Admin\Media\MediaLibrary::can('create') ? Admin::url('media/upload') : null,
+            'video' => \FloCMS\Admin\Media\MediaLibrary::can('create') ? Admin::url('media/video') : null,
+            'csrf' => \FloCMS\Core\Csrf::token(),
+            'maxImage' => \FloCMS\Admin\Media\MediaLibrary::maxImageBytes(), 'maxVideo' => \FloCMS\Admin\Media\MediaLibrary::maxVideoBytes(),
+            'chunk' => \FloCMS\Admin\Media\MediaFiles::CHUNK_BYTES,
+            'strings' => $strings,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     /** Uppercase first letter for the logo mark and avatar; empty when there is no text. */
     private static function initial(string $text): string
     {
@@ -131,6 +155,11 @@ final class PanelView
         if ($activeSlug === 'settings') {
             $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => AdminLang::get('settings.title'), 'url' => null]];
             if ($title !== AdminLang::get('settings.title')) { $items[] = ['label' => $title, 'url' => null]; }
+            return $items;
+        }
+        if ($activeSlug === 'media') {
+            $items = [['label' => AdminLang::get('nav.resources'), 'url' => null], ['label' => AdminLang::get('media.title'), 'url' => $title === AdminLang::get('media.title') ? null : Admin::url('media')]];
+            if ($title !== AdminLang::get('media.title')) { $items[] = ['label' => $title, 'url' => null]; }
             return $items;
         }
         if ($activeSlug === 'accounts') {

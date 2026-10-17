@@ -14,7 +14,7 @@ final class InstallCommand extends Command
 
     protected string $description = 'Set up flocms-admin: create config/admin.php and admin/Resources/';
 
-    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings and preferences tables (once). Running it again only adds what is missing.';
+    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences and media library tables (once). Running it again only adds what is missing.';
 
     protected function handle(): int
     {
@@ -40,14 +40,24 @@ final class InstallCommand extends Command
 
         // Tables of the settings pages and of personal preferences (written once)
         // (the settings table is FloCMS's own: a site that already has a migration for it keeps that one)
-        foreach (['settings-migration' => \FloCMS\Admin\Settings\SettingsStore::TABLE, 'preferences-migration' => 'admin_user_preferences'] as $stub => $name) {
+        // and of the media library (0.17), named as config/admin.php says ('media_library' => ['table' => …])
+        $values = is_file($config) ? (static fn (string $file): mixed => require $file)($config) : [];
+        $library = (new \FloCMS\Admin\AdminConfig(is_array($values) ? $values : [], $project->path(''), true))->mediaLibrary();
+        $migrations = [
+            ['settings-migration', \FloCMS\Admin\Settings\SettingsStore::TABLE, []],
+            ['preferences-migration', 'admin_user_preferences', []],
+        ];
+        if ($library['enabled']) {
+            $migrations[] = ['media-migration', $library['table'], ['usage_table' => $library['usage_table']]];
+        }
+        foreach ($migrations as [$stub, $name, $more]) {
             $existing = glob($project->path('database/migrations') . DIRECTORY_SEPARATOR . '*_create_' . $name . '_table.php') ?: [];
             if ($existing !== []) {
                 $this->note('A migration for "' . $name . '" already exists: ' . basename($existing[0]));
                 continue;
             }
             $migration = 'database/migrations/' . date('Y_m_d_His') . '_create_' . $name . '_table.php';
-            if (Stub::write($project->path($migration), Stub::render($stub, ['table' => $name]))) {
+            if (Stub::write($project->path($migration), Stub::render($stub, ['table' => $name] + $more))) {
                 $this->success('Created ' . $migration);
             } else {
                 $this->fail('Could not write ' . $migration . ': check the folder permissions.');
@@ -56,7 +66,7 @@ final class InstallCommand extends Command
 
         $this->newLine();
         $this->line('Next steps:');
-        $this->line('  1. php flo migrate                              (settings and preferences tables)');
+        $this->line('  1. php flo migrate                              (settings, preferences and media library tables)');
         $this->line('  2. php flo make:admin-resource Post --migration');
         $this->line('  3. php flo make:admin-settings                  (website settings pages, optional)');
         $this->line('  4. Log in, then open /admin/dashboard');

@@ -1,6 +1,21 @@
-# Upgrading to Admin 0.16.1
+# Upgrading to Admin 0.17.0
 
-Update with `composer require "hostkurd/flocms-admin:^0.16.1" -W`, run `php flo view:clear` and reload open Admin pages. Nothing else changes.
+Update with `composer require "hostkurd/flocms-admin:^0.17.0" -W`, then:
+
+```bash
+php flo admin:install      # adds the media library migration (nothing is overwritten)
+php flo migrate            # creates the media and media_usage tables
+php flo admin:doctor       # checks them
+php flo view:clear
+```
+
+Reload open Admin pages. Existing forms and pages are unchanged.
+
+- **Roles**: give editors `content.media.view` (and `.create`, `.update`, `.delete` as needed; `php flo admin:list --permissions` prints them). Without view, the Media link and the editor's library are hidden.
+- **Rich text uploads**: with the library set up, images and videos uploaded in the editor are stored in `library/<year>/<month>/` of the media folder and become library items. Files uploaded before stay where they are and keep working; `php flo admin:media-import` adds them to the library (`--dry-run` lists them first).
+- **A `media` table of your own**: the migration stops with a message instead of touching it. Set `'media_library' => ['table' => 'site_media', 'usage_table' => 'site_media_usage']` in `config/admin.php`, delete the generated migration and run `php flo admin:install` again. Or set `'media_library' => false` to leave the library off.
+- **Custom CSS or tests**: the panel's CSS now has `.fa-media-*` classes for the library (`.fa-media-box`, `.fa-media-tile`, `.fa-media-chip`, …). The rich text editor's `.fa-media`, `.fa-media-frame`, `.fa-media-handle` and `.fa-media-caption` are unchanged.
+- This release includes the 0.16.1 fix (focus after a failed rich text save), which wasn't tagged on its own.
 
 ---
 

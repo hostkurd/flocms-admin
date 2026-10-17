@@ -107,6 +107,8 @@ final class FormSubmission
                     $field->saveRelated($this->repository->connection(), $saved, $state[$name] ?? '');
                 }
             }
+            // Where library items are used (pickers and rich text), in the same transaction
+            if ($saved !== null) { \FloCMS\Admin\Media\MediaUsage::record($class, $form, $saved); }
             if ($saved !== null) { $class->afterSave($saved); }
             return $id;
         });

@@ -45,12 +45,18 @@ return [
     // Page width: 'full' uses the whole window, 'boxed' centres pages at most 1280 px wide
     'content_width' => 'full',
 
-    // Rich text editor uploads: folder (relative to the project) and its public URL.
-    // The folder must be inside the web root and writable; admin:doctor checks it.
+    // Public media (the media library and rich text uploads): folder (relative to
+    // the project) and its public URL. The folder must be inside the web root and
+    // writable; admin:doctor checks it.
     'media' => [
         'root' => 'public/uploads/editor',
         'url' => '/uploads/editor',
     ],
+
+    // The media library (/admin/media): on when its table exists (php flo migrate).
+    // false switches it off; ['table' => 'site_media', 'usage_table' => 'site_media_usage']
+    // renames its tables before the first migration, e.g. when a "media" table already exists.
+    'media_library' => true,
 
     // Name at the top of the sidebar
     'brand' => \FloCMS\Core\Env::get('SITE_NAME_ADMIN', 'Admin'),
