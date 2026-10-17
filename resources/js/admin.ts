@@ -13,6 +13,7 @@ import { initializeMedia } from './media';
 import { initializeFileDrops } from './filedrop';
 import './popovers';
 import './dialogs';
+import './search';
 import { startProgress, finishProgress } from './progress';
 import { initializeRecord, isDirty, confirmLeave } from './record';
 import '../assets/admin.css';

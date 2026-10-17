@@ -1,0 +1,32 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $t('search.title') }}</h1><p class="fa-page-description">{{ $t('search.description') }}</p></div>
+</div>
+<div class="fa-card fa-search-page">
+    <form class="fa-list-toolbar" method="get" action="{{ $action }}" role="search">
+        <span class="fa-search">
+            {!! $searchIcon !!}
+            <label class="fa-sr" for="fa-search-page-q">{{ $t('search.title') }}</label>
+            <input type="search" id="fa-search-page-q" name="q" value="{{ $query }}" placeholder="{{ $t('search.placeholder') }}" class="fa-input" maxlength="100">
+        </span>
+        <button type="submit" class="fa-btn fa-btn-sm">{{ $t('table.search_button') }}</button>
+    </form>
+    @if($query !== '' && $total === 0)
+    <div class="fa-blank"><p>{{ $t('search.no_results', ['query' => $query]) }}</p><p class="fa-muted">{{ $t('search.no_results_hint') }}</p></div>
+    @endif
+    @foreach($groups as $group)
+    <section class="fa-search-group">
+        <h2 class="fa-search-label">{{ $group['label'] }}</h2>
+        <ul class="fa-search-items">
+            @foreach($group['items'] as $item)
+            <li><a class="fa-search-item" href="{{ $item['url'] }}">
+                @if($item['thumb'] !== '')<img class="fa-search-thumb" src="{{ $item['thumb'] }}" alt="" width="32" height="32" loading="lazy">@else<span class="fa-search-ico">{!! $item['icon'] !!}</span>@endif
+                <span class="fa-search-text"><span class="fa-search-title">{{ $item['title'] }}</span>@if($item['detail'] !== '')<span class="fa-search-detail">{{ $item['detail'] }}</span>@endif</span>
+                <span class="fa-search-type">{{ $item['type'] }}</span>
+            </a></li>
+            @endforeach
+        </ul>
+        @if($group['more'] !== '')<a class="fa-search-more" href="{{ $group['more'] }}">{{ $t('search.see_all', ['label' => $group['label']]) }}</a>@endif
+    </section>
+    @endforeach
+    @if($partial)<p class="fa-table-foot fa-muted">{{ $t('search.partial') }}</p>@endif
+</div>

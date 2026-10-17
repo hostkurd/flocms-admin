@@ -56,8 +56,7 @@ final class PanelView
         }
 
         $user = (string) (Session::get('fullname') ?: Session::get('email') ?: '');
-        $registry = Admin::registry();
-        $usersEnabled = $registry->find('accounts') !== null;
+        $urls = self::pageUrls();
 
         return [
             't' => PageView::translator(),
@@ -71,22 +70,22 @@ final class PanelView
             'lang' => $lang,
             'dashboardUrl' => Admin::url('dashboard'),
             'dashboardActive' => $activeSlug === 'dashboard',
-            'mediaUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media')) && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view') ? Admin::url('media') : null,
+            'mediaUrl' => $urls['media'],
             'mediaActive' => $activeSlug === 'media',
             'mediaIcon' => Icons::svg('image'),
             'mediaPicker' => self::mediaPicker(),
-            'usersUrl' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
+            'usersUrl' => $urls['users'],
             'usersActive' => $activeSlug === 'accounts',
-            'settingsUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
+            'settingsUrl' => $urls['settings'],
             'settingsActive' => $activeSlug === 'settings',
             'settingsIcon' => Icons::svg('settings'),
-            'activityUrl' => self::activityUrl(),
+            'activityUrl' => $urls['activity'],
             'activityActive' => $activeSlug === 'activity',
             'activityIcon' => Icons::svg('clock'),
-            'trashUrl' => self::trashUrl(),
+            'trashUrl' => $urls['trash'],
             'trashActive' => $activeSlug === 'trash',
             'trashIcon' => Icons::svg('trash'),
-            'profileUrl' => $usersEnabled ? Admin::url('profile') : null,
+            'profileUrl' => $urls['profile'],
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
             'dashboardIcon' => Icons::svg('dashboard'),
@@ -100,6 +99,9 @@ final class PanelView
             'sidebar' => \FloCMS\Admin\Support\Appearance::sidebar(),
             'contentWidth' => \FloCMS\Admin\Support\Appearance::contentWidth(),
             'dialogMinHeight' => Admin::config()->dialogMinHeight(),
+            'search' => self::searchData(),
+            'searchIcon' => Icons::svg('search'),
+            'closeIcon' => Icons::svg('x'),
             'density' => \FloCMS\Admin\Support\Appearance::density(),
             'logo' => \FloCMS\Admin\Support\Appearance::logo(),
             'brandInitial' => self::initial(\FloCMS\Admin\Support\Appearance::brand()),
@@ -164,15 +166,53 @@ final class PanelView
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    /**
+     * The top-bar search field and the Ctrl+K dialog (0.20), or null when search is
+     * off or a site resource or controller uses the slug.
+     *
+     * @return array{url: string, shortcut: bool, mac: bool}|null
+     */
+    private static function searchData(): ?array
+    {
+        $config = Admin::config()->search();
+        if (!$config['enabled'] || Admin::registry()->find('search') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('search'))) { return null; }
+        $agent = (string) ($_SERVER['HTTP_USER_AGENT'] ?? '');
+        return [
+            'url' => Admin::url('search'),
+            'shortcut' => $config['shortcut'],
+            // The hint shows ⌘K on a Mac; script corrects it if the guess is wrong.
+            'mac' => preg_match('/Macintosh|iPhone|iPad/', $agent) === 1,
+        ];
+    }
+
+    /**
+     * The panel's own pages the current person may open (null when not): the sidebar
+     * and Ctrl+K search (0.20) show the same set.
+     *
+     * @return array{media: ?string, users: ?string, settings: ?string, activity: ?string, trash: ?string, profile: ?string}
+     */
+    public static function pageUrls(): array
+    {
+        $usersEnabled = Admin::registry()->find('accounts') !== null;
+        return [
+            'media' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media')) && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view') ? Admin::url('media') : null,
+            'users' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
+            'settings' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
+            'activity' => self::activityUrl(),
+            'trash' => self::trashUrl(),
+            'profile' => $usersEnabled ? Admin::url('profile') : null,
+        ];
+    }
+
     /** Site → Activity, for people with activity.view (when no site resource or controller uses the slug). */
-    private static function activityUrl(): ?string
+    public static function activityUrl(): ?string
     {
         if (Admin::registry()->find('activity') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('activity'))) { return null; }
         try { return \FloCMS\Admin\Activity\Activity::canView() ? Admin::url('activity') : null; } catch (\Throwable) { return null; }
     }
 
     /** Site → Trash, for people who may restore or purge records of at least one resource. */
-    private static function trashUrl(): ?string
+    public static function trashUrl(): ?string
     {
         if (Admin::registry()->find('trash') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('trash'))) { return null; }
         try { return \FloCMS\Admin\Trash\Trash::enabled() && TrashPage::allowedResources() !== [] ? Admin::url('trash') : null; } catch (\Throwable) { return null; }
@@ -201,7 +241,7 @@ final class PanelView
     /** @return list<array{label: string, url: ?string}> */
     private function trail(string $title, ?string $activeSlug): array
     {
-        if ($activeSlug === null || in_array($activeSlug, ['dashboard', 'profile'], true)) {
+        if ($activeSlug === null || in_array($activeSlug, ['dashboard', 'profile'], true) || ($activeSlug === 'search' && Admin::registry()->find('search') === null)) {
             return [['label' => $title, 'url' => null]];
         }
         if ($activeSlug === 'settings') {

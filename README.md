@@ -15,6 +15,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Website settings**: settings pages declared in PHP, a page-level language switch, one image per language, and a cached `setting('site.title')` helper for templates. [Settings guide](docs/settings.md).
 - **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
 - **Media library**: images and videos uploaded once, with titles and alt text per language, in folders, picked in forms and the rich text editor, with "used in" tracking, focal points, a duplicate check and responsive `<img>` output on the website. [Media guide](docs/media.md).
+- **Ctrl+K search**: one box, from any page, that finds records of every resource, the panel's pages, settings and media you may open. [Search guide](docs/search.md).
 - **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
 
@@ -292,6 +293,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `sidebar` | `'light'` | `'light'` or `'dark'` |
 | `content_width` | `'full'` | `'full'` uses the whole window; `'boxed'` centres pages at most 1280 px wide |
 | `density` | `'comfortable'` | List rows: `'comfortable'` or `'compact'` |
+| `search` | `true` | Ctrl+K search (`/admin/search`); `['per_group' => 5, 'shortcut' => true, 'sources' => [...]]`; `false` switches it off ([guide](docs/search.md)) |
 | `dialog_min_height` | `null` | Least height of the body of form and action dialogs: pixels (`240`) or a CSS length (`'20rem'`); `null` fits the content. One action: `->modalMinHeight(320)` |
 | `panel_settings` | `true` | The "Admin panel" settings page; its saved values override `brand`, `logo`, `primary_color`, `theme`, `sidebar`, `content_width` and `density` |
 | `settings_path` | `'admin/settings.php'` | File that declares the website settings pages |
@@ -361,6 +363,10 @@ Admin 0.17 adds a media library at **Content → Media**: upload images and vide
 
 Admin 0.19 makes deleting safe and every change traceable. A deleted record goes to the trash: a toast offers **Undo** for 10 seconds, each list has a **Trash (n)** button with its own columns, and **Site → Trash** shows everything, with Restore, Delete for good and Empty trash. Records come back with the same id, their many-to-many links, files and media usage; a restore that would clash (a slug now taken, a parent gone) is refused with a reason. The **activity log** records who created, edited (field by field, before → after), deleted, restored, ran an action, reordered, saved settings or changed media, and when. Each record shows its **History** in a side panel, and **Site → Activity** (permission `activity.view`) lists everything with filters. Passwords are never recorded and any field can be kept out with `->hiddenFromActivity()`. Run `php flo admin:install` and `php flo migrate` to set it up. See the [Trash and activity log guide](docs/trash-and-activity.md).
 
+## Search
+
+Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) or `/` on any page, type, and pick a result with the arrow keys and Enter. It finds records of every resource by the columns their list already searches (`->searchable()`, every language), the panel's pages, "New …" actions, settings pages and media items, grouped and limited to what the person may open; before typing it shows the last 8 records opened. `#42` finds record 42. Nothing to install. See the [Search guide](docs/search.md).
+
 ## Rich text
 
 Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`; with the media library, into its `library/` folder as library items), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
@@ -383,7 +389,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.17: the media library (`/admin/media`, `MediaPicker`, `MediaColumn`, the editor's library, `media()` on the website)
 - 0.18: media folders, the file-manager Media page and picker, batch editing, focal points, duplicate check, framed media fields, `FileDrop`
 - 0.19: the trash (Undo, restore with the same id, Site → Trash) and the activity log (History on records, Site → Activity)
-- Next: Ctrl+K global search, CSV import/export, a roles & permissions page
+- 0.20: Ctrl+K search (records, pages, actions, settings and media; recent records)
+- Next: a roles & permissions page, CSV import/export
 
 ## Development
 

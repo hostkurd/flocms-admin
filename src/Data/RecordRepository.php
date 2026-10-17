@@ -50,22 +50,7 @@ final class RecordRepository
         if ($filters !== null) { $query = $filters->apply($query); }
         $default = Languages::default();
 
-        $search = trim($search);
-        $searchable = $table->searchableColumns();
-        if ($search !== '' && $searchable !== []) {
-            $languages = Languages::all();
-            $like = '%' . strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
-
-            $query = $query->where(function (Database $group) use ($searchable, $languages, $like, $search, $default): void {
-                foreach ($searchable as $column) {
-                    if ($column->isTranslatable()) {
-                        $this->store->whereContains($group, $column->getName(), $languages, $search, $default);
-                    } else {
-                        $group->orWhereRaw('`' . $column->getName() . "` LIKE ? ESCAPE '!'", [$like]);
-                    }
-                }
-            });
-        }
+        $query = $this->whereSearch($query, $table, $search);
 
         $sortColumn = $sort !== null ? $table->sortableColumn($sort) : null;
         // A reorderable list without its own default sort shows the editors' order.
@@ -109,6 +94,62 @@ final class RecordRepository
     public function order(Table $table): RecordOrder
     {
         return new RecordOrder($this->resource, $this->db, $table);
+    }
+
+    /**
+     * Rows whose searchable columns contain $search (every language of a translated
+     * column), as the list's search box finds them. Nothing searchable: unchanged.
+     */
+    public function whereSearch(Database $query, Table $table, string $search, bool $matchId = false): Database
+    {
+        $search = trim($search);
+        $searchable = $table->searchableColumns();
+        if ($search === '' || ($searchable === [] && !$matchId)) {
+            return $query;
+        }
+        $languages = Languages::all();
+        $default = Languages::default();
+        $like = '%' . strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+        // "#42" or "42" also finds record 42 (0.20); "#42" finds only it.
+        $id = $matchId && preg_match('/^#?(\d{1,18})$/D', $search, $m) === 1 ? $m[1] : null;
+        $onlyId = $id !== null && str_starts_with($search, '#');
+
+        return $query->where(function (Database $group) use ($searchable, $languages, $like, $search, $default, $id, $onlyId): void {
+            if ($id !== null) {
+                $group->orWhere($this->resource::getPrimaryKey(), '=', $id);
+            }
+            if ($onlyId) {
+                return;
+            }
+            foreach ($searchable as $column) {
+                if ($column->isTranslatable()) {
+                    $this->store->whereContains($group, $column->getName(), $languages, $search, $default);
+                } else {
+                    $group->orWhereRaw('`' . $column->getName() . "` LIKE ? ESCAPE '!'", [$like]);
+                }
+            }
+        });
+    }
+
+    /**
+     * Global search (0.20): up to $limit rows matching $search, within the resource's
+     * query(); a title that starts with the words first, then the newest.
+     *
+     * @return list<object>
+     */
+    public function search(Table $table, string $search, int $limit, string $lang): array
+    {
+        $query = $this->whereSearch($this->newQuery(), $table, $search, true);
+        $title = $table->primaryColumn();
+        $column = $title !== null ? $table->column($title) : null;
+        if ($column !== null && $column->isSearchable() && trim($search) !== '') {
+            $expression = $column->isTranslatable()
+                ? $this->store->sortExpression($query, $column->getName(), in_array($lang, Languages::all(), true) ? $lang : Languages::default(), Languages::default())
+                : '`' . $column->getName() . '`';
+            $prefix = strtr(trim($search), ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+            $query = $query->orderByRaw('CASE WHEN ' . $expression . " LIKE ? ESCAPE '!' THEN 0 ELSE 1 END", [$prefix]);
+        }
+        return array_values($query->orderBy($this->resource::getPrimaryKey(), 'desc')->limit(max(1, $limit))->get());
     }
 
     public function find(string $id): ?object
@@ -214,6 +255,7 @@ final class RecordRepository
 
     private function logDeleted(string $id, object $record): void
     {
+        \FloCMS\Admin\Search\RecentRecords::forget($this->resource::getSlug(), $id);
         \FloCMS\Admin\Activity\Activity::record('deleted', $this->resource::getSlug(), $id, \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record),
             meta: \FloCMS\Admin\Trash\Trash::enabledFor($this->resource, $this->db) ? ['trash' => 1] : [], db: $this->db);
     }

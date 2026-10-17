@@ -95,6 +95,27 @@ final class AdminConfig
     }
 
     /**
+     * Ctrl+K search (0.20). On unless 'search' => false; 'per_group' (1-10, default 5),
+     * 'shortcut' (default true: Ctrl+K, Cmd+K and / open it) and 'sources' (classes
+     * implementing FloCMS\Admin\Search\SearchSource, for a site's own results).
+     *
+     * @return array{enabled: bool, per_group: int, shortcut: bool, sources: list<class-string>}
+     */
+    public function search(): array
+    {
+        $value = $this->values['search'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $per = $options['per_group'] ?? 5;
+        $sources = is_array($options['sources'] ?? null) ? $options['sources'] : [];
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'per_group' => is_int($per) ? max(1, min(10, $per)) : 5,
+            'shortcut' => ($options['shortcut'] ?? true) !== false,
+            'sources' => array_values(array_filter($sources, static fn ($class): bool => is_string($class) && is_subclass_of($class, \FloCMS\Admin\Search\SearchSource::class))),
+        ];
+    }
+
+    /**
      * The least height of the body of the panel's form and action dialogs (0.19.1):
      * 'dialog_min_height' => 240 (pixels) or a CSS length such as '20rem'. Unset,
      * a dialog fits its content.
