@@ -647,6 +647,10 @@ return [
     'bulk.confirm_trash' => 'Move the :count selected records to the trash? They can be restored for :days days.',
     'bulk.confirm_trash_kept' => 'Move the :count selected records to the trash? They can be restored from there.',
     'bulk.confirm_delete' => 'Delete the :count selected records? This cannot be undone.',
+    'bulk.confirm_one' => 'Apply this action to the selected record?',
+    'bulk.confirm_trash_one' => 'Move the selected record to the trash? It can be restored for :days days.',
+    'bulk.confirm_trash_kept_one' => 'Move the selected record to the trash? It can be restored from there.',
+    'bulk.confirm_delete_one' => 'Delete the selected record? This cannot be undone.',
 
     // Activity log (0.19)
     'activity.title' => 'Activity',

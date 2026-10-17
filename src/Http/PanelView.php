@@ -99,6 +99,7 @@ final class PanelView
             'theme' => \FloCMS\Admin\Support\Appearance::theme(),
             'sidebar' => \FloCMS\Admin\Support\Appearance::sidebar(),
             'contentWidth' => \FloCMS\Admin\Support\Appearance::contentWidth(),
+            'dialogMinHeight' => Admin::config()->dialogMinHeight(),
             'density' => \FloCMS\Admin\Support\Appearance::density(),
             'logo' => \FloCMS\Admin\Support\Appearance::logo(),
             'brandInitial' => self::initial(\FloCMS\Admin\Support\Appearance::brand()),

@@ -7,6 +7,9 @@
  *   into #fa-changes-dialog; on any failure it follows the link instead.
  * - [data-admin-dialog-close] closes its dialog; so does a click on the backdrop.
  * - select[data-admin-autosubmit] submits its form when it changes.
+ * - [data-admin-dialog-min-height] (the panel, or one action's dialog) sets
+ *   --fa-dialog-body-min-height (0.19.1). Set from script: the strict CSP allows
+ *   no style attributes in the markup.
  */
 
 const panel = () => document.querySelector<HTMLElement>('.fa-panel');
@@ -95,3 +98,20 @@ document.addEventListener('change', event => {
   const select = event.target;
   if (select instanceof HTMLSelectElement && select.hasAttribute('data-admin-autosubmit')) select.form?.requestSubmit();
 });
+
+const LENGTH = /^\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh)$/;
+
+/** Reserve the room the panel or an action asks for in dialog bodies; clear it when no longer asked. */
+export function applyDialogMinHeights(): void {
+  document.querySelectorAll<HTMLElement>('.fa-panel, dialog.fa-editor').forEach(element => {
+    const value = element.dataset.adminDialogMinHeight || '';
+    if (LENGTH.test(value)) element.style.setProperty('--fa-dialog-body-min-height', value);
+    else element.style.removeProperty('--fa-dialog-body-min-height');
+  });
+}
+
+applyDialogMinHeights();
+document.addEventListener('DOMContentLoaded', applyDialogMinHeights);
+document.addEventListener('flo-admin:navigated', applyDialogMinHeights);
+document.addEventListener('flo-reactive:initialized', applyDialogMinHeights);
+document.addEventListener('flo-reactive:updated', applyDialogMinHeights);

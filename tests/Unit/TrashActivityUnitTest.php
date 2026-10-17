@@ -38,6 +38,50 @@ final class TrashActivityUnitTest extends TestCase
         \FloCMS\Admin\Admin::reset();
     }
 
+    public function testDialogMinHeights(): void
+    {
+        self::assertSame('240px', \FloCMS\Admin\AdminConfig::cssLength(240));
+        self::assertSame('20rem', \FloCMS\Admin\AdminConfig::cssLength(' 20rem '));
+        self::assertNull(\FloCMS\Admin\AdminConfig::cssLength('20rem; color:red'));
+        self::assertNull(\FloCMS\Admin\AdminConfig::cssLength(-5));
+        self::assertNull(\FloCMS\Admin\AdminConfig::cssLength('calc(10px)'));
+        self::assertSame('240px', \FloCMS\Admin\AdminConfig::cssLength('240'), 'a number written as text, e.g. from .env');
+        self::assertSame('240.5px', \FloCMS\Admin\AdminConfig::cssLength(240.5));
+        self::assertSame('0px', \FloCMS\Admin\AdminConfig::cssLength(0), 'a unit keeps min() valid');
+        self::assertSame('0px', \FloCMS\Admin\AdminConfig::cssLength('0'));
+        self::assertNull(\FloCMS\Admin\Admin::useConfig([], true, sys_get_temp_dir())->dialogMinHeight(), 'dialogs fit their content by default');
+        self::assertSame('18rem', \FloCMS\Admin\Admin::useConfig(['dialog_min_height' => '18rem'], true, sys_get_temp_dir())->dialogMinHeight());
+        \FloCMS\Admin\Admin::reset();
+
+        self::assertSame('320px', \FloCMS\Admin\Actions\Action::make('notify')->modalMinHeight(320)->getModalMinHeight());
+        self::assertNull(\FloCMS\Admin\Actions\Action::make('notify')->modalMinHeight(320)->modalMinHeight(null)->getModalMinHeight());
+        $this->expectException(\InvalidArgumentException::class);
+        \FloCMS\Admin\Actions\Action::make('notify')->modalMinHeight('tall');
+    }
+
+    public function testSingularWordingRespectsTheSitesOwnTranslations(): void
+    {
+        $data = new \ReflectionProperty(\FloCMS\Core\Lang::class, 'data');
+        $data->setAccessible(true);
+        $before = $data->getValue();
+        try {
+            AdminLang::setLanguage('en');
+            $data->setValue(null, []);
+            self::assertSame('bulk.confirm_delete_one', AdminLang::variant('bulk.confirm_delete', '_one'));
+            // The site changed the plural wording only: it keeps its own
+            $data->setValue(null, ['admin.bulk.confirm_delete' => 'Remove :count items?']);
+            self::assertSame('bulk.confirm_delete', AdminLang::variant('bulk.confirm_delete', '_one'));
+            $data->setValue(null, ['admin.bulk.confirm_delete' => 'Remove :count items?', 'admin.bulk.confirm_delete_one' => 'Remove this item?']);
+            self::assertSame('bulk.confirm_delete_one', AdminLang::variant('bulk.confirm_delete', '_one'));
+            AdminLang::setLanguage('ar');
+            $data->setValue(null, []);
+            self::assertSame('bulk.confirm_delete_one', AdminLang::variant('bulk.confirm_delete', '_one'));
+        } finally {
+            $data->setValue(null, $before);
+            AdminLang::setLanguage(null);
+        }
+    }
+
     public function testRelativeDates(): void
     {
         $now = strtotime('2026-10-17 15:00:00');

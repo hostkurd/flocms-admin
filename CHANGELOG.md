@@ -2,6 +2,12 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.19.1 - 2026-10-18
+
+- Fix: form and action dialogs kept an empty space of up to 150 px under their content (a minimum height on the dialog body). The body now fits its content, and a confirmation without fields has no body at all.
+- New: `'dialog_min_height' => 240` in `config/admin.php` (pixels or a CSS length such as `'20rem'`) keeps room in every dialog's body; `->modalMinHeight(320)` does it for one action. The height never goes past the window; `admin:doctor` reports an invalid value.
+- Fix: a bulk confirmation for one record reads "Delete the selected record?" instead of "Delete the 1 selected records?" (en, ar, ku).
+
 ## 0.19.0 - 2026-10-17
 
 Deleted records go to a **trash** and can be restored; every change in the panel is written to an **activity log**. One migration (`admin_trash` and `admin_activity`); until it has run, deleting works as before and nothing is logged. See the [Trash and activity log guide](docs/trash-and-activity.md).

@@ -45,6 +45,10 @@ return [
     // Page width: 'full' uses the whole window, 'boxed' centres pages at most 1280 px wide
     'content_width' => 'full',
 
+    // Dialogs fit their content; pixels (240) or a CSS length ('20rem') keep room in
+    // the body of every form and action dialog. One action: ->modalMinHeight(320)
+    'dialog_min_height' => null,
+
     // Public media (the media library and rich text uploads): folder (relative to
     // the project) and its public URL. The folder must be inside the web root and
     // writable; admin:doctor checks it.

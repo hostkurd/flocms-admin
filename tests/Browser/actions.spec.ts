@@ -193,3 +193,31 @@ test('standard custom action forms also validate and save with JavaScript disabl
     await expect(page.locator('a[href="/en/admin/posts/action/row/unpublish/8"]')).toBeAttached();
   } finally { await context.close(); }
 });
+
+test('dialogs fit their content; an action can keep room in its body', async ({ page }) => {
+  await ready(page);
+  // A one-record bulk confirmation: no empty space, and the wording is singular
+  await page.locator('[data-admin-select][value="8"]').check();
+  await page.locator('[data-admin-bulk-action="delete"]').click();
+  await expect(editor(page)).toBeVisible();
+  await expect(editor(page).locator('.fa-confirm-text')).toHaveText('Delete the selected record? This cannot be undone.');
+  const confirm = (await editor(page).boundingBox())!;
+  expect(confirm.height).toBeLessThan(220);
+  await page.keyboard.press('Escape');
+  await expect(editor(page)).not.toBeVisible();
+
+  // ->modalMinHeight(240) on Publish
+  await open(page, 'publish');
+  const body = editor(page).locator('.fa-dialog-body');
+  await expect(editor(page)).toHaveAttribute('data-admin-dialog-min-height', '240px');
+  expect((await body.boundingBox())!.height).toBeGreaterThanOrEqual(239);
+  await page.keyboard.press('Escape');
+  await expect(editor(page)).not.toBeVisible();
+
+  // Edit has no minimum: its body is as tall as its fields
+  await (await rowAction(page, 'edit', 8)).click();
+  await expect(editor(page)).toBeVisible();
+  await expect(editor(page)).not.toHaveAttribute('data-admin-dialog-min-height', /.*/);
+  expect(await editor(page).evaluate(el => (el as HTMLElement).style.getPropertyValue('--fa-dialog-body-min-height'))).toBe('');
+  await stable(page);
+});

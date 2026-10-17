@@ -54,6 +54,8 @@ protected static string $formMode = 'slide-over'; // a panel from the side of th
 
 `php flo make:admin-resource Tag --form=modal` writes the mode into a new resource. Set it per resource, or per action: `CreateAction::make()->modal()`, `EditAction::make()->slideOver()`, `EditAction::make()->page()`. Delete and custom actions are short confirmations and stay dialogs (a custom action may use `slideOver()`). An unknown `$formMode` falls back to `'page'` and `admin:doctor` reports it. Without Reactive (`'reactive' => false`), Create and Edit are always pages.
 
+A dialog's body fits its content. To keep room in it (for example for a form whose fields appear as you choose), set `->modalMinHeight(320)` (pixels, or a CSS length such as `'20rem'`) on that action, or `'dialog_min_height' => 240` in `config/admin.php` for every dialog. The height never goes past the window.
+
 On the page:
 
 - **Save** (also Enter in a field and Ctrl/⌘+S) saves and stays on the record. **Save and close** returns to the list exactly as it was (search, filters, sort, page). **Save and create another** opens an empty form. **Cancel** goes back without saving.
