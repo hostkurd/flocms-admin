@@ -16,6 +16,29 @@ FileUpload::make('brochure')
 
 Use `required()`, `requiredOnCreate()`, `disabled()`, `visibleWhen()`, `requiredWhen()`, `nullable()`, `help()` and `columnSpan()` as with other fields. Required validation also applies to explicit removal. Hidden and disabled fields cannot upload, remove or overwrite a column. Upload fields cannot be translated or used as dependency parents. Custom and bulk **input forms** reject upload fields because their callbacks do not define ownership of a single column. Built-in row and bulk deletion clean up managed files after the database transaction succeeds.
 
+## FileDrop: the file chooser (0.18)
+
+Every file input of the panel (upload fields, settings pages, the Media page) is a **FileDrop**: a drop area that says what it takes ("JPEG, PNG, WebP · up to 2 MB"), a preview of the chosen or current file with its size, **Cancel**, **Remove** with **Undo**, and progress while a dialog sends the file. The type and size are checked in the browser before anything is sent (the server still checks everything). It is our own code, with no third-party package.
+
+It is a real `<input type="file">` inside a `<label>`, so a form posts the file as usual and the page works without JavaScript (the browser's own input then shows, styled). Your own admin pages can use it:
+
+```php
+use FloCMS\Admin\Ui\FileDrop;
+
+echo FileDrop::make('brochure')
+    ->accept(['application/pdf'])->maxKb(5120)
+    ->hint('One PDF, up to 5 MB');
+
+echo FileDrop::make('photos[]')->multiple()->large()          // the tall drop area of the Media page
+    ->accept(['image/jpeg', 'image/png', 'image/webp']);
+
+echo FileDrop::make('logo')->accept(['image/png'])
+    ->current('/uploads/logo.png', 'logo.png', '12 KB', image: true)   // what is stored now
+    ->removable('remove_logo');                                       // a "Remove" that posts remove_logo=1
+```
+
+Other options: `id()`, `maxBytes()`, `disabled()`, `title()` (the text in the area), `inputAttributes([...])` (extra attributes on the input). Its markup is `.fa-filedrop` with `data-admin-filedrop`; the input keeps its `name` and `id`.
+
 ## Storage and access
 
 Admin integrates the released `hostkurd/flocms-uploader ^1.2.0` local storage and validation APIs. No uploader configuration is changed globally. Storage is fixed at `<project root>/storage/admin-uploads`, outside the normal `public/` document root. Keep all of `storage/` inaccessible to the web server and include it in application backups alongside the database. The PHP process needs write access there. The package creates this directory on the first upload; it does not change existing application directories or install migrations.

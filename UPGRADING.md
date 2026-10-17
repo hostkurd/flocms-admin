@@ -1,3 +1,26 @@
+# Upgrading to Admin 0.18.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.18.0" -W`, then:
+
+```bash
+php flo admin:install      # adds the media folders migration (nothing is overwritten)
+php flo migrate            # creates media_folders; adds folder_id, hash, focal_x, focal_y to media
+php flo admin:media-import # optional: fingerprints for items uploaded before 0.18 (for the duplicate check)
+php flo admin:doctor       # checks them
+php flo view:clear
+```
+
+Reload open Admin pages.
+
+- **Until the migration has run the media library is off**: no Media link, and media fields say "The media library is not set up" (stored ids are kept on save). `admin:doctor` says what is missing.
+- **Renamed media tables**: if you set `'table'` in `'media_library'`, the migration uses it. To rename the new folders table, set `'folders_table'` before running `admin:install`.
+- **Permissions**: folders, moving items and the focal point need `content.media.update`, like the title and alt text. Nothing new to grant.
+- **Upload fields**: inside the `.fa-upload` wrapper (unchanged, with its `data-upload-*` attributes) the input is now a FileDrop (`.fa-filedrop`, `[data-admin-filedrop]`); the input keeps its `name`, `id`, `accept` and `data-upload-field`. Site CSS or tests that targeted the old current-file link, `.fa-upload-remove` or the input's `.fa-input` class should use the new markup ([Uploads guide](docs/uploads.md)). Saving, validation and storage are unchanged.
+- **Media fields and the Media page**: new markup (`.fa-mf`, `.fa-mb-*`); the 0.17 classes (`.fa-media-grid`, `.fa-media-tile`, `.fa-media-chip`, `.fa-media-dialog`, …) are gone. The item's page (`/admin/media/edit/<id>`), `.fa-media-thumb` in lists and the rich text editor's `.fa-media-*` classes are unchanged. The picker needs a click on **Choose** (or a double-click) for one item.
+- **Forms of your own in the panel** that a script posts itself can opt out of page navigation with `data-admin-local`.
+
+---
+
 # Upgrading to Admin 0.17.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.17.0" -W`, then:
