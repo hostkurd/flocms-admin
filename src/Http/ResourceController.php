@@ -563,7 +563,10 @@ final class ResourceController extends PanelController
                 $this->redirect($stay ? Admin::url($class::getSlug() . '/edit/' . $id, ['back' => $returnTo]) : $back);
             }
 
-            if (!$refreshing) { Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger'); }
+            if (!$refreshing) {
+                $where = $form->errorSummary($errors);
+                Session::setFlash($where === '' ? AdminLang::get('flash.fix_errors') : AdminLang::get('flash.fix_errors_in', ['fields' => $where]), 'danger');
+            }
         } else {
             $state = [];
             foreach ($form->fields() as $name => $field) {

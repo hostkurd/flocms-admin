@@ -46,6 +46,8 @@ The media library becomes a file manager, and every file input becomes a drop ar
 ### Fixed
 
 - Forms that a script sends itself (`data-admin-local`) are no longer taken over by the panel's page navigation.
+- Rich text: resizing an image or video follows the pointer smoothly; the size it keeps is still the nearest 5 % step (shown while dragging), which it settles on when released.
+- A failed save names the fields and their tabs in its message ("Please check: Price (Details)."), and every tab holding an error has a red mark, so an error in a tab not shown is not missed.
 
 ## 0.17.0 - 2026-10-17
 

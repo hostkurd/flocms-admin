@@ -50,6 +50,9 @@ test('conditional fields switch without saving and validation opens the affected
   await tab(page, 'Details');
   await editor(page).getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(editor(page).getByRole('tab', { name: 'Pricing', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(editor(page).getByRole('tab', { name: 'Pricing', exact: true })).toHaveClass(/has-error/);
+  await expect(editor(page).getByRole('tab', { name: 'Pricing', exact: true })).toHaveAccessibleDescription('This tab has errors');
+  await expect(editor(page).getByRole('tab', { name: 'Details', exact: true })).not.toHaveClass(/has-error/);
   await expect(editor(page).locator('[name=lease_months]')).toBeFocused();
   await editor(page).locator('[name=lease_months]').fill('12');
   await editor(page).getByRole('button', { name: 'Save changes', exact: true }).click();
@@ -130,4 +133,13 @@ test('standard dependency refresh preserves focus and document identity',async({
   await expect(page.locator('[name=city] option[value=athens]')).toHaveCount(1);
   await expect(page.locator('[name=country]')).toBeFocused();
   expect(await page.evaluate(()=>(window as any).formsMarker)).toBe('standard');
+});
+
+test('on the full page, the error message names the fields and their tabs', async ({ page }) => {
+  await page.goto('/en/admin/properties/create');
+  await page.locator('[name="title[en]"]').fill('Villa');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.fa-notification')).toContainText('Please check: City (Location), Price (Pricing).');
+  await expect(page.getByRole('tab', { name: 'Location', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Pricing', exact: true })).toHaveClass(/has-error/);
 });

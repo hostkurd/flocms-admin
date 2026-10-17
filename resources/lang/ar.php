@@ -92,6 +92,8 @@ return [
     'flash.updated' => 'تم حفظ :label.',
     'flash.deleted' => 'تم حذف :label.',
     'flash.fix_errors' => 'يرجى تصحيح الأخطاء أدناه.',
+    'flash.fix_errors_in' => 'يرجى التحقق من: :fields.',
+    'form.tab_has_errors' => 'في هذا التبويب أخطاء',
 
     'validation.required' => 'حقل :attribute مطلوب.',
     'validation.string' => 'يجب أن يكون :attribute نصًا.',
