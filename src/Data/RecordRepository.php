@@ -22,6 +22,12 @@ final class RecordRepository
     ) {
     }
 
+    /** The database connection (relation fields write pivot rows through it, in the same transaction). */
+    public function connection(): Database
+    {
+        return $this->db;
+    }
+
     /** Database writes in the callback share this connection's transaction/savepoint. */
     public function transaction(callable $callback): mixed
     {
@@ -173,11 +179,42 @@ final class RecordRepository
 
     public function deleteUnchanged(string $id, object $original): void
     {
-        [$where, $bindings] = $this->originalCondition($id, $original);
-        $statement = $this->db->pdo()->prepare('DELETE FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where);
-        $statement->execute($bindings);
-        if ($statement->rowCount() !== 1) { $this->conflict(); }
-        $this->resource->afterDelete($original);
+        $this->db->transaction(function () use ($id, $original): void {
+            $this->detachRelations($original);
+            [$where, $bindings] = $this->originalCondition($id, $original);
+            $statement = $this->db->pdo()->prepare('DELETE FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where);
+            $this->refusedWhenInUse(static fn () => $statement->execute($bindings));
+            if ($statement->rowCount() !== 1) { $this->conflict(); }
+            $this->resource->afterDelete($original);
+        });
+    }
+
+    /** Pivot rows of the record's many-to-many fields go with it (before the row, for foreign keys). */
+    private function detachRelations(object $record): void
+    {
+        foreach ($this->resource->form(new \FloCMS\Admin\Form\Form())->fields() as $field) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany && ($pivot = $field->getPivot()) !== null) {
+                $owner = (string) ($record->{$pivot->parentKey} ?? '');
+                if ($owner !== '') { $pivot->detach($this->db, $owner); }
+            }
+        }
+    }
+
+    /**
+     * A delete the database refuses because other records still point to this
+     * one (a foreign key) becomes a readable message instead of an error page.
+     */
+    private function refusedWhenInUse(\Closure $delete): void
+    {
+        try {
+            $delete();
+        } catch (\PDOException $error) {
+            $driverCode = (int) ($error->errorInfo[1] ?? 0);
+            $foreignKey = in_array($driverCode, [1451, 1217], true) || ($error->getCode() === '23000' && stripos($error->getMessage(), 'foreign key') !== false);
+            if (!$foreignKey) { throw $error; }
+            if (!class_exists(\FloCMS\Core\ValidationException::class)) { class_exists(\FloCMS\Core\Validator::class); }
+            throw new \FloCMS\Core\ValidationException(['_form' => \FloCMS\Admin\Support\AdminLang::get('delete.in_use', ['label' => $this->resource::getLabel()])]);
+        }
     }
 
     private function originalCondition(string $id, object $original): array
@@ -208,9 +245,12 @@ final class RecordRepository
 
     public function delete(string $id): void
     {
-        $record = $this->find($id);
-        $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->delete();
-        if ($record !== null) { $this->resource->afterDelete($record); }
+        $this->db->transaction(function () use ($id): void {
+            $record = $this->find($id);
+            if ($record !== null) { $this->detachRelations($record); }
+            $this->refusedWhenInUse(fn () => $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->delete());
+            if ($record !== null) { $this->resource->afterDelete($record); }
+        });
     }
 
     /** Whether $value exists in $column in a row other than $exceptId. */

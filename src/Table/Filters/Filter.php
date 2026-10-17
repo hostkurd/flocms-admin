@@ -29,4 +29,10 @@ abstract class Filter
     /** Validate a client value; return a safe, canonical value. */
     abstract public function value(mixed $value): string|array;
     abstract public function apply(Database $query, string|array $value): Database;
+    /** The value when the filter is not used. */
+    public function emptyValue(): string|array { return ''; }
+    /** The control in the Filters menu, or null for the built-in select/date range markup. */
+    public function renderInput(string $id, string|array $value, string $invalid, string $prefix): ?string { return null; }
+    /** Readable text of an active value for its chip, or null for the built-in text. */
+    public function describe(string|array $value): ?string { return null; }
 }

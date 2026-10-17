@@ -45,13 +45,22 @@ final class FormRenderer
         private readonly bool $languageSwitch = false,
         // Settings pages: renders a (public) upload control instead of the resource one:
         // fn (FileUpload $field, string $id, string $name, string $value, ?string $fallback, array $attributes): string
-        private readonly ?\Closure $uploadControl = null
+        private readonly ?\Closure $uploadControl = null,
+        // Relation fields: ".../admin/<slug>/lookup" for searching related records, and
+        // the record being edited (a record is never offered as its own parent).
+        private readonly ?string $lookupUrl = null,
+        private readonly ?string $recordId = null,
+        // The table of the resource being edited: a relation to the same table never offers this record.
+        private readonly ?string $ownTable = null
     ) {
     }
+
+    private ?Form $resolvedForm = null;
 
     public function render(Form $form): string
     {
         $resolved = $form->evaluate($this->state);
+        $this->resolvedForm = $resolved;
         $html = $this->nodes($form->components(), $resolved, $form->getColumns(), $form->liveFields(), 'layout');
         if ($form->asideComponents() !== []) {
             // On the full page the aside is a sidebar; in a dialog it follows the main fields.
@@ -182,6 +191,17 @@ final class FormRenderer
     private function single(Field $field, string $id): string
     {
         $attributes = [];
+        if ($field instanceof Fields\BelongsTo || $field instanceof Fields\BelongsToMany) {
+            $query = $this->recordId !== null && $this->recordId !== '' ? '?record=' . rawurlencode($this->recordId) : '';
+            $attributes['data-lookup-url'] = $this->lookupUrl === null ? '' : rtrim($this->lookupUrl, '/') . '/' . rawurlencode($field->getName()) . $query;
+            $relation = $field->hasRelation() ? $field->relation() : null;
+            if ($relation !== null && $this->recordId !== null && $this->recordId !== '' && $relation->resourceClass() !== null && $this->ownTable === $relation->table()) {
+                $attributes['data-relation-except'] = $this->recordId;
+            }
+            if (($parent = $field->getDependsOn()) !== null) {
+                $attributes['data-relation-depends-label'] = $this->resolvedForm?->field($parent)?->getLabel() ?? $parent;
+            }
+        }
         if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && $this->fileUrl !== null) { $attributes['data-upload-url'] = ($this->fileUrl)($field, $this->stringState($field)); }
         $describedBy = [];
         if ($field->getHelp() !== null) { $describedBy[] = $id . '-help'; }

@@ -247,6 +247,22 @@ abstract class Field
         return $this->columnSpan;
     }
 
+    /** Whether the value is a column of the resource's table (false: kept elsewhere, e.g. a pivot table). */
+    public function storesInColumn(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Write a value kept outside the record's row (storesInColumn() false). Runs
+     * inside the save transaction, after the row was inserted or updated.
+     *
+     * @param string|array<string, string> $state
+     */
+    public function persist(\FloCMS\Core\Database $db, string $id, string|array $state): void
+    {
+    }
+
     /** Whether the value is written to the table. */
     public function isWritable(): bool
     {

@@ -35,6 +35,13 @@ final class FormSubmission
             fn (Field $field, string $value, ?string $language = null): bool =>
                 $this->repository->exists($field->getName(), $value, $except, $language), $record !== null);
         $errors = $validator->validate($form, $state, $this->skip($form, $state, $record));
+        // A record cannot be its own parent (a category tree)
+        foreach ($form->writableFields() as $name => $field) {
+            if ($record !== null && $field instanceof \FloCMS\Admin\Form\Fields\BelongsTo && !isset($errors[$name]) && $field->hasRelation()
+                && $field->relation()->table() === $this->resource::getTable() && ($state[$name] ?? '') !== '' && $state[$name] === (string) ($record->{$pk} ?? '')) {
+                $errors[$name] = \FloCMS\Admin\Support\AdminLang::get('validation.relation_self', ['attribute' => $field->getLabel()]);
+            }
+        }
         return $errors !== [] ? $errors : $this->resource->validate($state, $record);
     }
 
@@ -52,7 +59,7 @@ final class FormSubmission
             $skip = $this->skip($form, $state, $record);
             $data = [];
             foreach ($form->writableFields() as $name => $field) {
-                if (in_array($name, $skip, true)) { continue; }
+                if (in_array($name, $skip, true) || !$field->storesInColumn()) { continue; }
                 $value = $state[$name];
                 if ($record !== null && $field->isTranslatable()) {
                     $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
@@ -79,6 +86,12 @@ final class FormSubmission
                 $id = (string) $record->{$pk};
                 if ($guarded) { $this->repository->updateUnchanged($id, $data, $record); }
                 else { $this->repository->update($id, $data); }
+            }
+            // Values kept outside the row (pivot tables), in the same transaction
+            foreach ($form->writableFields() as $name => $field) {
+                if (!$field->storesInColumn() && !in_array($name, $skip, true) && $id !== '') {
+                    $field->persist($this->repository->connection(), $id, $state[$name] ?? '');
+                }
             }
             $saved = $id !== '' ? $this->repository->find($id) : null;
             if ($saved !== null) { $class->afterSave($saved); }

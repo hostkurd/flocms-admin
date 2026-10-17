@@ -125,6 +125,17 @@ abstract class Column
         $this->translatable ??= $translatable;
     }
 
+    /** Load what the cells of these records need in one go (related titles); called before rendering a page. */
+    public function prepare(array $records): void
+    {
+    }
+
+    /** Whether the column is a column of the resource's table (false: e.g. a pivot relation). */
+    public function isDatabaseColumn(): bool
+    {
+        return true;
+    }
+
     /** Raw value of the record (translatable values in the admin's language). */
     public function value(object $record): mixed
     {

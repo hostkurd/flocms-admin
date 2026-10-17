@@ -22,6 +22,7 @@ abstract class RecordsWidget extends Widget
         $translatable = $resource->form(new Form())->translatableNames(); $headers = ''; $names = [];
         foreach ($columns as $column) {
             if (!$column instanceof Column || isset($names[$column->getName()])) { throw new \InvalidArgumentException('Use distinct Column objects.'); }
+            if ($column instanceof \FloCMS\Admin\Table\Columns\RelationColumn) { throw new \InvalidArgumentException('Relation columns are not supported in widgets yet.'); }
             $names[$column->getName()] = true; $column->detectTranslatable(in_array($column->getName(), $translatable, true));
             $headers .= '<th scope="col">' . Str::e($column->getLabel()) . '</th>';
         }
