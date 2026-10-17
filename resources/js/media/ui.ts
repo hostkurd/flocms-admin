@@ -65,9 +65,16 @@ export function promptDialog(cfg: Config, label: string, value: string, ok: stri
 
 type MenuItem = { label: string; icon?: string; danger?: boolean; disabled?: boolean; depth?: number; run: () => void };
 
-/** A small menu under a button; arrow keys move, Escape closes and returns focus. */
+/** The menu open now, closed properly before another opens. */
+let openOne: { anchor: HTMLElement; close: (focus?: boolean) => void } | null = null;
+
+/** A small menu under a button; arrow keys move, Escape closes and returns focus. A second click on its button closes it. */
 export function openMenu(anchor: HTMLElement, items: MenuItem[], label: string): void {
-  document.querySelectorAll('.fa-mb-menu').forEach(menu => menu.remove());
+  if (openOne) {
+    const same = openOne.anchor === anchor;
+    openOne.close();
+    if (same) return;
+  }
   const menu = element('div', 'fa-mb-menu');
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-label', label);
@@ -87,12 +94,14 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], label: string):
     menu.append(entry);
   }
   const close = (focus = false) => {
+    if (openOne?.close === close) openOne = null;
     menu.remove();
     document.removeEventListener('pointerdown', outside, true);
     anchor.setAttribute('aria-expanded', 'false');
     if (focus) anchor.focus();
   };
-  const outside = (event: Event) => { if (!menu.contains(event.target as Node) && event.target !== anchor) close(); };
+  // A click on the button itself (or its icon) is left to the button, which closes the menu.
+  const outside = (event: Event) => { if (!menu.contains(event.target as Node) && !anchor.contains(event.target as Node)) close(); };
   menu.addEventListener('keydown', event => {
     const enabled = buttons.filter(entry => !entry.disabled);
     const index = enabled.indexOf(document.activeElement as HTMLButtonElement);
@@ -110,6 +119,7 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], label: string):
   const left = rtl ? box.right - menu.offsetWidth : box.left;
   menu.style.left = `${Math.max(8, Math.min(left, innerWidth - menu.offsetWidth - 8))}px`;
   anchor.setAttribute('aria-expanded', 'true');
+  openOne = { anchor, close };
   setTimeout(() => document.addEventListener('pointerdown', outside, true));
   buttons.find(entry => !entry.disabled)?.focus();
 }

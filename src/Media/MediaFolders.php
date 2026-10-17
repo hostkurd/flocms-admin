@@ -162,10 +162,15 @@ final class MediaFolders
         $parent = null;
         $parts = array_values(array_filter(array_map(static fn (string $p): string => self::clean($p), explode('/', $path)), static fn (string $p): bool => $p !== ''));
         if ($parts === []) { throw self::refusal('folder', 'media.folder_name_required'); }
-        foreach ($parts as $name) {
-            $parent = $this->child($parent, $name) ?? $this->create($name, $parent);
-        }
-        return (int) $parent;
+        // Check the whole path first, so a refused one leaves no folders half made.
+        if (count($parts) > self::MAX_DEPTH) { throw self::refusal('folder', 'media.folder_too_deep', ['max' => (string) self::MAX_DEPTH]); }
+        foreach ($parts as $name) { $this->validName($name); }
+        return (int) $this->db->transaction(function () use ($parts, $parent): int {
+            foreach ($parts as $name) {
+                $parent = $this->child($parent, $name) ?? $this->create($name, $parent);
+            }
+            return (int) $parent;
+        });
     }
 
     public function create(string $name, ?int $parentId): int

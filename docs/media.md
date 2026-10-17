@@ -111,7 +111,7 @@ Two options shape it:
 
 ```php
 MediaPicker::make('cover_id')->label('Cover')
-    ->folder('Listings/Covers')   // uploads go to this folder (made when missing); the picker opens there
+    ->folder('Listings/Covers')   // uploads go here (made when missing, for editors with update); the picker opens there
     ->aspectRatio('16:9'),        // the shape of the preview: "16:9", "4:3" (default for images), "1:1"…
 ```
 

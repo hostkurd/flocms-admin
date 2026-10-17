@@ -14,6 +14,8 @@ export type PickOptions = {
   already?: number[];
   /** Open in this folder (a field's ->folder()). */
   folder?: number | null;
+  /** The field's ->folder() path: uploads go there, made when missing. */
+  folderPath?: string;
 };
 
 export function pick(options: PickOptions): Promise<MediaItem[] | null> {
@@ -56,7 +58,7 @@ export function pick(options: PickOptions): Promise<MediaItem[] | null> {
     };
     const browser = new MediaBrowser(body, cfg, {
       mode: 'choose', kind: options.kind, multiple: options.multiple, max: options.max ?? null,
-      already: options.already ?? [], query: { folder: options.folder ?? null }, queueHost: dialog,
+      already: options.already ?? [], query: { folder: options.folder ?? null }, queueHost: dialog, folderPath: options.folderPath ?? '',
       onSelection: items => {
         use.disabled = items.length === 0;
         chips.replaceChildren(...items.slice(-6).map(item => { const chip = preview(item, 'fa-mb-chip'); chip.title = item.label; return chip; }));

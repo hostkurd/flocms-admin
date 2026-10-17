@@ -251,6 +251,16 @@ abstract class MediaLibraryTestCase extends TestCase
         self::assertSame([2, 3, 1], array_map(static fn ($i): int => $i->id, media_folder('Homepage slider')), 'by title, else file name: 02 Garden, Hall, Sea view');
         self::assertSame([3, 2, 1], array_map(static fn ($i): int => $i->id, media_folder('Homepage slider', 'newest')));
         self::assertSame([], media_folder('Missing'));
+
+        // ensure(): makes what is missing, reuses what exists, and refuses a path whole.
+        self::assertSame($villas, $folders->ensure('Listings/Villas'));
+        $made = $folders->ensure('Listings / Covers / 2026');
+        self::assertSame('Listings / Covers / 2026', $folders->label($made));
+        $before = count($folders->all());
+        foreach (['A/B/C/D/E', 'A/' . str_repeat('x', 121)] as $bad) {
+            try { $folders->ensure($bad); self::fail($bad); } catch (\Throwable $error) { self::assertStringContainsString('ValidationException', $error::class); }
+        }
+        self::assertCount($before, (new \FloCMS\Admin\Media\MediaFolders($this->db, 'media_folders', 'media'))->all(), 'nothing half made');
     }
 
     public function testSearchByFolderMissingAltSortAndStats(): void

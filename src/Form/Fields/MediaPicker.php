@@ -40,7 +40,11 @@ class MediaPicker extends Field
     public function folder(string $path): static
     {
         $path = trim(preg_replace('~\s*/\s*~', '/', trim($path)) ?? '', '/');
-        if ($path === '' || mb_strlen($path) > 255) { throw new \InvalidArgumentException('MediaPicker folder must be a path such as "Listings/Villas".'); }
+        $parts = $path === '' ? [] : explode('/', $path);
+        if ($parts === [] || mb_strlen($path) > 255 || count($parts) > \FloCMS\Admin\Media\MediaFolders::MAX_DEPTH
+            || array_filter($parts, static fn (string $p): bool => $p === '' || mb_strlen($p) > \FloCMS\Admin\Media\MediaFolders::NAME_MAX) !== []) {
+            throw new \InvalidArgumentException('MediaPicker folder must be a path such as "Listings/Villas", at most ' . \FloCMS\Admin\Media\MediaFolders::MAX_DEPTH . ' levels.');
+        }
         $this->folder = $path;
         return $this;
     }

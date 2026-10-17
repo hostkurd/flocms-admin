@@ -286,6 +286,7 @@ final class MediaController extends PanelController
         $token = $this->request->input('token');
         $action = $this->request->input('action');
         if (!is_string($token) || !in_array($action, ['keep', 'discard'], true)) { throw new HttpException(400); }
+        \FloCMS\Admin\Media\MediaPending::purge();
         if ($action === 'discard') {
             return self::json(['ok' => \FloCMS\Admin\Media\MediaPending::discard($token)]);
         }
@@ -492,7 +493,9 @@ final class MediaController extends PanelController
     {
         $folder = $this->folderParam($this->request->input('folder'));
         $path = $this->request->input('folder_path');
+        // Making folders needs update; an uploader without it gets the folder only when it exists.
         if ($folder !== null || !is_string($path) || trim($path) === '') { return $folder; }
+        if (!MediaLibrary::can('update')) { return MediaLibrary::folders()->resolve(mb_substr($path, 0, 255)); }
         try {
             return MediaLibrary::folders()->ensure(mb_substr($path, 0, 255));
         } catch (ValidationException) {

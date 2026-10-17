@@ -27,6 +27,8 @@ export type BrowserOptions = {
   query?: Partial<Query>;
   /** Keep the address in step with the query (the Media page). */
   syncUrl?: boolean;
+  /** Uploads with no open folder go to this path (a field's ->folder()), made when missing. */
+  folderPath?: string;
   /** Where the upload queue panel goes (default: the browser itself). */
   queueHost?: HTMLElement;
   /** The batch editor (the Media page's "Edit details"). */
@@ -86,6 +88,7 @@ export class MediaBrowser {
     this.build();
     this.queue = cfg.can.create ? new UploadQueue(cfg, {
       folder: () => (typeof this.query.folder === 'number' ? this.query.folder : null),
+      folderPath: () => (this.query.folder === null ? options.folderPath ?? '' : ''),
       duplicates: options.mode === 'manage' ? 'ask' : 'use',
       kind: options.kind ?? null,
       host: options.queueHost ?? this.root,
@@ -338,7 +341,7 @@ export class MediaBrowser {
         const open = !this.collapsed.has(id);
         const toggle = button('fa-mb-folder-toggle', t(cfg, open ? 'collapse' : 'expand', { name }), 'chevronDown', true);
         toggle.setAttribute('aria-expanded', String(open));
-        toggle.addEventListener('click', () => { if (open) this.collapsed.add(id); else this.collapsed.delete(id); this.renderTree(); this.tree.querySelector<HTMLElement>(`[data-folder="${id}"]`)?.previousElementSibling?.querySelector('button')?.focus(); });
+        toggle.addEventListener('click', () => { if (open) this.collapsed.add(id); else this.collapsed.delete(id); this.renderTree(); this.tree.querySelector<HTMLElement>(`[data-folder="${id}"]`)?.parentElement?.querySelector<HTMLElement>('.fa-mb-folder-toggle')?.focus(); });
         row.append(toggle);
       } else {
         row.append(element('span', 'fa-mb-folder-toggle'));
@@ -612,7 +615,12 @@ export class MediaBrowser {
   }
 
   private selectAll(): void {
-    for (const item of this.items) if (!this.already.has(item.id)) this.selected.set(item.id, item);
+    // In the picker, no more than the field has room for.
+    const room = this.options.mode === 'choose' && this.options.max ? this.options.max - this.already.size : Infinity;
+    for (const item of this.items) {
+      if (this.selected.size >= room) { announce(t(this.cfg, 'max_reached', { max: this.options.max ?? 0 }), 'warning'); break; }
+      if (!this.already.has(item.id)) this.selected.set(item.id, item);
+    }
     this.changed();
   }
 
@@ -768,8 +776,15 @@ export class MediaBrowser {
       + (used > 0 ? ` ${t(this.cfg, 'delete_kept_note', { count: used })}` : '');
     if (!await confirmDialog(this.cfg, message, t(this.cfg, 'delete'), true)) return;
     try {
-      const result = await postForm<{ deleted: number; kept: number; message: string }>(this.cfg.urls.delete, { ids }, this.cfg.csrf);
-      announce(result.message, result.kept > 0 ? 'warning' : 'success');
+      // The server takes 200 ids a request.
+      const messages: string[] = [];
+      let kept = 0;
+      for (let at = 0; at < ids.length; at += 200) {
+        const result = await postForm<{ deleted: number; kept: number; message: string }>(this.cfg.urls.delete, { ids: ids.slice(at, at + 200) }, this.cfg.csrf);
+        messages.push(result.message);
+        kept += result.kept;
+      }
+      announce(messages.join(' '), kept > 0 ? 'warning' : 'success');
       this.selected.clear();
       this.focused = null;
       await this.load(true);
@@ -782,6 +797,13 @@ export class MediaBrowser {
 
   /** New or changed items from the batch editor or the details panel. */
   private updated(changed: MediaItem[]): void {
+    const away = changed.filter(item => item.folder !== undefined && !this.shows(item.folder ?? null)).map(item => item.id);
+    if (away.length > 0) {
+      this.items = this.items.filter(item => !away.includes(item.id));
+      away.forEach(id => this.selected.delete(id));
+      this.total = Math.max(0, this.total - away.length);
+      if (this.focused !== null && away.includes(this.focused)) this.focused = null;
+    }
     for (const item of changed) {
       const index = this.items.findIndex(existing => existing.id === item.id);
       if (index >= 0) this.items[index] = { ...this.items[index], ...item };
@@ -812,7 +834,16 @@ export class MediaBrowser {
     this.pane.dataset.dropLabel = t(this.cfg, 'drop_to_upload');
   }
 
+  /** Whether an item in this folder belongs in the list as it is filtered now. */
+  private shows(folder: number | null): boolean {
+    const q = this.query;
+    if (q.folder === null || (q.q && q.scope === 'all')) return true;
+    return q.folder === 'unfiled' ? folder === null : q.folder === folder;
+  }
+
   private uploaded(item: MediaItem): void {
+    // "Use the existing one" may answer with an item kept in another folder.
+    if (item.reused && this.options.mode === 'manage' && !this.shows(item.folder ?? null)) { this.renderCrumbs(); return; }
     if (!this.items.some(existing => existing.id === item.id)) {
       this.items.unshift({ ...item, used: item.used ?? 0, folder: item.folder ?? (typeof this.query.folder === 'number' ? this.query.folder : null) });
       this.total++;
@@ -886,8 +917,9 @@ export class MediaBrowser {
         if (!this.focalEditing) return;
         const step = event.shiftKey ? 10 : 2;
         const point = this.focal ?? { x: 50, y: 50 };
-        const rtl = getComputedStyle(frame).direction === 'rtl';
-        const moves: Record<string, [number, number]> = { ArrowLeft: [rtl ? step : -step, 0], ArrowRight: [rtl ? -step : step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+        // The point is measured on the picture, so the arrows move it the way they point, in any language.
+        const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.detailsPane.querySelector<HTMLButtonElement>('.fa-mb-tools [aria-pressed]')?.click(); return; }
         const move = moves[event.key];
         if (!move) return;
         event.preventDefault();
@@ -904,7 +936,7 @@ export class MediaBrowser {
           focal.setAttribute('aria-pressed', String(on));
           label.textContent = t(cfg, on ? 'focal_done' : 'focal_set');
           frame.classList.toggle('is-focal', on);
-          if (on) { frame.tabIndex = 0; frame.setAttribute('role', 'button'); frame.setAttribute('aria-label', t(cfg, 'focal_help')); }
+          if (on) { frame.tabIndex = 0; frame.setAttribute('role', 'application'); frame.setAttribute('aria-label', t(cfg, 'focal_help')); }
           else { frame.removeAttribute('tabindex'); frame.removeAttribute('role'); frame.removeAttribute('aria-label'); }
         };
         setEditing(this.focalEditing);

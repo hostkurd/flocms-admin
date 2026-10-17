@@ -92,7 +92,7 @@ export function editDetails(cfg: Config, items: MediaItem[], done: (changed: Med
       if (cfg.can.update) {
         frame.classList.add('is-focal');
         frame.tabIndex = 0;
-        frame.setAttribute('role', 'button');
+        frame.setAttribute('role', 'application');
         frame.setAttribute('aria-label', t(cfg, 'focal_help'));
         frame.addEventListener('click', event => {
           focal = focalFromClick(image, event);
@@ -102,8 +102,8 @@ export function editDetails(cfg: Config, items: MediaItem[], done: (changed: Med
         frame.addEventListener('keydown', event => {
           const step = event.shiftKey ? 10 : 2;
           const point = focal ?? { x: 50, y: 50 };
-          const rtl = getComputedStyle(frame).direction === 'rtl';
-          const moves: Record<string, [number, number]> = { ArrowLeft: [rtl ? step : -step, 0], ArrowRight: [rtl ? -step : step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+          // Measured on the picture: the arrows move the point the way they point, in any language.
+          const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
           const move = moves[event.key];
           if (!move) return;
           event.preventDefault();
@@ -216,14 +216,16 @@ export function editDetails(cfg: Config, items: MediaItem[], done: (changed: Med
 
   const store = async (): Promise<boolean> => {
     if (!details || !cfg.can.update) return true;
+    // Previous/Next stay usable while this waits: remember which item is being saved.
+    const at = index;
     const data = new FormData(form);
     if (details.kind === 'image') { data.set('focal_x', focal ? String(focal.x) : ''); data.set('focal_y', focal ? String(focal.y) : ''); }
     save.disabled = saveNext.disabled = true;
     try {
       const result = await postForm<{ item: Details }>(details.saveUrl, data, cfg.csrf);
-      details = result.item;
+      if (index === at) details = result.item;
       changed.set(result.item.id, result.item);
-      items[index] = { ...items[index], ...result.item };
+      items[at] = { ...items[at], ...result.item };
       if (result.item.kind !== 'image' || result.item.hasAlt) doneIds.add(result.item.id); else doneIds.delete(result.item.id);
       lastTitle = String(data.get('title') ?? '');
       status.classList.remove('is-error');

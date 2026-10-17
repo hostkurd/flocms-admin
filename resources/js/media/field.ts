@@ -278,7 +278,7 @@ export class MediaField {
   private async open(replaceAt: number | null = null): Promise<void> {
     const picked = await pick({
       kind: this.kind, multiple: this.multiple && replaceAt === null, max: this.max,
-      already: this.multiple ? this.ids() : [], folder: this.folder,
+      already: this.multiple ? this.ids() : [], folder: this.folder, folderPath: this.folderPath,
     });
     if (!picked || picked.length === 0) return;
     if (replaceAt !== null) {
@@ -433,6 +433,8 @@ export class MediaField {
     if (refused) announce(t(cfg, 'wrong_type', { name: refused.name }), 'danger');
     if (accepted.length === 0) return;
     for (const file of accepted) {
+      // A single field keeps its item until the new one has arrived.
+      const before = [...this.items];
       const slot: Slot = { id: -Date.now() - Math.random(), kind: file.type.startsWith('video/') ? 'video' : 'image', url: '', thumb: '', title: '', label: file.name, alt: '', name: file.name, width: null, height: null, thumbWidth: null, thumbHeight: null, uploading: 0 };
       if (this.multiple) this.items.push(slot); else this.items = [slot];
       this.render();
@@ -448,7 +450,7 @@ export class MediaField {
         else this.items[at] = item;
         if (item.reused) announce(t(cfg, 'reused', { name: item.label }), 'info');
       } catch (error) {
-        this.items.splice(this.items.indexOf(slot), 1);
+        if (this.multiple) this.items.splice(this.items.indexOf(slot), 1); else this.items = before;
         announce(error instanceof Error && error.message ? error.message : t(cfg, 'failed'), 'danger');
       }
       this.render();

@@ -7,12 +7,14 @@ import { ApiError, button, element, fileSize, fits, icon, settleDuplicate, t, up
 
 type Row = {
   file: File; node: HTMLElement; status: HTMLElement; bar: HTMLElement; actions: HTMLElement;
-  state: 'waiting' | 'uploading' | 'done' | 'failed' | 'duplicate' | 'cancelled'; abort?: AbortController;
+  state: 'waiting' | 'uploading' | 'done' | 'failed' | 'duplicate' | 'cancelled'; abort?: AbortController; token?: string;
 };
 
 export type QueueOptions = {
   /** The folder new items go to, read when each upload starts. */
   folder: () => number | null;
+  /** A folder path for uploads when no folder is open (a field's ->folder()). */
+  folderPath?: () => string;
   /** What to do with a file already in the library: ask (the Media page) or use the existing item (fields, picker). */
   duplicates: 'ask' | 'use';
   kind?: 'image' | 'video' | null;
@@ -113,7 +115,7 @@ export class UploadQueue {
     this.update();
     try {
       const outcome = await uploadMedia(this.cfg, row.file, percent => this.progress(row, percent), {
-        folder: this.options.folder(), duplicates: this.options.duplicates, signal: row.abort.signal,
+        folder: this.options.folder(), folderPath: this.options.folderPath?.() ?? '', duplicates: this.options.duplicates, signal: row.abort.signal,
       });
       if ('duplicate' in outcome) { this.duplicate(row, outcome.duplicate); return; }
       this.done(row, outcome.item);
@@ -156,6 +158,7 @@ export class UploadQueue {
 
   private duplicate(row: Row, duplicate: Duplicate): void {
     row.state = 'duplicate';
+    row.token = duplicate.token;
     row.node.classList.add('is-duplicate');
     row.status.textContent = duplicate.message;
     row.actions.replaceChildren();
@@ -226,6 +229,8 @@ export class UploadQueue {
   private clear(): void {
     for (const row of [...this.rows]) {
       if (row.state === 'waiting' || row.state === 'uploading') continue;
+      // A file still waiting for "Use … / Upload anyway" is dropped: the existing item stays.
+      if (row.state === 'duplicate' && row.token) void settleDuplicate(this.cfg, row.token, false).catch(() => undefined);
       row.node.remove();
       this.rows.splice(this.rows.indexOf(row), 1);
     }

@@ -11,8 +11,8 @@ use FloCMS\Admin\Admin;
  * anyway", no second upload) or discards it ("Use the existing one").
  *
  * Each waiting upload is a small JSON file in storage/admin-uploads/pending,
- * bound to the user and session that uploaded it; abandoned ones (and their
- * files) are removed after a day.
+ * bound to the user and session that uploaded it. Abandoned ones expire after a
+ * day; purge() (run on each new hold and each answer) removes them and their files.
  */
 final class MediaPending
 {
@@ -83,6 +83,8 @@ final class MediaPending
         if (!is_file($json)) { return null; }
         $data = json_decode((string) file_get_contents($json), true);
         if (!is_array($data) || !is_array($data['file'] ?? null) || !hash_equals((string) ($data['owner'] ?? ''), MediaFiles::owner())) { return null; }
+        // Expired: purge() removes it (and its files); it can't be kept any more.
+        if ((int) ($data['at'] ?? 0) < time() - self::TTL) { return null; }
         return $data;
     }
 }

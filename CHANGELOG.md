@@ -27,7 +27,7 @@ The media library becomes a file manager, and every file input becomes a drop ar
 
 - A framed card of their own. One item: a large preview (with the item's focal point) with Change, Edit details and Remove, its name, size and dimensions, and a **No alt text** badge that opens the details. Several: numbered tiles to drag by a grip (mouse, touch, pen) or move with Alt + arrow keys, a ⋯ menu (Edit details, Set focal point, Replace from the library, Move earlier/later, Remove), and an **Add media** tile. Empty: a drop area.
 - Files dropped on a field (or chosen with **Upload**) go into the library and are used at once.
-- `MediaPicker::folder('Listings/Covers')`: uploads go to that folder (made when missing) and the picker opens there. `->aspectRatio('16:9')`: the shape of the preview. A cover fits in the record page's side column (`Form::aside()`).
+- `MediaPicker::folder('Listings/Covers')` (up to four levels): uploads from the field and its picker go to that folder (made when missing, for editors with `content.media.update`) and the picker opens there. `->aspectRatio('16:9')`: the shape of the preview. A cover fits in the record page's side column (`Form::aside()`).
 
 ### FileDrop
 

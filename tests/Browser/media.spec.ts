@@ -345,6 +345,24 @@ test('a field uploads into its folder, reuses a file already there, and edits de
   await expect(cover.locator('.fa-mf-noalt')).toHaveCount(0);
 });
 
+test('a failed upload keeps the field\'s item; Ctrl+A in the picker stops at the field\'s room', async ({ page }) => {
+  await page.goto('/en/admin/listings/edit/1');
+  const cover = field(page, 'cover_id');
+  await cover.getByRole('button', { name: 'Choose from the library' }).click();
+  await tile(picker(page), 'Hall').dblclick();
+  await expect(cover.locator('.fa-mf-name')).toHaveText('Hall');
+  await page.route(/\/admin\/media\/upload/, route => route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ items: [], errors: ['photo.png: refused'], duplicates: [] }) }));
+  await cover.locator('input[type=file]').setInputFiles(photo);
+  await expect(page.getByText(/refused/).first()).toBeVisible();
+  await expect(cover.locator('.fa-mf-name')).toHaveText('Hall');
+  await expect(cover.locator('[data-media-value]')).toHaveValue('3');
+
+  await field(page, 'gallery').getByRole('button', { name: 'Choose from the library' }).click();
+  await tiles(picker(page)).first().focus();
+  await page.keyboard.press('Control+a');
+  await expect(picker(page).getByRole('button', { name: 'Use selected (3)' })).toBeVisible();
+});
+
 test('the picker uploads: the new image is selected, ready to choose', async ({ page }) => {
   await page.goto('/en/admin/listings/edit/1');
   await field(page, 'cover_id').getByRole('button', { name: 'Choose from the library' }).click();
