@@ -58,6 +58,8 @@ final class ResourceController extends PanelController
             'admin_media' => $class::permission('view'),
             'admin_lookup' => $class::permission('view'),
             'admin_reorder' => $class::permission('update'),
+            'admin_trash' => $class::permission('view'),
+            'admin_history' => $class::permission('update'),
         ];
     }
 
@@ -167,6 +169,7 @@ final class ResourceController extends PanelController
 
         $batch = new \FloCMS\Admin\Uploads\UploadBatch();
         $batch->deleting($this->resource, $record);
+        $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
         $back = $this->safeBackUrl((string) ($this->request->input('_back') ?? ''));
         try {
             $this->repository()->delete($this->recordId());
@@ -176,9 +179,39 @@ final class ResourceController extends PanelController
             $this->redirect($back ?? Admin::url($class::getSlug()));
         }
         $batch->commit();
-        Session::setFlash(AdminLang::get('flash.deleted', ['label' => $class::getLabel()]), 'success');
+        if (\FloCMS\Admin\Trash\Trash::enabledFor($this->resource)) {
+            \FloCMS\Admin\Trash\Trash::notifyDeleted($this->resource, 1, [$label]);
+        } else {
+            Session::setFlash(AdminLang::get('flash.deleted', ['label' => $class::getLabel()]), 'success');
+        }
 
         $this->redirect($back ?? Admin::url($class::getSlug()));
+    }
+
+    /**
+     * This resource's trash: GET /admin/<slug>/trash lists its deleted records with
+     * the list's columns; POST restores, deletes for good or empties it.
+     */
+    public function admin_trash(): string|\FloCMS\Core\Http\Response
+    {
+        if (count($this->params) > 0 || !\FloCMS\Admin\Trash\Trash::enabledFor($this->resourceClass)) { throw new HttpException(404); }
+        $page = new TrashPage($this->resourceClass);
+        if ($this->isPost()) {
+            $this->redirect($page->handle($this->request->all()));
+        }
+        if (!$this->request->isMethod('GET', 'HEAD')) { header('Allow: GET, POST'); throw new HttpException(405); }
+        return $this->panel($page->title(), $page->render($_GET), $this->resourceClass::getSlug());
+    }
+
+    /** GET /admin/<slug>/history/<id>: the record's History as a page (the drawer without JavaScript). */
+    public function admin_history(): string|\FloCMS\Core\Http\Response
+    {
+        if (!\FloCMS\Admin\Activity\Activity::enabled() || count($this->params) !== 1) { throw new HttpException(404); }
+        $record = $this->findRecordOr404();
+        if (!$this->resource->canEdit($record)) { throw new HttpException(403); }
+        $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
+        $html = \FloCMS\Admin\Activity\ActivityView::history($label, \FloCMS\Admin\Activity\Activity::forRecord($this->resourceClass::getSlug(), $this->recordId()), false);
+        return $this->panel(AdminLang::get('activity.history_of', ['title' => $label]), $html, $this->resourceClass::getSlug());
     }
 
     /** Standard fallback for every declared action, also used by async navigation. */
@@ -216,7 +249,7 @@ final class ResourceController extends PanelController
         }
         return $this->panel($action->getTitle($this->resource), \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('bulk'), [
             't' => PageView::translator(), 'title' => $action->getTitle($this->resource),
-            'description' => AdminLang::get('bulk.confirm', ['count' => count($ids)]),
+            'description' => \FloCMS\Admin\Actions\BulkExecutor::confirmText($this->resource, $action, count($ids)),
             'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default()))->render($form),
             'errors' => $errors, 'ids' => json_encode($ids, JSON_THROW_ON_ERROR), 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/bulk/' . $name), 'submitLabel' => $action->getLabel($this->resource), 'submitColor' => $action->getColor(),
@@ -274,7 +307,7 @@ final class ResourceController extends PanelController
         }
         $title = $action->getTitle($this->resource);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
-            't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
+            't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription($this->resource),
             'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record),
                 mediaUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/media') : null,
                 lookupUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/lookup') : null,
@@ -363,7 +396,7 @@ final class ResourceController extends PanelController
                 if ($up !== null || $down !== null) {
                     $id = $up ?? $down;
                     if (!is_string($id) || preg_match(self::REORDER_KEY, $id) !== 1) { throw new HttpException(400); }
-                    $order->move($filters, $id, $up !== null ? 'up' : 'down');
+                    $this->logReorder($order->move($filters, $id, $up !== null ? 'up' : 'down'));
                     if ($wantsJson) { return \FloCMS\Core\Http\Response::json(['ok' => true])->header('Cache-Control', 'no-store'); }
                     $this->redirect(Admin::url($class::getSlug() . '/reorder', ['filter' => $filters->active() ?: null, 'moved' => $id, 'step' => $up !== null ? 'up' : 'down']));
                 }
@@ -375,7 +408,7 @@ final class ResourceController extends PanelController
                     if (preg_match(self::REORDER_KEY, $ids[$index]) !== 1) { throw new HttpException(400); }
                 }
                 if (count(array_unique($ids)) !== count($ids)) { throw new HttpException(400); }
-                $order->reorder($filters, $ids);
+                $this->logReorder($order->reorder($filters, $ids));
             } catch (\FloCMS\Core\ValidationException $error) {
                 $message = implode(' ', array_map(static fn ($m): string => implode(' ', (array) $m), $error->getErrors()));
                 Session::setFlash($message, 'warning');
@@ -395,6 +428,14 @@ final class ResourceController extends PanelController
             $moved, in_array($step, ['up', 'down'], true) ? $step : '');
 
         return $this->panel(AdminLang::get('reorder.title', ['label' => $class::getPluralLabel()]), $html, $class::getSlug());
+    }
+
+    /** One activity entry per saved order: "Reordered 12 FAQs". */
+    private function logReorder(int $changed): void
+    {
+        if ($changed > 0) {
+            \FloCMS\Admin\Activity\Activity::record('reordered', $this->resourceClass::getSlug(), meta: ['count' => $changed], db: $this->repository()->connection());
+        }
     }
 
     /** Multipart transport for a declared CRUD action; never a generic upload API. */
@@ -588,8 +629,17 @@ final class ResourceController extends PanelController
         $back = $this->backUrl();
         $returnTo = $back !== Admin::url($class::getSlug()) ? $back : null;
         $action = Admin::url($class::getSlug() . ($isEdit ? '/edit/' . $this->recordId() : '/create'), ['back' => $returnTo]);
+        $history = null;
+        if ($isEdit && \FloCMS\Admin\Activity\Activity::enabled()) {
+            $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
+            $history = [
+                'url' => Admin::url($class::getSlug() . '/history/' . $this->recordId()),
+                'html' => \FloCMS\Admin\Activity\ActivityView::history($label, \FloCMS\Admin\Activity\Activity::forRecord($class::getSlug(), $this->recordId()), true),
+                'title' => $label,
+            ];
+        }
         $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
-            !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== []);
+            !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== [], $history);
 
         return $this->panel($title, $html, $class::getSlug());
     }

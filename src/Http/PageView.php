@@ -130,6 +130,8 @@ final class PageView
             'columnsChanged' => $visibility->changed(),
             'columnsIcon' => Icons::svg('columns'),
             'reorderUrl' => self::reorderUrl($definition, $table, $filters, $canUpdate),
+            'trash' => TrashPage::toolbarLink($class),
+            'trashIcon' => Icons::svg('trash'),
             'reorderIcon' => Icons::svg('arrows-up-down'),
             'filterErrors' => $filters->errors !== [],
             'filterCount' => count($filters->active()),
@@ -207,9 +209,10 @@ final class PageView
     }
 
     public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors,
-        ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false): string
+        ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false, ?array $history = null): string
     {
         $class = $this->resource;
+        $trashed = $deleteUrl !== null && \FloCMS\Admin\Trash\Trash::enabledFor($class);
 
         return TemplateEngine::renderFile(self::viewPath('form'), [
             't' => self::translator(),
@@ -230,7 +233,20 @@ final class PageView
             'hasAside' => $hasAside,
             'description' => $class::getDescription(),
             'trashIcon' => Icons::svg('trash'),
+            'deleteText' => self::deleteText($class),
+            'trashed' => $trashed,
+            'history' => $history,
+            'historyIcon' => Icons::svg('history'),
+            'closeIcon' => Icons::svg('x'),
         ]);
+    }
+
+    /** The delete confirmation's text: "It goes to the trash for 30 days…" or "This cannot be undone." */
+    public static function deleteText(string $class): string
+    {
+        if (!\FloCMS\Admin\Trash\Trash::enabledFor($class)) { return AdminLang::get('delete.text'); }
+        $days = \FloCMS\Admin\Trash\Trash::days();
+        return $days > 0 ? AdminLang::get('delete.text_trash', ['days' => $days]) : AdminLang::get('delete.text_trash_kept');
     }
 
     /** @return Closure(string, array<string, string|int>=): string */

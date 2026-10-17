@@ -191,14 +191,31 @@ final class RecordRepository
     public function deleteUnchanged(string $id, object $original): void
     {
         $this->db->transaction(function () use ($id, $original): void {
+            $trashed = $this->toTrash($original);
             $this->detachRelations($original);
-            \FloCMS\Admin\Media\MediaUsage::forget($this->resource, $id);
+            // A trashed record keeps its media usage until it is deleted for good.
+            if (!$trashed) { \FloCMS\Admin\Media\MediaUsage::forget($this->resource, $id); }
             [$where, $bindings] = $this->originalCondition($id, $original);
             $statement = $this->db->pdo()->prepare('DELETE FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where);
             $this->refusedWhenInUse(static fn () => $statement->execute($bindings));
             if ($statement->rowCount() !== 1) { $this->conflict(); }
             $this->resource->afterDelete($original);
+            $this->logDeleted($id, $original);
         });
+    }
+
+    /** Copy the record into the trash when it is on for this resource; whether it was. */
+    private function toTrash(object $record): bool
+    {
+        if (!\FloCMS\Admin\Trash\Trash::enabledFor($this->resource, $this->db)) { return false; }
+        \FloCMS\Admin\Trash\Trash::capture($this->resource, $this->db, $record);
+        return true;
+    }
+
+    private function logDeleted(string $id, object $record): void
+    {
+        \FloCMS\Admin\Activity\Activity::record('deleted', $this->resource::getSlug(), $id, \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record),
+            meta: \FloCMS\Admin\Trash\Trash::enabledFor($this->resource, $this->db) ? ['trash' => 1] : [], db: $this->db);
     }
 
     /** Pivot rows of the record's many-to-many fields go with it (before the row, for foreign keys). */
@@ -259,10 +276,11 @@ final class RecordRepository
     {
         $this->db->transaction(function () use ($id): void {
             $record = $this->find($id);
+            $trashed = $record !== null && $this->toTrash($record);
             if ($record !== null) { $this->detachRelations($record); }
-            \FloCMS\Admin\Media\MediaUsage::forget($this->resource, $id);
+            if (!$trashed) { \FloCMS\Admin\Media\MediaUsage::forget($this->resource, $id); }
             $this->refusedWhenInUse(fn () => $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->delete());
-            if ($record !== null) { $this->resource->afterDelete($record); }
+            if ($record !== null) { $this->resource->afterDelete($record); $this->logDeleted($id, $record); }
         });
     }
 

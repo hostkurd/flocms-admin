@@ -15,7 +15,7 @@
             @endforeach
             @if($mediaUrl !== null)<a class="fa-nav-link{{ $mediaActive ? ' is-active' : '' }}" href="{{ $mediaUrl }}"@if($mediaActive) aria-current="page"@endif>{!! $mediaIcon !!}<span>{{ $t('media.title') }}</span></a>@endif
             @endif
-            @if($usersUrl !== null || $settingsUrl !== null)
+            @if($usersUrl !== null || $settingsUrl !== null || $activityUrl !== null || $trashUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
             @endif
             @if($usersUrl !== null)
@@ -23,6 +23,12 @@
             @endif
             @if($settingsUrl !== null)
             <a class="fa-nav-link{{ $settingsActive ? ' is-active' : '' }}" href="{{ $settingsUrl }}"@if($settingsActive) aria-current="page"@endif>{!! $settingsIcon !!}<span>{{ $t('nav.settings') }}</span></a>
+            @endif
+            @if($activityUrl !== null)
+            <a class="fa-nav-link{{ $activityActive ? ' is-active' : '' }}" href="{{ $activityUrl }}"@if($activityActive) aria-current="page"@endif>{!! $activityIcon !!}<span>{{ $t('activity.title') }}</span></a>
+            @endif
+            @if($trashUrl !== null)
+            <a class="fa-nav-link{{ $trashActive ? ' is-active' : '' }}" href="{{ $trashUrl }}"@if($trashActive) aria-current="page"@endif>{!! $trashIcon !!}<span>{{ $t('trash.title') }}</span></a>
             @endif
         </nav>
     </aside>
@@ -68,12 +74,15 @@
         </main>
     </div>
     <dialog class="fa-confirm" id="fa-confirm" aria-labelledby="fa-confirm-title">
-        <h2 class="fa-dialog-title" id="fa-confirm-title">{{ $t('delete.title') }}</h2>
-        <p class="fa-confirm-text">{{ $t('delete.text') }}</p>
+        <h2 class="fa-dialog-title" id="fa-confirm-title" data-default="{{ $t('delete.title') }}">{{ $t('delete.title') }}</h2>
+        <p class="fa-confirm-text" data-default="{{ $t('delete.text') }}">{{ $t('delete.text') }}</p>
         <div class="fa-dialog-foot">
             <button type="button" class="fa-btn" data-confirm-no>{{ $t('actions.cancel') }}</button>
-            <button type="button" class="fa-btn fa-btn-danger" data-confirm-yes>{{ $t('actions.delete') }}</button>
+            <button type="button" class="fa-btn fa-btn-danger" data-confirm-yes data-default="{{ $t('actions.delete') }}">{{ $t('actions.delete') }}</button>
         </div>
+    </dialog>
+    <dialog class="fa-changes-dialog" id="fa-changes-dialog" aria-labelledby="fa-changes-title">
+        <div class="fa-changes-dialog-content" data-admin-dialog-content></div>
     </dialog>
     <dialog class="fa-confirm" id="fa-leave" aria-labelledby="fa-leave-title" aria-describedby="fa-leave-text">
         <h2 class="fa-dialog-title" id="fa-leave-title">{{ $t('form.leave_title') }}</h2>

@@ -117,6 +117,7 @@ final class DoctorCommand extends Command
 
         $this->checkSettings($config, $db);
         $this->checkLibrary($config, $db, $project);
+        $this->checkHistory($config, $db, $project, $resources);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -562,6 +563,78 @@ final class DoctorCommand extends Command
             $this->bad('Library images need the GD or Imagick PHP extension to make their web and thumb versions.');
         }
         $this->line('  Permissions: ' . \FloCMS\Admin\Media\MediaLibrary::permission('view') . ', …create, …update, …delete');
+    }
+
+    /**
+     * The trash and the activity log (0.19): their tables, and database cascades the
+     * trash cannot undo (child rows removed by ON DELETE CASCADE don't come back).
+     *
+     * @param array<string, class-string<\FloCMS\Admin\Resource>> $resources
+     */
+    private function checkHistory(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project, array $resources): void
+    {
+        $trash = $config->trash();
+        $activity = $config->activity();
+        if (!$trash['enabled'] && !$activity['enabled']) { return; }
+        $this->section('Trash and activity log  (/admin/trash, /admin/activity)');
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the trash and activity tables were not checked.'); return; }
+        }
+        $tables = [];
+        if ($trash['enabled']) { $tables[$trash['table']] = ['id', 'resource', 'record_id', 'title', 'data', 'links', 'files', 'batch', 'deleted_by', 'deleted_by_name', 'deleted_at']; }
+        if ($activity['enabled']) { $tables[$activity['table']] = ['id', 'action', 'resource', 'record_id', 'title', 'user_id', 'user_name', 'changes', 'meta', 'batch', 'created_at']; }
+        foreach ($tables as $table => $columns) {
+            $found = $this->columns($db, $table);
+            $what = $table === $trash['table'] && $trash['enabled'] ? 'trash' : 'activity log';
+            if ($found === null) {
+                $this->bad('Table "' . $table . '" not found: run php flo admin:install, then php flo migrate. Until then the ' . $what . ' is off (deletes are final' . ($what === 'trash' ? '' : ', nothing is logged') . ').');
+                continue;
+            }
+            $missing = array_values(array_diff($columns, array_keys($found)));
+            if ($missing !== []) {
+                $this->bad('Table "' . $table . '" exists but is not the ' . $what . '\'s (missing ' . implode(', ', $missing) . '). Name it in config/admin.php: \'' . ($what === 'trash' ? 'trash' : 'activity') . '\' => [\'table\' => \'site_' . ($what === 'trash' ? 'trash' : 'activity') . '\'], then run php flo admin:install and php flo migrate.');
+                continue;
+            }
+            $this->ok('Table "' . $table . '" (' . $what . ')');
+            $this->checkCharset($db, $table);
+        }
+        if ($trash['enabled']) {
+            $this->line('  Trash: records are kept ' . ($trash['days'] > 0 ? $trash['days'] . ' days' : 'until emptied') . '; php flo admin:trash-purge deletes older ones (panel pages do it hourly).');
+            foreach ($resources as $slug => $class) {
+                if (!$class::usesTrash()) { continue; }
+                foreach ($this->cascades($db, $class::getTable()) as $child) {
+                    $this->caution('"' . $child . '" deletes its rows ON DELETE CASCADE when a ' . $slug . ' record is deleted: the trash can restore the ' . $slug . ' record but not those rows.');
+                }
+            }
+        }
+        if ($activity['enabled']) {
+            $this->line('  Activity log: entries are kept ' . ($activity['days'] > 0 ? $activity['days'] . ' days' : 'forever') . ($activity['logins'] ? '; sign-ins are recorded' : '') . '. The Activity page needs the permission ' . \FloCMS\Admin\Activity\Activity::PERMISSION . '.');
+        }
+        foreach (['trash', 'activity'] as $page) {
+            if (Admin::registry()->find($page) !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass($page))) {
+                $this->caution('The URL /admin/' . $page . ' belongs to your site, so the panel\'s ' . ($page === 'trash' ? 'Trash' : 'Activity') . ' page is not shown. Rename that resource or controller to use it.');
+            }
+        }
+    }
+
+    /** @return list<string> tables whose foreign keys to $table delete their rows with it */
+    private function cascades(Database $db, string $table): array
+    {
+        try {
+            if ($db->driver() === 'sqlite') {
+                $children = [];
+                foreach ($db->query("SELECT name FROM sqlite_master WHERE type = 'table'")->fetchAll(\PDO::FETCH_COLUMN) as $name) {
+                    foreach ($db->query('PRAGMA foreign_key_list(`' . str_replace('`', '', (string) $name) . '`)')->fetchAll(\PDO::FETCH_ASSOC) as $key) {
+                        if (strcasecmp((string) $key['table'], $table) === 0 && strtoupper((string) $key['on_delete']) === 'CASCADE') { $children[] = (string) $name; }
+                    }
+                }
+                return array_values(array_unique($children));
+            }
+            $rows = $db->query('SELECT DISTINCT TABLE_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = ? AND DELETE_RULE = \'CASCADE\'', [$table])->fetchAll(\PDO::FETCH_COLUMN);
+            return array_values(array_map('strval', $rows));
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     private function ok(string $text): void

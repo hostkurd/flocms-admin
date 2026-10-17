@@ -19,6 +19,8 @@ class BulkAction extends Action
     {
         return (!$this->deleting || ($record !== null && $resource->canDelete($record))) && parent::allowed($resource, $record);
     }
+    /** The built-in Delete selected (DeleteBulkAction). */
+    public function isDeleting(): bool { return $this->deleting; }
     public function available(Resource $resource): bool
     {
         try { $this->authorizePermission($resource); return true; }

@@ -8,6 +8,8 @@ use FloCMS\Admin\Console\InstallCommand;
 use FloCMS\Admin\Console\ListCommand;
 use FloCMS\Admin\Console\MakeResourceCommand;
 use FloCMS\Admin\Console\MakeWidgetCommand;
+use FloCMS\Admin\Console\TrashPurgeCommand;
+use FloCMS\Admin\Console\ActivityPurgeCommand;
 use FloCMS\CLI\Console\Testing\CommandTester;
 use FloCMS\CLI\Project;
 use PHPUnit\Framework\TestCase;
@@ -141,6 +143,8 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('Settings table "settings" not found: run php flo admin:install, then php flo migrate', $display);
         self::assertStringContainsString('Table "admin_user_preferences" not found', $display);
         self::assertStringContainsString('Table "media" not found: run php flo admin:install, then php flo migrate.', $display, 'the media library is on by default');
+        self::assertStringContainsString('Table "admin_trash" not found: run php flo admin:install, then php flo migrate.', $display, 'the trash is on by default');
+        self::assertStringContainsString('Table "admin_activity" not found', $display, 'the activity log is on by default');
         self::assertStringContainsString('/admin shows the skeleton\'s page', $display, 'skeleton before 1.8: no admin.home');
 
         $pdo->exec('ALTER TABLE properties ADD COLUMN title TEXT');
@@ -159,6 +163,10 @@ final class CommandsTest extends TestCase
         self::assertCount(1, $folders);
         self::assertGreaterThan(basename($migration[0]), basename($folders[0]), 'runs after the media table exists');
         (require $folders[0])->up(new \FloCMS\Core\Database($pdo));
+        // The trash and the activity log (0.19): one migration for both tables
+        $history = glob($this->root . '/database/migrations/*_create_admin_trash_and_admin_activity_tables.php');
+        self::assertCount(1, $history);
+        (require $history[0])->up(new \FloCMS\Core\Database($pdo));
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");
@@ -418,5 +426,49 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('add --resource=Post', $records->getErrorOutput());
         self::assertNotSame(0, $this->runCommand(new MakeWidgetCommand(), ['Stats', '--resource=../x'])->getStatusCode());
         self::assertDirectoryDoesNotExist($this->root . '/admin/Widgets');
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testPurgeCommandsRemoveWhatHasExpired(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'media_library' => false, 'trash' => ['days' => 7], 'activity' => ['days' => 30]];");
+        $missing = $this->runCommand(new TrashPurgeCommand());
+        self::assertSame(1, $missing->getStatusCode());
+        self::assertStringContainsString('The trash table is missing', $missing->getDisplay() . $missing->getErrorOutput());
+
+        $this->runCommand(new InstallCommand());
+        $migration = glob($this->root . '/database/migrations/*_create_admin_trash_and_admin_activity_tables.php');
+        self::assertCount(1, $migration);
+        $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
+        (require $migration[0])->up(new \FloCMS\Core\Database($pdo));
+        $insert = $pdo->prepare('INSERT INTO admin_trash (resource, record_id, title, data, batch, deleted_at) VALUES (?, ?, ?, ?, ?, ?)');
+        $insert->execute(['posts', '1', 'Old', '{"id":1}', str_repeat('a', 32), date('Y-m-d H:i:s', time() - 8 * 86400)]);
+        $insert->execute(['posts', '2', 'New', '{"id":2}', str_repeat('b', 32), date('Y-m-d H:i:s', time() - 86400)]);
+        $log = $pdo->prepare('INSERT INTO admin_activity (action, created_at) VALUES (?, ?)');
+        $log->execute(['created', date('Y-m-d H:i:s', time() - 40 * 86400)]);
+        $log->execute(['created', date('Y-m-d H:i:s')]);
+
+        $tester = $this->runCommand(new TrashPurgeCommand());
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringContainsString('1 record(s) older than 7 days deleted for good.', $tester->getDisplay());
+        self::assertSame(['2'], $pdo->query('SELECT record_id FROM admin_trash')->fetchAll(\PDO::FETCH_COLUMN));
+
+        $tester = $this->runCommand(new ActivityPurgeCommand());
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringContainsString('older than 30 days removed', $tester->getDisplay());
+        // The trash purge wrote a "purged" entry; the old "created" one is gone
+        self::assertSame(['created', 'purged'], $pdo->query('SELECT action FROM admin_activity ORDER BY id')->fetchAll(\PDO::FETCH_COLUMN));
+
+        $doctor = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Table "admin_trash" (trash)', $doctor);
+        self::assertStringContainsString('Table "admin_activity" (activity log)', $doctor);
+        self::assertStringContainsString('records are kept 7 days', $doctor);
     }
 }

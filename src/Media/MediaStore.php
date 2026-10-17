@@ -136,18 +136,44 @@ final class MediaStore
         if (!isset($row['hash']) || !is_string($row['hash']) || preg_match('/^[0-9a-f]{64}$/D', $row['hash']) !== 1) { unset($row['hash']); }
         $id = $this->db->table($this->table)->insert($row);
         unset($this->cache[$id]);
-        return $this->find($id) ?? throw new \RuntimeException('The media item was not saved.');
+        $item = $this->find($id) ?? throw new \RuntimeException('The media item was not saved.');
+        $this->log('media_uploaded', $item, meta: ['file' => $item->fileName]);
+        return $item;
+    }
+
+    /** An activity entry about one item (0.19). */
+    private function log(string $action, MediaItem $item, array $changes = [], array $meta = []): void
+    {
+        \FloCMS\Admin\Activity\Activity::record($action, 'media', (string) $item->id, $item->label(), $changes, $meta, $this->db);
     }
 
     /** @param array<string, string> $alt Alt text per language */
     public function updateDetails(int $id, string $title, array $alt): void
     {
+        $before = $this->find($id);
         $alt = array_filter(array_map('trim', $alt), static fn (string $text): bool => $text !== '');
         $this->db->table($this->table)->where('id', '=', $id)->update([
             'title' => mb_substr(trim($title), 0, 255),
             'alt' => $alt === [] ? null : json_encode($alt, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        unset($this->cache[$id]);
+        $after = $this->find($id);
+        if ($before !== null && $after !== null) {
+            $changes = [];
+            if ($before->title !== $after->title) {
+                $changes[] = ['field' => 'title', 'label' => AdminLang::get('media.item_title'), 'lang' => null, 'type' => 'value', 'before' => $before->title, 'after' => $after->title];
+            }
+            $old = $before->altValues();
+            $new = $after->altValues();
+            foreach (array_unique(array_merge(array_keys($old), array_keys($new))) as $language) {
+                if (($old[$language] ?? '') !== ($new[$language] ?? '')) {
+                    $changes[] = ['field' => 'alt', 'label' => AdminLang::get('media.alt'), 'lang' => (string) $language, 'type' => 'value', 'before' => mb_strimwidth($old[$language] ?? '', 0, 300, '…'), 'after' => mb_strimwidth($new[$language] ?? '', 0, 300, '…')];
+                }
+            }
+            if ($changes !== []) { $this->log('media_updated', $after, $changes); }
+        }
+        // Read back for the log only: later reads must see changes made by other code paths.
         unset($this->cache[$id]);
     }
 
@@ -165,6 +191,7 @@ final class MediaStore
         if ($this->usedInText($id) !== []) { throw self::refusal(['_form' => AdminLang::get('media.replace_in_text')]); }
         $this->db->table($this->table)->where('id', '=', $id)->update($file + ['updated_at' => date('Y-m-d H:i:s')]);
         unset($this->cache[$id]);
+        $this->log('media_replaced', $item, [['field' => 'file', 'label' => AdminLang::get('activity.file'), 'lang' => null, 'type' => 'value', 'before' => $item->fileName, 'after' => (string) $file['file_name']]]);
         return array_values(array_filter([$item->path, $item->thumbPath]));
     }
 
@@ -181,6 +208,7 @@ final class MediaStore
         $deleted = $this->db->query('DELETE FROM ' . $this->table . ' WHERE id = ? AND NOT EXISTS (SELECT 1 FROM ' . $this->usageTable . ' WHERE media_id = ?)', [$id, $id])->rowCount();
         if ($deleted === 0) { throw self::refusal(['_form' => AdminLang::get('media.in_use')]); }
         $this->cache[$id] = null;
+        $this->log('media_deleted', $item, meta: ['file' => $item->fileName]);
         return array_values(array_filter([$item->path, $item->thumbPath]));
     }
 
@@ -194,9 +222,22 @@ final class MediaStore
         $ids = self::ids($ids);
         if ($ids === []) { return 0; }
         $moved = 0;
+        $changed = 0;
+        $different = $this->db->driver() === 'sqlite' ? '`folder_id` IS NOT ?' : 'NOT (`folder_id` <=> ?)';
         foreach (array_chunk($ids, 500) as $chunk) {
-            $moved += $this->db->query('UPDATE `' . $this->table . '` SET `folder_id` = ?, `updated_at` = ? WHERE `id` IN (' . implode(', ', array_fill(0, count($chunk), '?')) . ')', [$folderId, date('Y-m-d H:i:s'), ...$chunk])->rowCount();
+            $in = implode(', ', array_fill(0, count($chunk), '?'));
+            $changed += (int) $this->db->query('SELECT COUNT(*) FROM `' . $this->table . '` WHERE `id` IN (' . $in . ') AND ' . $different, [...$chunk, $folderId])->fetchColumn();
+            $moved += $this->db->query('UPDATE `' . $this->table . '` SET `folder_id` = ?, `updated_at` = ? WHERE `id` IN (' . $in . ')', [$folderId, date('Y-m-d H:i:s'), ...$chunk])->rowCount();
             foreach ($chunk as $id) { unset($this->cache[$id]); }
+        }
+        if ($changed > 0) {
+            $folder = AdminLang::get('media.unfiled');
+            if ($folderId !== null) {
+                try { $folder = MediaLibrary::folders()->label($folderId); } catch (\Throwable) { $folder = '#' . $folderId; }
+            }
+            $first = $changed === 1 && count($ids) === 1 ? $this->find($ids[0]) : null;
+            \FloCMS\Admin\Activity\Activity::record('media_moved', 'media', $first !== null ? (string) $first->id : null, $first?->label(), meta: ['count' => $changed, 'folder' => $folder], db: $this->db);
+            if ($first !== null) { unset($this->cache[$first->id]); }
         }
         return $moved;
     }

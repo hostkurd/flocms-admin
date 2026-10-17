@@ -80,6 +80,12 @@ final class PanelView
             'settingsUrl' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
             'settingsActive' => $activeSlug === 'settings',
             'settingsIcon' => Icons::svg('settings'),
+            'activityUrl' => self::activityUrl(),
+            'activityActive' => $activeSlug === 'activity',
+            'activityIcon' => Icons::svg('clock'),
+            'trashUrl' => self::trashUrl(),
+            'trashActive' => $activeSlug === 'trash',
+            'trashIcon' => Icons::svg('trash'),
             'profileUrl' => $usersEnabled ? Admin::url('profile') : null,
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
@@ -157,6 +163,20 @@ final class PanelView
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    /** Site → Activity, for people with activity.view (when no site resource or controller uses the slug). */
+    private static function activityUrl(): ?string
+    {
+        if (Admin::registry()->find('activity') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('activity'))) { return null; }
+        try { return \FloCMS\Admin\Activity\Activity::canView() ? Admin::url('activity') : null; } catch (\Throwable) { return null; }
+    }
+
+    /** Site → Trash, for people who may restore or purge records of at least one resource. */
+    private static function trashUrl(): ?string
+    {
+        if (Admin::registry()->find('trash') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('trash'))) { return null; }
+        try { return \FloCMS\Admin\Trash\Trash::enabled() && TrashPage::allowedResources() !== [] ? Admin::url('trash') : null; } catch (\Throwable) { return null; }
+    }
+
     /** Uppercase first letter for the logo mark and avatar; empty when there is no text. */
     private static function initial(string $text): string
     {
@@ -195,6 +215,12 @@ final class PanelView
         }
         if ($activeSlug === 'accounts') {
             return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];
+        }
+        if (in_array($activeSlug, ['trash', 'activity'], true) && Admin::registry()->find($activeSlug) === null) {
+            $section = AdminLang::get($activeSlug === 'trash' ? 'trash.title' : 'activity.title');
+            $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $section, 'url' => $title === $section ? null : Admin::url($activeSlug)]];
+            if ($title !== $section) { $items[] = ['label' => $title, 'url' => null]; }
+            return $items;
         }
         $class = Admin::registry()->find($activeSlug);
         if ($class === null) {

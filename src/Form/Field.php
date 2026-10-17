@@ -32,6 +32,7 @@ abstract class Field
     protected bool $unique = false;
     protected bool $requiredOnCreate = false;
     protected int|string $columnSpan = 1;
+    protected bool $hiddenFromActivity = false;
     private ?array $visibleCondition = null;
     private ?array $requiredCondition = null;
     private bool $visible = true;
@@ -175,6 +176,21 @@ abstract class Field
     /* ---------------------------------------------------------------
      * Reading the configuration
      * ------------------------------------------------------------- */
+
+    /**
+     * Keep this field's values out of the activity log (0.19): a change is shown as
+     * "Changed. The value is not recorded." Password fields are never logged at all.
+     */
+    public function hiddenFromActivity(bool $hidden = true): static
+    {
+        $this->hiddenFromActivity = $hidden;
+        return $this;
+    }
+
+    public function isHiddenFromActivity(): bool
+    {
+        return $this->hiddenFromActivity;
+    }
 
     public function getName(): string
     {

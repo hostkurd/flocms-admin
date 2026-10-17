@@ -151,6 +151,16 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             'media' => App::$db->query('SELECT id, title, alt, path, folder_id, focal_x, focal_y FROM media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
             'folders' => App::$db->query('SELECT id, parent_id, name FROM media_folders ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
         case '/__test/media-off': App::$db->query('DROP TABLE IF EXISTS media_folders'); App::$db->query('DROP TABLE IF EXISTS media_usage'); App::$db->query('DROP TABLE IF EXISTS media'); break;
+        case '/__test/history':
+            // The trash and the activity log (0.19): off until a test asks, so other tests delete for good.
+            $file = ROOT . '/history-migration.php';
+            file_put_contents($file, \FloCMS\Admin\Console\Stub::render('trash-activity-migration', ['trash_table' => 'admin_trash', 'activity_table' => 'admin_activity']));
+            (require $file)->up(App::$db);
+            break;
+        case '/__test/history-off': App::$db->query('DROP TABLE IF EXISTS admin_trash'); App::$db->query('DROP TABLE IF EXISTS admin_activity'); break;
+        case '/__test/trash': header('Content-Type: application/json'); echo json_encode([
+            'trash' => App::$db->query('SELECT resource, record_id, batch FROM admin_trash ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+            'activity' => App::$db->query('SELECT action, resource, record_id FROM admin_activity ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
         case '/__test/faq-add': App::$db->table('faqs')->insert(['question' => '{"en":"Added elsewhere"}', 'category' => 'billing', 'sort' => 99, 'archived' => 0]); break;
         case '/__test/faq-order': header('Content-Type: application/json'); echo json_encode(array_map('intval', App::$db->query('SELECT id FROM faqs ORDER BY sort, id')->fetchAll(PDO::FETCH_COLUMN))); exit;
         case '/__test/expire': Csrf::rotate(); break;

@@ -59,6 +59,9 @@ final class FormSubmission
         $batch ??= new \FloCMS\Admin\Uploads\UploadBatch();
         try {
         $id = $this->repository->transaction(function () use ($form, $state, $record, $guarded, $batch): string {
+            // The activity log compares the record before and after the save (fresh forms: no cached values).
+            $logging = \FloCMS\Admin\Activity\Activity::enabled($this->repository->connection());
+            $before = $logging && $record !== null ? \FloCMS\Admin\Activity\ActivityChanges::state($this->resource->form(new Form()), $record) : [];
             $state = $batch->prepare($form, $state, $this->resource, $record);
             $class = $this->resource;
             $skip = $this->skip($form, $state, $record);
@@ -110,11 +113,28 @@ final class FormSubmission
             // Where library items are used (pickers and rich text), in the same transaction
             if ($saved !== null) { \FloCMS\Admin\Media\MediaUsage::record($class, $form, $saved); }
             if ($saved !== null) { $class->afterSave($saved); }
+            if ($logging && $saved !== null) { $this->log($record, $saved, $before); }
             return $id;
         });
         } catch (\Throwable $error) { if ($owns) { $batch->rollback(); } throw $error; }
         if ($owns) { $batch->commit(); }
         return $id;
+    }
+
+    /** "created", or "updated" with the changed fields (nothing when no field changed). */
+    private function log(?object $record, object $saved, array $before): void
+    {
+        $class = $this->resource;
+        $id = (string) ($saved->{$class::getPrimaryKey()} ?? '');
+        $title = \FloCMS\Admin\Trash\Trash::titleOf($class, $saved);
+        $db = $this->repository->connection();
+        if ($record === null) {
+            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, db: $db);
+            return;
+        }
+        $form = $class->form(new Form());
+        $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved), $class::activityExcept(), $db);
+        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, db: $db); }
     }
 
     private function skip(Form $form, array $state, ?object $record): array

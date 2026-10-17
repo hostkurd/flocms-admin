@@ -38,6 +38,9 @@ final class UsersResource extends Resource
     protected static string $slug = 'accounts';
     protected static ?string $icon = 'users';
     protected static int $navigationSort = 1000;
+
+    /** Accounts and their sessions don't restore cleanly: deleted users are logged, not trashed. */
+    protected static bool $trash = false;
     protected static array $permissions = [
         'view' => 'users.manage',
         'create' => 'users.manage',

@@ -1,3 +1,27 @@
+# Upgrading to Admin 0.19.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.19.0" -W`, then:
+
+```bash
+php flo admin:install   # adds the trash and activity log migration (nothing is overwritten)
+php flo migrate         # creates admin_trash and admin_activity
+php flo admin:doctor    # checks them
+php flo view:clear
+```
+
+Reload open Admin pages.
+
+- **Until the migration has run** deleting works as before (at once, no Undo) and nothing is logged.
+- **Deleting no longer erases at once**: deleted records wait in the trash for 30 days. A site that must erase at once sets `'trash' => false` in `config/admin.php`, or `protected static bool $trash = false;` on a resource. `afterDelete()` still runs at the delete; upload files are now removed when the record is deleted for good, not at the delete.
+- **The Activity page needs `activity.view`.** Add it to the roles that should see it in `config/config.php` (the skeleton's Admin role: `2 => [..., 'activity.view']`). Super Admin (`*`) has it. History on a record needs only the update permission.
+- **Resources that override `query()`** to show part of a table (one site, one owner): their trash shows each person only what they deleted. Define `canSeeInTrash(object $record, ?int $deletedBy): bool` to share it by your own rule, or return `true` when `query()` only sorts.
+- **Fields with secrets** that are not password fields (an API key, a personal note): add `->hiddenFromActivity()` so the log records the change without the value. Passwords are never logged.
+- **`/admin/trash` and `/admin/activity`**: a resource or application controller with the slug `trash` or `activity` keeps it (the panel's page is then not shown; `admin:doctor` says so).
+- **Cron (optional)**: `php flo admin:trash-purge` and `php flo admin:activity-purge` once a day. Panel pages do the same at most once an hour.
+- **Templates and tests**: a delete now shows "Post deleted." with an Undo button (a session notification) when the trash is on, instead of the flash message; `Action::getDescription()` takes the resource as an optional argument; the panel's `#fa-confirm` dialog's title, text and button can change per form (`data-confirm-title`, `data-confirm-text`, `data-confirm-button`).
+
+---
+
 # Upgrading to Admin 0.18.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.18.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

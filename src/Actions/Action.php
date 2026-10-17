@@ -101,10 +101,11 @@ class Action
             'delete' => AdminLang::get('delete.title'), default => $this->getLabel($resource),
         };
     }
-    public function getDescription(): string
+    public function getDescription(?Resource $resource = null): string
     {
-        return $this->description !== null ? AdminLang::label($this->description)
-            : AdminLang::get($this->kind === 'delete' ? 'delete.text' : 'action.confirm_text');
+        if ($this->description !== null) { return AdminLang::label($this->description); }
+        if ($this->kind === 'delete') { return $resource !== null ? \FloCMS\Admin\Http\PageView::deleteText($resource::class) : AdminLang::get('delete.text'); }
+        return AdminLang::get('action.confirm_text');
     }
     public function getSubmitLabel(Resource $resource): string
     {

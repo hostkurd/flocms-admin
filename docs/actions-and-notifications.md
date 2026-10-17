@@ -99,3 +99,18 @@ FLO_ADMIN_TESTING=1 php -S 127.0.0.1:8083 tests/Browser/router.php
 Open `/en/admin/posts`, `/ar/admin/posts` or `/ku/admin/posts` on that local server. This isolated fixture signs in a test user and contains test-only mutation endpoints. It is excluded from distributions and must never serve production traffic. In an application, add the action definitions to your own resource and use your own schema/audit service; the example's `tags` audit writes are fixture data.
 
 Run `vendor/bin/phpunit` and `npm run test:browser` (after `npx playwright install chromium`). Set `FLO_ADMIN_TEST_DB_HOST/PORT/NAME/USER/PASS` for a dedicated disposable MySQL/MariaDB database. Tests cover action routing/context, permissions/scope, validation, replay, transactional writes/notifications, record locks and trigger behavior, persistent feedback, keyboard/RTL and no-JavaScript compatibility. CI also verifies versioned assets and the Composer distribution.
+
+## Notifications with a button
+
+Since 0.19 a notification can carry one button that POSTs to a panel URL (the trash's **Undo** uses it). With a duration, a bar shows the time running out; hovering or focusing the notification pauses it.
+
+```php
+Notification::make()->title('Report queued.')->body('It will be ready in a minute.')
+    ->neutral()->icon('clock')
+    ->action('Cancel', Admin::url('reports/cancel/' . $id))
+    ->duration(10)
+    ->send();
+```
+
+The button's form sends the CSRF token and `_back` (the page the person is on). See the [Trash and activity log guide](trash-and-activity.md).
+

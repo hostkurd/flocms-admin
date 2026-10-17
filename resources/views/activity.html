@@ -1,0 +1,90 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $t('activity.description') }}</p></div>
+</div>
+<div class="fa-card fa-activity">
+    <form class="fa-list-toolbar fa-activity-filters" method="get" action="{{ $listUrl }}" role="search">
+        @if($filters['kind'] !== '')<input type="hidden" name="kind" value="{{ $filters['kind'] }}">@endif
+        <span class="fa-search">
+            {!! $searchIcon !!}
+            <label class="fa-sr" for="fa-activity-search">{{ $t('activity.search') }}</label>
+            <input type="search" id="fa-activity-search" name="q" value="{{ $filters['q'] }}" placeholder="{{ $t('activity.search') }}" class="fa-input">
+            @if($filters['q'] !== '')<a class="fa-search-clear" href="{{ $clearUrl }}" aria-label="{{ $t('table.clear') }}" title="{{ $t('table.clear') }}">{!! $removeIcon !!}</a>@endif
+        </span>
+        <span class="fa-toolbar-spacer"></span>
+        <label class="fa-select-inline"><span class="fa-select-label">{{ $t('activity.who') }}</span>
+            <select name="by" class="fa-input fa-select" data-admin-autosubmit>
+                <option value="">{{ $t('activity.anyone') }}</option>
+                @foreach($people as $option)<option value="{{ $option['value'] }}"@if($option['selected']) selected @endif>{{ $option['label'] }}</option>@endforeach
+            </select>
+        </label>
+        <label class="fa-select-inline"><span class="fa-select-label">{{ $t('activity.type') }}</span>
+            <select name="type" class="fa-input fa-select" data-admin-autosubmit>
+                <option value="">{{ $t('activity.all_types') }}</option>
+                @foreach($types as $option)<option value="{{ $option['value'] }}"@if($option['selected']) selected @endif>{{ $option['label'] }}</option>@endforeach
+            </select>
+        </label>
+        <label class="fa-select-inline"><span class="fa-sr">{{ $t('activity.period') }}</span>
+            <select name="period" class="fa-input fa-select" data-admin-autosubmit>
+                @foreach($periods as $option)<option value="{{ $option['value'] }}"@if($option['selected']) selected @endif>{{ $option['label'] }}</option>@endforeach
+            </select>
+        </label>
+        <button type="submit" class="fa-btn fa-btn-sm fa-filters-apply">{{ $t('filters.apply') }}</button>
+    </form>
+    <div class="fa-activity-actions">
+        <span class="fa-muted">{{ $t('activity.action') }}:</span>
+        <nav class="fa-segmented" aria-label="{{ $t('activity.action') }}">
+            @foreach($actions as $action)<a href="{{ $action['url'] }}"@if($action['current']) aria-current="page" class="is-current"@endif>{{ $action['label'] }}</a>@endforeach
+        </nav>
+        @if($hasFilters)<a class="fa-btn fa-btn-ghost fa-btn-sm" href="{{ $resetUrl }}">{{ $t('filters.clear') }}</a>@endif
+    </div>
+    @if(count($groups) > 0)
+    <div class="fa-table-wrap">
+        <table class="fa-table fa-activity-table">
+            <thead>
+                <tr>
+                    <th scope="col" class="fa-activity-time">{{ $t('activity.time') }}</th>
+                    <th scope="col">{{ $t('activity.who') }}</th>
+                    <th scope="col">{{ $t('activity.action') }}</th>
+                    <th scope="col">{{ $t('activity.what') }}</th>
+                    <th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('activity.changes') }}</span></th>
+                </tr>
+            </thead>
+            @foreach($groups as $group)
+            <tbody>
+                <tr class="fa-activity-day"><th colspan="5" scope="colgroup">{{ $group['label'] }}</th></tr>
+                @foreach($group['rows'] as $row)
+                <tr>
+                    <td class="fa-muted fa-activity-time" data-label="{{ $t('activity.time') }}"><span class="fa-ltr">{{ $row['time'] }}</span></td>
+                    <td data-label="{{ $t('activity.who') }}"><span class="fa-who"><span class="fa-avatar fa-avatar-sm {{ $row['avatar'] }}" aria-hidden="true">{{ $row['initial'] }}</span>{{ $row['who'] }}</span></td>
+                    <td data-label="{{ $t('activity.action') }}"><span class="fa-badge fa-badge-{{ $row['badgeColor'] }} fa-badge-dot">{{ $row['badge'] }}</span></td>
+                    <td data-label="{{ $t('activity.what') }}">
+                        <span class="fa-activity-verb">{{ $row['verb'] }}</span>
+                        @if($row['target'] !== '')@if($row['url'] !== null)<a class="fa-activity-target" href="{{ $row['url'] }}">{{ $row['target'] }}</a>@else<span class="fa-activity-target">{{ $row['target'] }}</span>@endif @endif
+                        @if($row['fields'] !== '')<span class="fa-cell-sub">{{ $row['fields'] }}</span>@endif
+                    </td>
+                    <td class="fa-actions">@if($row['showUrl'] !== null)<a class="fa-btn fa-btn-sm" href="{{ $row['showUrl'] }}" data-admin-dialog-url>{{ $t('activity.show_changes') }}</a>@endif</td>
+                </tr>
+                @endforeach
+            </tbody>
+            @endforeach
+        </table>
+    </div>
+    @else
+    <div class="fa-blank"><p>{{ $t('activity.none') }}</p></div>
+    @endif
+    <div class="fa-table-foot">
+        <span class="fa-muted">{{ $kept }}</span>
+        <span class="fa-trash-pages">
+            @if($summary !== '')<span class="fa-muted fa-ltr">{{ $summary }}</span>@endif
+            @if(count($pages) > 0)
+            <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
+                @foreach($pages as $link)
+                @if($link['current'])<span class="fa-page-link is-current" aria-current="page">{{ $link['label'] }}</span>
+                @elseif($link['url'] !== null)<a class="fa-page-link" href="{{ $link['url'] }}">{{ $link['label'] }}</a>
+                @else<span class="fa-page-gap">…</span>@endif
+                @endforeach
+            </nav>
+            @endif
+        </span>
+    </div>
+</div>

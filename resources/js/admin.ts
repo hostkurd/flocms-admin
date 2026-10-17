@@ -12,6 +12,7 @@ import { initializeReorder } from './reorder';
 import { initializeMedia } from './media';
 import { initializeFileDrops } from './filedrop';
 import './popovers';
+import './dialogs';
 import { startProgress, finishProgress } from './progress';
 import { initializeRecord, isDirty, confirmLeave } from './record';
 import '../assets/admin.css';
@@ -213,7 +214,8 @@ document.addEventListener('submit', event => {
   }
   // Legacy delete confirmation owns its initial submit, then requests a new one.
   // data-admin-local: a form that a script sends itself (the media details panel and editor).
-  if (!enabled() || form.hasAttribute('data-rx-submit') || form.hasAttribute('data-admin-local') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
+  const asks = form.hasAttribute('data-confirm') || Boolean((event.submitter as HTMLElement | null)?.hasAttribute('data-admin-confirm-submit'));
+  if (!enabled() || form.hasAttribute('data-rx-submit') || form.hasAttribute('data-admin-local') || (asks && !(form as any)._confirmed)) return;
   const url = internal(form.action);
   if (!url || (event.target instanceof Element && event.target.closest('[data-admin-file-link]'))) return;
   event.preventDefault();

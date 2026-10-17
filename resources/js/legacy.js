@@ -30,26 +30,54 @@ export function initializeLegacy() {
   });
 
   /* ---- Delete confirmation -------------------------------------------- */
+  // form[data-confirm], or a submit button with data-admin-confirm-submit (one
+  // button of a bulk bar). data-confirm-title, -text and -button change the
+  // dialog's wording for that form; without them it asks "Delete this record?".
 
   var confirmDialog = document.getElementById('fa-confirm');
   var pending = null;
+  var pendingSubmitter = null;
 
-  Array.prototype.forEach.call(panel.querySelectorAll('form[data-confirm]'), function (form) {
-    form.addEventListener('submit', function (event) {
-      if (form._confirmed || !confirmDialog || !canModal(confirmDialog)) { return; }
-      event.preventDefault();
-      pending = form;
-      confirmDialog.showModal();
-    });
+  function needsConfirm(form, submitter) {
+    return form.hasAttribute('data-confirm') || Boolean(submitter && submitter.hasAttribute('data-admin-confirm-submit'));
+  }
+
+  function word(element, source, attribute) {
+    if (!element) { return; }
+    var value = source.getAttribute(attribute);
+    element.textContent = value !== null && value !== '' ? value : (element.getAttribute('data-default') || element.textContent);
+  }
+
+  panel.addEventListener('submit', function (event) {
+    var form = event.target;
+    var submitter = event.submitter || null;
+    if (!(form instanceof HTMLFormElement) || !needsConfirm(form, submitter)) { return; }
+    if (form._confirmed || !confirmDialog || !canModal(confirmDialog)) { return; }
+    event.preventDefault();
+    pending = form;
+    pendingSubmitter = submitter;
+    var source = submitter && submitter.hasAttribute('data-admin-confirm-submit') ? submitter : form;
+    word(confirmDialog.querySelector('.fa-dialog-title'), source, 'data-confirm-title');
+    word(confirmDialog.querySelector('.fa-confirm-text'), source, 'data-confirm-text');
+    word(confirmDialog.querySelector('[data-confirm-yes]'), source, 'data-confirm-button');
+    confirmDialog.showModal();
   });
 
   if (confirmDialog) {
     confirmDialog.querySelector('[data-confirm-yes]').addEventListener('click', function () {
       confirmDialog.close();
-      if (pending) { pending._confirmed = true; pending.requestSubmit(); }
+      if (!pending) { return; }
+      var form = pending;
+      form._confirmed = true;
+      if (pendingSubmitter) { form.requestSubmit(pendingSubmitter); } else { form.requestSubmit(); }
+      pending = null;
+      pendingSubmitter = null;
+      // A failed or cancelled submit asks again next time.
+      setTimeout(function () { form._confirmed = false; }, 0);
     });
     confirmDialog.querySelector('[data-confirm-no]').addEventListener('click', function () {
       pending = null;
+      pendingSubmitter = null;
       confirmDialog.close();
     });
   }

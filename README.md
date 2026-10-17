@@ -274,7 +274,7 @@ Each action needs a permission, checked by FloCMS through `Controller::$actionPe
 
 With the skeleton's default roles, Editors (`content.*`), Admins and Super Admins can use every resource. Change the `content` prefix in `config/admin.php`, or per resource with `$permissionPrefix` / `$permissions`. Sites without a `permissions` map fall back to FloCMS's `admin_access` check. The sidebar and the Edit / Delete buttons follow the same permissions.
 
-Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for confirmation first.
+Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for confirmation first. Since 0.19 a deleted record goes to the trash: restoring it needs `create`, deleting it for good needs `delete`. The Activity page needs `activity.view` (History on a record needs `update`).
 
 ## Configuration
 
@@ -298,6 +298,8 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `per_page` | `25` | Rows per page |
 | `media_library` | `true` | The media library (`/admin/media`), media fields and the editor's library; `false` switches it off; `['table' => …, 'usage_table' => …, 'folders_table' => …, 'max_image_kb' => …, 'max_video_mb' => …]` changes its tables and limits ([guide](docs/media.md)) |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
+| `trash` | `true` | Deleted records wait in the trash (`/admin/trash`); `['days' => 30, 'table' => 'admin_trash']`, `0` days keeps them until emptied; `false` deletes at once ([guide](docs/trash-and-activity.md)) |
+| `activity` | `true` | The activity log (`/admin/activity`, History on records); `['days' => 365, 'logins' => false, 'table' => 'admin_activity']`; `false` switches it off |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
 
@@ -321,14 +323,16 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 
 | Command | |
 | --- | --- |
-| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences and media library migrations (never overwrites; run again after an upgrade to add what is missing) |
+| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash and activity log migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration; `--reorderable` adds a `sort` column and the Reorder button |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables and the media library |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, and the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys) |
 | `php flo admin:media-import [--dry-run]` | Add the images and videos already in the media folder to the media library (and fingerprints to items from before 0.18), then rebuild where they are used |
 | `php flo admin:media-usage` | Rebuild where media library items are used (after changing records outside the panel) |
+| `php flo admin:trash-purge [--all]` | Delete for good the records older than the trash's days (`--all`: empty the whole trash) |
+| `php flo admin:activity-purge` | Remove activity log entries older than its days |
 
 ## Removing the package
 
@@ -352,6 +356,10 @@ Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resourc
 
 Admin 0.17 adds a media library at **Content → Media**: upload images and videos once (with progress; videos in parts), give each a title and an alt text per language, and pick them in forms with `MediaPicker` or in the rich text editor (**Image → Choose from the library**). Images get a web version and a thumbnail; the library records where each item is used, shows it on the item's page and refuses to delete an item in use. Its tables are `media`, `media_usage` and `media_folders` (generic, for the website and apps too). Admin 0.18 makes it a file manager: folders (categories shown as folders, nested, with drag and drop), multi-selection with batch move, edit, copy and delete, a details panel, a picker built the same way, focal points, a duplicate check on upload, and media fields drawn as framed cards with drag-and-drop ordering. On the website, `media($record->cover_id)?->img()` prints a responsive `<img>` with its alt text (and focal point), `media_list($record->gallery)` returns a gallery in order, and `media_folder('Homepage slider')` the items of a folder. Run `php flo admin:install` and `php flo migrate` to set it up. See the [Media library guide](docs/media.md).
 
+## Trash and activity log
+
+Admin 0.19 makes deleting safe and every change traceable. A deleted record goes to the trash: a toast offers **Undo** for 10 seconds, each list has a **Trash (n)** button with its own columns, and **Site → Trash** shows everything, with Restore, Delete for good and Empty trash. Records come back with the same id, their many-to-many links, files and media usage; a restore that would clash (a slug now taken, a parent gone) is refused with a reason. The **activity log** records who created, edited (field by field, before → after), deleted, restored, ran an action, reordered, saved settings or changed media, and when. Each record shows its **History** in a side panel, and **Site → Activity** (permission `activity.view`) lists everything with filters. Passwords are never recorded and any field can be kept out with `->hiddenFromActivity()`. Run `php flo admin:install` and `php flo migrate` to set it up. See the [Trash and activity log guide](docs/trash-and-activity.md).
+
 ## Rich text
 
 Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`; with the media library, into its `library/` folder as library items), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
@@ -373,7 +381,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.16: drag-and-drop ordering (`->reorderable()`, Reorder mode)
 - 0.17: the media library (`/admin/media`, `MediaPicker`, `MediaColumn`, the editor's library, `media()` on the website)
 - 0.18: media folders, the file-manager Media page and picker, batch editing, focal points, duplicate check, framed media fields, `FileDrop`
-- Next: has-many managers (editing a record's photos or rooms inside its page), inline "create new" from a relation
+- 0.19: the trash (Undo, restore with the same id, Site → Trash) and the activity log (History on records, Site → Activity)
+- Next: Ctrl+K global search, CSV import/export, a roles & permissions page
 
 ## Development
 

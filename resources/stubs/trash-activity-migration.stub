@@ -1,0 +1,69 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * The trash and the activity log (flocms-admin 0.19).
+ *
+ * "{{ trash_table }}": a copy of each record deleted in the admin panel (its row as
+ * JSON and its many-to-many links), so it can be restored with the same id. The
+ * row itself leaves its own table, so the website never shows deleted records.
+ *
+ * "{{ activity_table }}": who created, changed, deleted or restored what, and when,
+ * with the fields that changed (passwords and hidden fields are never written).
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $text = $db->driver() === 'sqlite' ? 'TEXT' : 'LONGTEXT';
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ trash_table }}` (
+            ' . $this->id($db) . ',
+            `resource` VARCHAR(64) NOT NULL,
+            `record_id` VARCHAR(191) NOT NULL,
+            `title` TEXT NULL,
+            `data` ' . $text . ' NOT NULL,
+            `links` ' . $text . ' NULL,
+            `files` TEXT NULL,
+            `batch` CHAR(32) NOT NULL,
+            `deleted_by` INTEGER NULL,
+            `deleted_by_name` VARCHAR(190) NULL,
+            `deleted_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ activity_table }}` (
+            ' . $this->id($db) . ',
+            `action` VARCHAR(40) NOT NULL,
+            `resource` VARCHAR(64) NULL,
+            `record_id` VARCHAR(191) NULL,
+            `title` TEXT NULL,
+            `user_id` INTEGER NULL,
+            `user_name` VARCHAR(190) NULL,
+            `changes` ' . $text . ' NULL,
+            `meta` TEXT NULL,
+            `batch` CHAR(32) NULL,
+            `created_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+
+        foreach ([
+            '{{ trash_table }}_resource_index' => '`{{ trash_table }}` (`resource`, `deleted_at`)',
+            '{{ trash_table }}_batch_index' => '`{{ trash_table }}` (`batch`)',
+            '{{ trash_table }}_deleted_index' => '`{{ trash_table }}` (`deleted_at`)',
+            '{{ activity_table }}_record_index' => '`{{ activity_table }}` (`resource`, `record_id`)',
+            '{{ activity_table }}_created_index' => '`{{ activity_table }}` (`created_at`)',
+            '{{ activity_table }}_user_index' => '`{{ activity_table }}` (`user_id`)',
+        ] as $index => $on) {
+            try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }
+        }
+    }
+
+    /** Rolling back drops both tables: the records waiting in the trash are lost. */
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ activity_table }}`');
+        $db->query('DROP TABLE IF EXISTS `{{ trash_table }}`');
+    }
+};

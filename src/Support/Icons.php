@@ -75,6 +75,9 @@ final class Icons
         'chevron-up' => 'M6 15l6-6 6 6',
         'arrows-up-down' => 'M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4',
         'grip' => 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
+        'clock' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v5l3 2',
+        'history' => 'M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2',
+        'calendar-range' => 'M4 6h16v15H4zM4 10h16M8 3v4M16 3v4M8 14h3M13 17h3',
     ];
 
     /** @return list<string> */

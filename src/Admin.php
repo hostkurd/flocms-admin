@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.18.1';
+    public const VERSION = '0.19.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -81,8 +81,18 @@ final class Admin
         if ($controller === 'profile' && $config->usersEnabled()) {
             return ProfileController::class;
         }
+        if ($registry->find($controller) !== null) {
+            return ResourceController::class;
+        }
+        // The trash and the activity log (0.19); a site resource with that slug keeps it.
+        if ($controller === 'trash' && $config->trash()['enabled']) {
+            return \FloCMS\Admin\Http\TrashController::class;
+        }
+        if ($controller === 'activity' && $config->activity()['enabled']) {
+            return \FloCMS\Admin\Http\ActivityController::class;
+        }
 
-        return $registry->find($controller) !== null ? ResourceController::class : null;
+        return null;
     }
 
     /** Project root: ROOT, or the one set by a command or a test. */
@@ -135,6 +145,8 @@ final class Admin
         self::$settings = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Media\MediaLibrary::reset();
+        \FloCMS\Admin\Trash\Trash::reset();
+        \FloCMS\Admin\Activity\Activity::reset();
         Languages::setRtl(self::$config->rtlLanguages());
 
         return self::$config;
@@ -161,6 +173,8 @@ final class Admin
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Preferences\Preferences::reset();
         \FloCMS\Admin\Media\MediaLibrary::reset();
+        \FloCMS\Admin\Trash\Trash::reset();
+        \FloCMS\Admin\Activity\Activity::reset();
         self::$problemsLogged = false;
         Languages::reset();
     }
