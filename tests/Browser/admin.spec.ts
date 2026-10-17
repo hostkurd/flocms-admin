@@ -19,7 +19,7 @@ test('navigation, live search, sorting, pagination and back/forward keep the doc
   await page.locator('.fa-nav a[href="/en/admin/posts"]').click();
   await expect(page.locator('h1')).toHaveText('Posts');
   await stable(page);
-  await page.locator('input[type=search]').fill('villa');
+  await page.locator('.fa-content input[type=search]').fill('villa');
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await expect(page.locator('tbody')).toContainText('Sea view villa');
   await page.getByRole('button', { name: 'Clear', exact: true }).click();
@@ -45,7 +45,7 @@ test('navigation, live search, sorting, pagination and back/forward keep the doc
 
 test('modal edit, translated validation, correction and save preserve list state', async ({ page }) => {
   await ready(page);
-  await page.locator('input[type=search]').fill('Studio');
+  await page.locator('.fa-content input[type=search]').fill('Studio');
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await open(page);
   await editor(page).locator('[name="title[en]"]').fill('');
@@ -59,7 +59,7 @@ test('modal edit, translated validation, correction and save preserve list state
   await editor(page).getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator('[data-admin-notice]')).toContainText('saved');
-  await expect(page.locator('input[type=search]')).toHaveValue('Studio');
+  await expect(page.locator('.fa-content input[type=search]')).toHaveValue('Studio');
   await expect(page.locator('tbody')).toContainText('Studio updated');
   await stable(page);
 });

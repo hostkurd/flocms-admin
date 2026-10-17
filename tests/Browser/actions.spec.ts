@@ -29,7 +29,7 @@ async function publish(page: Page) {
 
 test('publish action validates, preserves list state and delivers once across navigation', async ({ page }) => {
   await ready(page);
-  await page.locator('input[type=search]').fill('Studio');
+  await page.locator('.fa-content input[type=search]').fill('Studio');
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await open(page, 'publish');
   await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
@@ -39,7 +39,7 @@ test('publish action validates, preserves list state and delivers once across na
   await editor(page).locator('[name=reason]').fill('Content reviewed');
   await editor(page).getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(editor(page)).not.toBeVisible();
-  await expect(page.locator('input[type=search]')).toHaveValue('Studio');
+  await expect(page.locator('.fa-content input[type=search]')).toHaveValue('Studio');
   await expect(page.locator('tbody')).toContainText('Published');
   await expect(page.locator('[data-admin-action=unpublish][data-admin-record="8"]')).toBeAttached();
   await expect(notices(page)).toHaveCount(1);

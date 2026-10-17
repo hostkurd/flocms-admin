@@ -5,7 +5,7 @@ Update with `composer require "hostkurd/flocms-admin:^0.20.0" -W`, run `php flo 
 - **A search field in the top bar**, and Ctrl+K, ⌘K and `/` open the search box on every panel page. `'search' => false` in `config/admin.php` switches it off; `'search' => ['shortcut' => false]` keeps the field but leaves the keys to the browser.
 - **What is found** is what each list's search box finds: the columns marked `->searchable()`. Check that the first searchable column of each resource is its title (it titles the result). A resource that should stay out (a large log table): `protected static bool $globallySearchable = false;`.
 - **`/admin/search`**: a site resource or application controller with the slug `search` keeps it; the panel's search is then off.
-- **Templates and tests**: the top bar has a `<form class="fa-topsearch">` and the panel a `<dialog id="fa-search-dialog">`; site tests that count top-bar links or dialogs may need updating. `PanelView::pageUrls()` is new; `activityUrl()` and `trashUrl()` are public.
+- **Templates and tests**: the top bar has a `<form class="fa-topsearch">` and the panel a `<dialog id="fa-search-dialog">`; site tests that select `input[type=search]` or the page's only `form`, or count top-bar links or dialogs, should look inside `.fa-content` (the browser tests here do). `PanelView::pageUrls()` is new; `activityUrl()` and `trashUrl()` are public.
 
 ---
 
