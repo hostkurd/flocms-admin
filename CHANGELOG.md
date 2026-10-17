@@ -2,6 +2,13 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.15.3 - 2026-10-17
+
+### Changed
+
+- Form dialogs are at least 150 px tall (was 240 px in 0.15.2), enough to keep a one-field dialog from looking squeezed without leaving empty space.
+- `make:admin-resource` marks the generated `id` (and, with `--migration`, `updated_at`) column `->toggleable()`, so new resources have a Columns menu. Existing resources are unchanged: add `->toggleable()` to the columns users may hide.
+
 ## 0.15.2 - 2026-10-17
 
 ### Fixed

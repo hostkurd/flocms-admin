@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.15.3
+
+Update with `composer require "hostkurd/flocms-admin:^0.15.3" -W`, run `php flo view:clear` and reload open Admin pages. No migration. To give an existing list a Columns menu, add `->toggleable()` (or `->toggleable(hiddenByDefault: true)`) to the columns users may hide.
+
+---
+
 # Upgrading to Admin 0.15.2
 
 Update with `composer require "hostkurd/flocms-admin:^0.15.2" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

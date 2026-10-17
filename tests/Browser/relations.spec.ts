@@ -132,7 +132,7 @@ test('in a dialog the list floats over it: no scroll bar, nothing cut off', asyn
   const dialog = page.locator('dialog.fa-editor[open]');
   const body = dialog.locator('.fa-dialog-body');
   await expect(body).toBeVisible();
-  expect((await body.boundingBox())!.height).toBeGreaterThanOrEqual(239);
+  expect((await body.boundingBox())!.height).toBeGreaterThanOrEqual(149);
   const scrollable = () => body.evaluate(element => element.scrollHeight > element.clientHeight + 1);
   const before = await scrollable();
   await dialog.locator('[id$="f-city_id-search"]').click();

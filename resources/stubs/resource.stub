@@ -40,7 +40,7 @@ final class {{ class }} extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
+                TextColumn::make('id')->sortable()->toggleable(),   // ->toggleable(): listed in the Columns menu
                 TextColumn::make('title')->searchable()->sortable(),{{ dateColumn }}
             ])
             ->defaultSort('id', 'desc');
