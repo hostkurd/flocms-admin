@@ -93,6 +93,8 @@ return [
     'flash.updated' => ':label saved.',
     'flash.deleted' => ':label deleted.',
     'flash.fix_errors' => 'Please correct the errors below.',
+    'flash.fix_errors_in' => 'Please check: :fields.',
+    'form.tab_has_errors' => 'This tab has errors',
 
     'validation.required' => ':attribute is required.',
     'validation.string' => ':attribute must be text.',
