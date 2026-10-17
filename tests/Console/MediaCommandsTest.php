@@ -95,6 +95,10 @@ final class MediaCommandsTest extends TestCase
         $pdo->exec('CREATE TABLE listings (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, cover_id INTEGER NULL, gallery TEXT NULL, video_id INTEGER NULL, body TEXT NULL)');
         $pdo->exec("INSERT INTO listings (title, body) VALUES ('Old', '{\"en\":\"<p><img src=\\\"/uploads/editor/articles/body/2026/09/photo.png\\\"></p>\"}')");
         MediaTables::migration()->up(new \FloCMS\Core\Database($pdo));
+        $before = $this->runCommand(new MediaImportCommand());
+        self::assertSame(1, $before->getStatusCode());
+        self::assertStringContainsString('needs its 0.18 migration (folders)', $before->getDisplay() . $before->getErrorOutput());
+        MediaTables::foldersMigration()->up(new \FloCMS\Core\Database($pdo));
 
         $dry = $this->runCommand(new MediaImportCommand(), ['--dry-run']);
         self::assertStringContainsString('2 file(s) would be added', $dry->getDisplay());
@@ -108,7 +112,11 @@ final class MediaCommandsTest extends TestCase
         self::assertGreaterThan(0, (int) $rows[1]['width']);
         self::assertSame([['listings', '1', 'body']], $pdo->query('SELECT resource, record_id, field FROM media_usage')->fetchAll(\PDO::FETCH_NUM), 'usage of the old text found');
 
-        self::assertStringContainsString('0 file(s) added; 2 already in the library.', $this->runCommand(new MediaImportCommand())->getDisplay());
+        self::assertSame(hash_file('sha256', $media . '/articles/body/2026/09/photo.png'), $pdo->query("SELECT hash FROM media WHERE kind = 'image'")->fetchColumn(), 'imported files get a fingerprint');
+        $pdo->exec("UPDATE media SET hash = NULL WHERE kind = 'video'");
+        $again = $this->runCommand(new MediaImportCommand())->getDisplay();
+        self::assertStringContainsString('0 file(s) added; 2 already in the library.', $again);
+        self::assertStringContainsString('Fingerprints added to 1 item(s)', $again, 'older items get theirs');
 
         $pdo->exec('DELETE FROM media_usage');
         $usage = $this->runCommand(new MediaUsageCommand());

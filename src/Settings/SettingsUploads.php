@@ -59,32 +59,28 @@ final class SettingsUploads
     {
         $isImage = $field instanceof ImageUpload;
         $present = $path !== '' && $path !== self::PENDING;
-        $file = '<input type="file" id="' . Str::e($id) . '" name="_uploads' . self::bracket($name) . '" class="fa-input"'
-            . ' accept="' . Str::e(implode(',', $field->getAcceptedFileTypes())) . '"' . ($field->isDisabled() ? ' disabled' : '');
+        $input = [];
         foreach ($attributes as $key => $value) {
-            if (in_array($key, ['aria-describedby', 'aria-invalid', 'lang', 'dir'], true)) { $file .= ' ' . $key . '="' . Str::e($value) . '"'; }
+            if (in_array($key, ['aria-describedby', 'aria-invalid', 'lang', 'dir'], true)) { $input[$key] = $value; }
         }
-        $file .= '>';
+        // FileDrop (0.18): drop, preview and checks before sending; the file is posted with the page.
+        $drop = \FloCMS\Admin\Ui\FileDrop::make('_uploads' . self::bracket($name))->id($id)->accept($field->getAcceptedFileTypes())
+            ->maxBytes($field->getMaxBytes())->inputAttributes($input)->disabled($field->isDisabled());
+        if ($present) {
+            $extension = strtoupper((string) pathinfo($path, PATHINFO_EXTENSION));
+            $drop->current(Settings::url($path), AdminLang::get('uploads.current'), '', $isImage, $extension !== '' ? $extension : 'FILE');
+            if (!$field->isDisabled()) { $drop->removable('_remove_upload' . self::bracket($name)); }
+        }
 
         $html = '<div class="fa-upload fa-settings-upload" data-settings-upload>';
-        if ($present) {
-            $url = Settings::url($path);
-            $html .= $isImage
-                ? '<img class="fa-upload-preview" src="' . Str::e($url) . '" alt="' . Str::e($field->getLabel()) . '">'
-                : '<a class="fa-btn fa-btn-ghost" href="' . Str::e($url) . '" target="_blank" rel="noopener">' . Str::e(AdminLang::get('uploads.current')) . '</a>';
-        } elseif ($fallback !== null && $fallback !== '') {
+        if (!$present && $fallback !== null && $fallback !== '') {
             $html .= $isImage ? '<img class="fa-upload-preview is-fallback" src="' . Str::e(Settings::url($fallback)) . '" alt="">' : '';
             $html .= '<p class="fa-help fa-upload-fallback">' . Str::e(AdminLang::get('settings.uses_default_file', ['language' => Languages::name(Languages::default())])) . '</p>';
         }
         if ($path === self::PENDING) {
             $html .= '<p class="fa-help fa-upload-again">' . Str::e(AdminLang::get('settings.choose_again')) . '</p>';
         }
-        $html .= $file . '<p class="fa-help">' . Str::e(AdminLang::get('uploads.limit', ['size' => (string) intdiv($field->getMaxBytes(), 1024)])) . '</p>';
-        if ($present && !$field->isDisabled()) {
-            $html .= '<label class="fa-upload-remove"><input type="checkbox" name="_remove_upload' . self::bracket($name) . '" value="1"> ' . Str::e(AdminLang::get('uploads.remove')) . '</label>';
-        }
-
-        return $html . '</div>';
+        return $html . $drop->render() . '</div>';
     }
 
     /**

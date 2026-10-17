@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace FloCMS\Admin\Form\Fields;
 
-use FloCMS\Admin\{Form\Field, Support\AdminLang, Support\Str, Uploads\Uploads};
+use FloCMS\Admin\{Form\Field, Support\AdminLang, Support\Str, Ui\FileDrop, Uploads\Uploads};
 use FloCMS\Uploader\Validation\FileValidator;
 
 /** One privately stored file; the column contains a managed relative path. */
@@ -47,17 +47,20 @@ class FileUpload extends Field
         $url = $attributes['data-upload-url'] ?? ''; unset($attributes['data-upload-url']);
         $pending = str_starts_with($value, '@upload:');
         $present = $value !== '' && !in_array($value, ['@remove', '@invalid'], true);
-        $html = '<div class="fa-upload" data-admin-upload data-upload-error="' . Str::e(AdminLang::get('uploads.invalid')) . '" data-upload-ready="' . Str::e(AdminLang::get('uploads.ready')) . '" data-upload-remove-text="' . Str::e(AdminLang::get('uploads.remove')) . '" data-upload-loading="' . Str::e(AdminLang::get('uploads.loading')) . '" data-upload-image="' . ($this instanceof ImageUpload ? 'true' : 'false') . '"><input' . self::attributes($this->baseAttributes($id, '_uploads[' . $name . ']', $attributes) + ['type' => 'file', 'class' => 'fa-input', 'accept' => implode(',', $this->mimeTypes), 'data-upload-field' => $name]) . '>';
+        $image = $this instanceof ImageUpload;
+        $html = '<div class="fa-upload" data-admin-upload data-upload-error="' . Str::e(AdminLang::get('uploads.invalid')) . '" data-upload-ready="' . Str::e(AdminLang::get('uploads.ready')) . '" data-upload-remove-text="' . Str::e(AdminLang::get('uploads.remove')) . '" data-upload-loading="' . Str::e(AdminLang::get('uploads.loading')) . '" data-upload-image="' . ($image ? 'true' : 'false') . '">';
+        // The file input is a FileDrop (0.18): drop, preview, progress and checks before sending.
+        $input = array_diff_key($this->baseAttributes($id, '_uploads[' . $name . ']', $attributes), ['id' => 0, 'name' => 0, 'class' => 0]);
+        $drop = FileDrop::make('_uploads[' . $name . ']')->id($id)->accept($this->mimeTypes)->maxBytes($this->maxBytes)
+            ->inputAttributes($input + ['data-upload-field' => $name])->disabled($this->isDisabled());
+        if ($present && $url !== '') {
+            $extension = strtoupper((string) pathinfo(str_starts_with($value, '@') ? '' : $value, PATHINFO_EXTENSION));
+            $drop->current($url, AdminLang::get($pending ? 'uploads.pending' : 'uploads.current'), '', $image, $extension !== '' ? $extension : 'FILE');
+        }
+        if ($present || $value === '@remove') { $drop->removable('_remove_upload[' . $name . ']', $value === '@remove'); }
+        $html .= $drop->render();
         $html .= '<input type="hidden" name="_upload_control[' . Str::e($name) . ']" value="1">';
         $html .= '<input type="hidden" data-upload-value name="' . Str::e($name) . '" value="' . Str::e($value === '@invalid' ? '' : $value) . '">';
-        $html .= '<p class="fa-help">' . Str::e(AdminLang::get('uploads.limit', ['size' => (string) ($this->maxBytes / 1024)])) . '</p>';
-        if ($present && $url !== '') {
-            if ($this instanceof ImageUpload) { $html .= '<img class="fa-upload-preview" src="' . Str::e($url) . '" alt="' . Str::e($this->getLabel()) . '">'; }
-            $html .= '<a class="fa-btn fa-btn-ghost" href="' . Str::e($url) . '" data-admin-file-link target="_blank" rel="noopener">' . Str::e(AdminLang::get($pending ? 'uploads.pending' : 'uploads.current')) . '</a>';
-        }
-        if (!$this->isDisabled()) {
-            $html .= '<label class="fa-upload-remove"' . (!$present && $value !== '@remove' ? ' hidden' : '') . '><input type="checkbox" name="_remove_upload[' . Str::e($name) . ']" value="1" data-upload-remove' . ($value === '@remove' ? ' checked' : '') . '> ' . Str::e(AdminLang::get('uploads.remove')) . '</label>';
-        }
         return $html . '<p class="fa-help" role="status" data-upload-status></p></div>';
     }
 }

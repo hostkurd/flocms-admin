@@ -99,3 +99,26 @@ if (!function_exists('media_preload')) {
         $store->preload($ids);
     }
 }
+
+if (!function_exists('media_folder')) {
+    /**
+     * The items in a media library folder (0.18), for sliders and galleries that
+     * editors change by adding photos to a folder. The folder is named by its path
+     * from the top ("Listings/Villas") or by a name only one folder has
+     * ("Homepage slider"); case does not matter. Items directly in that folder,
+     * by name (so editors can order them as "01 …", "02 …"), or 'newest' / 'oldest'.
+     *
+     *     foreach (media_folder('Homepage slider') as $slide) { echo $slide->img(['class' => 'slide']); }
+     *
+     * @return list<\FloCMS\Admin\Media\MediaItem>
+     */
+    function media_folder(string $path, string $sort = 'name', int $limit = 200): array
+    {
+        $store = \FloCMS\Admin\Media\MediaLibrary::storeOrNull();
+        if ($store === null) { return []; }
+        $id = \FloCMS\Admin\Media\MediaLibrary::folders()->resolve($path);
+        if ($id === null) { return []; }
+        $sort = in_array($sort, \FloCMS\Admin\Media\MediaStore::SORTS, true) ? $sort : 'name';
+        return $store->search('', null, false, 1, max(1, min(500, $limit)), ['folder' => $id, 'sort' => $sort])['items'];
+    }
+}

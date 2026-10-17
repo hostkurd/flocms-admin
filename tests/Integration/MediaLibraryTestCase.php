@@ -40,7 +40,7 @@ abstract class MediaLibraryTestCase extends TestCase
     protected function tearDown(): void
     {
         if (isset($this->db)) {
-            foreach (['media_usage', 'media', 'listings'] as $table) { $this->db->query('DROP TABLE IF EXISTS ' . $table); }
+            foreach (['media_folders', 'media_usage', 'media', 'listings'] as $table) { $this->db->query('DROP TABLE IF EXISTS ' . $table); }
         }
         App::$db = $this->previous;
         parent::tearDown();
@@ -189,5 +189,129 @@ abstract class MediaLibraryTestCase extends TestCase
         }
         $this->store()->syncUsage('listings', '1', 'gallery', [1, 2]);
         self::assertSame([1 => 1, 2 => 0], $this->store()->usageCounts([1, 2]), 'a rebuild just skips missing items');
+    }
+
+    public function testFoldersTreeRenameMoveAndDelete(): void
+    {
+        $folders = MediaLibrary::folders();
+        $listings = $folders->create('  Listings ', null);
+        $villas = $folders->create('Villas', $listings);
+        $apartments = $folders->create('apartments', $listings);
+        $team = $folders->create('Team', null);
+        $this->store()->moveToFolder([1, 2], $villas);
+        $this->store()->moveToFolder([3], $listings);
+        $tree = array_map(static fn (array $f): string => str_repeat('-', $f['depth']) . $f['name'] . ':' . $f['count'], $folders->tree());
+        self::assertSame(['Listings:1', '-apartments:0', '-Villas:2', 'Team:0'], $tree, 'natural order, case-insensitive, children under their parent');
+        self::assertEquals(['all' => 4, 'unfiled' => 1, $villas => 2, $listings => 1], $folders->counts());
+        self::assertSame('Listings / Villas', $folders->label($villas));
+
+        $refused = function (callable $act, string $field, string $text): void {
+            try { $act(); self::fail('not refused: ' . $text); }
+            catch (ValidationException $error) { self::assertStringContainsString($text, $error->getErrors()[$field] ?? '', json_encode($error->getErrors())); }
+        };
+        $refused(fn () => $folders->create('VILLAS', $listings), 'name', 'already a folder with this name');
+        $refused(fn () => $folders->create('a/b', null), 'name', 'cannot contain "/"');
+        $refused(fn () => $folders->create(" \t ", null), 'name', 'Enter a name');
+        $refused(fn () => $folders->rename($villas, 'Apartments'), 'name', 'already a folder');
+        $refused(fn () => $folders->move($listings, $villas), 'parent', 'into itself');
+        $deep = $folders->create('3', $folders->create('2', $villas));
+        $refused(fn () => $folders->create('5', $deep), 'parent', 'at most 4 levels');
+        $refused(fn () => $folders->move($team, $deep), 'parent', 'at most 4 levels');
+
+        $folders->rename($apartments, 'Apartments');
+        $folders->move($team, $listings);
+        self::assertSame(['Listings', 'Team'], $folders->path($team));
+
+        // Deleting Listings: its items go to Unfiled, its folders to the top; "Villas" is free, a clash would get " (2)".
+        $folders->create('Team', null);
+        $folders->delete($listings);
+        self::assertNull($folders->find($listings));
+        self::assertSame(null, $this->store()->find(3)?->folderId);
+        $top = array_map(static fn (array $f): string => $f['name'], array_filter($folders->tree(), static fn (array $f): bool => $f['depth'] === 0));
+        self::assertSame(['Apartments', 'Team', 'Team (2)', 'Villas'], array_values($top));
+        self::assertSame($villas, $this->store()->find(1)?->folderId, 'items of subfolders stay where they are');
+    }
+
+    public function testFolderPathsAndTheWebsiteHelper(): void
+    {
+        $folders = MediaLibrary::folders();
+        $slider = $folders->create('Homepage slider', null);
+        $listings = $folders->create('Listings', null);
+        $villas = $folders->create('Villas', $listings);
+        $topVillas = $folders->create('Villas', null);
+        $folders->create('Photos', $listings);
+        $folders->create('Photos', $villas);
+        $this->store()->moveToFolder([1, 2, 3], $slider);
+        $this->db->query("UPDATE media SET title = '02 Garden' WHERE id = 2");
+        self::assertSame($slider, $folders->resolve('homepage SLIDER'));
+        self::assertSame($villas, $folders->resolve('Listings / villas'));
+        self::assertSame($topVillas, $folders->resolve('Villas'), 'a path from the top first');
+        self::assertNull($folders->resolve('Photos'), 'a name two folders have is not guessed');
+        self::assertNull($folders->resolve('Nope/Villas'));
+        self::assertSame([2, 3, 1], array_map(static fn ($i): int => $i->id, media_folder('Homepage slider')), 'by title, else file name: 02 Garden, Hall, Sea view');
+        self::assertSame([3, 2, 1], array_map(static fn ($i): int => $i->id, media_folder('Homepage slider', 'newest')));
+        self::assertSame([], media_folder('Missing'));
+
+        // ensure(): makes what is missing, reuses what exists, and refuses a path whole.
+        self::assertSame($villas, $folders->ensure('Listings/Villas'));
+        $made = $folders->ensure('Listings / Covers / 2026');
+        self::assertSame('Listings / Covers / 2026', $folders->label($made));
+        $before = count($folders->all());
+        foreach (['A/B/C/D/E', 'A/' . str_repeat('x', 121)] as $bad) {
+            try { $folders->ensure($bad); self::fail($bad); } catch (\Throwable $error) { self::assertStringContainsString('ValidationException', $error::class); }
+        }
+        self::assertCount($before, (new \FloCMS\Admin\Media\MediaFolders($this->db, 'media_folders', 'media'))->all(), 'nothing half made');
+    }
+
+    public function testSearchByFolderMissingAltSortAndStats(): void
+    {
+        $folder = MediaLibrary::folders()->create('Rooms', null);
+        $this->store()->moveToFolder([2, 3], $folder);
+        $this->db->query('INSERT INTO media_folders (id, parent_id, name) VALUES (99, NULL, ?)', ['Gone']);
+        $this->db->query('DELETE FROM media_folders WHERE id = 99');
+        $this->store()->moveToFolder([4], 99);
+        self::assertSame([3, 2], $this->ids($this->store()->search('', null, false, 1, 40, ['folder' => $folder])));
+        self::assertSame([4, 1], $this->ids($this->store()->search('', null, false, 1, 40, ['folder' => 'unfiled'])), 'no folder, or a folder that is gone');
+        self::assertSame([2], $this->ids($this->store()->search('', null, false, 1, 40, ['no_alt' => true])), 'images only');
+        self::assertSame([2, 3, 1, 4], $this->ids($this->store()->search('', null, false, 1, 40, ['sort' => 'name'])), 'garden.png, Hall, Sea view, Tour');
+        self::assertSame([1, 2, 3, 4], $this->ids($this->store()->search('', null, false, 1, 40, ['sort' => 'oldest'])));
+        self::assertSame([4, 3, 2, 1], $this->ids($this->store()->search('', null, false, 1, 40, ['sort' => 'largest'])));
+        self::assertSame(['items' => 4, 'images' => 3, 'videos' => 1, 'bytes' => 4006, 'no_alt' => 1], $this->store()->stats());
+        self::assertSame(2, $this->store()->moveToFolder([1, 99999, 4], null), 'only existing rows count');
+    }
+
+    public function testFocalPointAndFingerprint(): void
+    {
+        $this->store()->setFocal(1, 62, 140);
+        $item = $this->store()->find(1);
+        self::assertSame([62, 100, '62% 100%'], [$item?->focalX, $item?->focalY, $item?->focal()]);
+        self::assertStringContainsString('style="object-position: 62% 100%"', (string) $item?->img());
+        self::assertStringNotContainsString('style=', (string) $item?->img(['style' => null]), 'a strict Content-Security-Policy can drop it');
+        $this->store()->setFocal(1, null, 40);
+        self::assertNull($this->store()->find(1)?->focal());
+
+        $hash = hash('sha256', 'the same bytes');
+        $this->store()->setHash(2, $hash);
+        $this->store()->setHash(3, 'not a hash');
+        self::assertSame(2, $this->store()->findByHash($hash)?->id);
+        self::assertNull($this->store()->findByHash($hash, 2), 'the item itself does not count');
+        self::assertNull($this->store()->findByHash(hash('sha256', 'other')));
+        $new = $this->store()->create(['kind' => 'image', 'path' => 'library/x.jpg', 'thumb_path' => null, 'mime' => 'image/jpeg', 'bytes' => 1, 'width' => 1, 'height' => 1, 'file_name' => 'x.jpg', 'hash' => $hash], 1, '', MediaLibrary::folders()->create('New', null));
+        self::assertSame([$hash, 'New'], [$new->hash, MediaLibrary::folders()->label($new->folderId)]);
+    }
+
+    public function testLibraryWaitsForTheFoldersMigration(): void
+    {
+        MediaTables::create($this->db, folders: false);
+        MediaLibrary::reset();
+        self::assertSame(['upgrade', false], [MediaLibrary::status(), MediaLibrary::enabled()]);
+        MediaTables::foldersMigration()->up($this->db);
+        MediaTables::foldersMigration()->up($this->db);
+        MediaLibrary::reset();
+        self::assertSame('ready', MediaLibrary::status(), 'runs twice without harm');
+        $this->db->query('DROP TABLE media_folders');
+        $this->db->query('DROP TABLE media_usage');
+        MediaLibrary::reset();
+        self::assertSame('missing', MediaLibrary::status());
     }
 }

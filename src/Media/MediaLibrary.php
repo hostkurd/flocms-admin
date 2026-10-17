@@ -10,38 +10,56 @@ use FloCMS\Core\Database;
 
 /**
  * The media library (0.17): public images and videos uploaded once and reused
- * in records (MediaPicker), rich text and on the website (media()).
+ * in records (MediaPicker), rich text and on the website (media()), sorted in
+ * folders (0.18).
  *
- * It is on when config/admin.php does not switch it off and its table exists
- * (php flo admin:install writes the migration, php flo migrate creates it).
+ * It is on when config/admin.php does not switch it off and its tables exist
+ * (php flo admin:install writes the migrations, php flo migrate creates them).
  */
 final class MediaLibrary
 {
     private static ?MediaStore $store = null;
-    private static ?bool $ready = null;
-    private static ?Database $readyFor = null;
+    private static ?MediaFolders $folders = null;
+    private static ?string $status = null;
+    private static ?Database $statusFor = null;
 
-    /** The library can be used: switched on and its table is there. */
+    /** The library can be used: switched on and its tables are there, up to date. */
     public static function enabled(): bool
     {
-        if (!Admin::config()->mediaLibrary()['enabled']) { return false; }
+        return self::status() === 'ready';
+    }
+
+    /**
+     * 'off' (config), 'missing' (no tables: php flo admin:install, php flo migrate),
+     * 'upgrade' (the 0.17 tables without the 0.18 folders migration) or 'ready'.
+     */
+    public static function status(): string
+    {
+        if (!Admin::config()->mediaLibrary()['enabled']) { return 'off'; }
         $db = App::db();
-        if ($db === null) { return false; }
-        if (self::$ready === null || self::$readyFor !== $db) {
-            self::$readyFor = $db;
+        if ($db === null) { return 'missing'; }
+        if (self::$status === null || self::$statusFor !== $db) {
+            self::$statusFor = $db;
             try {
                 $db->query('SELECT 1 FROM `' . self::table() . '` WHERE 1 = 0');
                 $db->query('SELECT 1 FROM `' . self::usageTable() . '` WHERE 1 = 0');
-                self::$ready = true;
             } catch (\Throwable) {
-                self::$ready = false;
+                return self::$status = 'missing';
+            }
+            try {
+                $db->query('SELECT `folder_id`, `hash`, `focal_x`, `focal_y` FROM `' . self::table() . '` WHERE 1 = 0');
+                $db->query('SELECT 1 FROM `' . self::foldersTable() . '` WHERE 1 = 0');
+                self::$status = 'ready';
+            } catch (\Throwable) {
+                self::$status = 'upgrade';
             }
         }
-        return self::$ready;
+        return self::$status;
     }
 
     public static function table(): string { return Admin::config()->mediaLibrary()['table']; }
     public static function usageTable(): string { return Admin::config()->mediaLibrary()['usage_table']; }
+    public static function foldersTable(): string { return Admin::config()->mediaLibrary()['folders_table']; }
     public static function maxImageBytes(): int { return Admin::config()->mediaLibrary()['max_image_bytes']; }
     public static function maxVideoBytes(): int { return Admin::config()->mediaLibrary()['max_video_bytes']; }
 
@@ -62,28 +80,38 @@ final class MediaLibrary
         $db = App::db();
         if ($db === null || !self::enabled()) { throw new \RuntimeException('The media library is not set up: run php flo admin:install and php flo migrate.'); }
         if (self::$store === null || !self::$store->uses($db)) {
-            self::$store = new MediaStore($db, self::table(), self::usageTable(), Admin::config()->media()['url']);
+            self::$store = new MediaStore($db, self::table(), self::usageTable(), Admin::config()->media()['url'], self::foldersTable());
         }
         return self::$store;
     }
 
-    /** The store, or null when the library is off (website helpers). */
+    /** The folders on the current connection; throws when the library is off. */
+    public static function folders(): MediaFolders
+    {
+        $db = self::store()->connection();
+        if (self::$folders === null || !self::$folders->uses($db)) {
+            self::$folders = new MediaFolders($db, self::foldersTable(), self::table());
+        }
+        return self::$folders;
+    }
+
     /**
      * A new item for files just stored (MediaFiles::image() or video()). When the row can't be
      * written, the files are deleted again so nothing is left behind.
      *
      * @param array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string} $file
      */
-    public static function add(array $file, ?int $uploadedBy, string $title = ''): MediaItem
+    public static function add(array $file, ?int $uploadedBy, string $title = '', ?int $folderId = null): MediaItem
     {
         try {
-            return self::store()->create($file, $uploadedBy, $title);
+            return self::store()->create($file, $uploadedBy, $title, $folderId);
         } catch (\Throwable $error) {
             MediaFiles::delete(array_values(array_filter([$file['path'], $file['thumb_path'] ?? null])));
             throw $error;
         }
     }
 
+    /** The store, or null when the library is off (website helpers). */
     public static function storeOrNull(): ?MediaStore
     {
         return self::enabled() ? self::store() : null;
@@ -92,7 +120,8 @@ final class MediaLibrary
     public static function reset(): void
     {
         self::$store = null;
-        self::$ready = null;
-        self::$readyFor = null;
+        self::$folders = null;
+        self::$status = null;
+        self::$statusFor = null;
     }
 }

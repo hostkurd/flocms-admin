@@ -10,6 +10,7 @@ import { initializeSettings } from './settings';
 import { initializeRelations } from './relations';
 import { initializeReorder } from './reorder';
 import { initializeMedia } from './media';
+import { initializeFileDrops } from './filedrop';
 import './popovers';
 import { startProgress, finishProgress } from './progress';
 import { initializeRecord, isDirty, confirmLeave } from './record';
@@ -57,6 +58,7 @@ function initialize(): void {
   initializeRelations(root);
   initializeReorder(root);
   initializeMedia(root);
+  initializeFileDrops(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
@@ -166,8 +168,10 @@ document.addEventListener('submit', event => {
       void stageUploads(form).then(() => { if (form.isConnected) form.requestSubmit(submitter); }).catch(() => {});
       return;
     }
-    form.querySelectorAll<HTMLInputElement>('[data-upload-remove]').forEach(remove => {
-      const value = remove.closest('[data-admin-upload]')!.querySelector<HTMLInputElement>('[data-upload-value]')!;
+    // The Remove button of a FileDrop ticks this box; Reactive forms send the field's value, so mark it.
+    form.querySelectorAll<HTMLInputElement>('[data-upload-remove], [data-filedrop-remove-box]').forEach(remove => {
+      const value = remove.closest('[data-admin-upload]')?.querySelector<HTMLInputElement>('[data-upload-value]');
+      if (!value) return;
       if (remove.checked) value.value = '@remove'; else if (value.value === '@remove') value.value = '';
     });
     if (navigating || busy()) { event.preventDefault(); event.stopImmediatePropagation(); return; }
@@ -208,7 +212,8 @@ document.addEventListener('submit', event => {
     return;
   }
   // Legacy delete confirmation owns its initial submit, then requests a new one.
-  if (!enabled() || form.hasAttribute('data-rx-submit') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
+  // data-admin-local: a form that a script sends itself (the media details panel and editor).
+  if (!enabled() || form.hasAttribute('data-rx-submit') || form.hasAttribute('data-admin-local') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
   const url = internal(form.action);
   if (!url || (event.target instanceof Element && event.target.closest('[data-admin-file-link]'))) return;
   event.preventDefault();
@@ -306,7 +311,7 @@ document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) { initializeForms(root); initializeTranslations(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); }
+  if (root) { initializeForms(root); initializeTranslations(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

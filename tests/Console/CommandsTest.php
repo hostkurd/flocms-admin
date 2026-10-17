@@ -152,6 +152,13 @@ final class CommandsTest extends TestCase
         $migration = glob($this->root . '/database/migrations/*_create_media_table.php');
         self::assertCount(1, $migration);
         (require $migration[0])->up(new \FloCMS\Core\Database($pdo));
+        $upgrade = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('The media library needs its 0.18 migration (folders; "media" has no folder_id, hash, focal_x, focal_y)', $upgrade, 'only the 0.17 migration ran');
+        // ... and the folders migration (0.18), written to run after it
+        $folders = glob($this->root . '/database/migrations/*_create_media_folders_table.php');
+        self::assertCount(1, $folders);
+        self::assertGreaterThan(basename($migration[0]), basename($folders[0]), 'runs after the media table exists');
+        (require $folders[0])->up(new \FloCMS\Core\Database($pdo));
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");

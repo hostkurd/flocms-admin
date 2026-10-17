@@ -106,22 +106,53 @@ final class PanelView
         ];
     }
 
-    /** Settings of the media picker (fields, the rich editor), or '' when the library is off for this user. */
+    /** Texts of the media screens (resources/js/media), as media.<key>. */
+    private const MEDIA_STRINGS = [
+        'picker_title', 'search', 'search_placeholder', 'upload', 'select', 'more', 'empty', 'failed', 'images', 'videos', 'no_results', 'too_big',
+        'folders', 'details', 'kind', 'all_types', 'status', 'any_status', 'unused', 'no_alt', 'no_alt_short', 'not_used', 'sort',
+        'sort_newest', 'sort_oldest', 'sort_name', 'sort_largest', 'view', 'view_grid', 'view_list', 'selected_items', 'items', 'loading',
+        'new_folder', 'new_folder_in', 'new_folder_here', 'create_folder', 'rename_folder', 'move_folder', 'delete_folder', 'delete_folder_confirm',
+        'top_level', 'folder_options', 'collapse', 'expand', 'all_media', 'unfiled', 'folder', 'folder_empty', 'search_everywhere', 'count',
+        'this_folder_only', 'video', 'added', 'used_count', 'max_reached', 'selected_one', 'selected_many', 'move_to', 'edit_details',
+        'copy_addresses', 'copied_count', 'copied', 'copy', 'delete', 'select_all_loaded', 'clear_selection', 'delete_one_confirm',
+        'delete_many_confirm', 'delete_kept_note', 'drop_to_upload', 'pick_for_details', 'focal_help', 'focal_set', 'focal_done', 'replace',
+        'replaced', 'replace_in_text', 'open_page', 'item_title', 'alt', 'alt_placeholder', 'alt_missing', 'delete_in_use', 'dimensions', 'size',
+        'uploaded', 'used_in', 'used_nowhere', 'uploads', 'hide_uploads', 'show_uploads', 'close', 'waiting_short', 'uploading_short',
+        'upload_done_short', 'reused', 'wrong_type', 'retry_named', 'cancel_named', 'use_existing', 'upload_anyway', 'uploading_of',
+        'uploads_waiting', 'uploads_done', 'stat_items', 'stat_kinds', 'stat_size', 'stat_no_alt', 'choose_one', 'choose_title_image',
+        'choose_title_video', 'choose_title_media', 'choose_title_many', 'limit_one', 'limit_many', 'keys_help', 'nothing_chosen',
+        'add', 'change', 'remove', 'choose_image', 'choose_video', 'move_before', 'move_after', 'moved', 'max', 'missing_item', 'none',
+        'choose_from_library', 'saved', 'drop_here_field', 'options_named', 'set_focal', 'remove_named', 'batch_progress', 'batch_alt_count',
+        'previous', 'next', 'save_next', 'copy_title', 'batch_done', 'focal_click', 'drag_hint', 'move_earlier', 'move_later', 'or_drop',
+        'replace_from_library', 'tile_label',
+    ];
+
+    /**
+     * Settings of the media screens (the Media page, the picker, media fields, the rich
+     * editor), or '' when the library is off for this user.
+     */
     private static function mediaPicker(): string
     {
         if (!\FloCMS\Admin\Media\MediaLibrary::enabled() || !\FloCMS\Admin\Media\MediaLibrary::can('view')) { return ''; }
-        $t = static fn (string $key, array $replace = []): string => AdminLang::get('media.' . $key, $replace);
         $strings = [];
-        foreach (['picker_title', 'search', 'upload', 'select', 'more', 'empty', 'failed', 'uploading', 'images', 'videos', 'no_results', 'too_big'] as $key) { $strings[$key] = $t($key); }
+        foreach (self::MEDIA_STRINGS as $key) { $strings[$key] = AdminLang::get('media.' . $key); }
         $strings['cancel'] = AdminLang::get('actions.cancel');
-        $strings['loading'] = AdminLang::get('reactive.loading');
+        $strings['save'] = AdminLang::get('actions.save');
+        $languages = [];
+        foreach (\FloCMS\Admin\Translation\Languages::all() as $code) {
+            $languages[] = ['code' => $code, 'name' => \FloCMS\Admin\Translation\Languages::name($code), 'dir' => \FloCMS\Admin\Translation\Languages::direction($code)];
+        }
+        $library = \FloCMS\Admin\Media\MediaLibrary::class;
+        $urls = [];
+        foreach (['lookup', 'details', 'save', 'move', 'folders', 'delete', 'upload', 'video', 'pending', 'replace'] as $route) { $urls[$route] = Admin::url('media/' . $route); }
+        $urls['page'] = Admin::url('media');
         return (string) json_encode([
-            'lookup' => Admin::url('media/lookup'),
-            'upload' => \FloCMS\Admin\Media\MediaLibrary::can('create') ? Admin::url('media/upload') : null,
-            'video' => \FloCMS\Admin\Media\MediaLibrary::can('create') ? Admin::url('media/video') : null,
+            'urls' => $urls,
             'csrf' => \FloCMS\Core\Csrf::token(),
-            'maxImage' => \FloCMS\Admin\Media\MediaLibrary::maxImageBytes(), 'maxVideo' => \FloCMS\Admin\Media\MediaLibrary::maxVideoBytes(),
+            'maxImage' => $library::maxImageBytes(), 'maxVideo' => $library::maxVideoBytes(),
             'chunk' => \FloCMS\Admin\Media\MediaFiles::CHUNK_BYTES,
+            'can' => ['create' => $library::can('create'), 'update' => $library::can('update'), 'delete' => $library::can('delete')],
+            'languages' => $languages, 'defaultLanguage' => \FloCMS\Admin\Translation\Languages::default(),
             'strings' => $strings,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }

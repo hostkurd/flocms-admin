@@ -2,6 +2,51 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.18.0 - 2026-10-17
+
+The media library becomes a file manager, and every file input becomes a drop area. One migration (a `media_folders` table and four columns on `media`); the library is off until it has run. See the [Media library guide](docs/media.md).
+
+### Media page
+
+- Three columns: **folders**, the items, and a **details panel** for the selected item. The header shows the number of items, images and videos, the space used and how many images have no alt text (a link to them), with **New folder** and **Upload**.
+- **Folders**: categories shown as folders (nothing moves on disk), nested up to four levels. Create, rename, move and delete them from the ⋯ menu; drag items, or folders, onto a folder. Deleting a folder moves what is in it up one level.
+- **Selection** like a file manager: Ctrl/⌘+click, Shift+click, a tick on each tile, the arrow keys, Space, Shift+arrows, Ctrl/⌘+A, Delete. **Batch actions**: Move to folder, Edit details, Copy addresses, Delete (items in use are kept, and the message says how many).
+- **Search, filters and sort** without reloading: file name, title or alt text, in all folders or **This folder only**; type; Not used / Without alt text; newest, oldest, by name, largest. Grid or list view (remembered). The address follows, so a view can be bookmarked.
+- **Details panel**: preview, focal point, Replace file, copy the address, the title, the alt text in every language, the folder, the facts and **Used in**.
+- **Edit details** for several items, one after another ("3 of 8", Save and next, Ctrl/⌘+Enter), with the number that have alt text and an option to reuse the last title.
+- **Upload list** in the corner: every file in one list, uploaded one after another, with progress, Cancel and Retry. Drop files anywhere on the items; they go into the open folder.
+- **Duplicate check**: the SHA-256 fingerprint of each upload is stored; a file already in the library is held and the list asks **Use “…”** or **Upload anyway**. Media fields and the picker use the existing item without asking.
+- **Focal point** for images: click the spot to keep in view when the image is cropped (or move it with the arrow keys).
+- Without JavaScript: plain links and forms for folders, search, filters, upload, moving and deleting.
+
+### Picker
+
+- The same browser in a dialog, CKFinder-style: folders, search, filters, sort, views, upload into the open folder, the details of the focused item, and a footer with the chosen items. Click and **Choose**, or double-click; several with **Use selected (n)**. Items already in the field are marked **Added**; the dialog says how many more fit. Used by media fields and the rich text editor (`window.FloAdminMedia.pick`).
+
+### Media fields
+
+- A framed card of their own. One item: a large preview (with the item's focal point) with Change, Edit details and Remove, its name, size and dimensions, and a **No alt text** badge that opens the details. Several: numbered tiles to drag by a grip (mouse, touch, pen) or move with Alt + arrow keys, a ⋯ menu (Edit details, Set focal point, Replace from the library, Move earlier/later, Remove), and an **Add media** tile. Empty: a drop area.
+- Files dropped on a field (or chosen with **Upload**) go into the library and are used at once.
+- `MediaPicker::folder('Listings/Covers')` (up to four levels): uploads from the field and its picker go to that folder (made when missing, for editors with `content.media.update`) and the picker opens there. `->aspectRatio('16:9')`: the shape of the preview. A cover fits in the record page's side column (`Form::aside()`).
+
+### FileDrop
+
+- `FileDrop::make($name)`: our own file chooser (no third-party package) for every upload of the panel: upload fields, settings pages, the Media page. Drop or browse; "JPEG, PNG, WebP · up to 2 MB"; a preview of the chosen or current file with its size; Cancel; Remove with Undo; progress in dialogs; the type and size checked in the browser before sending (and on the server, as before). A real `<input type="file">`, so forms and pages without JavaScript work as before. Options: `accept()`, `maxKb()`, `multiple()`, `large()`, `current()`, `removable()`, `hint()`, `title()`, `disabled()`, `inputAttributes()`. See the [Uploads guide](docs/uploads.md).
+
+### Website
+
+- `media_folder('Homepage slider')` (or a path, `'Listings/Villas'`, and `'name'`, `'newest'`, `'oldest'` or `'largest'`): the items of a folder, so editors can manage a slider from the Media page.
+- `MediaItem::img()` adds `object-position` for an image's focal point; `focal()` gives it as CSS. `MediaItem` has `folderId`, `focalX`, `focalY`.
+
+### Commands and config
+
+- `admin:install` writes the 0.18 migration (`*_create_media_folders_table.php`). `admin:media-import` adds fingerprints to items uploaded before 0.18. `admin:doctor` checks the folders table and the new columns.
+- `'media_library' => ['folders_table' => …]` renames the folders table (default `media_folders`).
+
+### Fixed
+
+- Forms that a script sends itself (`data-admin-local`) are no longer taken over by the panel's page navigation.
+
 ## 0.17.0 - 2026-10-17
 
 The media library. One migration (two tables, `media` and `media_usage`); nothing changes for existing forms. See the [Media library guide](docs/media.md).

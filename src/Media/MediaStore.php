@@ -23,9 +23,13 @@ final class MediaStore
         private readonly Database $db,
         private readonly string $table,
         private readonly string $usageTable,
-        private readonly string $baseUrl
+        private readonly string $baseUrl,
+        private readonly ?string $foldersTable = null
     ) {
     }
+
+    /** Sorting the library: newest (default), oldest, name, largest. */
+    public const SORTS = ['newest', 'oldest', 'name', 'largest'];
 
     public function uses(Database $db): bool { return $this->db === $db; }
     public function baseUrl(): string { return $this->baseUrl; }
@@ -67,21 +71,32 @@ final class MediaStore
     /**
      * One page of the library, newest first.
      *
+     * $more (0.18): 'folder' => folder id, or 'unfiled' (no folder or a folder that is gone);
+     * 'no_alt' => true (images without alt text); 'sort' => one of SORTS; 'uploaded_by' => user id.
+     *
+     * @param array{folder?: int|string|null, no_alt?: bool, sort?: string, uploaded_by?: ?int} $more
      * @return array{items: list<MediaItem>, total: int, page: int, pages: int}
      */
-    public function search(string $term = '', ?string $kind = null, bool $unused = false, int $page = 1, int $perPage = 40): array
+    public function search(string $term = '', ?string $kind = null, bool $unused = false, int $page = 1, int $perPage = 40, array $more = []): array
     {
-        $query = $this->filtered($term, $kind, $unused);
-        $total = $this->filtered($term, $kind, $unused)->count();
+        $query = $this->filtered($term, $kind, $unused, $more);
+        $total = $this->filtered($term, $kind, $unused, $more)->count();
         $pages = max(1, (int) ceil($total / max(1, $perPage)));
         $page = max(1, min($page, $pages));
-        $rows = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit($perPage)->offset(($page - 1) * $perPage)->get();
+        $query = match ($more['sort'] ?? 'newest') {
+            'oldest' => $query->orderBy('created_at', 'asc')->orderBy('id', 'asc'),
+            'name' => $query->orderByRaw("LOWER(CASE WHEN `title` <> '' THEN `title` ELSE `file_name` END) ASC")->orderBy('id', 'asc'),
+            'largest' => $query->orderBy('bytes', 'desc')->orderBy('id', 'desc'),
+            default => $query->orderBy('created_at', 'desc')->orderBy('id', 'desc'),
+        };
+        $rows = $query->limit($perPage)->offset(($page - 1) * $perPage)->get();
         $items = [];
         foreach ($rows as $row) { $item = MediaItem::fromRow($row, $this->baseUrl); $this->cache[$item->id] = $item; $items[] = $item; }
         return ['items' => $items, 'total' => $total, 'page' => $page, 'pages' => $pages];
     }
 
-    private function filtered(string $term, ?string $kind, bool $unused): Database
+    /** @param array{folder?: int|string|null, no_alt?: bool, sort?: string, uploaded_by?: ?int} $more */
+    private function filtered(string $term, ?string $kind, bool $unused, array $more = []): Database
     {
         $query = $this->db->table($this->table);
         if ($kind !== null && in_array($kind, self::KINDS, true)) { $query = $query->where('kind', '=', $kind); }
@@ -95,15 +110,31 @@ final class MediaStore
         if ($unused) {
             $query = $query->whereRaw('NOT EXISTS (SELECT 1 FROM `' . $this->usageTable . '` u WHERE u.`media_id` = `' . $this->table . '`.`id`)', []);
         }
+        $folder = $more['folder'] ?? null;
+        if ($folder === 'unfiled') {
+            $query = $this->foldersTable === null ? $query->whereRaw('`folder_id` IS NULL', [])
+                : $query->whereRaw('(`folder_id` IS NULL OR `folder_id` NOT IN (SELECT `id` FROM `' . $this->foldersTable . '`))', []);
+        } elseif (is_int($folder)) {
+            $query = $query->where('folder_id', '=', $folder);
+        }
+        if (($more['no_alt'] ?? false) === true) {
+            $query = $query->where('kind', '=', 'image')->whereRaw("(`alt` IS NULL OR `alt` = '' OR `alt` = '{}' OR `alt` = '[]')", []);
+        }
+        if (is_int($more['uploaded_by'] ?? null)) {
+            $query = $query->where('uploaded_by', '=', $more['uploaded_by']);
+        }
         return $query;
     }
 
-    /** @param array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string} $file */
-    public function create(array $file, ?int $uploadedBy = null, string $title = ''): MediaItem
+    /** @param array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string, hash?: ?string} $file */
+    public function create(array $file, ?int $uploadedBy = null, string $title = '', ?int $folderId = null): MediaItem
     {
         if (!in_array($file['kind'], self::KINDS, true)) { throw new \InvalidArgumentException('Unknown media kind.'); }
         $now = date('Y-m-d H:i:s');
-        $id = $this->db->table($this->table)->insert($file + ['title' => mb_substr($title, 0, 255), 'alt' => null, 'uploaded_by' => $uploadedBy, 'created_at' => $now, 'updated_at' => $now]);
+        $row = $file + ['title' => mb_substr($title, 0, 255), 'alt' => null, 'uploaded_by' => $uploadedBy, 'created_at' => $now, 'updated_at' => $now];
+        if ($folderId !== null) { $row['folder_id'] = $folderId; }
+        if (!isset($row['hash']) || !is_string($row['hash']) || preg_match('/^[0-9a-f]{64}$/D', $row['hash']) !== 1) { unset($row['hash']); }
+        $id = $this->db->table($this->table)->insert($row);
         unset($this->cache[$id]);
         return $this->find($id) ?? throw new \RuntimeException('The media item was not saved.');
     }
@@ -151,6 +182,66 @@ final class MediaStore
         if ($deleted === 0) { throw self::refusal(['_form' => AdminLang::get('media.in_use')]); }
         $this->cache[$id] = null;
         return array_values(array_filter([$item->path, $item->thumbPath]));
+    }
+
+    /**
+     * Put items in a folder (null: Unfiled). Returns how many rows changed.
+     *
+     * @param list<int|string> $ids
+     */
+    public function moveToFolder(array $ids, ?int $folderId): int
+    {
+        $ids = self::ids($ids);
+        if ($ids === []) { return 0; }
+        $moved = 0;
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $moved += $this->db->query('UPDATE `' . $this->table . '` SET `folder_id` = ?, `updated_at` = ? WHERE `id` IN (' . implode(', ', array_fill(0, count($chunk), '?')) . ')', [$folderId, date('Y-m-d H:i:s'), ...$chunk])->rowCount();
+            foreach ($chunk as $id) { unset($this->cache[$id]); }
+        }
+        return $moved;
+    }
+
+    /** The spot to keep in view when the image is cropped, in percent from the top-left corner; null removes it. */
+    public function setFocal(int $id, ?int $x, ?int $y): void
+    {
+        if ($x === null || $y === null) { $x = $y = null; } else { $x = max(0, min(100, $x)); $y = max(0, min(100, $y)); }
+        $this->db->table($this->table)->where('id', '=', $id)->update(['focal_x' => $x, 'focal_y' => $y, 'updated_at' => date('Y-m-d H:i:s')]);
+        unset($this->cache[$id]);
+    }
+
+    /** An item whose uploaded file had exactly this content (SHA-256), if any. */
+    public function findByHash(string $hash, ?int $except = null): ?MediaItem
+    {
+        if (preg_match('/^[0-9a-f]{64}$/D', $hash) !== 1) { return null; }
+        $query = $this->db->table($this->table)->where('hash', '=', $hash);
+        if ($except !== null) { $query = $query->where('id', '<>', $except); }
+        $row = $query->orderBy('id', 'asc')->first();
+        if ($row === null) { return null; }
+        $item = MediaItem::fromRow($row, $this->baseUrl);
+        $this->cache[$item->id] = $item;
+        return $item;
+    }
+
+    /** Store the fingerprint of an item's file (imports and older items). */
+    public function setHash(int $id, string $hash): void
+    {
+        if (preg_match('/^[0-9a-f]{64}$/D', $hash) !== 1) { return; }
+        $this->db->table($this->table)->where('id', '=', $id)->update(['hash' => $hash]);
+        unset($this->cache[$id]);
+    }
+
+    /**
+     * Numbers for the Media page's header.
+     *
+     * @return array{items: int, images: int, videos: int, bytes: int, no_alt: int}
+     */
+    public function stats(): array
+    {
+        $row = $this->db->query("SELECT COUNT(*), SUM(CASE WHEN `kind` = 'image' THEN 1 ELSE 0 END), SUM(`bytes`),
+            SUM(CASE WHEN `kind` = 'image' AND (`alt` IS NULL OR `alt` = '' OR `alt` = '{}' OR `alt` = '[]') THEN 1 ELSE 0 END) FROM `" . $this->table . '`')->fetch(\PDO::FETCH_NUM) ?: [0, 0, 0, 0];
+        $items = (int) $row[0];
+        $images = (int) $row[1];
+        return ['items' => $items, 'images' => $images, 'videos' => $items - $images, 'bytes' => (int) $row[2], 'no_alt' => (int) $row[3]];
     }
 
     /** How many places use each item. @param list<int> $ids @return array<int, int> */

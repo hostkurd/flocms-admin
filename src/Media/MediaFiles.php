@@ -29,12 +29,14 @@ final class MediaFiles
     public const MAX_CHUNK_BYTES = 2097152;
 
     /**
-     * @return array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string}
+     * @return array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string, hash: ?string}
      */
     public static function image(array $file, int $maxBytes): array
     {
         foreach (['tmp_name', 'name', 'error'] as $key) { if (!isset($file[$key]) || !is_scalar($file[$key])) { throw new ValidationException('The image did not arrive.'); } }
         if ((int) $file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file((string) $file['tmp_name'])) { throw new ValidationException('The image did not arrive.'); }
+        // The fingerprint of the file as uploaded (the stored versions are re-encoded), to notice duplicates.
+        $hash = hash_file('sha256', (string) $file['tmp_name']) ?: null;
         $result = Uploader::image(self::config())->onDisk('media')->directory(self::DIRECTORY)->useDatePath()
             ->maxBytes($maxBytes)->imageDimensions(['max_width' => 8192, 'max_height' => 8192])
             ->keepOriginal(false)->versions(['web' => ['resize' => [self::WEB, self::WEB]], 'thumb' => ['resize' => [MediaItem::THUMB, MediaItem::THUMB]]])
@@ -45,7 +47,7 @@ final class MediaFiles
         return ['kind' => 'image', 'path' => (string) $web['path'], 'thumb_path' => $thumb !== null ? (string) $thumb['path'] : null,
             'mime' => (string) ($web['mime'] ?? $result->mime() ?? 'image/jpeg'), 'bytes' => $absolute !== '' && is_file($absolute) ? (int) filesize($absolute) : (int) ($result->size() ?? 0),
             'width' => isset($web['width']) ? (int) $web['width'] : null, 'height' => isset($web['height']) ? (int) $web['height'] : null,
-            'file_name' => self::name((string) ($result->originalName() ?? ''))];
+            'file_name' => self::name((string) ($result->originalName() ?? '')), 'hash' => $hash];
     }
 
     /** Parts of a video upload, owned by the user and session that started it. */
@@ -57,13 +59,15 @@ final class MediaFiles
         return $video->chunked($directory)->maxChunkBytes(self::MAX_CHUNK_BYTES)->chunkSize(self::CHUNK_BYTES);
     }
 
-    /** @return array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string} */
+    /** @return array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string, hash: ?string} */
     public static function video(UploadResult $result, string $fileName): array
     {
         $path = (string) $result->path();
         if ($path === '' || str_contains($path, '..')) { throw new \RuntimeException('The video was not stored.'); }
+        $absolute = (string) ($result->absolutePath() ?? '');
         return ['kind' => 'video', 'path' => $path, 'thumb_path' => null, 'mime' => (string) ($result->mime() ?? 'video/mp4'),
-            'bytes' => (int) ($result->size() ?? 0), 'width' => $result->width(), 'height' => $result->height(), 'file_name' => self::name($fileName)];
+            'bytes' => (int) ($result->size() ?? 0), 'width' => $result->width(), 'height' => $result->height(), 'file_name' => self::name($fileName),
+            'hash' => $absolute !== '' && is_file($absolute) ? (hash_file('sha256', $absolute) ?: null) : null];
     }
 
     /** Delete stored files (after the database change committed); failures are logged, not thrown. */

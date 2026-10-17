@@ -5,14 +5,24 @@ namespace FloCMS\Admin\Tests\Fixtures\Media;
 
 use FloCMS\Core\Database;
 
-/** Builds the media library tables with the real migration admin:install writes. */
+/** Builds the media library tables with the real migrations admin:install writes. */
 final class MediaTables
 {
-    public static function create(Database $db, string $table = 'media', string $usage = 'media_usage'): void
+    /** Both migrations (0.17 tables, then 0.18 folders); $folders false stops after the first, like a site not migrated yet. */
+    public static function create(Database $db, string $table = 'media', string $usage = 'media_usage', bool $folders = true, string $foldersTable = 'media_folders'): void
     {
+        $db->query('DROP TABLE IF EXISTS `' . $foldersTable . '`');
         $db->query('DROP TABLE IF EXISTS `' . $usage . '`');
         $db->query('DROP TABLE IF EXISTS `' . $table . '`');
         self::migration($table, $usage)->up($db);
+        if ($folders) { self::foldersMigration($table, $foldersTable)->up($db); }
+    }
+
+    public static function foldersMigration(string $table = 'media', string $foldersTable = 'media_folders'): object
+    {
+        $file = sys_get_temp_dir() . '/flo-admin-media-folders-migration-' . $table . '-' . getmypid() . '.php';
+        file_put_contents($file, \FloCMS\Admin\Console\Stub::render('media-folders-migration', ['table' => $table, 'folders_table' => $foldersTable]));
+        try { return require $file; } finally { @unlink($file); }
     }
 
     public static function migration(string $table = 'media', string $usage = 'media_usage'): object

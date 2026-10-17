@@ -1,0 +1,78 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * Media library folders (flocms-admin 0.18): folders are categories in the
+ * database, never directories on disk, so moving an item never changes its
+ * address. Also adds to "{{ table }}" the folder of each item, a fingerprint of
+ * its file (to notice duplicates) and its focal point.
+ *
+ * Runs after the migration that creates "{{ table }}".
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $columns = $this->columns($db, '{{ table }}');
+        if ($columns === null) {
+            throw new \RuntimeException('The table "{{ table }}" does not exist yet: run the migration that creates it first (php flo migrate runs them in order).');
+        }
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ folders_table }}` (
+            ' . $this->id($db) . ',
+            `parent_id` INTEGER NULL,
+            `name` VARCHAR(120) NOT NULL,
+            `created_at` DATETIME NULL,
+            `updated_at` DATETIME NULL
+        )' . $this->tableOptions($db));
+
+        foreach ([
+            'folder_id' => '`folder_id` INTEGER NULL',
+            'hash' => '`hash` CHAR(64) NULL',
+            'focal_x' => '`focal_x` SMALLINT NULL',
+            'focal_y' => '`focal_y` SMALLINT NULL',
+        ] as $column => $definition) {
+            if (!in_array($column, $columns, true)) {
+                $db->query('ALTER TABLE `{{ table }}` ADD ' . $definition);
+            }
+        }
+
+        foreach ([
+            '{{ folders_table }}_parent_index' => '`{{ folders_table }}` (`parent_id`)',
+            '{{ table }}_folder_index' => '`{{ table }}` (`folder_id`)',
+            '{{ table }}_hash_index' => '`{{ table }}` (`hash`)',
+        ] as $index => $on) {
+            try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }
+        }
+    }
+
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ folders_table }}`');
+        foreach (['{{ table }}_folder_index', '{{ table }}_hash_index'] as $index) {
+            try { $db->query($db->driver() === 'sqlite' ? 'DROP INDEX IF EXISTS `' . $index . '`' : 'DROP INDEX `' . $index . '` ON `{{ table }}`'); } catch (\PDOException) { /* not there */ }
+        }
+        foreach (['folder_id', 'hash', 'focal_x', 'focal_y'] as $column) {
+            // SQLite before 3.35 cannot drop columns; the empty columns then stay.
+            try { $db->query('ALTER TABLE `{{ table }}` DROP COLUMN `' . $column . '`'); } catch (\PDOException) { /* kept */ }
+        }
+    }
+
+    /** @return list<string>|null Column names, or null when the table does not exist. */
+    private function columns(Database $db, string $table): ?array
+    {
+        try {
+            if ($db->driver() === 'sqlite') {
+                $rows = $db->query('PRAGMA table_info(`' . $table . '`)')->fetchAll(\PDO::FETCH_ASSOC);
+                return $rows === [] ? null : array_map(static fn (array $row): string => strtolower((string) $row['name']), $rows);
+            }
+            $rows = $db->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll(\PDO::FETCH_ASSOC);
+            return array_map(static fn (array $row): string => strtolower((string) $row['Field']), $rows);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+};

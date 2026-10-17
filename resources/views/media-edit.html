@@ -14,9 +14,16 @@
         </dl>
     </div>
     <div class="fa-media-side">
-        <form class="fa-card fa-form fa-media-form" method="post" action="{{ $action }}"@if($hasErrors) data-dirty="true"@endif>
+        <form class="fa-card fa-form fa-media-form" method="post" action="{{ $saveUrl }}"@if($hasErrors) data-dirty="true"@endif>
             {!! $csrf !!}
-            <fieldset class="fa-media-fields"@if(!$canUpdate) disabled @endif>{!! $fields !!}</fieldset>
+            <fieldset class="fa-media-fields"@if(!$canUpdate) disabled @endif>{!! $fields !!}
+                <div class="fa-field"><label class="fa-label" for="fa-media-folder">{{ $t('media.folder') }}</label>
+                    <select class="fa-input fa-select" id="fa-media-folder" name="folder">
+                        <option value="">{{ $t('media.unfiled') }}</option>
+                        @foreach($tree as $folder)<option value="{{ $folder['id'] }}"@if($item->folderId === $folder['id']) selected @endif>{{ str_repeat('— ', $folder['depth']) . $folder['name'] }}</option>@endforeach
+                    </select>
+                </div>
+            </fieldset>
             @if($canUpdate)<div class="fa-form-actions"><button type="submit" class="fa-btn fa-btn-primary">{{ $t('actions.save') }}</button></div>@endif
         </form>
         <section class="fa-card fa-media-usage" aria-labelledby="fa-media-usage-title">
@@ -29,10 +36,10 @@
         @if($canUpdate)
         <form class="fa-card fa-media-replace" method="post" action="{{ $replaceUrl }}" enctype="multipart/form-data">
             {!! $csrf !!}
-            <h2 class="fa-section-title"><label for="fa-media-replace">{{ $t('media.replace') }}</label></h2>
+            <h2 class="fa-section-title">{{ $t('media.replace') }}</h2>
             @if($inText)<p class="fa-alert fa-alert-warning">{{ $t('media.replace_in_text') }}</p>
             @else<p class="fa-help">{{ $t('media.replace_help') }}</p>
-            <div class="fa-media-replace-row"><input class="fa-input" type="file" id="fa-media-replace" name="file" accept="{{ $accept }}" required><button type="submit" class="fa-btn">{{ $t('media.replace_button') }}</button></div>@endif
+            <div class="fa-media-replace-row">{!! $replaceDrop !!}<button type="submit" class="fa-btn">{{ $t('media.replace_button') }}</button></div>@endif
         </form>
         @endif
         @if($canDelete)

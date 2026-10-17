@@ -28,24 +28,38 @@ export async function stageUploads(form: HTMLFormElement): Promise<void> {
       body.append('_draft', JSON.stringify(values)); body.append('_token', form.dataset.uploadCsrf!);
       body.append('_operation', form.dataset.uploadOperation!); body.append('_placement', form.dataset.uploadPlacement!);
       body.append('_name', form.dataset.uploadAction!); body.append('_id', form.dataset.uploadId!);
-      const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 60000);
       input.disabled = true;
+      const notify = (name: string, detail: object) => input.dispatchEvent(new CustomEvent(name, { detail }));
       try {
-        const response = await fetch(form.dataset.uploadUrl!, { method: 'POST', body, credentials: 'same-origin', signal: controller.signal });
-        if (!response.ok) throw new Error(wrapper.dataset.uploadError || 'Upload failed. Check the file type, size, permissions, and session, then try again.');
-        const result = await response.json() as { value: string; url: string };
+        // XHR rather than fetch: it reports upload progress (shown by FileDrop).
+        const result = await new Promise<{ value: string; url: string }>((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          request.open('POST', form.dataset.uploadUrl!);
+          request.timeout = 120000;
+          request.withCredentials = true;
+          request.setRequestHeader('Accept', 'application/json');
+          const failed = () => reject(new Error(wrapper.dataset.uploadError || 'Upload failed. Check the file type, size, permissions, and session, then try again.'));
+          request.upload.addEventListener('progress', event => notify('fa-upload:progress', { loaded: event.loaded, total: event.lengthComputable ? event.total : 0 }));
+          request.addEventListener('load', () => {
+            if (request.status < 200 || request.status >= 300) { failed(); return; }
+            try { resolve(JSON.parse(request.responseText) as { value: string; url: string }); } catch { failed(); }
+          });
+          request.addEventListener('error', failed);
+          request.addEventListener('timeout', failed);
+          notify('fa-upload:progress', { loaded: 0, total: 0 });
+          request.send(body);
+        });
         wrapper.querySelector<HTMLInputElement>('[data-upload-value]')!.value = result.value;
         input.value = ''; status.className = 'fa-help'; status.textContent = wrapper.dataset.uploadReady || 'File ready to save.';
         input.removeAttribute('aria-invalid');
-        const remove = wrapper.querySelector<HTMLInputElement>('[data-upload-remove]'); if (remove) { remove.checked = false; remove.closest<HTMLElement>('label')!.hidden = false; }
-        const preview = wrapper.querySelector<HTMLImageElement>('.fa-upload-preview'); if (preview) preview.src = result.url;
-        else if (wrapper.dataset.uploadImage === 'true') {
-          const image = document.createElement('img'); image.className = 'fa-upload-preview'; image.src = result.url;
-          image.alt = input.labels?.[0]?.textContent || ''; wrapper.insertBefore(image, status);
-        }
+        const remove = wrapper.querySelector<HTMLInputElement>('[data-upload-remove], [data-filedrop-remove-box]'); if (remove) remove.checked = false;
+        notify('fa-upload:done', { url: result.url });
       } catch (error) {
-        status.className = 'fa-error'; status.textContent = error instanceof Error ? error.message : 'Upload failed.'; input.setAttribute('aria-invalid', 'true'); throw error;
-      } finally { clearTimeout(timeout); input.disabled = false; }
+        const message = error instanceof Error ? error.message : 'Upload failed.';
+        status.className = 'fa-error'; status.textContent = message; input.setAttribute('aria-invalid', 'true');
+        notify('fa-upload:failed', { message });
+        throw error;
+      } finally { input.disabled = false; }
     }
   } finally { delete form.dataset.uploadBusy; buttons.forEach(button => { button.disabled = false; }); }
 }

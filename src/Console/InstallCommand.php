@@ -49,15 +49,19 @@ final class InstallCommand extends Command
         ];
         if ($library['enabled']) {
             $migrations[] = ['media-migration', $library['table'], ['usage_table' => $library['usage_table']]];
+            // Folders, fingerprint and focal point (0.18): changes the media table, so it is written last.
+            $migrations[] = ['media-folders-migration', $library['folders_table'], ['table' => $library['table'], 'folders_table' => $library['folders_table']]];
         }
+        // Each new file a second later than the one before, so they run in this order.
+        $time = time();
         foreach ($migrations as [$stub, $name, $more]) {
             $existing = glob($project->path('database/migrations') . DIRECTORY_SEPARATOR . '*_create_' . $name . '_table.php') ?: [];
             if ($existing !== []) {
                 $this->note('A migration for "' . $name . '" already exists: ' . basename($existing[0]));
                 continue;
             }
-            $migration = 'database/migrations/' . date('Y_m_d_His') . '_create_' . $name . '_table.php';
-            if (Stub::write($project->path($migration), Stub::render($stub, ['table' => $name] + $more))) {
+            $migration = 'database/migrations/' . date('Y_m_d_His', $time++) . '_create_' . $name . '_table.php';
+            if (Stub::write($project->path($migration), Stub::render($stub, $more + ['table' => $name]))) {
                 $this->success('Created ' . $migration);
             } else {
                 $this->fail('Could not write ' . $migration . ': check the folder permissions.');

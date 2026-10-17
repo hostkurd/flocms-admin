@@ -1,72 +1,150 @@
-<div class="fa-page-head">
-    <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $t('media.description') }}</p></div>
-    @if($canUpload)
-    <div class="fa-action-group">
-        <form class="fa-media-upload" method="post" action="{{ $uploadUrl }}" enctype="multipart/form-data" data-admin-media-upload
-            data-video-url="{{ $videoUrl }}" data-csrf="{{ $csrfToken }}" data-max-image="{{ $maxImage }}" data-max-video="{{ $maxVideo }}" data-chunk="{{ $chunk }}"
-            data-text-uploading="{{ $t('media.uploading') }}" data-text-waiting="{{ $t('media.waiting') }}" data-text-done="{{ $t('media.upload_done') }}" data-text-failed="{{ $t('media.failed') }}" data-text-too-big="{{ $t('media.too_big') }}" data-text-drop="{{ $t('media.drop') }}">
-            {!! $csrf !!}
-            <label class="fa-btn fa-btn-primary fa-media-upload-button">{!! $uploadIcon !!}<span>{{ $t('media.upload') }}</span><input class="fa-sr" type="file" name="files[]" multiple accept="{{ $accept }}" data-media-files></label>
-            <button type="submit" class="fa-btn" data-media-send>{{ $t('media.send') }}</button>
-        </form>
+<div class="fa-page-head fa-mb-head">
+    <div class="fa-mb-head-text">
+        <h1 class="fa-page-title">{{ $title }}</h1>
+        <div class="fa-mb-stats" data-media-stats>
+            <span class="fa-mb-stat">{!! $t('media.stat_items', ['count' => '<b>' . $stats['items'] . '</b>']) !!}</span>
+            <span class="fa-mb-stat">{!! $t('media.stat_kinds', ['images' => '<b>' . $stats['images'] . '</b>', 'videos' => '<b>' . $stats['videos'] . '</b>']) !!}</span>
+            <span class="fa-mb-stat">{!! $t('media.stat_size', ['size' => '<b>' . $stats['size'] . '</b>']) !!}</span>
+            @if($stats['no_alt'] > 0)<a class="fa-mb-stat is-warning" href="{{ $listUrl }}?status=no_alt">{!! $t('media.stat_no_alt', ['count' => '<b>' . $stats['no_alt'] . '</b>']) !!}</a>@endif
+        </div>
     </div>
-    @endif
+    <div class="fa-action-group">
+        @if($canUpdate)<a class="fa-btn" href="#fa-mb-new-folder" data-media-new-folder>{!! $folderIcon !!}<span>{{ $t('media.new_folder') }}</span></a>@endif
+        @if($canUpload)<a class="fa-btn fa-btn-primary" href="#fa-media-upload" data-media-upload-button>{!! $uploadIcon !!}<span>{{ $t('media.upload') }}</span></a>@endif
+    </div>
 </div>
-<div class="fa-card fa-media-library" data-admin-media-library>
-    @if($canUpload)<p class="fa-media-limits fa-muted">{{ $limits }}</p>
-    <ul class="fa-media-progress" data-media-progress aria-live="polite"></ul>@endif
-    <form class="fa-list-toolbar fa-media-toolbar" method="get" action="{{ $listUrl }}" role="search">
-        <span class="fa-search">
-            {!! $searchIcon !!}
-            <label class="fa-sr" for="fa-media-search">{{ $t('media.search') }}</label>
-            <input type="search" id="fa-media-search" name="q" value="{{ $term }}" placeholder="{{ $t('media.search') }}" class="fa-input" maxlength="100">
-        </span>
-        <label class="fa-sr" for="fa-media-kind">{{ $t('media.kind') }}</label>
-        <select id="fa-media-kind" name="kind" class="fa-input fa-select fa-media-kind">
-            <option value="">{{ $t('media.all') }}</option>
-            <option value="image"@if($kind === 'image') selected @endif>{{ $t('media.images') }}</option>
-            <option value="video"@if($kind === 'video') selected @endif>{{ $t('media.videos') }}</option>
-        </select>
-        <label class="fa-check"><input type="checkbox" name="unused" value="1"@if($unused) checked @endif> {{ $t('media.unused') }}</label>
-        <button type="submit" class="fa-btn">{{ $t('filters.apply') }}</button>
-        @if($hasFilters)<a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>@endif
-    </form>
-    @if(count($items) > 0)
-    <form method="post" action="{{ $deleteUrl }}" data-confirm id="fa-media-bulk">
-        {!! $csrf !!}
-        <input type="hidden" name="_back" value="{{ $pageUrl($page) }}">
-        <ul class="fa-media-grid">
-            @foreach($items as $item)
-            <li class="fa-media-tile{{ $item['used'] ? '' : ' is-unused' }}">
-                <a class="fa-media-link" href="{{ $item['editUrl'] }}">
-                    <span class="fa-media-box">
-                        @if($item['kind'] === 'image')<img src="{{ $item['thumb'] }}" alt="{{ $item['alt'] }}" loading="lazy"@if($item['thumbWidth'] !== null) width="{{ $item['thumbWidth'] }}" height="{{ $item['thumbHeight'] }}"@endif>
-                        @else<span class="fa-media-video">{!! $videoIcon !!}</span>@endif
-                    </span>
-                    <span class="fa-media-name" dir="auto">{{ $item['label'] }}</span>
-                </a>
-                @if(!$item['used'])<span class="fa-badge fa-badge-gray fa-media-unused">{{ $t('media.not_used') }}</span>@endif
-                @if($canDelete && $unused && !$item['used'])<label class="fa-media-pick"><input type="checkbox" name="ids[]" value="{{ $item['id'] }}" aria-label="{{ $t('media.select_item', ['name' => $item['label']]) }}"></label>@endif
-            </li>
-            @endforeach
-        </ul>
-        @if($canDelete && $unused)<div class="fa-media-bulk"><button type="submit" class="fa-btn fa-btn-danger-outline fa-btn-sm">{{ $t('media.delete_selected') }}</button></div>@endif
-    </form>
-    <div class="fa-table-foot">
-        <span class="fa-muted">{{ $t('media.count', ['count' => $total]) }}</span>
-        @if($pages > 1)
-        <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
-            @if($page > 1)<a class="fa-page-link fa-page-step" href="{{ $pageUrl($page - 1) }}" rel="prev" aria-label="{{ $t('table.previous') }}">{!! $prevIcon !!}</a>@endif
-            @foreach($pageNumbers as $number)
-            @if($number === null)<span class="fa-page-gap">…</span>
-            @elseif($number === $page)<span class="fa-page-link is-current" aria-current="page">{{ $number }}</span>
-            @else<a class="fa-page-link" href="{{ $pageUrl($number) }}" aria-label="{{ $t('table.page', ['page' => $number]) }}">{{ $number }}</a>@endif
-            @endforeach
-            @if($page < $pages)<a class="fa-page-link fa-page-step" href="{{ $pageUrl($page + 1) }}" rel="next" aria-label="{{ $t('table.next') }}">{!! $nextIcon !!}</a>@endif
-        </nav>
+
+@if($canUpload)
+<form class="fa-mb-upload" id="fa-media-upload" method="post" action="{{ $uploadUrl }}" enctype="multipart/form-data" data-media-upload-form>
+    {!! $csrf !!}
+    <input type="hidden" name="_back" value="{{ $currentUrl }}">
+    <input type="hidden" name="duplicates" value="keep">
+    @if(is_int($query['folder']))<input type="hidden" name="folder" value="{{ $query['folder'] }}">@endif
+    {!! $upload !!}
+    <button type="submit" class="fa-btn" data-media-send>{{ $t('media.send') }}</button>
+</form>
+@endif
+
+<div class="fa-card fa-mb" data-media-browser="{{ $browser }}">
+    <nav class="fa-mb-tree" aria-label="{{ $t('media.folders') }}">
+        <p class="fa-mb-tree-head">{{ $t('media.folders') }}</p>
+        <a class="fa-mb-folder{{ $query['folder'] === null ? ' is-active' : '' }}" href="{{ $folderUrl(null) }}"@if($query['folder'] === null) aria-current="true"@endif>{!! $allIcon !!}<span class="fa-mb-folder-name">{{ $t('media.all_media') }}</span><span class="fa-mb-count">{{ $folderCounts['all'] }}</span></a>
+        <a class="fa-mb-folder{{ $query['folder'] === 'unfiled' ? ' is-active' : '' }}" href="{{ $folderUrl('unfiled') }}"@if($query['folder'] === 'unfiled') aria-current="true"@endif>{!! $folderIcon !!}<span class="fa-mb-folder-name">{{ $t('media.unfiled') }}</span><span class="fa-mb-count">{{ $folderCounts['unfiled'] }}</span></a>
+        @if(count($tree) > 0)<span class="fa-mb-tree-sep" role="presentation"></span>@endif
+        @foreach($tree as $folder)
+        <a class="fa-mb-folder{{ $query['folder'] === $folder['id'] ? ' is-active' : '' }}" style="--depth: {{ $folder['depth'] }}" href="{{ $folderUrl($folder['id']) }}"@if($query['folder'] === $folder['id']) aria-current="true"@endif>{!! $folderIcon !!}<span class="fa-mb-folder-name" dir="auto">{{ $folder['name'] }}</span><span class="fa-mb-count">{{ $folder['count'] }}</span></a>
+        @endforeach
+        @if($canUpdate)
+        <form class="fa-mb-folder-form" id="fa-mb-new-folder" method="post" action="{{ $foldersUrl }}/create">
+            {!! $csrf !!}
+            <input type="hidden" name="_back" value="{{ $currentUrl }}">
+            @if(is_int($query['folder']))<input type="hidden" name="parent" value="{{ $query['folder'] }}">@endif
+            <label for="fa-mb-folder-name">{{ is_int($query['folder']) ? $t('media.new_folder_in', ['folder' => $folderLabel]) : $t('media.new_folder') }}</label>
+            <input class="fa-input" id="fa-mb-folder-name" name="name" maxlength="120" required>
+            <button type="submit" class="fa-btn fa-btn-sm">{{ $t('media.create_folder') }}</button>
+        </form>
+        @if($currentFolder !== null)
+        <form class="fa-mb-folder-form" method="post" action="{{ $foldersUrl }}/rename/{{ $currentFolder['id'] }}">
+            {!! $csrf !!}
+            <input type="hidden" name="_back" value="{{ $currentUrl }}">
+            <label for="fa-mb-rename">{{ $t('media.rename_folder') }}</label>
+            <input class="fa-input" id="fa-mb-rename" name="name" value="{{ $currentFolder['name'] }}" maxlength="120" required>
+            <button type="submit" class="fa-btn fa-btn-sm">{{ $t('actions.save') }}</button>
+        </form>
+        <form class="fa-mb-folder-form" method="post" action="{{ $foldersUrl }}/delete/{{ $currentFolder['id'] }}" data-confirm>
+            {!! $csrf !!}
+            <input type="hidden" name="_back" value="{{ $currentUrl }}">
+            <p class="fa-help">{{ $t('media.delete_folder_help') }}</p>
+            <button type="submit" class="fa-btn fa-btn-sm fa-btn-danger-outline">{{ $t('media.delete_folder') }}</button>
+        </form>
+        @endif
+        @endif
+    </nav>
+
+    <div class="fa-mb-pane">
+        <form class="fa-mb-toolbar" method="get" action="{{ $listUrl }}" role="search">
+            @if($query['folder'] !== null)<input type="hidden" name="folder" value="{{ $query['folder'] }}">@endif
+            <span class="fa-search fa-mb-search">
+                {!! $searchIcon !!}
+                <label class="fa-sr" for="fa-media-search">{{ $t('media.search') }}</label>
+                <input type="search" id="fa-media-search" name="q" value="{{ $query['q'] }}" placeholder="{{ $t('media.search_placeholder') }}" class="fa-input" maxlength="100">
+            </span>
+            <label class="fa-sr" for="fa-media-kind">{{ $t('media.kind') }}</label>
+            <select id="fa-media-kind" name="kind" class="fa-input fa-select">
+                <option value="">{{ $t('media.all_types') }}</option>
+                <option value="image"@if($query['kind'] === 'image') selected @endif>{{ $t('media.images') }}</option>
+                <option value="video"@if($query['kind'] === 'video') selected @endif>{{ $t('media.videos') }}</option>
+            </select>
+            <label class="fa-sr" for="fa-media-status">{{ $t('media.status') }}</label>
+            <select id="fa-media-status" name="status" class="fa-input fa-select">
+                <option value="">{{ $t('media.any_status') }}</option>
+                <option value="unused"@if($query['status'] === 'unused') selected @endif>{{ $t('media.unused') }}</option>
+                <option value="no_alt"@if($query['status'] === 'no_alt') selected @endif>{{ $t('media.no_alt') }}</option>
+            </select>
+            <label class="fa-sr" for="fa-media-sort">{{ $t('media.sort') }}</label>
+            <select id="fa-media-sort" name="sort" class="fa-input fa-select">
+                @foreach(['newest', 'oldest', 'name', 'largest'] as $sort)<option value="{{ $sort }}"@if($query['sort'] === $sort) selected @endif>{{ $t('media.sort_' . $sort) }}</option>@endforeach
+            </select>
+            @if($query['folder'] !== null)<label class="fa-check"><input type="checkbox" name="scope" value="folder"@if($query['scope'] === 'folder') checked @endif> {{ $t('media.this_folder_only') }}</label>@endif
+            <button type="submit" class="fa-btn">{{ $t('filters.apply') }}</button>
+            @if($hasFilters)<a class="fa-btn fa-btn-ghost" href="{{ $clearUrl }}">{{ $t('filters.clear') }}</a>@endif
+        </form>
+
+        @if(count($items) > 0)
+        <form method="post" action="{{ $moveUrl }}" id="fa-mb-batch">
+            {!! $csrf !!}
+            <input type="hidden" name="_back" value="{{ $currentUrl }}">
+            @if($canUpdate || $canDelete)
+            <div class="fa-mb-batch">
+                <span class="fa-mb-batch-count">{{ $t('media.with_selected') }}</span>
+                @if($canUpdate)
+                <label class="fa-sr" for="fa-mb-move-to">{{ $t('media.move_to') }}</label>
+                <select class="fa-input fa-select" id="fa-mb-move-to" name="folder">
+                    <option value="">{{ $t('media.unfiled') }}</option>
+                    @foreach($tree as $folder)<option value="{{ $folder['id'] }}">{{ str_repeat('— ', $folder['depth']) . $folder['name'] }}</option>@endforeach
+                </select>
+                <button type="submit" class="fa-btn fa-btn-sm">{{ $t('media.move') }}</button>
+                @endif
+                @if($canDelete)<button type="submit" class="fa-btn fa-btn-sm fa-btn-danger-outline" formaction="{{ $deleteUrl }}" data-confirm>{{ $t('media.delete_selected') }}</button>@endif
+            </div>
+            @endif
+            <p class="fa-mb-crumbs">@if($query['folder'] !== null && $query['folder'] !== 'unfiled')<b dir="auto">{{ $folderLabel }}</b>@elseif($query['folder'] === 'unfiled')<b>{{ $t('media.unfiled') }}</b>@else<b>{{ $t('media.all_media') }}</b>@endif <span class="fa-muted">· {{ $t('media.count', ['count' => $total]) }}</span></p>
+            <ul class="fa-mb-grid">
+                @foreach($items as $item)
+                <li class="fa-mb-tile">
+                    @if($canUpdate || $canDelete)<label class="fa-mb-check"><input type="checkbox" name="ids[]" value="{{ $item['id'] }}" aria-label="{{ $t('media.select_item', ['name' => $item['label']]) }}"></label>@endif
+                    <a class="fa-mb-link" href="{{ $item['editUrl'] }}">
+                        <span class="fa-mb-img">
+                            @if($item['kind'] === 'image')<img src="{{ $item['thumb'] }}" alt="" loading="lazy"@if($item['thumbWidth'] !== null) width="{{ $item['thumbWidth'] }}" height="{{ $item['thumbHeight'] }}"@endif>
+                            @else<span class="fa-mb-video">{!! $videoIcon !!}</span>@endif
+                            <span class="fa-mb-badges">
+                                @if($item['kind'] === 'image' && !$item['hasAlt'])<span class="fa-badge fa-badge-yellow">{{ $t('media.no_alt_short') }}</span>@endif
+                                @if($item['used'] === 0)<span class="fa-badge fa-badge-gray">{{ $t('media.not_used') }}</span>@endif
+                            </span>
+                        </span>
+                        <span class="fa-mb-name" dir="auto">{{ $item['label'] }}</span>
+                        <span class="fa-mb-sub">{{ $item['dims'] !== '' ? $item['dims'] . ' · ' : '' }}{{ $item['size'] }}</span>
+                    </a>
+                </li>
+                @endforeach
+            </ul>
+        </form>
+        <div class="fa-table-foot">
+            <span class="fa-muted">{{ $t('media.count', ['count' => $total]) }}</span>
+            @if($pages > 1)
+            <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
+                @if($page > 1)<a class="fa-page-link fa-page-step" href="{{ $pageUrl($page - 1) }}" rel="prev" aria-label="{{ $t('table.previous') }}">{!! $prevIcon !!}</a>@endif
+                @foreach($pageNumbers as $number)
+                @if($number === null)<span class="fa-page-gap">…</span>
+                @elseif($number === $page)<span class="fa-page-link is-current" aria-current="page">{{ $number }}</span>
+                @else<a class="fa-page-link" href="{{ $pageUrl($number) }}" aria-label="{{ $t('table.page', ['page' => $number]) }}">{{ $number }}</a>@endif
+                @endforeach
+                @if($page < $pages)<a class="fa-page-link fa-page-step" href="{{ $pageUrl($page + 1) }}" rel="next" aria-label="{{ $t('table.next') }}">{!! $nextIcon !!}</a>@endif
+            </nav>
+            @endif
+        </div>
+        @else
+        <div class="fa-blank"><p>{{ $hasFilters ? $t('media.no_results') : ($query['folder'] !== null ? $t('media.folder_empty') : $t('media.empty')) }}</p></div>
         @endif
     </div>
-    @else
-    <div class="fa-blank"><p>{{ $hasFilters ? $t('media.no_results') : $t('media.empty') }}</p></div>
-    @endif
 </div>
