@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.15.5
+
+Update with `composer require "hostkurd/flocms-admin:^0.15.5" -W`, run `php flo view:clear` and reload open Admin pages. Nothing else changes.
+
+---
+
 # Upgrading to Admin 0.15.4
 
 Update with `composer require "hostkurd/flocms-admin:^0.15.4" -W`, run `php flo view:clear` and reload open Admin pages. No migration. The `.fa-input-row` around a translatable input no longer has a `dir` attribute (the input keeps its own); site CSS or tests that relied on it should use the input's `dir`.

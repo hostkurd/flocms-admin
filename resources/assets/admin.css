@@ -295,10 +295,10 @@ body:has(> .fa-panel){margin:0}
 .fa-input-row{position:relative;display:block}
 /* The badge sits inside the input's end edge (top corner for long text). */
 /* The input may have another direction than the page (English text on an Arabic page): reserve the badge's room on the page's side. */
-.fa-panel .fa-input-row > .fa-input{padding-left:12px;padding-right:96px}
-.fa-panel .fa-input-row:dir(rtl) > .fa-input{padding-right:12px;padding-left:96px}
-.fa-panel .fa-input-row.is-many > .fa-input{padding-right:140px}
-.fa-panel .fa-input-row.is-many:dir(rtl) > .fa-input{padding-right:12px;padding-left:140px}
+.fa-panel .fa-input-row{--fa-lang-badge-space:96px}.fa-panel .fa-input-row.is-many{--fa-lang-badge-space:140px}
+.fa-panel .fa-input-row > .fa-input{padding-left:12px;padding-right:var(--fa-lang-badge-space);text-align:left}
+/* Right-to-left pages: the badge is on the left and the text sits on the right like in every other field, whatever language it is in (its own direction keeps punctuation in place). */
+.fa-panel .fa-input-row:dir(rtl) > .fa-input{padding-right:12px;padding-left:var(--fa-lang-badge-space);text-align:right}
 .fa-lang-badge{position:absolute;inset-inline-end:5px;inset-block-start:5px;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px;border:0;border-radius:var(--fa-radius-sm);background:var(--fa-primary-soft);cursor:pointer;font:650 15px/1 var(--fa-mono);letter-spacing:.02em;text-transform:uppercase;color:var(--fa-primary-text)}
 .fa-lang-badge .fa-dot{width:7px;height:7px}
 .fa-lang-badge:hover{background:color-mix(in srgb,var(--fa-primary-soft) 70%,var(--fa-primary-border))}
