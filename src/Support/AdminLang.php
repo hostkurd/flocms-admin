@@ -32,6 +32,21 @@ final class AdminLang
     }
 
     /**
+     * $key . $suffix when that wording exists where $key would be read from, else
+     * $key (0.19.1). A site that changed or added a language for "bulk.confirm"
+     * but not "bulk.confirm_one" keeps its own wording instead of the package's.
+     */
+    public static function variant(string $key, string $suffix): string
+    {
+        $variant = $key . $suffix;
+        if (self::site('admin.' . $variant) !== null) { return $variant; }
+        if (self::site('admin.' . $key) !== null) { return $key; }
+        $lang = self::language();
+        if (isset(self::file($lang)[$key])) { return isset(self::file($lang)[$variant]) ? $variant : $key; }
+        return isset(self::file('en')[$variant]) ? $variant : $key;
+    }
+
+    /**
      * A label written by a developer: a key of the site's lang file
      * ("admin.properties") is translated, any other text is shown as written.
      */

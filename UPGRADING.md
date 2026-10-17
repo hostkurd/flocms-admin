@@ -3,7 +3,7 @@
 Update with `composer require "hostkurd/flocms-admin:^0.19.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
 
 - Form and action dialogs are now as tall as their content (before, their body was at least 150 px). To keep room, for example for a form whose fields appear as you choose, set `'dialog_min_height' => 240` in `config/admin.php`, or `->modalMinHeight(320)` on one action.
-- Bulk confirmations for a single record use new keys (`bulk.confirm_one`, `bulk.confirm_trash_one`, `bulk.confirm_trash_kept_one`, `bulk.confirm_delete_one`). Site tests that looked for "1 selected records" should look for "the selected record".
+- Bulk confirmations for a single record use new keys (`bulk.confirm_one`, `bulk.confirm_trash_one`, `bulk.confirm_trash_kept_one`, `bulk.confirm_delete_one`). A site that translates or changes `admin.bulk.confirm*` in its own lang files keeps its wording until it adds the `_one` keys too. Site tests that looked for "1 selected records" should look for "the selected record".
 
 ---
 

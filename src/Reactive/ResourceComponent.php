@@ -269,6 +269,7 @@ final class ResourceComponent extends Component
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
             'uploadUrl' => Admin::url($resource::getSlug() . '/upload'), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
+            'formShowsFields' => array_filter($form->fields(), static fn ($field): bool => $field->isVisible() && !$field instanceof \FloCMS\Admin\Form\Fields\Hidden) !== [],
             // No body for a confirmation without fields (it only padded the dialog).
             'formFields' => $form->components() === [] && $form->asideComponents() === [] ? '' : (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record),
                 in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/media') : null, $this->operation,

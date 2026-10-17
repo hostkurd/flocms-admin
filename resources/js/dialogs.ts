@@ -99,7 +99,7 @@ document.addEventListener('change', event => {
   if (select instanceof HTMLSelectElement && select.hasAttribute('data-admin-autosubmit')) select.form?.requestSubmit();
 });
 
-const LENGTH = /^(?:0|\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh))$/;
+const LENGTH = /^\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh)$/;
 
 /** Reserve the room the panel or an action asks for in dialog bodies; clear it when no longer asked. */
 export function applyDialogMinHeights(): void {

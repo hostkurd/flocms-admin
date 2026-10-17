@@ -114,7 +114,7 @@
     <form data-rx-submit="{{ $submitAction }}" data-admin-draft data-upload-url="{{ $uploadUrl }}" data-upload-operation="{{ $uploadOperation }}" data-upload-placement="{{ $uploadPlacement }}" data-upload-action="{{ $uploadAction }}" data-upload-id="{{ $uploadId }}" data-upload-csrf="{{ $uploadCsrf }}" novalidate>
         <input type="hidden" data-rx-bind="draft" value="">
         @if(in_array($mode, ['custom', 'delete', 'bulk'], true))<p class="fa-confirm-text">{{ $actionDescription }}</p>@endif
-        @if($formFields !== '')<div class="fa-dialog-body">{!! $formFields !!}</div>@endif
+        @if($formFields !== '')<div class="fa-dialog-body{{ $formShowsFields ? '' : ' is-empty' }}">{!! $formFields !!}</div>@endif
         <div class="fa-dialog-foot"><span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span><span class="fa-toolbar-spacer"></span><button type="button" class="fa-btn" data-rx-dialog-close="editor">{{ $t('actions.cancel') }}</button><button type="submit" class="fa-btn{{ $submitColor === 'default' ? ' fa-btn-primary' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button></div>
     </form>
     @endif

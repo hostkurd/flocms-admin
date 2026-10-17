@@ -107,8 +107,11 @@ final class AdminConfig
     /** A non-negative CSS length (an int is pixels), or null when unset or invalid. */
     public static function cssLength(mixed $value): ?string
     {
-        if (is_int($value) && $value >= 0 && $value <= 2000) { return $value . 'px'; }
-        if (is_string($value) && preg_match('/^(?:0|\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh))$/D', trim($value)) === 1) { return trim($value); }
+        if (is_string($value) && preg_match('/^\d{1,4}(?:\.\d{1,3})?$/D', trim($value)) === 1) { $value = (float) trim($value); }
+        if ((is_int($value) || is_float($value)) && is_finite((float) $value) && $value >= 0 && $value <= 2000) {
+            return rtrim(rtrim(number_format((float) $value, 3, '.', ''), '0'), '.') . 'px';
+        }
+        if (is_string($value) && preg_match('/^\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh)$/D', trim($value)) === 1) { return trim($value); }
         return null;
     }
 
