@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.15.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.15.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration is needed; nothing changes until a resource uses the new relation fields.
+
+- **Using relations**: see `docs/relationships.md`. A `BelongsTo` column should allow `NULL` unless the field is `required()`; a `BelongsToMany` needs its pivot table. Run `php flo admin:doctor` afterwards: it checks the tables and suggests foreign keys.
+- **Custom columns and filters**: classes that extend `Column` or `Filter` and already define a method named `prepareRecords`, `isDatabaseColumn`, `renderFilterInput`, `describeFilterValue` or `emptyFilterValue` must rename it (these names are now used by the panel). The same applies to `storesInColumn`, `saveRelated` and `submitted` on custom `Field` classes.
+- **Deletes**: `RecordRepository::delete()` now runs in a transaction and turns a foreign-key refusal into a `ValidationException` with a readable message; code that caught `PDOException` around it should catch `FloCMS\Core\ValidationException`.
+
+---
+
 # Upgrading to Admin 0.14.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.14.0" -W`, then:

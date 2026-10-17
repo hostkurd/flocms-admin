@@ -176,7 +176,7 @@ final class DoctorCommand extends Command
         foreach ($table->getColumns() as $name => $column) {
             if ($column->isDatabaseColumn()) { $needed[$name] ??= 'list column'; }
         }
-        foreach ($table->getFilters() as $filter) { $needed[$filter->getColumn()] ??= 'filter column'; }
+        foreach ($table->getFilters() as $filter) { if (!($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter && $filter->getPivot() !== null)) { $needed[$filter->getColumn()] ??= 'filter column'; } }
         foreach ($extraColumns as $name) {
             $needed[$name] = 'set on create';
         }

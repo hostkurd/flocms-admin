@@ -2,6 +2,28 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.15.0 - 2026-10-17
+
+Relationship fields, relation columns and relation filters. No new dependency, migration or table: relations use the site's own columns and pivot tables. See the [Relationships guide](docs/relationships.md).
+
+### Fields
+
+- `BelongsTo::make('city_id')->resource(CityResource::class)`: the related key in this table's column. `->resource()` takes the table, key, title column, translations and `query()` scope from the related resource; `->table('brands', 'name')` for a table without one; `->titleColumn()`. The key is validated against the related table within its scope; a record is never its own parent; a value that left the scope later stays valid while unchanged.
+- `->dependsOn('country_id')`: only related records matching another field (cities of the chosen country), checked on save; a new parent clears a choice that no longer matches.
+- `BelongsToMany::make('features')->resource(…)->pivot('property_feature', 'property_id', 'feature_id')`: chips with search; pivot rows written as a difference in the record's save transaction, `->orderColumn('sort')` keeps the chosen order, `->max(n)`; pivot rows removed when the record is deleted (also row-menu and bulk deletes). A form that does not send the field keeps its links.
+- A searchable combobox (keyboard, right to left): related tables up to 50 rows are filtered in the page, larger ones searched on the server through `GET /admin/<slug>/lookup/<field>` (declared relations only; create/update permission for fields, view for filters; at most 20 results). Native selects without JavaScript (the first 200 records plus the chosen ones).
+
+### Lists
+
+- `RelationColumn`: related titles in the admin's language, loaded once per page; many-to-many with `->pivot()`, `->limit(3)` and "+n". Records widgets accept one-to-one relation columns.
+- `RelationFilter`: the same combobox in the Filters menu (several choices for many-to-many: records having any of them), chips with related titles, in both list modes and bookmarks.
+
+### Other
+
+- A delete refused by a foreign key shows "This City is still used by other records, so it was not deleted." instead of an error page.
+- `admin:doctor` checks related and pivot tables and their columns, and suggests a foreign key for each `BelongsTo` without one.
+- Extension points: `Field::storesInColumn()`, `Field::saveRelated()`, `Field::submitted()`, `Column::prepareRecords()`, `Column::isDatabaseColumn()`, `Filter::renderFilterInput()`, `Filter::describeFilterValue()`, `Filter::emptyFilterValue()`. `RecordRepository::delete()` runs in a transaction.
+
 ## 0.14.0 - 2026-10-17
 
 Website settings, panel settings, personal preferences and a Columns button. Two new tables, created by migrations that `php flo admin:install` writes; nothing changes until they are migrated. See the [Settings guide](docs/settings.md).

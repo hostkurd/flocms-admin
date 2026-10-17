@@ -30,6 +30,9 @@ final class {{ class }} extends Resource
     {
         return $form->schema([
             TextInput::make('title')->translatable()->rules('required|max:190')->columnSpan(2),
+            // Related records (see docs/relationships.md in flocms-admin):
+            // \FloCMS\Admin\Form\Fields\BelongsTo::make('category_id')->resource(CategoryResource::class),
+            // \FloCMS\Admin\Form\Fields\BelongsToMany::make('tags')->resource(TagResource::class)->pivot('{{ table }}_tags', 'item_id', 'tag_id'),
         ]);
     }
 
