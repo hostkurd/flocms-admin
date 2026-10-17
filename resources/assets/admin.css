@@ -381,7 +381,7 @@ body:has(> .fa-panel){margin:0}
 .fa-editor .fa-dialog-title{font-size:17px}
 .fa-panel .fa-dialog-close{margin-inline-end:-6px}
 .fa-editor .fa-dialog-foot{border-end-start-radius:var(--fa-radius-xl);border-end-end-radius:var(--fa-radius-xl)}
-.fa-editor .fa-dialog-body{max-height:calc(100dvh - 220px)}
+.fa-editor .fa-dialog-body{max-height:calc(100dvh - 220px);min-block-size:min(240px,calc(100dvh - 220px))}
 .fa-editor [data-admin-full-page]{padding:0 24px 14px}
 .fa-editor .fa-confirm-text,.fa-editor>.fa-alert{padding:16px 24px}
 .fa-modal-status:empty{display:none}.fa-modal-status{padding:8px 24px}
@@ -412,7 +412,12 @@ body:has(> .fa-panel){margin:0}
 .fa-notification.fa-alert-warning{background:var(--fa-warning-soft);color:var(--fa-warning);border-color:var(--fa-warning-border)}
 .fa-notification.fa-alert-danger{background:var(--fa-danger-soft);color:var(--fa-danger);border-color:var(--fa-danger-border)}
 .fa-notification.fa-alert-info{background:var(--fa-info-soft);color:var(--fa-info);border-color:var(--fa-info-border)}
-.fa-toasts{position:fixed;inset-block-end:16px;inset-inline-end:16px;width:min(390px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;z-index:50}.fa-toasts:empty{display:none}
+.fa-toasts{position:fixed;inset-block-end:4px;inset-inline-end:4px;width:min(414px,calc(100vw - 8px));max-height:calc(100dvh - 8px);overflow-y:auto;padding:12px;z-index:50;display:flex;flex-direction:column;gap:10px}.fa-toasts:empty{display:none}
+/* The container scrolls when many are open; its padding leaves room for the shadows so they are not cut into grey bands. */
+.fa-toasts .fa-notification{margin:0;align-items:center;box-shadow:0 1px 2px rgba(16,24,40,.06),0 6px 16px rgba(16,24,40,.08);animation:fa-toast-in .2s ease-out}
+.fa-toasts .fa-notification.is-leaving{opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease}
+@keyframes fa-toast-in{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.fa-toasts .fa-notification{animation:none}.fa-toasts .fa-notification.is-leaving{transition:none}}
 /* Toasts float over page content: tint an opaque surface rather than show a translucent one. */
 .fa-toasts .fa-notification{background-color:var(--fa-surface);background-image:linear-gradient(var(--fa-toast-tint,transparent),var(--fa-toast-tint,transparent))}
 .fa-toasts .fa-notification.fa-alert-success{--fa-toast-tint:var(--fa-success-soft)}.fa-toasts .fa-notification.fa-alert-warning{--fa-toast-tint:var(--fa-warning-soft)}.fa-toasts .fa-notification.fa-alert-danger{--fa-toast-tint:var(--fa-danger-soft)}.fa-toasts .fa-notification.fa-alert-info{--fa-toast-tint:var(--fa-info-soft)}

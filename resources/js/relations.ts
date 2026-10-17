@@ -41,6 +41,7 @@ class RelationControl {
   private request: AbortController | null = null;
   private timer = 0;
   private chosen: Option[] = [];
+  private readonly reposition = () => this.place();
 
   constructor(private readonly root: HTMLElement) {
     this.select = root.querySelector<HTMLSelectElement>('[data-relation-select]')!;
@@ -268,7 +269,12 @@ class RelationControl {
       item.textContent = message || text(this.strings, 'none');
       this.list.append(item);
     }
+    if (this.list.hidden) {
+      window.addEventListener('scroll', this.reposition, { capture: true, passive: true });
+      window.addEventListener('resize', this.reposition, { passive: true });
+    }
     this.list.hidden = false;
+    this.place();
     this.input.setAttribute('aria-expanded', 'true');
     this.status.textContent = options.length ? text(this.strings, 'results', { count: String(options.length) }) : (message || text(this.strings, 'none'));
     if (options.length) this.highlight(0);
@@ -294,8 +300,40 @@ class RelationControl {
     window.clearTimeout(this.timer);
     this.request?.abort();
     this.list.hidden = true;
+    window.removeEventListener('scroll', this.reposition, { capture: true });
+    window.removeEventListener('resize', this.reposition);
     this.input.setAttribute('aria-expanded', 'false');
     this.input.removeAttribute('aria-activedescendant');
+  }
+
+  /**
+   * The list floats over the page (position: fixed) so a dialog or any scrolling
+   * box never clips it or grows a scroll bar; it opens upwards when there is more
+   * room above. Lists drawn in place (the Filters menu) are left alone.
+   */
+  private place(): void {
+    if (this.list.hidden) return;
+    const style = this.list.style;
+    if (this.root.closest('.fa-filters')) { style.cssText = ''; return; }
+    const box = (this.list.parentElement as HTMLElement).getBoundingClientRect();
+    // The field scrolled out of sight (out of the window or of its dialog's body): close rather than float alone
+    const clip = this.root.closest('.fa-dialog-body')?.getBoundingClientRect();
+    if (box.bottom < Math.max(0, clip?.top ?? 0) || box.top > Math.min(window.innerHeight, clip?.bottom ?? Infinity)) { this.close(); return; }
+    const margin = 8;
+    const below = window.innerHeight - box.bottom - margin;
+    const above = box.top - margin;
+    style.position = 'fixed';
+    style.inset = 'auto';
+    style.left = `${box.left}px`;
+    style.width = `${box.width}px`;
+    style.maxBlockSize = '';
+    const wanted = Math.min(this.list.scrollHeight + 2, 256);
+    const up = below < wanted && above > below;
+    const room = Math.max(96, Math.min(256, (up ? above : below) - 4));
+    style.maxBlockSize = `${room}px`;
+    if (up) style.bottom = `${window.innerHeight - box.top + 4}px`;
+    else style.top = `${box.bottom + 4}px`;
+    this.list.classList.toggle('is-above', up);
   }
 
   private pick(index: number): void {

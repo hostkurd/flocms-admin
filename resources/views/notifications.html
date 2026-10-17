@@ -1,6 +1,6 @@
 <div id="fa-{{ $key }}-notification-deliveries" data-admin-notification-payload>
     @foreach($notifications as $notification)
-    <div class="fa-notification fa-alert-{{ $notification['level'] }}" role="{{ in_array($notification['level'], ['danger', 'warning'], true) ? 'alert' : 'status' }}" lang="{{ $notification['lang'] }}" dir="{{ $notification['dir'] }}" data-admin-notice data-admin-notification="{{ $notification['id'] }}">
+    <div class="fa-notification fa-alert-{{ $notification['level'] }}" role="{{ in_array($notification['level'], ['danger', 'warning'], true) ? 'alert' : 'status' }}" lang="{{ $notification['lang'] }}" dir="{{ $notification['dir'] }}" data-admin-notice data-admin-notification="{{ $notification['id'] }}" data-admin-notification-duration="{{ $notification['duration'] }}">
         <div><p class="fa-notification-title">{{ $notification['title'] }}</p>@if($notification['body'] !== '')<p class="fa-notification-body">{{ $notification['body'] }}</p>@endif</div>
         <button type="button" class="fa-icon-btn" data-admin-notification-dismiss aria-label="{{ $notification['dismiss'] }}">×</button>
     </div>

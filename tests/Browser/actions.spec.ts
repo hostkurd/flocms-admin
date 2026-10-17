@@ -93,6 +93,30 @@ test('page and toolbar definitions use the shared action renderer and notificati
   await stable(page);
 });
 
+test('info and success close by themselves (hover pauses), warnings stay until dismissed', async ({ page }) => {
+  await page.clock.install();
+  await ready(page);
+  // Warning: stays
+  await page.locator('[data-admin-action=announce][data-admin-placement=page]').click();
+  await editor(page).getByRole('button', { name: 'Announcement', exact: true }).click();
+  await expect(notices(page)).toHaveAttribute('data-admin-notification-duration', '0');
+  // Info: 5 seconds, paused while the pointer is on it
+  await page.locator('[data-admin-action=help][data-admin-placement=table]').click();
+  await expect(notices(page)).toHaveCount(2);
+  const info = notices(page).last();
+  await expect(info).toHaveAttribute('data-admin-notification-duration', '5');
+  await info.hover();
+  await page.clock.runFor(8000);
+  await expect(notices(page)).toHaveCount(2);
+  await page.mouse.move(5, 5);
+  await page.clock.runFor(3000);
+  await expect(notices(page)).toHaveCount(1);
+  await expect(notices(page)).toContainText('Review pending drafts.');
+  await page.clock.runFor(60000);
+  await expect(notices(page)).toHaveCount(1);
+  await stable(page);
+});
+
 test('duplicate attempts do not repeat a custom mutation and stale snapshots are rejected', async ({ page }) => {
   await ready(page); await open(page, 'publish');
   await editor(page).locator('[name=reason]').fill('Content reviewed');

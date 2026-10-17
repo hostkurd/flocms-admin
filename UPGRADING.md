@@ -1,3 +1,12 @@
+# Upgrading to Admin 0.15.2
+
+Update with `composer require "hostkurd/flocms-admin:^0.15.2" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **Notifications now close by themselves** (success and info, after 5 seconds). Add `->persistent()` to one that must stay, such as a message the user needs to copy. Browser tests that check a success or info notification after more than a few seconds should make it persistent or check sooner.
+- Browser tests that looked for a relation list with `position: absolute` should expect `fixed`.
+
+---
+
 # Upgrading to Admin 0.15.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.15.1" -W`, run `php flo view:clear` and reload open Admin pages. Nothing else changes. Run `php flo admin:doctor` once: if it reports a table that "stores text as latin1", convert it with the `ALTER TABLE` it prints before entering Arabic or Kurdish text (text already saved as `?` must be typed again).

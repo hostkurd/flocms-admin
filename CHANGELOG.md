@@ -2,6 +2,18 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.15.2 - 2026-10-17
+
+### Fixed
+
+- Relation fields in dialogs: the list of choices floats over the dialog instead of being cut off by it and adding a scroll bar. It opens upwards when there is more room above, follows the field while the page or dialog scrolls, and closes when the field scrolls out of sight.
+- Notifications: the shadow under each one was cut by its container into grey bands. They now have a lighter shadow with room to show, and appear and leave with a short fade (none with reduced motion).
+
+### Changed
+
+- Success and info notifications close by themselves after 5 seconds; hovering or focusing one pauses it. Warning and danger stay until dismissed. `Notification::make()->duration(10)` sets the seconds, `->persistent()` keeps one open.
+- Form dialogs are at least 240 px tall (less on very short windows), so a dialog with one or two fields does not look squeezed.
+
 ## 0.15.1 - 2026-10-17
 
 ### Fixed
