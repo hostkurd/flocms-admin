@@ -140,6 +140,31 @@ abstract class TrashTestCase extends TestCase
         }
     }
 
+    public function testExpiredPurgesAreLoggedAsSystemAndMediaRebuildsSeeEveryEntry(): void
+    {
+        $session = $_SESSION ?? [];
+        try {
+            $this->db->table('notes')->insert(['title' => 'old']);
+            $_SESSION = ['user_id' => 5, 'fullname' => 'Lana'];
+            (new RecordRepository(new OwnNoteResource(), $this->db, new JsonColumnStore()))->delete('1');
+
+            // Someone else: the narrowed resource hides Lana's delete from them, not from maintenance
+            $_SESSION = ['user_id' => 6, 'fullname' => 'Rawa'];
+            self::assertSame(0, Trash::count('own-notes'));
+            self::assertCount(1, Trash::allOf('own-notes'));
+
+            // Rawa opens a page that runs the hourly cleanup
+            $this->db->query("UPDATE admin_trash SET deleted_at = '2000-01-01 00:00:00'");
+            self::assertSame(1, Trash::purgeExpired($this->db));
+            $purged = $this->db->table('admin_activity')->where('action', '=', 'purged')->first();
+            self::assertNull($purged->user_id, 'not credited to whoever opened the page');
+            self::assertNull($purged->user_name);
+            self::assertSame(6, \FloCMS\Admin\Support\Actor::id(), 'the page goes on as Rawa');
+        } finally {
+            $_SESSION = $session;
+        }
+    }
+
     public function testDeleteMovesTheRecordWithItsLinksToTheTrash(): void
     {
         $id = $this->create(['tags' => ['2', '1'], 'city_id' => '1']);

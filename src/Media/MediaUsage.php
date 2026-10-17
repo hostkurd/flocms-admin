@@ -170,7 +170,7 @@ final class MediaUsage
                 if (\FloCMS\Admin\Trash\Trash::enabled($store->connection())) {
                     $page = 1;
                     do {
-                        $entries = \FloCMS\Admin\Trash\Trash::entries([$slug], '', null, $page++, 200, $store->connection())['items'];
+                        $entries = \FloCMS\Admin\Trash\Trash::allOf($slug, $page++, 200, $store->connection());
                         foreach ($entries as $entry) {
                             if ($store->connection()->table($class::getTable())->where($pk, '=', $entry->recordId)->first() === null) {
                                 self::recordValues($slug, $entry->recordId, $form, $entry->data);

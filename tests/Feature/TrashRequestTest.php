@@ -242,6 +242,39 @@ final class TrashRequestTest extends RequestTestCase
         self::assertSame(404, self::request('GET', '/admin/activity/show/abc')['status']);
     }
 
+    public function testTheChangesDialogFollowsTheRecordsOwnAccessRules(): void
+    {
+        // "scoped" shows published posts only, and lets editors edit featured ones
+        $options = ['admin_config' => ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class, \FloCMS\Admin\Tests\Fixtures\Scoped\ScopedResource::class]]];
+        $insert = self::pdo()->prepare("INSERT INTO admin_activity (action, resource, record_id, title, created_at) VALUES ('updated', 'scoped', ?, 'Post', ?)");
+        foreach (['1', '2', '99'] as $record) { $insert->execute([$record, date('Y-m-d H:i:s')]); }
+        [$inside, $outside, $gone] = array_map('intval', array_column(self::activity(), 'id'));
+
+        self::assertSame(200, self::request('GET', '/admin/activity/show/' . $inside, $options)['status'], 'a published, featured post');
+        self::assertSame(403, self::request('GET', '/admin/activity/show/' . $outside, $options)['status'], 'a draft is outside the resource\'s query()');
+        self::assertSame(403, self::request('GET', '/admin/activity/show/' . $gone, $options)['status'], 'deleted for good: activity.view only');
+        self::assertSame(200, self::request('GET', '/admin/activity/show/' . $outside, $options + ['session' => self::SUPER])['status']);
+    }
+
+    public function testDeletingForGoodFollowsTheResourcesCanDeleteRule(): void
+    {
+        // "scoped" lets editors delete featured posts only
+        $options = ['admin_config' => ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class, \FloCMS\Admin\Tests\Fixtures\Scoped\ScopedResource::class]]];
+        $insert = self::pdo()->prepare("INSERT INTO admin_trash (resource, record_id, title, data, batch, deleted_by, deleted_by_name, deleted_at) VALUES ('scoped', ?, ?, ?, ?, 1, 'Sara', ?)");
+        foreach ([7 => 1, 8 => 0] as $record => $featured) {
+            $insert->execute([(string) $record, 'Post ' . $record, \FloCMS\Admin\Trash\Snapshot::encode(['id' => $record, 'slug' => 'post-' . $record, 'status' => 'published', 'featured' => $featured]), str_repeat('a', 32), date('Y-m-d H:i:s')]);
+        }
+        $ids = array_column(self::pdo()->query("SELECT id, record_id FROM admin_trash ORDER BY id")->fetchAll(\PDO::FETCH_ASSOC), 'id', 'record_id');
+
+        $page = self::request('GET', '/admin/scoped/trash', $options)['body'];
+        self::assertStringContainsString('Delete for good: Post 7', $page);
+        self::assertStringNotContainsString('Delete for good: Post 8', $page, 'no button where canDelete() says no');
+        self::assertSame(403, self::post('/admin/scoped/trash', ['task' => 'purge', 'ids' => [(string) $ids['8']]], $options)['status']);
+
+        self::post('/admin/scoped/trash', ['task' => 'empty'], $options);
+        self::assertSame(['8'], array_column(self::pdo()->query("SELECT record_id FROM admin_trash")->fetchAll(\PDO::FETCH_ASSOC), 'record_id'), 'Empty trash keeps what the rule keeps');
+    }
+
     public function testActionAndBulkDeletesUseTheTrashAndUndoAsOne(): void
     {
         $config = ['admin_config' => ['resources' => [\FloCMS\Admin\Tests\Fixtures\Actions\PostActionResource::class]]];

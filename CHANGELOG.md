@@ -14,7 +14,7 @@ Deleted records go to a **trash** and can be restored; every change in the panel
 - Restore puts the record back with the same id. It is refused with a reason when a unique value (a slug) is now taken, a parent is gone or the id is used again; the record then stays in the trash.
 - Upload files and media usage are kept while the record waits ("Listings · Villa (in trash)") and removed when it is deleted for good.
 - Records are kept 30 days (`'trash' => ['days' => 30]`, `0` = until emptied), purged by panel pages at most hourly and by `php flo admin:trash-purge`.
-- Restoring needs the resource's `create` permission, deleting for good its `delete` permission.
+- Restoring needs the resource's `create` permission, deleting for good its `delete` permission and its `canDelete()` rule.
 - `protected static bool $trash = false;` deletes a resource's records at once. Users are logged, not trashed.
 - Delete confirmations say where the record goes ("It goes to the trash for 30 days and can be restored from there.").
 - A resource that narrows `query()` shows each person only the records they deleted, unless it defines `canSeeInTrash()`.

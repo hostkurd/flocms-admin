@@ -10,6 +10,7 @@ use FloCMS\Admin\Admin;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Support\Dates;
 use FloCMS\Admin\Support\Icons;
+use FloCMS\Core\App;
 use FloCMS\Core\Auth;
 use FloCMS\Core\HttpException;
 use FloCMS\Core\TemplateEngine;
@@ -108,12 +109,28 @@ final class ActivityController extends PanelController
         return $this->panel(AdminLang::get('activity.changes'), ActivityView::changes($entry, false), Auth::can(Activity::PERMISSION) ? 'activity' : $entry->resource);
     }
 
-    /** Anyone with activity.view; else whoever may edit that resource's records (its History). */
+    /**
+     * Anyone with activity.view; else whoever may edit that record (its History):
+     * the resource's update permission, the record within its query() and canEdit().
+     * A record in the trash needs its trash rule; one deleted for good, activity.view.
+     */
     public static function maySee(ActivityEntry $entry): bool
     {
         if (Auth::can(Activity::PERMISSION)) { return true; }
         $class = $entry->resourceClass();
-        return $class !== null && Auth::can($class::permission('update'));
+        if ($class === null || $entry->recordId === null || $entry->recordId === '' || !Auth::can($class::permission('update'))) { return false; }
+        $db = App::db();
+        if ($db === null) { return false; }
+        /** @var \FloCMS\Admin\Resource $resource */
+        $resource = new $class();
+        try {
+            $record = (new \FloCMS\Admin\Data\RecordRepository($resource, $db, \FloCMS\Admin\Translation\Translations::store()))->find($entry->recordId);
+        } catch (\Throwable) {
+            return false;
+        }
+        if ($record !== null) { return $resource->canEdit($record); }
+        $trashed = \FloCMS\Admin\Trash\Trash::findRecord($class::getSlug(), $entry->recordId, $db);
+        return $trashed !== null && \FloCMS\Admin\Trash\Trash::visible($trashed) && $resource->canEdit((object) $trashed->data);
     }
 
     /** @return array{q: string, by: string, type: string, kind: string, period: string} */

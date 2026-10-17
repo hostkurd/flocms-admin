@@ -90,6 +90,17 @@ final class TrashPage
         return Auth::can($class::permission('delete'));
     }
 
+    /**
+     * Delete one entry for good: the delete permission and the resource's own
+     * canDelete() rule for the record as it was.
+     *
+     * @param class-string<Resource> $class
+     */
+    public static function mayPurgeEntry(string $class, TrashEntry $entry): bool
+    {
+        return self::mayPurge($class) && (new $class())->canDelete((object) $entry->data);
+    }
+
     /* ---------------------------------------------------------------
      * Actions (POST)
      * ------------------------------------------------------------- */
@@ -110,9 +121,15 @@ final class TrashPage
             $purgeable = array_keys(array_filter($scope, static fn (string $class): bool => self::mayPurge($class)));
             if ($purgeable === []) { throw new HttpException(403); }
             $count = 0;
+            $page = 1;
             do {
-                $batch = Trash::entries($purgeable, '', null, 1, 200)['items'];
-                foreach ($batch as $entry) { Trash::purge($entry); $count++; }
+                // Entries a canDelete() rule keeps stay (and the next page is read past them).
+                $batch = Trash::entries($purgeable, '', null, $page, 200)['items'];
+                $kept = 0;
+                foreach ($batch as $entry) {
+                    if (self::mayPurgeEntry($scope[$entry->resource], $entry)) { Trash::purge($entry); $count++; } else { $kept++; }
+                }
+                if ($kept === 200) { $page++; }
             } while (count($batch) === 200);
             Notification::make()->title(AdminLang::get($count === 1 ? 'trash.purged_one' : 'trash.purged_many', ['count' => $count]))->success()->send();
             return $back;
@@ -129,7 +146,7 @@ final class TrashPage
             if ($entry === null) { continue; }
             $class = $scope[$entry->resource] ?? null;
             if ($class === null || !Trash::visible($entry)) { throw new HttpException(404); }
-            if ($action === 'restore' ? !self::mayRestore($class) : !self::mayPurge($class)) { throw new HttpException(403); }
+            if ($action === 'restore' ? !self::mayRestore($class) : !self::mayPurgeEntry($class, $entry)) { throw new HttpException(403); }
             $entries[] = $entry;
         }
 
@@ -212,7 +229,7 @@ final class TrashPage
                 'left' => $left === null ? AdminLang::get('trash.kept') : ($left <= 0 ? AdminLang::get('trash.today') : AdminLang::get($left === 1 ? 'trash.day' : 'trash.days', ['count' => $left])),
                 'soon' => $left !== null && $left <= 3,
                 'canRestore' => $entryClass !== null && self::mayRestore($entryClass),
-                'canPurge' => $entryClass !== null && self::mayPurge($entryClass),
+                'canPurge' => $entryClass !== null && self::mayPurgeEntry($entryClass, $entry),
                 'purgeText' => AdminLang::get('trash.purge_one_text', ['title' => $entry->label()]),
             ];
         }

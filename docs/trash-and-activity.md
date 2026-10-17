@@ -46,7 +46,7 @@ A bulk delete is one operation: one Undo brings every record back. Undo works fo
 | --- | --- |
 | See a resource's trash | its `view` permission, and `create` or `delete` |
 | Restore (and Undo) | `create` (it adds a record back), and `canCreate()` |
-| Delete for good, Empty trash | `delete` |
+| Delete for good, Empty trash | `delete`, and `canDelete()` for the record (Empty trash leaves the ones it refuses) |
 
 ### Resources that show part of a table
 
@@ -79,7 +79,7 @@ Upload fields keep their files while the record is in the trash, and media libra
 // config/admin.php
 'trash' => ['days' => 30],          // 0 keeps records until the trash is emptied by hand
 'trash' => false,                   // delete at once, as before 0.19
-'trash' => ['table' => 'site_trash'], // another table name (set it before php flo admin:install)
+'trash' => ['table' => 'site_trash'], // another table name, up to 48 characters (set it before php flo admin:install)
 ```
 
 One resource can delete at once:
@@ -155,7 +155,7 @@ No IP addresses or browsers are stored.
 
 ### Where it shows
 
-- **History** on a record's page (a button next to Save): the record's entries, grouped by day, the first changes of each edit inline, and **Show changes** for the whole table. Anyone who can edit the record sees it.
+- **History** on a record's page (a button next to Save): the record's entries, grouped by day, the first changes of each edit inline, and **Show changes** for the whole table. Anyone who can edit the record sees it (the update permission, the record within the resource's `query()`, and `canEdit()`); the changes of a record deleted for good need `activity.view`.
 - **Site → Activity** (`/admin/activity`, permission `activity.view`): every entry, with filters for the person, the type, the period (today, 7 days, 30 days, 12 months, all time), the action (created, edited, deleted, restored, other) and a search over titles and changed values. **Show changes** opens the before → after table.
 
 Both work without JavaScript: History and the changes table then open as pages.

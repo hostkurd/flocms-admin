@@ -30,6 +30,14 @@ final class TrashActivityUnitTest extends TestCase
         self::assertSame('#9', $untitled->label());
     }
 
+    public function testTableNamesLeaveRoomForTheirIndexNames(): void
+    {
+        $config = \FloCMS\Admin\Admin::useConfig(['trash' => ['table' => str_repeat('t', 48)], 'activity' => ['table' => str_repeat('a', 49)]], true, sys_get_temp_dir());
+        self::assertSame(str_repeat('t', 48), $config->trash()['table']);
+        self::assertSame('admin_activity', $config->activity()['table'], 'MySQL names are 64 characters at most, "_resource_index" included');
+        \FloCMS\Admin\Admin::reset();
+    }
+
     public function testRelativeDates(): void
     {
         $now = strtotime('2026-10-17 15:00:00');

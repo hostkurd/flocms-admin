@@ -168,7 +168,7 @@ final class AdminConfig
         $value = $this->values['media_library'] ?? true;
         $options = is_array($value) ? $value : [];
         $name = static function (mixed $candidate, string $default): string {
-            return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $candidate) === 1 ? $candidate : $default;
+            return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,47}$/D', $candidate) === 1 ? $candidate : $default;
         };
         $image = is_int($options['max_image_kb'] ?? null) ? max(1, min(65536, $options['max_image_kb'])) : 10240;
         $video = is_int($options['max_video_mb'] ?? null) ? max(1, min(4096, $options['max_video_mb'])) : 200;
@@ -223,7 +223,7 @@ final class AdminConfig
 
     private static function tableName(mixed $candidate, string $default): string
     {
-        return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $candidate) === 1 ? $candidate : $default;
+        return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,47}$/D', $candidate) === 1 ? $candidate : $default;
     }
 
     /** Absolute path of the file that declares the settings pages (default admin/settings.php). */

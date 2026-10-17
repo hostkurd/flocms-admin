@@ -188,6 +188,20 @@ final class Trash
         return ['items' => array_map(static fn (object $row): TrashEntry => TrashEntry::fromRow($row), $rows), 'total' => $total];
     }
 
+    /**
+     * Every entry of one resource, whoever may see it (for maintenance such as
+     * the media usage rebuild; the panel uses entries()).
+     *
+     * @return list<TrashEntry>
+     */
+    public static function allOf(string $resource, int $page = 1, int $perPage = 200, ?Database $db = null): array
+    {
+        $db ??= self::connection();
+        $rows = $db->table(self::table())->where('resource', '=', $resource)->orderBy('id', 'asc')
+            ->limit($perPage)->offset(max(0, ($page - 1) * $perPage))->get();
+        return array_map(static fn (object $row): TrashEntry => TrashEntry::fromRow($row), $rows);
+    }
+
     /** @param list<string> $resources */
     private static function filtered(Database $db, array $resources, string $search, ?int $deletedBy): Database
     {
@@ -437,12 +451,15 @@ final class Trash
         $db ??= App::db();
         if ($db === null || !self::enabled($db) || self::days() <= 0) { return 0; }
         $cutoff = date('Y-m-d H:i:s', time() - self::days() * 86400);
-        $count = 0;
-        foreach ($db->table(self::table())->where('deleted_at', '<', $cutoff)->orderBy('id', 'asc')->limit($limit)->get() as $row) {
-            self::purge(TrashEntry::fromRow($row), $db, 'expired');
-            $count++;
-        }
-        return $count;
+        // Logged as "System": not by whoever opened the page that ran the cleanup.
+        return Actor::asSystem(function () use ($db, $cutoff, $limit): int {
+            $count = 0;
+            foreach ($db->table(self::table())->where('deleted_at', '<', $cutoff)->orderBy('id', 'asc')->limit($limit)->get() as $row) {
+                self::purge(TrashEntry::fromRow($row), $db, 'expired');
+                $count++;
+            }
+            return $count;
+        });
     }
 
     /* ---------------------------------------------------------------
