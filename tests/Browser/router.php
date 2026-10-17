@@ -148,7 +148,7 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             'row' => App::$db->table('listings')->where('id', '=', 1)->first(),
             'usage' => App::$db->query('SELECT media_id, field FROM media_usage WHERE resource = \'listings\' ORDER BY media_id, field')->fetchAll(PDO::FETCH_ASSOC),
             'media' => App::$db->query('SELECT id, title, alt, path FROM media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
-        case '/__test/media-off': App::$db->query('DROP TABLE IF EXISTS media_usage'); App::$db->query('DROP TABLE IF EXISTS media'); break;
+        case '/__test/media-off': App::$db->query('DROP TABLE IF EXISTS media_folders'); App::$db->query('DROP TABLE IF EXISTS media_usage'); App::$db->query('DROP TABLE IF EXISTS media'); break;
         case '/__test/faq-add': App::$db->table('faqs')->insert(['question' => '{"en":"Added elsewhere"}', 'category' => 'billing', 'sort' => 99, 'archived' => 0]); break;
         case '/__test/faq-order': header('Content-Type: application/json'); echo json_encode(array_map('intval', App::$db->query('SELECT id FROM faqs ORDER BY sort, id')->fetchAll(PDO::FETCH_COLUMN))); exit;
         case '/__test/expire': Csrf::rotate(); break;

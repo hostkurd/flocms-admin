@@ -534,6 +534,22 @@ final class DoctorCommand extends Command
             $this->ok('Table "' . $table . '"');
             $this->checkCharset($db, $table);
         }
+        // 0.18: folders, and the folder, fingerprint and focal point of each item.
+        if ($ready) {
+            $mediaColumns = $this->columns($db, $library['table']) ?? [];
+            $missing = array_values(array_diff(['folder_id', 'hash', 'focal_x', 'focal_y'], array_keys($mediaColumns)));
+            $folders = $this->columns($db, $library['folders_table']);
+            if ($missing !== [] || $folders === null) {
+                $this->bad('The media library needs its 0.18 migration (folders' . ($missing !== [] ? '; "' . $library['table'] . '" has no ' . implode(', ', $missing) : '') . '): run php flo admin:install, then php flo migrate. Until then the library is off and media fields keep their values.');
+                $ready = false;
+            } elseif (array_diff(['id', 'parent_id', 'name'], array_keys($folders)) !== []) {
+                $this->bad('Table "' . $library['folders_table'] . '" exists but is not the media library\'s folders table. Rename it in config/admin.php: \'media_library\' => [\'folders_table\' => \'site_media_folders\'], then run php flo admin:install and php flo migrate.');
+                $ready = false;
+            } else {
+                $this->ok('Table "' . $library['folders_table'] . '" (folders)');
+                $this->checkCharset($db, $library['folders_table']);
+            }
+        }
         $media = $config->media();
         $parent = $media['root'];
         while (!is_dir($parent) && dirname($parent) !== $parent) { $parent = dirname($parent); }

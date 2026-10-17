@@ -54,8 +54,9 @@ return [
     ],
 
     // The media library (/admin/media): on when its table exists (php flo migrate).
-    // false switches it off; ['table' => 'site_media', 'usage_table' => 'site_media_usage']
-    // renames its tables before the first migration, e.g. when a "media" table already exists.
+    // false switches it off; ['table' => 'site_media', 'usage_table' => 'site_media_usage',
+    // 'folders_table' => 'site_media_folders'] renames its tables before the first migration,
+    // e.g. when a "media" table already exists.
     'media_library' => true,
 
     // Name at the top of the sidebar

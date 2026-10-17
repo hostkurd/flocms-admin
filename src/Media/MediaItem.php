@@ -14,6 +14,9 @@ use FloCMS\Admin\Translation\Translations;
  *     $cover?->url('thumb');       400 px version (the web one for videos and imported files)
  *     $cover?->alt();              alt text in the current language
  *     echo $cover?->img(['class' => 'cover']);
+ *
+ * An image with a focal point (0.18) keeps that spot in view when CSS crops it
+ * (object-fit: cover): img() adds object-position, focal() gives "62% 40%".
  */
 final class MediaItem
 {
@@ -34,7 +37,11 @@ final class MediaItem
         public readonly ?int $uploadedBy,
         public readonly ?string $createdAt,
         public readonly ?string $updatedAt,
-        private readonly string $baseUrl
+        private readonly string $baseUrl,
+        public readonly ?int $folderId = null,
+        public readonly ?int $focalX = null,
+        public readonly ?int $focalY = null,
+        public readonly ?string $hash = null
     ) {
     }
 
@@ -43,7 +50,8 @@ final class MediaItem
         $int = static fn (mixed $value): ?int => $value === null || $value === '' ? null : (int) $value;
         return new self((int) $row->id, (string) $row->kind, (string) $row->path, ($row->thumb_path ?? null) !== null && $row->thumb_path !== '' ? (string) $row->thumb_path : null,
             (string) $row->mime, (int) ($row->bytes ?? 0), $int($row->width ?? null), $int($row->height ?? null), (string) ($row->file_name ?? ''),
-            (string) ($row->title ?? ''), $row->alt ?? null, $int($row->uploaded_by ?? null), $row->created_at ?? null, $row->updated_at ?? null, $baseUrl);
+            (string) ($row->title ?? ''), $row->alt ?? null, $int($row->uploaded_by ?? null), $row->created_at ?? null, $row->updated_at ?? null, $baseUrl,
+            $int($row->folder_id ?? null), $int($row->focal_x ?? null), $int($row->focal_y ?? null), ($row->hash ?? null) !== null && $row->hash !== '' ? (string) $row->hash : null);
     }
 
     public function isImage(): bool { return $this->kind === 'image'; }
@@ -73,6 +81,18 @@ final class MediaItem
         return Translations::store()->decode($this->alt, \FloCMS\Admin\Translation\Languages::default());
     }
 
+    /** Whether there is alt text in any language. */
+    public function hasAlt(): bool
+    {
+        return array_filter($this->altValues(), static fn (string $text): bool => trim($text) !== '') !== [];
+    }
+
+    /** The focal point as CSS ("62% 40%"), or null when none is set. */
+    public function focal(): ?string
+    {
+        return $this->focalX === null || $this->focalY === null ? null : $this->focalX . '% ' . $this->focalY . '%';
+    }
+
     /** A name for people: the title, else the uploaded file's name. */
     public function label(): string
     {
@@ -89,8 +109,9 @@ final class MediaItem
 
     /**
      * An <img> for an image (empty for a video), with alt in the current
-     * language, width/height, lazy loading and a srcset of both versions.
-     * Attributes you pass win (class, sizes, loading, alt…); values are escaped.
+     * language, width/height, lazy loading and a srcset of both versions, and
+     * object-position for a focal point. Attributes you pass win (class, sizes,
+     * loading, alt, style => null for a strict Content-Security-Policy…); values are escaped.
      *
      * @param array<string, string|int|bool|null> $attributes
      */
@@ -103,6 +124,7 @@ final class MediaItem
             $base['srcset'] = $this->url('thumb') . ' ' . $thumbWidth . 'w, ' . $this->url() . ' ' . $this->width . 'w';
             $base['sizes'] = '(max-width: ' . $this->width . 'px) 100vw, ' . $this->width . 'px';
         }
+        if (($focal = $this->focal()) !== null) { $base['style'] = 'object-position: ' . $focal; }
         return '<img' . self::attributes(array_replace($base, $attributes)) . '>';
     }
 
@@ -130,7 +152,8 @@ final class MediaItem
         [$tw, $th] = $this->thumbSize();
         return ['id' => $this->id, 'kind' => $this->kind, 'url' => $this->url(), 'thumb' => $this->url('thumb'), 'title' => $this->title, 'label' => $this->label(),
             'alt' => $this->alt(), 'alts' => (object) $this->altValues(), 'name' => $this->fileName, 'mime' => $this->mime, 'bytes' => $this->bytes, 'width' => $this->width, 'height' => $this->height,
-            'thumbWidth' => $tw, 'thumbHeight' => $th];
+            'thumbWidth' => $tw, 'thumbHeight' => $th, 'folder' => $this->folderId, 'focalX' => $this->focalX, 'focalY' => $this->focalY, 'hasAlt' => $this->hasAlt(),
+            'created' => $this->createdAt, 'uploadedBy' => $this->uploadedBy];
     }
 
     /** @param array<string, string|int|bool|null> $attributes */

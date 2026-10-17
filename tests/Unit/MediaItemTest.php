@@ -94,9 +94,9 @@ final class MediaItemTest extends TestCase
     public function testLibraryConfig(): void
     {
         $config = Admin::useConfig([], true, sys_get_temp_dir())->mediaLibrary();
-        self::assertSame(['enabled' => true, 'table' => 'media', 'usage_table' => 'media_usage', 'max_image_bytes' => 10485760, 'max_video_bytes' => 209715200], $config);
+        self::assertSame(['enabled' => true, 'table' => 'media', 'usage_table' => 'media_usage', 'folders_table' => 'media_folders', 'max_image_bytes' => 10485760, 'max_video_bytes' => 209715200], $config);
         self::assertFalse(Admin::useConfig(['media_library' => false], true, sys_get_temp_dir())->mediaLibrary()['enabled']);
-        $named = Admin::useConfig(['media_library' => ['table' => 'site_media', 'usage_table' => 'bad name;', 'max_image_kb' => 2048, 'max_video_mb' => 99999]], true, sys_get_temp_dir())->mediaLibrary();
-        self::assertSame(['site_media', 'media_usage', 2097152, 4096 * 1048576], [$named['table'], $named['usage_table'], $named['max_image_bytes'], $named['max_video_bytes']]);
+        $named = Admin::useConfig(['media_library' => ['table' => 'site_media', 'usage_table' => 'bad name;', 'folders_table' => 'site_folders', 'max_image_kb' => 2048, 'max_video_mb' => 99999]], true, sys_get_temp_dir())->mediaLibrary();
+        self::assertSame(['site_media', 'media_usage', 'site_folders', 2097152, 4096 * 1048576], [$named['table'], $named['usage_table'], $named['folders_table'], $named['max_image_bytes'], $named['max_video_bytes']]);
     }
 }

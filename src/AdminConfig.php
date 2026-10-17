@@ -156,11 +156,12 @@ final class AdminConfig
 
     /**
      * The media library (0.17): on unless 'media_library' => false. Its tables
-     * default to media and media_usage; ['table' => …, 'usage_table' => …]
-     * renames them (for a site that already has a media table of its own).
+     * default to media, media_usage and media_folders (0.18); ['table' => …,
+     * 'usage_table' => …, 'folders_table' => …] renames them (for a site that
+     * already has a media table of its own).
      * Upload limits: 'max_image_kb' (default 10240) and 'max_video_mb' (default 200).
      *
-     * @return array{enabled: bool, table: string, usage_table: string, max_image_bytes: int, max_video_bytes: int}
+     * @return array{enabled: bool, table: string, usage_table: string, folders_table: string, max_image_bytes: int, max_video_bytes: int}
      */
     public function mediaLibrary(): array
     {
@@ -175,6 +176,7 @@ final class AdminConfig
             'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
             'table' => $name($options['table'] ?? null, 'media'),
             'usage_table' => $name($options['usage_table'] ?? null, 'media_usage'),
+            'folders_table' => $name($options['folders_table'] ?? null, 'media_folders'),
             'max_image_bytes' => $image * 1024,
             'max_video_bytes' => $video * 1024 * 1024,
         ];

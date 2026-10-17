@@ -40,6 +40,9 @@ final class MediaImportCommand extends Command
         } catch (\Throwable $error) {
             $this->fail('No database: ' . $error->getMessage());
         }
+        if (MediaLibrary::status() === 'upgrade') {
+            $this->fail('The media library needs its 0.18 migration (folders): run php flo admin:install and php flo migrate.');
+        }
         if (!MediaLibrary::enabled()) {
             $this->fail('The media library is not set up: run php flo admin:install and php flo migrate.');
         }
@@ -67,14 +70,27 @@ final class MediaImportCommand extends Command
             $size = $kind === 'image' ? @getimagesize($file->getPathname()) : false;
             $store->create(['kind' => $kind, 'path' => $path, 'thumb_path' => null, 'mime' => (string) $finfo->file($file->getPathname()),
                 'bytes' => (int) $file->getSize(), 'width' => is_array($size) ? (int) $size[0] : null, 'height' => is_array($size) ? (int) $size[1] : null,
-                'file_name' => mb_substr($file->getFilename(), 0, 190)]);
+                'file_name' => mb_substr($file->getFilename(), 0, 190), 'hash' => hash_file('sha256', $file->getPathname()) ?: null]);
             $added++;
+        }
+        // Fingerprints for items added before 0.18, so later uploads of the same file are noticed.
+        // (Images uploaded through the library keep the fingerprint of the original file; for these
+        // older ones only the stored file is left, which a later upload of the original won't match.)
+        $fingerprinted = 0;
+        if (!$dry) {
+            foreach ($store->connection()->table(MediaLibrary::table())->whereRaw('`hash` IS NULL', [])->get() as $row) {
+                $absolute = $root . '/' . ltrim((string) $row->path, '/');
+                if (str_contains((string) $row->path, '..') || !is_file($absolute)) { continue; }
+                $hash = hash_file('sha256', $absolute);
+                if ($hash !== false) { $store->setHash((int) $row->id, $hash); $fingerprinted++; }
+            }
         }
         if ($dry) {
             $this->success($added . ' file(s) would be added; ' . $skipped . ' already in the library.');
             return self::SUCCESS;
         }
         $this->success($added . ' file(s) added; ' . $skipped . ' already in the library.');
+        if ($fingerprinted > 0) { $this->line('  Fingerprints added to ' . $fingerprinted . ' item(s), for the duplicate check.'); }
         $counts = MediaUsage::rebuild();
         $this->line('  Usage rebuilt for ' . count($counts) . ' resource(s)/settings.');
         return self::SUCCESS;
