@@ -29,7 +29,7 @@ final class SearchRequestTest extends RequestTestCase
     }
 
     /** @return array<string, array<string, mixed>> label => group */
-    private static function groups(array $data): array
+    private static function groupsOf(array $data): array
     {
         return array_column($data['groups'], null, 'label');
     }
@@ -43,7 +43,7 @@ final class SearchRequestTest extends RequestTestCase
     public function testRecordsAreFoundByTheirSearchableColumnsInEveryLanguage(): void
     {
         $data = self::search('sea vi');
-        $posts = self::groups($data)['Posts'];
+        $posts = self::groupsOf($data)['Posts'];
         self::assertSame(['Sea view villa'], self::titles($posts));
         $item = $posts['items'][0];
         self::assertSame('https://example.test/en/admin/posts/edit/1', $item['url']);
@@ -53,8 +53,8 @@ final class SearchRequestTest extends RequestTestCase
         self::assertSame('', $posts['more']);
         self::assertFalse($data['partial']);
 
-        self::assertSame(['Sea view villa'], self::titles(self::groups(self::search('فيلا'))['Posts']), 'the Arabic title');
-        self::assertSame(['Mountain cabin'], self::titles(self::groups(self::search('#2'))['Posts']), '#2 is the record with id 2');
+        self::assertSame(['Sea view villa'], self::titles(self::groupsOf(self::search('فيلا'))['Posts']), 'the Arabic title');
+        self::assertSame(['Mountain cabin'], self::titles(self::groupsOf(self::search('#2'))['Posts']), '#2 is the record with id 2');
     }
 
     public function testGroupsShowFiveAndLinkToTheListForMore(): void
@@ -62,18 +62,18 @@ final class SearchRequestTest extends RequestTestCase
         $insert = self::pdo()->prepare("INSERT INTO posts (title, slug, status) VALUES (?, ?, 'draft')");
         foreach (range(1, 6) as $n) { $insert->execute(['{"en":"Seaside ' . $n . '"}', 'seaside-' . $n]); }
 
-        $posts = self::groups(self::search('seaside'))['Posts'];
+        $posts = self::groupsOf(self::search('seaside'))['Posts'];
         self::assertCount(5, $posts['items']);
         self::assertSame(['Seaside 6', 'Seaside 5', 'Seaside 4', 'Seaside 3', 'Seaside 2'], self::titles($posts), 'newest first');
         self::assertSame('https://example.test/en/admin/posts?q=seaside', $posts['more']);
 
         // A title that starts with the words comes before a newer one that only contains them
         self::pdo()->exec("INSERT INTO posts (title, slug, status) VALUES ('{\"en\":\"Old seaside barn\"}', 'old-seaside-barn', 'draft')");
-        $ranked = self::titles(self::groups(self::search('seaside'))['Posts']);
+        $ranked = self::titles(self::groupsOf(self::search('seaside'))['Posts']);
         self::assertSame('Seaside 6', $ranked[0]);
         self::assertNotContains('Old seaside barn', $ranked);
 
-        $three = self::groups(self::search('seaside', ['admin_config' => ['search' => ['per_group' => 3]]]))['Posts'];
+        $three = self::groupsOf(self::search('seaside', ['admin_config' => ['search' => ['per_group' => 3]]]))['Posts'];
         self::assertCount(3, $three['items']);
     }
 
@@ -98,7 +98,7 @@ final class SearchRequestTest extends RequestTestCase
         self::assertSame(['Garden'], self::titles($data['groups'][0]));
 
         $config = ['admin_config' => ['resources' => [PostResource::class, TagResource::class, ReadOnlyPostResource::class, HiddenPostResource::class]]];
-        $groups = self::groups(self::search('cabin', $config));
+        $groups = self::groupsOf(self::search('cabin', $config));
         self::assertArrayNotHasKey('Hidden posts', $groups, '$globallySearchable = false');
         $archive = $groups['Archive']['items'][0];
         self::assertSame('https://example.test/en/admin/archive?q=cabin', $archive['url'], 'not editable: the list, searched for the words');
@@ -108,9 +108,9 @@ final class SearchRequestTest extends RequestTestCase
     public function testAResourceWithoutSearchableColumnsIsFoundByIdOnly(): void
     {
         $config = ['admin_config' => ['resources' => [PostResource::class, IdOnlyPostResource::class]]];
-        self::assertSame(['Mountain cabin'], self::titles(self::groups(self::search('#2', $config))['Id posts']));
-        self::assertArrayNotHasKey('Id posts', self::groups(self::search('cabin', $config)));
-        self::assertArrayNotHasKey('Id posts', self::groups(self::search('#' . str_repeat('9', 20), $config)), 'an id too long to be one matches nothing');
+        self::assertSame(['Mountain cabin'], self::titles(self::groupsOf(self::search('#2', $config))['Id posts']));
+        self::assertArrayNotHasKey('Id posts', self::groupsOf(self::search('cabin', $config)));
+        self::assertArrayNotHasKey('Id posts', self::groupsOf(self::search('#' . str_repeat('9', 20), $config)), 'an id too long to be one matches nothing');
     }
 
     public function testRecentRecordsBeforeTyping(): void
@@ -136,7 +136,7 @@ final class SearchRequestTest extends RequestTestCase
     public function testASitesOwnSourceAndUnsafeLinks(): void
     {
         $data = self::search('gallery', ['admin_config' => ['search' => ['sources' => [HelpSource::class, \stdClass::class]]]]);
-        $help = self::groups($data)['Help'];
+        $help = self::groupsOf($data)['Help'];
         self::assertSame(['Upload a gallery'], self::titles($help), 'a javascript: link is dropped');
         self::assertSame('Help', $help['items'][0]['type']);
         self::assertSame('/en/admin/help/gallery', $help['items'][0]['url']);
