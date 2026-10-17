@@ -2,6 +2,12 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.15.4 - 2026-10-17
+
+### Changed
+
+- The language badge of translatable fields follows the page's direction: on Arabic and Kurdish pages it sits on the left, like the clear button of relation fields and other controls. The text typed in the field keeps its language's direction (English stays left to right) and starts clear of the badge.
+
 ## 0.15.3 - 2026-10-17
 
 ### Changed

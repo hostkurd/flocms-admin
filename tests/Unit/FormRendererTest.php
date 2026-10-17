@@ -38,8 +38,8 @@ final class FormRendererTest extends TestCase
         // Badge: the default language, then one dot per other language (filled / empty)
         self::assertStringContainsString('<span class="fa-code is-default">en</span><span class="fa-dots" aria-hidden="true"><span class="fa-dot is-filled" data-lang="ar"></span><span class="fa-dot is-empty" data-lang="ku"></span></span>', $html);
         self::assertStringContainsString('aria-label="Translations of Title. Missing: ku"', $html);
-        // The badge row follows the content language's direction, not the page's.
-        self::assertStringContainsString('<div class="fa-input-row" dir="ltr">', $html);
+        // The badge row follows the page's direction; the input keeps the content language's.
+        self::assertStringContainsString('<div class="fa-input-row">', $html, 'the row follows the page direction');
         self::assertStringContainsString('title="Missing: ku"', $html);
         self::assertStringContainsString('<dialog class="fa-lang-dialog" id="d-title"', $html);
         self::assertStringContainsString('default language', $html);

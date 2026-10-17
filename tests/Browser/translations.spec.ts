@@ -156,13 +156,23 @@ for (const language of ['ar', 'ku']) test(`mobile ${language} translation dialog
   expect(await editor(page).evaluate(dialog => dialog.matches(':modal'))).toBe(true);
 });
 
-test('the language badge sits at the end of the content text, also on right-to-left pages', async ({ page }) => {
+test('the language badge follows the page: left on right-to-left pages, clear of the text', async ({ page }) => {
   await page.goto('/ar/admin/posts/edit/8');
   const input = page.locator('[name="title[en]"]');
   const badge = page.locator('[data-field="title"] .fa-lang-badge');
   const [field, mark] = [await input.boundingBox(), await badge.boundingBox()];
-  // English content: the badge is inside the input on its right, clear of the text's start.
-  expect(mark!.x).toBeGreaterThan(field!.x + field!.width / 2);
-  expect(mark!.x + mark!.width).toBeLessThanOrEqual(field!.x + field!.width);
+  // Arabic page: the badge is inside the input on its left, like other controls' buttons
+  expect(mark!.x).toBeGreaterThanOrEqual(field!.x);
+  expect(mark!.x + mark!.width).toBeLessThan(field!.x + field!.width / 2);
+  // English text keeps its own direction and starts after the badge
+  await expect(input).toHaveAttribute('dir', 'ltr');
+  const start = await input.evaluate(element => parseFloat(getComputedStyle(element).paddingLeft));
+  expect(field!.x + start).toBeGreaterThanOrEqual(mark!.x + mark!.width);
   await expect(badge.locator('.fa-dot')).toHaveCount(2);
+
+  // English page: on the right
+  await page.goto('/en/admin/posts/edit/8');
+  const [field2, mark2] = [await input.boundingBox(), await badge.boundingBox()];
+  expect(mark2!.x).toBeGreaterThan(field2!.x + field2!.width / 2);
+  expect(mark2!.x + mark2!.width).toBeLessThanOrEqual(field2!.x + field2!.width);
 });
