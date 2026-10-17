@@ -113,6 +113,9 @@ final class RecordRepository
         // "#42" or "42" also finds record 42 (0.20); "#42" finds only it.
         $id = $matchId && preg_match('/^#?(\d{1,18})$/D', $search, $m) === 1 ? $m[1] : null;
         $onlyId = $id !== null && str_starts_with($search, '#');
+        if ($searchable === [] && $id === null) {
+            return $query->whereRaw('1 = 0', []);
+        }
 
         return $query->where(function (Database $group) use ($searchable, $languages, $like, $search, $default, $id, $onlyId): void {
             if ($id !== null) {
@@ -146,6 +149,10 @@ final class RecordRepository
             $expression = $column->isTranslatable()
                 ? $this->store->sortExpression($query, $column->getName(), in_array($lang, Languages::all(), true) ? $lang : Languages::default(), Languages::default())
                 : '`' . $column->getName() . '`';
+            if ($column->isTranslatable() && $query->driver() !== 'sqlite') {
+                // JSON_UNQUOTE() compares case-sensitively on MySQL/MariaDB
+                $expression = 'CONVERT(' . $expression . ' USING utf8mb4) COLLATE utf8mb4_unicode_ci';
+            }
             $prefix = strtr(trim($search), ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
             $query = $query->orderByRaw('CASE WHEN ' . $expression . " LIKE ? ESCAPE '!' THEN 0 ELSE 1 END", [$prefix]);
         }

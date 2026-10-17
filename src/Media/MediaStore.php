@@ -95,6 +95,20 @@ final class MediaStore
         return ['items' => $items, 'total' => $total, 'page' => $page, 'pages' => $pages];
     }
 
+    /**
+     * The newest items whose file name, title or alt text contains $term, without
+     * counting the rest (Ctrl+K search, 0.20).
+     *
+     * @return list<MediaItem>
+     */
+    public function findMatching(string $term, int $limit): array
+    {
+        $rows = $this->filtered($term, null, false)->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit(max(1, $limit))->get();
+        $items = [];
+        foreach ($rows as $row) { $items[] = MediaItem::fromRow($row, $this->baseUrl); }
+        return $items;
+    }
+
     /** @param array{folder?: int|string|null, no_alt?: bool, sort?: string, uploaded_by?: ?int} $more */
     private function filtered(string $term, ?string $kind, bool $unused, array $more = []): Database
     {

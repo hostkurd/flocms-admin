@@ -8,7 +8,7 @@ Admin 0.20 adds one search box for the whole panel. Press **Ctrl+K** (⌘K on a 
 4. **Media** items, by title, file name and alt text, with a thumbnail.
 5. The site's own groups (below).
 
-Each group shows up to 5 results. When there are more, **See all in Posts** opens the list already searched. Before typing, the box shows the last 8 records the person opened and the panel's pages.
+Each group shows up to 5 results. When a resource has more, **See all in Posts** opens its list already searched (the list's own search, which does not match ids). At most 8 resource groups are shown; add words to narrow the search. Before typing, the box shows the last 8 records the person opened and the panel's pages.
 
 | Key | Does |
 | --- | --- |
@@ -49,7 +49,7 @@ Search shows only what the person may open:
 - a record opens its edit page when the person has the `update` permission and `canEdit()` allows it, otherwise the list searched for its title;
 - settings pages need their permission, media items `media.view`, Users `users.manage`, Activity `activity.view`;
 - "New …" actions need the `create` permission and `canCreate()`;
-- recent records are checked again every time they are shown.
+- recent records are read again every time they are shown, through the resource's `query()` and `canEdit()`, with their current title; deleted ones leave the list.
 
 The trash and the activity log are not searched; each keeps its own search.
 
@@ -125,5 +125,6 @@ A source returns only what the current person may open: the panel checks nothing
 
 - **Contains, not fuzzy.** "vila" does not find "villa". Arabic letters are matched as typed (أ and ا differ).
 - **Large tables.** "Contains" reads the whole table; it is quick up to tens of thousands of rows per resource. A big log table can be left out with `$globallySearchable = false`, or keep fewer searchable columns.
-- **Time budget.** Groups are asked one after another; after 1.5 seconds no new group starts, and the box says some were skipped.
+- **Time budget.** Groups are asked one after another; after 1.5 seconds no new group starts, and the box says some were skipped (as it does past 8 resource groups).
+- **Detail lines** show the stored value of the next searchable column; use `searchDetails()` for anything formatted.
 - **Recent records** live in the session: a new sign-in starts with an empty list.

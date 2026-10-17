@@ -1540,6 +1540,9 @@ a.fa-filedrop-name:hover{text-decoration:underline}
   .fa-topsearch-input::placeholder{color:transparent}
   .fa-topsearch>.fa-icon{inset-inline-start:12px}
   .fa-topsearch-keys{display:none}
+  /* Without JavaScript the field opens wide enough to type in. */
+  .fa-topsearch:focus-within{flex-basis:220px}
+  .fa-topsearch-input:focus{width:100%;padding-inline:36px 10px;color:var(--fa-text)}
 }
 @media (max-width:640px){
   .fa-panel dialog.fa-cmdk{width:100%;max-width:none;height:100dvh;max-height:none;margin:0;border-radius:0}

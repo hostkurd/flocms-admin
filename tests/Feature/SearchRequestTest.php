@@ -7,6 +7,7 @@ use FloCMS\Admin\Tests\Fixtures\Resources\PostResource;
 use FloCMS\Admin\Tests\Fixtures\Resources\TagResource;
 use FloCMS\Admin\Tests\Fixtures\Search\HelpSource;
 use FloCMS\Admin\Tests\Fixtures\Search\HiddenPostResource;
+use FloCMS\Admin\Tests\Fixtures\Search\IdOnlyPostResource;
 use FloCMS\Admin\Tests\Fixtures\Search\ReadOnlyPostResource;
 
 /**
@@ -100,8 +101,16 @@ final class SearchRequestTest extends RequestTestCase
         $groups = self::groups(self::search('cabin', $config));
         self::assertArrayNotHasKey('Hidden posts', $groups, '$globallySearchable = false');
         $archive = $groups['Archive']['items'][0];
-        self::assertSame('https://example.test/en/admin/archive?q=Mountain%20cabin', $archive['url'], 'not editable: the list, searched for it');
+        self::assertSame('https://example.test/en/admin/archive?q=cabin', $archive['url'], 'not editable: the list, searched for the words');
         self::assertSame('Status: draft', $archive['detail'], 'searchDetails()');
+    }
+
+    public function testAResourceWithoutSearchableColumnsIsFoundByIdOnly(): void
+    {
+        $config = ['admin_config' => ['resources' => [PostResource::class, IdOnlyPostResource::class]]];
+        self::assertSame(['Mountain cabin'], self::titles(self::groups(self::search('#2', $config))['Id posts']));
+        self::assertArrayNotHasKey('Id posts', self::groups(self::search('cabin', $config)));
+        self::assertArrayNotHasKey('Id posts', self::groups(self::search('#' . str_repeat('9', 20), $config)), 'an id too long to be one matches nothing');
     }
 
     public function testRecentRecordsBeforeTyping(): void
@@ -112,12 +121,14 @@ final class SearchRequestTest extends RequestTestCase
         self::assertSame('Recent', $data['groups'][0]['label']);
         self::assertSame(['Sea view villa', 'Mountain cabin'], self::titles($data['groups'][0]), 'newest first');
         self::assertSame('Pages', $data['groups'][1]['label']);
+        self::pdo()->exec("UPDATE posts SET title = '{\"en\":\"Sea view villa, renovated\"}' WHERE id = 1");
+        self::assertSame('Sea view villa, renovated', self::search('', ['session' => $session])['groups'][0]['items'][0]['title'], "today's title");
         self::assertSame('Dashboard', $data['groups'][1]['items'][0]['title']);
         self::assertNotContains('New Post', self::titles($data['groups'][1]), 'actions only while typing');
 
         // A deleted record leaves the list; without the permission the rest go too
         $session = self::post('/admin/posts/delete/2', [], ['session' => $session])['session'];
-        self::assertSame(['Sea view villa'], self::titles(self::search('', ['session' => $session])['groups'][0]));
+        self::assertSame(['Sea view villa, renovated'], self::titles(self::search('', ['session' => $session])['groups'][0]));
         $data = self::search('', ['session' => $session, 'permissions' => [1 => ['taxonomy.tags.view']]]);
         self::assertNotSame('Recent', $data['groups'][0]['label'] ?? null);
     }

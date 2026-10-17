@@ -78,7 +78,12 @@ function search(d: HTMLDialogElement, raw: string, now: boolean): void {
   const query = raw.trim();
   // One letter finds too much; one digit is an id.
   const usable = query === '' || query.length >= 2 || /^#?\d+$/.test(query) ? query : '';
-  if (!now && usable === d.dataset.shown) return;
+  if (!now && usable === d.dataset.shown) {
+    // Back to what is shown: an answer still on its way is for other words.
+    request?.abort();
+    d.removeAttribute('aria-busy');
+    return;
+  }
   timer = window.setTimeout(() => void load(d, usable), now ? 0 : DELAY);
 }
 
@@ -241,6 +246,8 @@ function select(d: HTMLDialogElement, index: number, reset: boolean): void {
 }
 
 function keys(d: HTMLDialogElement, event: KeyboardEvent): void {
+  // An input method is choosing a word: its Enter and arrows are its own.
+  if (event.isComposing || event.keyCode === 229) return;
   const all = options(d);
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     if (all.length === 0) return;
@@ -274,13 +281,18 @@ function initializeField(): void {
 
 document.addEventListener('keydown', shortcuts);
 // The top-bar field: typing in it, Enter or a click opens the dialog with what was typed.
-document.addEventListener('input', event => {
-  const field = event.target;
+function fromField(field: EventTarget | null): void {
   if (!(field instanceof HTMLInputElement) || !field.closest('form[data-admin-search]') || !dialog()) return;
   const value = field.value;
   field.value = '';
   openSearch(value);
+}
+document.addEventListener('input', event => {
+  // While an input method composes, wait for the finished word.
+  if ((event as InputEvent).isComposing) return;
+  fromField(event.target);
 });
+document.addEventListener('compositionend', event => fromField(event.target));
 document.addEventListener('click', event => {
   const field = (event.target as Element | null)?.closest?.('form[data-admin-search]');
   if (!field || !dialog()) return;

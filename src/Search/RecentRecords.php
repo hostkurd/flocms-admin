@@ -37,18 +37,40 @@ final class RecentRecords
     }
 
     /**
-     * The remembered records the person may still open, newest first.
+     * The remembered records the person may still open, newest first: read again
+     * through each resource's query() (one query per resource), so a record now
+     * outside it, deleted or no longer editable is left out, with today's title.
      *
      * @return list<SearchResult>
      */
     public static function results(): array
     {
-        $results = [];
-        foreach (self::stored() as $item) {
-            $class = Admin::registry()->find($item['r']);
+        $stored = self::stored();
+        $db = \FloCMS\Core\App::db();
+        if ($stored === [] || $db === null) { return []; }
+        $fresh = [];
+        foreach (array_unique(array_column($stored, 'r')) as $slug) {
+            $class = Admin::registry()->find($slug);
             if ($class === null || !Auth::can($class::permission('update'))) { continue; }
-            $results[] = SearchResult::make($item['t'] !== '' ? $item['t'] : '#' . $item['id'], Admin::url($item['r'] . '/edit/' . rawurlencode($item['id'])))
-                ->type($class::getLabel())->icon($class::getIcon());
+            $ids = array_values(array_map(static fn (array $item): string => $item['id'], array_filter($stored, static fn (array $item): bool => $item['r'] === $slug)));
+            try {
+                /** @var \FloCMS\Admin\Resource $resource */
+                $resource = new $class();
+                $primary = $resource->table(new \FloCMS\Admin\Table\Table())->primaryColumn();
+                $repository = new \FloCMS\Admin\Data\RecordRepository($resource, $db, \FloCMS\Admin\Translation\Translations::store());
+                foreach ($repository->newQuery()->whereIn($class::getPrimaryKey(), $ids)->get() as $row) {
+                    $id = (string) ($row->{$class::getPrimaryKey()} ?? '');
+                    if ($id === '' || !$resource->canEdit($row)) { continue; }
+                    $fresh[$slug . "\0" . $id] = SearchResult::make(GlobalSearch::title($row, $primary, $id), Admin::url($slug . '/edit/' . rawurlencode($id)))
+                        ->type($class::getLabel())->icon($class::getIcon());
+                }
+            } catch (\Throwable $error) {
+                error_log('flocms-admin: recent records of ' . $slug . ' failed: ' . $error->getMessage());
+            }
+        }
+        $results = [];
+        foreach ($stored as $item) {
+            if (isset($fresh[$item['r'] . "\0" . $item['id']])) { $results[] = $fresh[$item['r'] . "\0" . $item['id']]; }
         }
         return $results;
     }

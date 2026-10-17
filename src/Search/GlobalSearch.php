@@ -84,7 +84,7 @@ final class GlobalSearch
 
         $found = 0;
         foreach (Admin::registry()->all() as $slug => $class) {
-            if ($found >= self::MAX_RESOURCE_GROUPS) { break; }
+            if ($found >= self::MAX_RESOURCE_GROUPS) { $this->partial = true; break; }
             if (!$this->inBudget()) { break; }
             $group = $this->resource($slug, $class, $query);
             if ($group !== null && $group['items'] !== []) { $groups[] = $group; $found++; }
@@ -146,7 +146,7 @@ final class GlobalSearch
             $table = $resource->table(new Table());
             $translatable = $resource->form(new \FloCMS\Admin\Form\Form())->translatableNames();
             foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $translatable, true)); }
-            if ($table->searchableColumns() === [] && preg_match('/^#?\d+$/D', $query) !== 1) { return null; }
+            if ($table->searchableColumns() === [] && preg_match('/^#?\d{1,18}$/D', $query) !== 1) { return null; }
             $repository = new RecordRepository($resource, $db, Translations::store());
             $rows = $repository->search($table, $query, $this->limit() + 1, AdminLang::language());
         } catch (\Throwable $error) {
@@ -156,11 +156,12 @@ final class GlobalSearch
         $more = count($rows) > $this->limit();
         $mayEdit = Auth::can($class::permission('update'));
         $items = [];
+        $primary = $table->primaryColumn();
         foreach (array_slice($rows, 0, $this->limit()) as $row) {
-            $title = \FloCMS\Admin\Actions\ActionExecutor::label($resource, $row);
             $id = (string) ($row->{$class::getPrimaryKey()} ?? '');
+            $title = self::title($row, $primary, $id);
             $url = $resource->searchUrl($row)
-                ?? ($mayEdit && $id !== '' && $resource->canEdit($row) ? Admin::url($slug . '/edit/' . rawurlencode($id)) : Admin::url($slug, ['q' => $title]));
+                ?? ($mayEdit && $id !== '' && $resource->canEdit($row) ? Admin::url($slug . '/edit/' . rawurlencode($id)) : Admin::url($slug, ['q' => $query]));
             $items[] = SearchResult::make($title, $url)->detail($resource->searchDetails($row) ?? self::details($table, $row))
                 ->icon($class::getIcon())->type($class::getLabel());
         }
@@ -169,6 +170,14 @@ final class GlobalSearch
             'more' => $more ? Admin::url($slug, ['q' => $query]) : '',
             'items' => $items,
         ];
+    }
+
+    /** A record's title as the list shows it (its first searchable column), in the panel's language; else "#id". */
+    public static function title(object $row, ?string $primary, string $id): string
+    {
+        $value = $primary !== null && isset($row->{$primary}) && is_scalar($row->{$primary}) ? (string) $row->{$primary} : '';
+        $text = SearchResult::clean(Translations::get($value, AdminLang::language()), 200);
+        return $text !== '' ? $text : '#' . $id;
     }
 
     /** The default detail line: the next searchable column after the title, as text. */
@@ -189,6 +198,7 @@ final class GlobalSearch
     /** @return list<SearchResult> */
     private function settings(string $query): array
     {
+        if (PanelView::pageUrls()['settings'] === null) { return []; }
         $results = [];
         foreach (SettingsController::allowedPages() as $name => $page) {
             $detail = $page->getDescription();
@@ -213,7 +223,7 @@ final class GlobalSearch
     {
         if (!MediaLibrary::enabled() || !MediaLibrary::can('view') || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media'))) { return []; }
         try {
-            $items = MediaLibrary::store()->search($query, null, false, 1, $this->limit())['items'];
+            $items = MediaLibrary::store()->findMatching($query, $this->limit());
         } catch (\Throwable $error) {
             error_log('flocms-admin: media search failed: ' . $error->getMessage());
             return [];
