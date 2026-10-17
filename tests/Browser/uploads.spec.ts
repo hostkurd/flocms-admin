@@ -18,8 +18,11 @@ async function upload(page: Page, field = 'attachment', name = 'document.txt', b
 test('Reactive uploads preview, survive validation, save, replace, and remove without document reload', async ({ page }) => {
   await open(page);
   await upload(page, 'cover', 'cover.png', png);
-  await expect(dialog(page).locator('.fa-upload-preview')).toBeVisible();
-  await expect.poll(() => dialog(page).locator('.fa-upload-preview').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  // FileDrop shows the chosen image at once, then says it is ready.
+  const preview = dialog(page).locator('[data-field=cover] .fa-filedrop-thumb img');
+  await expect(preview).toBeVisible();
+  await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  await expect(dialog(page).locator('[data-field=cover] .fa-filedrop-meta')).toHaveText('Ready; saved with the form.');
   await upload(page);
   await dialog(page).locator('[name=title]').fill('');
   await dialog(page).getByRole('button', { name: 'Save changes', exact: true }).click();
@@ -36,7 +39,8 @@ test('Reactive uploads preview, survive validation, save, replace, and remove wi
   await dialog(page).getByRole('button', { name: 'Save changes', exact: true }).click(); await expect(dialog(page)).not.toBeVisible();
   await page.locator('#fa-admin-resource-edit-1').click(); expect(await dialog(page).locator('[name=attachment]').inputValue()).not.toBe(first);
   expect(await (await page.request.get(storedUrl)).text()).toBe('Replacement document');
-  await dialog(page).locator('[data-field=attachment] [data-upload-remove]').check();
+  await dialog(page).locator('[data-field=attachment]').getByRole('button', { name: 'Remove Current file' }).click();
+  await expect(dialog(page).locator('[data-field=attachment] .fa-filedrop-note')).toContainText('removed when you save');
   await dialog(page).getByRole('button', { name: 'Save changes', exact: true }).click(); await expect(dialog(page)).not.toBeVisible();
   expect((await page.request.get(storedUrl)).status()).toBe(404);
   expect(await page.evaluate(() => (window as any).uploadMarker)).toBe('kept');
@@ -44,13 +48,24 @@ test('Reactive uploads preview, survive validation, save, replace, and remove wi
 
 test('forged extensions, oversized documents, SVG, and image dimension violations are rejected', async ({ page }) => {
   await open(page);
-  for (const [field, name, buffer] of [['attachment', 'fake.pdf', Buffer.from('plain text')], ['attachment', 'huge.txt', Buffer.alloc(129 * 1024, 'x')], ['cover', 'bad.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')]] as const) {
+  // Files that claim an accepted type pass FileDrop's check in the browser; the server sniffs their content.
+  for (const [field, name, type, buffer] of [['attachment', 'fake.pdf', 'application/pdf', Buffer.from('plain text')], ['cover', 'bad.png', 'image/png', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')]] as const) {
     const response = page.waitForResponse(r => r.url().endsWith('/assets/upload'));
-    await dialog(page).locator(`[data-upload-field=${field}]`).setInputFiles({ name, mimeType: 'application/octet-stream', buffer });
+    await dialog(page).locator(`[data-upload-field=${field}]`).setInputFiles({ name, mimeType: type, buffer });
     expect((await response).status()).toBe(422);
     await expect(dialog(page).locator(`[data-upload-field=${field}]`)).toHaveAttribute('aria-invalid', 'true');
     await dialog(page).locator(`[data-upload-field=${field}]`).setInputFiles([]);
   }
+  // Too large or a type the field doesn't take: refused in the browser, nothing is sent.
+  let sent = 0;
+  page.on('request', request => { if (request.url().endsWith('/assets/upload')) sent++; });
+  const attachment = dialog(page).locator('[data-field=attachment]');
+  await attachment.locator('[data-upload-field=attachment]').setInputFiles({ name: 'huge.txt', mimeType: 'text/plain', buffer: Buffer.alloc(129 * 1024, 'x') });
+  await expect(attachment.locator('[data-filedrop-error]')).toHaveText(/^huge\.txt is .*129.KB.*; the limit is .*128.KB.*\.$/);
+  await expect(attachment.locator('[data-upload-field=attachment]')).toHaveAttribute('aria-invalid', 'true');
+  await attachment.locator('[data-upload-field=attachment]').setInputFiles({ name: 'tool.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('MZ') });
+  await expect(attachment.locator('[data-filedrop-error]')).toHaveText('tool.exe is not one of the accepted types.');
+  expect(sent).toBe(0);
 });
 
 test('standard multipart forms retain selections through validation and save without JavaScript', async ({ browser }) => {

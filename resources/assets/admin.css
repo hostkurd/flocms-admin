@@ -993,3 +993,55 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-media-fields .fa-form-grid>*{grid-column:auto}
 .fa-panel .fa-media-toolbar .fa-search{flex:1 1 240px;max-inline-size:420px}
 .fa-panel .fa-media-toolbar .fa-input.fa-media-kind{inline-size:auto;width:auto;flex:0 0 auto}
+
+/* ---- FileDrop (0.18): every file input of the panel ----------------------------------------
+   Without JavaScript the browser's own input shows (styled); the script adds .is-enhanced, hides
+   it (still focusable through the label) and shows "Drop a file or browse". */
+.fa-filedrop{display:flex;flex-direction:column;gap:8px;min-width:0;width:100%}
+.fa-filedrop-zone{position:relative;display:flex;align-items:center;gap:14px;min-width:0;padding:14px 16px;border:1.5px dashed var(--fa-border-strong);border-radius:var(--fa-radius-lg);background:var(--fa-surface);color:var(--fa-text);cursor:pointer;transition:border-color .12s,background-color .12s}
+.fa-filedrop-zone:hover{border-color:var(--fa-primary-border)}
+.fa-filedrop-zone:focus-within{outline:2px solid var(--fa-focus);outline-offset:2px}
+.fa-filedrop.is-over .fa-filedrop-zone{border-style:solid;border-color:var(--fa-primary);background:var(--fa-primary-soft)}
+.fa-filedrop.is-invalid .fa-filedrop-zone{border-color:var(--fa-danger-border);background:var(--fa-danger-soft)}
+.fa-filedrop-input[disabled]~*,.fa-filedrop-zone:has(.fa-filedrop-input[disabled]){cursor:not-allowed;opacity:.7}
+.fa-filedrop-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--fa-primary-soft);color:var(--fa-primary-text)}
+.fa-filedrop.is-over .fa-filedrop-icon{background:var(--fa-primary);color:var(--fa-on-primary)}
+.fa-filedrop.is-invalid .fa-filedrop-icon{background:var(--fa-surface);color:var(--fa-danger)}
+.fa-filedrop-text{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.fa-filedrop-title{font-weight:600;font-size:13.5px;line-height:1.35;color:var(--fa-text)}
+.fa-filedrop-title u{text-decoration:none;color:var(--fa-primary-text)}
+.fa-filedrop-zone:hover .fa-filedrop-title u{text-decoration:underline}
+.fa-filedrop-hint{font-size:12.5px;line-height:1.4;color:var(--fa-muted)}
+.fa-filedrop-input{max-width:100%;min-width:0;font:13px var(--fa-font);color:var(--fa-muted)}
+.fa-filedrop-input::file-selector-button{margin-inline-end:10px;min-height:32px;padding:0 12px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius);background:var(--fa-surface);color:var(--fa-text-2);font:600 13px var(--fa-font);cursor:pointer}
+.fa-filedrop:not(.is-enhanced) .fa-filedrop-title{display:none}
+.fa-filedrop:not(.is-enhanced) .fa-filedrop-zone{border-style:solid;cursor:default}
+.fa-filedrop.is-enhanced .fa-filedrop-input{position:absolute;inset-inline-start:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}
+.fa-filedrop.is-enhanced.has-file .fa-filedrop-zone{display:none}
+.fa-filedrop.is-enhanced .fa-filedrop-remove{display:none}
+.fa-filedrop.is-large .fa-filedrop-zone{flex-direction:column;justify-content:center;gap:10px;min-height:180px;padding:28px 20px;text-align:center}
+.fa-filedrop.is-large .fa-filedrop-text{flex:none;align-items:center}
+.fa-filedrop.is-large .fa-filedrop-icon{width:52px;height:52px}
+.fa-filedrop.is-large .fa-filedrop-title{font-size:15px}
+.fa-filedrop-file,.fa-filedrop-row{display:flex;align-items:center;gap:12px;min-width:0;padding:10px 12px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius-lg);background:var(--fa-surface)}
+.fa-filedrop-file[hidden],.fa-filedrop-chosen[hidden],.fa-filedrop-error[hidden],.fa-filedrop [hidden]{display:none}
+.fa-filedrop-chosen{display:flex;flex-direction:column;gap:8px}
+.fa-filedrop-thumb{display:flex;align-items:center;justify-content:center;flex:none;width:52px;height:52px;overflow:hidden;border-radius:var(--fa-radius);background:var(--fa-surface-3);color:var(--fa-muted);font:700 11px/1 var(--fa-font);letter-spacing:.02em}
+.fa-filedrop-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.fa-filedrop-thumb.is-pdf{background:var(--fa-danger-soft);color:var(--fa-danger)}
+.fa-filedrop-info{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.fa-filedrop-name{overflow:hidden;font-weight:600;font-size:13px;color:var(--fa-text);text-decoration:none;text-overflow:ellipsis;white-space:nowrap}
+a.fa-filedrop-name:hover{text-decoration:underline}
+.fa-filedrop-meta{font-size:12px;color:var(--fa-muted)}
+.fa-filedrop-meta.is-ok{color:var(--fa-success)}
+.fa-filedrop-bar{height:6px;margin-top:6px;overflow:hidden;border-radius:999px;background:var(--fa-surface-3)}
+.fa-filedrop-bar i{display:block;width:0;height:100%;border-radius:999px;background:var(--fa-primary);transition:width .15s}
+.fa-filedrop-bar.is-waiting i{width:35%;animation:fa-filedrop-wait 1.1s ease-in-out infinite}
+@keyframes fa-filedrop-wait{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+[dir="rtl"] .fa-filedrop-bar.is-waiting i{animation-direction:reverse}
+@media (prefers-reduced-motion:reduce){.fa-filedrop-bar.is-waiting i{animation:none;width:100%;opacity:.5}}
+.fa-filedrop-error{display:flex;align-items:center;gap:6px;margin:0;font-size:12.5px;font-weight:500;color:var(--fa-danger)}
+.fa-filedrop-note{display:flex;align-items:center;gap:10px;margin:0;padding:8px 12px;border-radius:var(--fa-radius);background:var(--fa-warning-soft);color:var(--fa-text-2);font-size:12.5px}
+.fa-filedrop-note button{border:0;background:none;padding:0;color:var(--fa-primary-text);font:600 12.5px var(--fa-font);cursor:pointer}
+.fa-filedrop .fa-icon-btn{flex:none;width:32px;height:32px;color:var(--fa-muted)}
+.fa-filedrop .fa-icon-btn:hover{background:var(--fa-surface-3);color:var(--fa-text)}

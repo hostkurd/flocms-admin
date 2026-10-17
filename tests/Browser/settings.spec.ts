@@ -53,7 +53,7 @@ test('logos are uploaded per language and others fall back to the default one', 
   await page.locator('[name="_uploads[logo][en]"]').setInputFiles(photo);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Settings saved.')).toBeVisible();
-  const preview = page.locator('[data-lang="en"] .fa-upload-preview');
+  const preview = page.locator('[data-lang="en"] .fa-filedrop-file .fa-filedrop-thumb img');
   await expect(preview).toBeVisible();
   expect(await preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 
@@ -64,7 +64,7 @@ test('logos are uploaded per language and others fall back to the default one', 
   await expect(page.getByText('Settings saved.')).toBeVisible();
   await expect(page.locator('[data-settings-language]')).toHaveValue('ku');
   await expect(page.locator('[data-lang="ku"] .fa-upload-fallback')).toHaveCount(0);
-  const urls = await page.locator('.fa-upload-preview:not(.is-fallback)').evaluateAll(images => images.map(img => (img as HTMLImageElement).getAttribute('src')));
+  const urls = await page.locator('.fa-filedrop-file .fa-filedrop-thumb img').evaluateAll(images => images.map(img => (img as HTMLImageElement).getAttribute('src')));
   expect(new Set(urls).size).toBe(2);
 });
 
