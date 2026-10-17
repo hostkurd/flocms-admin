@@ -7,7 +7,8 @@ Admin 0.16 lets editors put records in their own order by dragging them: menu it
 1. Add an integer column (an index keeps the list fast):
 
     ```sql
-    ALTER TABLE faqs ADD sort INT NOT NULL DEFAULT 0, ADD INDEX (sort);
+    ALTER TABLE faqs ADD sort INT NOT NULL DEFAULT 0;
+    CREATE INDEX faqs_sort_index ON faqs (sort);
     ```
 
     `php flo make:admin-resource Faq --migration --reorderable` writes this column into a new resource's migration.
@@ -31,6 +32,8 @@ Admin 0.16 lets editors put records in their own order by dragging them: menu it
 3. Run `php flo admin:doctor`: it reports a missing or non-integer order column.
 
 The column does not have to be shown in the list or the form. Existing rows may all be 0: the first save numbers them 1, 2, 3… in their current order.
+
+Numbering happens when positions inside the rows being reordered repeat or are empty, and then covers every row in the resource's scope, in one transaction. That is once after adding the column, and again only if rows with equal positions appear later (for example rows the website inserts with the default 0, or two records created at the same moment). On a very large table, give such rows a position when inserting them (`MAX(sort) + 1`).
 
 | Option | Default | |
 | --- | --- | --- |
@@ -60,7 +63,7 @@ Any filter works this way, including relation filters (`RelationFilter::make('me
 
 ## Saving and safety
 
-- Reorder needs the resource's **update** permission and `canReorder()`:
+- Reorder needs the resource's **update** permission and `canReorder()`. It does not ask `canEdit()` for each row: a user who may reorder can move every row of the list, including ones they cannot edit. Narrow `canReorder()` when that matters:
 
     ```php
     public function canReorder(): bool
@@ -73,7 +76,7 @@ Any filter works this way, including relation filters (`RelationFilter::make('me
 - `afterReorder(array $ids)` runs inside that transaction when positions changed, with the keys in their new order. Use it to clear a cached menu; an exception rolls the order back.
 - The resource's `query()` scope always applies: rows outside it are never shown, moved or renumbered.
 - When another editor added or deleted a record of the set since the page opened, the save is refused, the page reloads and says "The list changed, so it was reloaded. Try again."
-- The endpoint is `POST /admin/<slug>/reorder` with the CSRF token, the active filters and the keys in their new order. Keys must be exactly the rows the filters select; anything else is refused.
+- The endpoint is `POST /admin/<slug>/reorder` with the CSRF token, the active filters and the keys in their new order (as JSON). Keys must be exactly the rows the filters select; anything else is refused. When another editor is saving the same table at that moment (SQLite), the answer is the same "list changed" reload.
 
 ## New records
 

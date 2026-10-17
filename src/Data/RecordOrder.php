@@ -15,8 +15,9 @@ use PDO;
  *
  * Reorder mode works on a set: the rows of the resource's query() scope that
  * match the active filters. A new order hands out the positions those rows
- * already have, so rows outside the filter never move. Positions are numbered
- * 1, 2, 3… across the whole scope first when some repeat or are NULL.
+ * already have, so rows outside the filter never move. When positions inside
+ * the set repeat or are NULL (a column just added with DEFAULT 0), the whole
+ * scope is numbered 1, 2, 3… first, once.
  */
 final class RecordOrder
 {
@@ -91,15 +92,13 @@ final class RecordOrder
         if (count($current) > $this->table->getReorderLimit()) {
             throw $this->refusal(AdminLang::get('reorder.too_many', ['count' => (string) count($current), 'limit' => (string) $this->table->getReorderLimit()]));
         }
-        $sent = $ids;
-        $known = array_map('strval', array_keys($current));
-        sort($sent, SORT_STRING);
-        sort($known, SORT_STRING);
-        if ($sent !== $known) { $this->changed(); }
+        $this->sameSet($ids, $current);
 
-        if ($this->needsNumbering()) {
+        // Repeated or missing positions inside the set: number the scope once, then read the set again.
+        if (in_array(null, $current, true) || count(array_unique($current)) !== count($current)) {
             $this->number();
             $current = $this->lockedSet($filters);
+            $this->sameSet($ids, $current);
         }
 
         $positions = array_values($current);
@@ -114,6 +113,15 @@ final class RecordOrder
         }
         if ($changed > 0) { $this->resource->afterReorder(array_values($ids)); }
         return $changed;
+    }
+
+    /** @param list<string> $ids @param array<string, ?int> $current */
+    private function sameSet(array $ids, array $current): void
+    {
+        $known = array_map('strval', array_keys($current));
+        sort($ids, SORT_STRING);
+        sort($known, SORT_STRING);
+        if ($ids !== $known) { $this->changed(); }
     }
 
     /**
@@ -134,15 +142,6 @@ final class RecordOrder
             $set[(string) $row[$this->key]] = $row[$this->column] === null ? null : (int) $row[$this->column];
         }
         return $set;
-    }
-
-    /** Whether positions in the scope repeat or are missing. */
-    private function needsNumbering(): bool
-    {
-        $column = 's.' . $this->quote($this->column);
-        $row = $this->aggregate('COUNT(*) AS total, COUNT(DISTINCT ' . $column . ') AS uniq, COUNT(' . $column . ') AS filled');
-        $total = (int) ($row->total ?? 0);
-        return (int) ($row->uniq ?? 0) !== $total || (int) ($row->filled ?? 0) !== $total;
     }
 
     /** Number the whole scope 1, 2, 3… in its current order. */
@@ -183,7 +182,12 @@ final class RecordOrder
     {
         if ($this->db->driver() !== 'sqlite' || !$this->db->pdo()->inTransaction()) { return; }
         $key = $this->quote($this->key);
-        $this->db->pdo()->exec('UPDATE ' . $this->quote($this->resource::getTable()) . ' SET ' . $key . ' = ' . $key . ' WHERE 0');
+        try { $this->db->pdo()->exec('UPDATE ' . $this->quote($this->resource::getTable()) . ' SET ' . $key . ' = ' . $key . ' WHERE 0'); }
+        catch (\PDOException $error) {
+            // Another editor is writing (SQLITE_BUSY): the same answer as a changed list.
+            if (((int) ($error->errorInfo[1] ?? 0) & 255) === 5) { $this->changed(); }
+            throw $error;
+        }
     }
 
     private function quote(string $identifier): string

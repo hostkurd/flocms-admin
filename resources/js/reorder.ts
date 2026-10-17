@@ -24,6 +24,7 @@ class Reorder {
   private readonly status: HTMLElement | null;
   private saved: string[];
   private queue: Promise<void> = Promise.resolve();
+  private pending = 0;
   private picked: { item: HTMLLIElement; index: number } | null = null;
   private drag: { item: HTMLLIElement; pointer: number; startY: number; startScroll: number; originTop: number; index: number; lastY: number } | null = null;
   private scrolling = 0;
@@ -39,11 +40,20 @@ class Reorder {
     list.querySelectorAll<HTMLElement>('[data-reorder-steps]').forEach(steps => { steps.hidden = true; });
     list.querySelectorAll<HTMLButtonElement>('[data-reorder-handle]').forEach(handle => {
       handle.hidden = false;
+      handle.setAttribute('aria-pressed', 'false');
       handle.addEventListener('pointerdown', event => this.start(event, handle));
       handle.addEventListener('keydown', event => this.key(event, handle));
       handle.addEventListener('blur', () => { if (!this.moving && this.picked?.item === handle.closest('li')) this.drop(); });
     });
     list.classList.add('is-enhanced');
+    // Done waits for saves still on their way, so the list shows the new order.
+    card.parentElement?.querySelector<HTMLAnchorElement>('[data-reorder-done]')?.addEventListener('click', event => {
+      if (this.pending === 0) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const link = event.currentTarget as HTMLAnchorElement;
+      void this.queue.then(() => link.click());
+    }, true);
   }
 
   private items(): HTMLLIElement[] { return [...this.list.querySelectorAll<HTMLLIElement>(':scope > [data-reorder-id]')]; }
@@ -90,11 +100,20 @@ class Reorder {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', end);
       handle.removeEventListener('pointercancel', end);
+      handle.removeEventListener('lostpointercapture', lost);
       this.finish(e.type === 'pointercancel');
+    };
+    // Capture lost without pointerup (an OS gesture, the page changed): end the drag, putting the row back.
+    // Our own DOM moves also drop capture; move() takes it back, so those are ignored here.
+    const lost = (e: PointerEvent) => {
+      if (this.drag && e.pointerId === this.drag.pointer && !handle.hasPointerCapture(e.pointerId)) {
+        end(new PointerEvent('pointercancel', { pointerId: e.pointerId }));
+      }
     };
     handle.addEventListener('pointermove', move);
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
+    handle.addEventListener('lostpointercapture', lost);
   }
 
   /** The item's top in page coordinates, without its drag offset. */
@@ -118,6 +137,8 @@ class Reorder {
     });
     if (before ? item.nextElementSibling !== before : this.list.lastElementChild !== item) {
       this.list.insertBefore(item, before ?? null);
+      const handle = this.handle(item);
+      try { handle?.setPointerCapture(drag.pointer); } catch { /* the pointer is gone; pointerup/cancel ends the drag */ }
       this.renumber();
     }
     // Keep the row under the pointer: where it started, plus the pointer's and the page's movement.
@@ -215,7 +236,7 @@ class Reorder {
   private release(): void {
     if (!this.picked) return;
     this.picked.item.classList.remove('is-picked');
-    this.handle(this.picked.item)?.removeAttribute('aria-pressed');
+    this.handle(this.picked.item)?.setAttribute('aria-pressed', 'false');
     this.picked = null;
   }
 
@@ -239,20 +260,21 @@ class Reorder {
 
   /** Saves run one after another; each sends the order as it is when its turn comes. */
   private save(): void {
-    this.queue = this.queue.then(() => this.send());
+    this.pending++;
+    this.queue = this.queue.then(() => this.send()).finally(() => { this.pending--; });
   }
 
   private async send(): Promise<void> {
     const order = this.order();
     if (order.join('\n') === this.saved.join('\n')) return;
     this.message(this.texts.saving);
-    this.card.setAttribute('aria-busy', 'true');
+    this.list.setAttribute('aria-busy', 'true');
     const body = new FormData();
     body.append('_token', this.card.dataset.reorderCsrf || '');
     body.append('_filters', this.card.dataset.reorderFilters || '{}');
     body.append('order', JSON.stringify(order));
     try {
-      const response = await fetch(this.card.dataset.reorderUrl!, { method: 'POST', body, credentials: 'same-origin', keepalive: true,
+      const response = await fetch(this.card.dataset.reorderUrl!, { method: 'POST', body, credentials: 'same-origin',
         headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.card.dataset.reorderCsrf || '' } });
       const result = await response.json().catch(() => ({})) as { ok?: boolean; message?: string; reload?: boolean };
       if (!response.ok || !result.ok) {
@@ -267,17 +289,29 @@ class Reorder {
       this.restore();
       this.message(this.texts.failed, true);
     } finally {
-      this.card.removeAttribute('aria-busy');
+      this.list.removeAttribute('aria-busy');
     }
   }
 
   /** Put the rows back in the last saved order. */
   private restore(): void {
+    const focused = document.activeElement instanceof HTMLElement && this.list.contains(document.activeElement) ? document.activeElement : null;
+    this.release();
+    if (this.drag) {
+      cancelAnimationFrame(this.scrolling);
+      this.drag.item.style.transform = '';
+      this.drag.item.classList.remove('is-dragging');
+      this.list.classList.remove('is-sorting');
+      this.drag = null;
+    }
     const items = new Map(this.items().map(item => [item.dataset.reorderId!, item]));
+    this.moving = true;
     for (const id of this.saved) {
       const item = items.get(id);
       if (item) this.list.appendChild(item);
     }
+    focused?.focus({ preventScroll: true });
+    this.moving = false;
     this.renumber();
   }
 }

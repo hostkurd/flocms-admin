@@ -332,6 +332,9 @@ final class ResourceController extends PanelController
         return \FloCMS\Core\Http\Response::json(['results' => $results])->header('Cache-Control', 'no-store')->header('X-Content-Type-Options', 'nosniff');
     }
 
+    /** Any key a table can hold (the locked set decides which are valid): no control characters, at most 191. */
+    private const REORDER_KEY = '/^[^\x00-\x1F\x7F]{1,191}\z/u';
+
     /**
      * Reorder mode: GET shows the filtered rows in their saved order with drag
      * handles (↑/↓ buttons without JavaScript); POST saves a new order (JSON
@@ -359,7 +362,7 @@ final class ResourceController extends PanelController
             try {
                 if ($up !== null || $down !== null) {
                     $id = $up ?? $down;
-                    if (!is_string($id) || preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $id) !== 1) { throw new HttpException(400); }
+                    if (!is_string($id) || preg_match(self::REORDER_KEY, $id) !== 1) { throw new HttpException(400); }
                     $order->move($filters, $id, $up !== null ? 'up' : 'down');
                     if ($wantsJson) { return \FloCMS\Core\Http\Response::json(['ok' => true])->header('Cache-Control', 'no-store'); }
                     $this->redirect(Admin::url($class::getSlug() . '/reorder', ['filter' => $filters->active() ?: null, 'moved' => $id, 'step' => $up !== null ? 'up' : 'down']));
@@ -369,7 +372,7 @@ final class ResourceController extends PanelController
                 foreach ($ids as $index => $id) {
                     if (!is_string($id) && !is_int($id)) { throw new HttpException(400); }
                     $ids[$index] = (string) $id;
-                    if (preg_match('/^[A-Za-z0-9_\-]{1,64}$/', $ids[$index]) !== 1) { throw new HttpException(400); }
+                    if (preg_match(self::REORDER_KEY, $ids[$index]) !== 1) { throw new HttpException(400); }
                 }
                 if (count(array_unique($ids)) !== count($ids)) { throw new HttpException(400); }
                 $order->reorder($filters, $ids);

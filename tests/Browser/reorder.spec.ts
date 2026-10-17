@@ -99,7 +99,7 @@ test('the keyboard picks up, moves, drops and cancels, and a screen reader hears
   await page.keyboard.press('Escape');
   await expect(status(page)).toHaveText('Move cancelled. Where is my parcel? is back at position 3.');
   expect(await ids(page)).toEqual([2, 3, 1, 4, 5]);
-  await expect(handle).not.toHaveAttribute('aria-pressed');
+  await expect(handle).toHaveAttribute('aria-pressed', 'false');
   expect(posts).toBe(0);
 });
 
@@ -183,4 +183,37 @@ test('without JavaScript the arrow buttons move a row one place and keep focus',
   await page.getByRole('button', { name: 'Move How do I pay? up' }).isDisabled();
   expect(await saved(page)).toEqual([2, 1, 3, 4, 5]);
   await context.close();
+});
+
+test('Done waits for a slow save, so the list shows the new order', async ({ page }) => {
+  await page.goto('/en/admin/faqs/reorder');
+  await page.route('**/en/admin/faqs/reorder', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await route.continue();
+  });
+  await drag(page, 0, await below(page, 2));
+  await page.getByRole('link', { name: 'Done' }).click();
+  await expect(page).toHaveURL(/\/en\/admin\/faqs$/);
+  await expect(page.locator('tbody tr').first()).toContainText('How do I pay?');
+  expect(await saved(page)).toEqual([2, 3, 1, 4, 5]);
+});
+
+test('a lost pointer capture ends the drag and puts the row back', async ({ page }) => {
+  await page.goto('/en/admin/faqs/reorder');
+  const handle = page.locator('#fa-reorder-row-1 [data-reorder-handle]');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + 10, box.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 10, await below(page, 2), { steps: 8 });
+  // As when the system takes the pointer away mid-drag.
+  await handle.evaluate(element => { for (let id = 0; id < 4; id++) if (element.hasPointerCapture(id)) element.releasePointerCapture(id); });
+  await page.mouse.move(box.x + 12, await below(page, 2));   // the browser reports a lost capture with the next pointer event
+  await expect(page.locator('[data-reorder-list]')).not.toHaveClass(/is-sorting/);
+  expect(await ids(page)).toEqual([1, 2, 3, 4, 5]);
+  await page.mouse.up();
+  await page.keyboard.press('Tab');
+  // The page still works: the next drag saves.
+  await drag(page, 0, await below(page, 1));
+  await expect(status(page)).toHaveText('Saved');
 });

@@ -102,7 +102,7 @@ final class MakeResourceCommand extends Command
         $this->success('Created ' . $directory . '/' . $class . '.php (URL: /admin/' . $slug . ', table: ' . $table . ')');
 
         if ($reorderable && !$withMigration) {
-            $this->note('Add the order column: ALTER TABLE `' . $table . '` ADD `sort` INT NOT NULL DEFAULT 0, ADD INDEX (`sort`);');
+            $this->note('Add the order column: ALTER TABLE `' . $table . '` ADD `sort` INT NOT NULL DEFAULT 0; CREATE INDEX `' . $table . '_sort_index` ON `' . $table . '` (`sort`);');
         }
 
         if (class_exists(Str::appControllerClass($slug)) || in_array($slug, ['users', 'pages'], true)) {

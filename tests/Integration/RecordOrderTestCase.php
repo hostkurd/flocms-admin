@@ -111,6 +111,22 @@ abstract class RecordOrderTestCase extends TestCase
         self::assertSame(2, $changed);
     }
 
+    public function testRepeatsOutsideTheSetDoNotRenumberTheScope(): void
+    {
+        // Shipping rows share a position (inserted by the website with DEFAULT 0); billing rows are distinct.
+        $this->set([1 => 0, 2 => 20, 4 => 40, 5 => 0]);
+        $this->order()->reorder($this->filters(['category' => 'billing']), ['4', '2']);
+        self::assertSame([1 => 0, 2 => 40, 3 => 0, 4 => 20, 5 => 0], $this->positions());
+    }
+
+    public function testRepeatsInsideAFilteredSetNumberTheScopeOnce(): void
+    {
+        $this->set([1 => 5, 2 => 7, 4 => 7, 5 => 1]);
+        // Scope order: 5 (1), 1 (5), 2 (7), 4 (7) → 1..4; billing then holds 3 and 4.
+        $this->order()->reorder($this->filters(['category' => 'billing']), ['4', '2']);
+        self::assertSame([1 => 2, 2 => 4, 3 => 0, 4 => 3, 5 => 1], $this->positions());
+    }
+
     public function testUnchangedOrderWritesNothing(): void
     {
         $this->set([1 => 1, 2 => 2, 4 => 3, 5 => 4]);

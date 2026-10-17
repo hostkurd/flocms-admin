@@ -146,9 +146,20 @@ final class ReorderRequestTest extends RequestTestCase
         self::assertSame(409, self::save([1, 2, 3, 4, 5, 6])['status'], 'an archived key is outside the scope');
     }
 
+    public function testKeysWithDotsAreAccepted(): void
+    {
+        self::pdo()->exec("UPDATE faqs SET sort = id");
+        $response = self::save([6, 1, 2, 4, 5]);
+        self::assertSame(200, $response['status']);
+        $response = self::post('/en/admin/faqs/reorder', ['order' => json_encode(['6', '1', '2', '4', 'a.b@c']), '_filters' => '{}'], self::options(['headers' => ['Accept' => 'application/json']]));
+        self::assertSame(409, $response['status'], 'any printable key is checked against the set, not refused as malformed');
+        $response = self::post('/en/admin/faqs/reorder', ['order' => json_encode(['6', "1\n"]), '_filters' => '{}'], self::options(['headers' => ['Accept' => 'application/json']]));
+        self::assertSame(400, $response['status'], 'control characters are malformed');
+    }
+
     public function testMalformedOrdersAreBadRequests(): void
     {
-        foreach (['not json', '{"a":1}', '[1,1,2,4,5,6]', '["1","2","4","5","6;DROP"]', json_encode([[1]])] as $order) {
+        foreach (['not json', '{"a":1}', '[1,1,2,4,5,6]', json_encode([[1]]), json_encode([str_repeat('x', 192)])] as $order) {
             $response = self::post('/en/admin/faqs/reorder', ['order' => $order, '_filters' => '{}'], self::options(['headers' => ['Accept' => 'application/json']]));
             self::assertSame(400, $response['status'], $order);
         }
@@ -191,11 +202,11 @@ final class ReorderRequestTest extends RequestTestCase
 
     public function testNewRecordsGoToTheEndOfTheOrder(): void
     {
-        self::save([1, 2, 4, 5, 6]);
+        self::pdo()->exec('UPDATE faqs SET sort = id * 10');   // gaps: the largest position counts, not the row count
         $response = self::post('/en/admin/faqs/create', ['question' => ['en' => 'New question'], 'category' => 'billing'], self::options());
         self::assertTrue($response['redirected'], $response['body']);
         $row = self::pdo()->query("SELECT sort FROM faqs WHERE question LIKE '%New question%'")->fetch(\PDO::FETCH_ASSOC);
-        self::assertSame(6, (int) $row['sort']);
+        self::assertSame(61, (int) $row['sort'], 'after 60 (archived row 3 at 30 is outside the scope, but 60 is the largest)');
     }
 
     public function testTooManyRowsAsksToFilterFirst(): void

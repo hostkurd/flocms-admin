@@ -295,7 +295,7 @@ final class CommandsTest extends TestCase
 
         $tester = $this->runCommand(new MakeResourceCommand(), ['Slide', '--reorderable']);
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
-        self::assertStringContainsString('ALTER TABLE `slides` ADD `sort` INT NOT NULL DEFAULT 0, ADD INDEX (`sort`);', $tester->getDisplay());
+        self::assertStringContainsString('ALTER TABLE `slides` ADD `sort` INT NOT NULL DEFAULT 0; CREATE INDEX `slides_sort_index` ON `slides` (`sort`);', $tester->getDisplay());
         self::assertStringContainsString("->reorderable('sort');", (string) file_get_contents($this->root . '/admin/Resources/SlideResource.php'));
 
         $plain = (string) file_get_contents($this->root . '/admin/Resources/FaqResource.php');
@@ -320,9 +320,13 @@ final class CommandsTest extends TestCase
         $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
         $pdo->exec('CREATE TABLE faqs (id INTEGER PRIMARY KEY, question TEXT, category TEXT, archived INTEGER, created_at TEXT, updated_at TEXT)');
         $display = $this->runCommand(new DoctorCommand())->getDisplay();
-        self::assertStringContainsString('Column "sort" (reorderable) is missing: ALTER TABLE `faqs` ADD `sort` INT NOT NULL DEFAULT 0, ADD INDEX (`sort`);', $display);
+        self::assertStringContainsString('Column "sort" (reorderable) is missing: ALTER TABLE `faqs` ADD `sort` INT NOT NULL DEFAULT 0; CREATE INDEX `faqs_sort_index` ON `faqs` (`sort`);', $display);
 
-        $pdo->exec('ALTER TABLE faqs ADD sort TEXT');
+        $pdo->exec('ALTER TABLE faqs ADD sort POINT');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Column "sort" (reorderable) is POINT: use an integer type (INT)', $display, '"point" contains "int" but is not an integer');
+        $pdo->exec('DROP TABLE faqs');
+        $pdo->exec('CREATE TABLE faqs (id INTEGER PRIMARY KEY, question TEXT, category TEXT, archived INTEGER, created_at TEXT, updated_at TEXT, sort TEXT)');
         $display = $this->runCommand(new DoctorCommand())->getDisplay();
         self::assertStringContainsString('Column "sort" (reorderable) is TEXT: use an integer type (INT)', $display);
 
