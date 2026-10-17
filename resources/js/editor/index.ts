@@ -211,7 +211,13 @@ class RichField {
     this.statusBox = root.querySelector<HTMLElement>('[data-rich-status]');
     this.mediaBar = root.querySelector<HTMLElement>('[data-rich-mediabar]');
     // After a failed save Reactive focuses the invalid source textarea; remember it before hiding it.
+    // When focus was lost on the way (another update ran first, the page blurred), the editor still
+    // takes it if its source is the first invalid field and focus is not in another control.
+    // Both are read before the editor adds its own (invalid) content area.
     const focused = document.activeElement;
+    const scope = root.closest<HTMLElement>('dialog') ?? root.closest<HTMLElement>('form') ?? document.body;
+    const firstInvalid = scope.querySelector('[aria-invalid="true"]:not([disabled])');
+    const lost = !focused || focused === document.body || focused === scope || !focused.isConnected;
     const panels = [...root.querySelectorAll<HTMLElement>(':scope > .fa-rich-panel')];
     panels.forEach((panel, index) => this.createEditor(panel, index === 0));
     this.active = panels[0]?.dataset.lang ?? '';
@@ -230,10 +236,10 @@ class RichField {
     // The field label names the editor and moves focus into it.
     const label = root.closest('.fa-field')?.querySelector<HTMLLabelElement>(':scope > .fa-label');
     label?.addEventListener('click', event => { event.preventDefault(); if (!root.closest('[data-admin-settings].is-switching')) this.selectTab(panels[0]?.dataset.lang ?? ''); this.current()?.commands.focus(); });
-    // A failed save marked the source invalid and focused it: carry both over.
+    // A failed save marked the source invalid and focused it: carry both over (see above).
     panels.forEach(panel => {
       const source = panel.querySelector<HTMLTextAreaElement>('[data-rich-source]')!;
-      if (focused === source) { this.selectTab(panel.dataset.lang ?? ''); this.editorFor(panel)?.commands.focus('end'); }
+      if (focused === source || (lost && firstInvalid === source)) { this.selectTab(panel.dataset.lang ?? ''); this.editorFor(panel)?.commands.focus('end'); }
     });
     this.refreshToolbar();
   }

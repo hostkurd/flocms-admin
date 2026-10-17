@@ -2,6 +2,12 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.16.1 - 2026-10-17
+
+### Fixed
+
+- Rich text fields: after a failed save, focus goes into the invalid editor even when it was lost on the way (another update ran first, or the page lost focus before the editor started). Before, the editor took focus only when the hidden field it replaces still had it, so on slow devices (and once in a while on CI) focus was left nowhere.
+
 ## 0.16.0 - 2026-10-17
 
 Drag-and-drop ordering. No new dependency, migration or table: the order is an integer column of the resource's own table. See the [Reordering guide](docs/reordering.md).

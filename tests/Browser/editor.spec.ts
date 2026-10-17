@@ -294,6 +294,19 @@ test('the editor survives validation errors on other fields, and an empty body i
   await expect(body(page).getByRole('tab', { name: /^en/i }).locator('.fa-dot')).toHaveClass(/is-invalid/);
 });
 
+test('the invalid editor takes focus even when focus was lost before it started', async ({ page }) => {
+  await open(page);
+  await content(page).click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await expect(source(page)).toHaveValue('');
+  // As on a slow device where something else runs first: focus leaves the invalid field before the editor starts.
+  await page.evaluate(() => document.addEventListener('flo-reactive:updated', () => (document.activeElement as HTMLElement | null)?.blur(), { capture: true, once: true }));
+  await dialog(page).getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(body(page).locator('.fa-error')).toHaveText('Body is required.');
+  await expect(content(page)).toBeFocused();
+});
+
 test('a single-language field has no tabs, only its own buttons, and the label focuses it', async ({ page }) => {
   await open(page);
   const note = dialog(page).locator('[data-field=note]');

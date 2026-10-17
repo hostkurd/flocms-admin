@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.16.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.16.1" -W`, run `php flo view:clear` and reload open Admin pages. Nothing else changes.
+
+---
+
 # Upgrading to Admin 0.16.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.16.0" -W`, then run `php flo view:clear` and reload open Admin pages. No migration is needed; nothing changes until a table calls `->reorderable()`.
