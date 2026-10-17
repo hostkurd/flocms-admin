@@ -62,6 +62,12 @@ final class Pivot
     {
         $related = RelationSource::keys($related);
         $current = $this->related($db, [$owner])[$owner] ?? [];
+        $positions = [];
+        if ($this->orderColumn !== null) {
+            foreach ($db->table($this->table)->select([$this->relatedKey, $this->orderColumn])->where($this->ownerKey, '=', $owner)->get() as $row) {
+                $positions[(string) $row->{$this->relatedKey}] = (int) $row->{$this->orderColumn};
+            }
+        }
         $removed = array_values(array_diff($current, $related));
         foreach (array_chunk($removed, 500) as $chunk) {
             $db->table($this->table)->where($this->ownerKey, '=', $owner)->whereIn($this->relatedKey, $chunk)->delete();
@@ -71,7 +77,7 @@ final class Pivot
                 $row = [$this->ownerKey => $owner, $this->relatedKey => $id];
                 if ($this->orderColumn !== null) { $row[$this->orderColumn] = $index + 1; }
                 $db->table($this->table)->insert($row);
-            } elseif ($this->orderColumn !== null) {
+            } elseif ($this->orderColumn !== null && ($positions[$id] ?? null) !== $index + 1) {
                 $db->table($this->table)->where($this->ownerKey, '=', $owner)->where($this->relatedKey, '=', $id)->update([$this->orderColumn => $index + 1]);
             }
         }

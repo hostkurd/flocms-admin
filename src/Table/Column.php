@@ -126,7 +126,7 @@ abstract class Column
     }
 
     /** Load what the cells of these records need in one go (related titles); called before rendering a page. */
-    public function prepare(array $records): void
+    public function prepareRecords(array $records): void
     {
     }
 

@@ -32,10 +32,44 @@ class BelongsToMany extends Field
     public const MAX = 500;
 
     private ?int $max = null;
-    /** @var array<string, string> */
-    private array $loaded = [];
-    /** @var array<string, bool> */
-    private array $checked = [];
+    /** Loaded pivot values and existence checks, shared with the clones resolve() makes. */
+    private \ArrayObject $loaded;
+    private \ArrayObject $checked;
+
+    protected function setUp(): void
+    {
+        $this->loaded = new \ArrayObject();
+        $this->checked = new \ArrayObject();
+    }
+
+    /** The form carries this field (the JSON value, the no-JavaScript select, or its presence marker). */
+    public function submitted(array $input): bool
+    {
+        return array_key_exists($this->name, $input) || array_key_exists($this->name . self::PRESENT, $input);
+    }
+
+    /** Hidden input sent with every form that shows the field, so "nothing chosen" differs from "not sent". */
+    public const PRESENT = '__present';
+
+    /** Whether $value has the same keys as the record's pivot rows (kept valid even if some left the scope). */
+    public function unchanged(string $value, object $record): bool
+    {
+        $now = self::ids($value);
+        $stored = self::ids((string) $this->stateFromRecord($record, ''));
+        sort($now); sort($stored);
+        return $now === $stored;
+    }
+
+    /** The value without keys that do not exist (or no longer match the parent). */
+    public function onlyValid(string $value): string
+    {
+        $ids = self::ids($value);
+        $db = App::db();
+        if ($ids === [] || $db === null) { return $value; }
+        if ($this->isBlocked()) { return ''; }
+        $found = $this->relation()->existing($db, $ids, $this->conditions());
+        return self::encode(array_values(array_filter($ids, static fn (string $id): bool => in_array($id, $found, true))));
+    }
 
     /** At most this many related records. */
     public function max(int $max): static
@@ -82,7 +116,8 @@ class BelongsToMany extends Field
         if ($db === null) {
             return '';
         }
-        return $this->loaded[$owner] ??= self::encode($pivot->related($db, [$owner])[$owner] ?? []);
+        if (!isset($this->loaded[$owner])) { $this->loaded[$owner] = self::encode($pivot->related($db, [$owner])[$owner] ?? []); }
+        return $this->loaded[$owner];
     }
 
     protected function defaultState(string $defaultLang): string|array
@@ -117,14 +152,26 @@ class BelongsToMany extends Field
             return null;
         }
         $key = $value . '|' . $this->parentValue;
-        $this->checked[$key] ??= count($this->relation()->existing($db, $ids, $this->conditions())) === count($ids);
+        if (!isset($this->checked[$key])) { $this->checked[$key] = count($this->relation()->existing($db, $ids, $this->conditions())) === count($ids); }
         return $this->checked[$key] ? null : ['validation.relation', []];
     }
 
-    public function persist(Database $db, string $id, string|array $state): void
+    public function saveRelated(Database $db, object $record, string|array $state): void
     {
-        $this->requirePivot()->sync($db, $id, self::ids($state));
-        $this->loaded = [];
+        $pivot = $this->requirePivot();
+        $owner = (string) ($record->{$pivot->parentKey} ?? '');
+        if ($owner === '') {
+            throw new \LogicException('The saved record has no "' . $pivot->parentKey . '" column for the pivot table ' . $pivot->table . '.');
+        }
+        // Canonical keys as the related table stores them ("07" → "7"), in the chosen order
+        $ids = self::ids($state);
+        $canonical = [];
+        foreach ($ids as $id) {
+            $found = $this->relation()->existing($db, [$id]);
+            $canonical[] = $found[0] ?? $id;
+        }
+        $pivot->sync($db, $owner, $canonical);
+        $this->loaded->exchangeArray([]);
     }
 
     public function renderControl(string $id, string $name, string $value, array $attributes = []): string

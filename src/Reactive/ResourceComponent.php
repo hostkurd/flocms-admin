@@ -225,7 +225,7 @@ final class ResourceComponent extends Component
             $table->getPerPage() ?? Admin::config()->perPage(), AdminLang::language(), $filters);
         $last = max(1, (int) $result['pagination']['last_page']);
         if ($this->page > $last) { $this->page = $last; return $this->render(); }
-        foreach ($visibility->visibleColumns() as $column) { $column->prepare($result['data']); }
+        foreach ($visibility->visibleColumns() as $column) { $column->prepareRecords($result['data']); }
         $registry = new ActionRegistry($resource, $table);
         $selected = \FloCMS\Admin\Actions\BulkExecutor::ids($this->selectedIds, true);
         $bulkActions = array_filter($registry->all('bulk'), fn ($action): bool => $action->available($resource));

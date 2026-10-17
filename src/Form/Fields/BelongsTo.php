@@ -24,12 +24,19 @@ class BelongsTo extends Field
     use DefinesRelation;
     use DependsOnParent;
 
-    /** @var array<string, bool> */
-    private array $checked = [];
+    /** Existence checks, shared with the clones resolve() makes (one query per value). */
+    private \ArrayObject $checked;
 
     protected function setUp(): void
     {
         $this->nullable = true;
+        $this->checked = new \ArrayObject();
+    }
+
+    /** Whether $value is what the record already has (kept valid even if it left the scope since). */
+    public function unchanged(string $value, object $record): bool
+    {
+        return $value === (string) ($record->{$this->name} ?? '');
     }
 
     public function typeError(string $value): ?array
@@ -45,7 +52,7 @@ class BelongsTo extends Field
             return null;
         }
         $key = $value . '|' . $this->parentValue;
-        $this->checked[$key] ??= $this->relation()->existing($db, [$value], $this->conditions()) !== [];
+        if (!isset($this->checked[$key])) { $this->checked[$key] = $this->relation()->existing($db, [$value], $this->conditions()) !== []; }
         return $this->checked[$key] ? null : ['validation.relation', []];
     }
 

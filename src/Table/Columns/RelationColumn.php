@@ -62,7 +62,7 @@ final class RelationColumn extends Column
         // Titles come from the related table
     }
 
-    public function prepare(array $records): void
+    public function prepareRecords(array $records): void
     {
         $db = App::db();
         if ($db === null || !$this->hasRelation()) {
@@ -83,7 +83,7 @@ final class RelationColumn extends Column
     public function render(object $record): string
     {
         if (!$this->prepared) {
-            $this->prepare([$record]);
+            $this->prepareRecords([$record]);
         }
         $pivot = $this->getPivot();
         if ($pivot === null) {

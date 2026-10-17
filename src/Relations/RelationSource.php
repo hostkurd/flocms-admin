@@ -93,7 +93,7 @@ final class RelationSource
         $ids = self::keys($ids);
         $titles = [];
         foreach (array_chunk($ids, 500) as $chunk) {
-            $rows = $this->query($db)->select([$this->key, $this->titleColumn])->whereIn($this->key, $chunk)->get();
+            $rows = $this->query($db)->select([$this->column($this->key), $this->column($this->titleColumn)])->whereIn($this->column($this->key), $chunk)->get();
             foreach ($rows as $row) {
                 $titles[(string) $row->{$this->key}] = $this->label($row);
             }
@@ -118,14 +118,14 @@ final class RelationSource
                 if ($this->translatable) {
                     Translations::store()->whereContains($group, $this->titleColumn, Languages::all(), $term, Languages::default());
                 } else {
-                    $group->orWhereRaw('`' . $this->titleColumn . "` LIKE ? ESCAPE '!'", [$like]);
+                    $group->orWhereRaw('`' . $this->table . '`.`' . $this->titleColumn . "` LIKE ? ESCAPE '!'", [$like]);
                 }
                 if (preg_match('/^\d{1,18}$/D', $term) === 1) {
-                    $group->orWhere($this->key, '=', $term);
+                    $group->orWhere($this->column($this->key), '=', $term);
                 }
             });
         }
-        return $this->rows($this->ordered($query)->limit(max(1, min(500, $limit)))->get());
+        return $this->rows($this->ordered($query)->select([$this->column($this->key), $this->column($this->titleColumn)])->limit(max(1, min(500, $limit)))->get());
     }
 
     /**
@@ -136,7 +136,7 @@ final class RelationSource
      */
     public function options(Database $db, int $limit, array $where = [], ?string $except = null): array
     {
-        return $this->rows($this->ordered($this->filtered($db, $where, $except))->limit(max(1, $limit))->get());
+        return $this->rows($this->ordered($this->filtered($db, $where, $except))->select([$this->column($this->key), $this->column($this->titleColumn)])->limit(max(1, $limit))->get());
     }
 
     /**
@@ -151,11 +151,17 @@ final class RelationSource
         $ids = self::keys($ids);
         $found = [];
         foreach (array_chunk($ids, 500) as $chunk) {
-            foreach ($this->filtered($db, $where, null)->select([$this->key])->whereIn($this->key, $chunk)->get() as $row) {
+            foreach ($this->filtered($db, $where, null)->select([$this->column($this->key)])->whereIn($this->column($this->key), $chunk)->get() as $row) {
                 $found[] = (string) $row->{$this->key};
             }
         }
         return $found;
+    }
+
+    /** "table.column", so a scope that joins other tables stays unambiguous. */
+    private function column(string $column): string
+    {
+        return $this->table . '.' . $column;
     }
 
     /** @param array<string, string> $where */
@@ -163,10 +169,10 @@ final class RelationSource
     {
         $query = $this->query($db);
         foreach ($where as $column => $value) {
-            $query = $query->where(self::identifier((string) $column), '=', $value);
+            $query = $query->where($this->column(self::identifier((string) $column)), '=', $value);
         }
         if ($except !== null && $except !== '') {
-            $query = $query->where($this->key, '!=', $except);
+            $query = $query->where($this->column($this->key), '!=', $except);
         }
         return $query;
     }
@@ -175,8 +181,8 @@ final class RelationSource
     {
         $query = $this->translatable
             ? $query->orderByRaw(Translations::store()->sortExpression($query, $this->titleColumn, in_array(AdminLang::language(), Languages::all(), true) ? AdminLang::language() : Languages::default(), Languages::default()) . ' ASC')
-            : $query->orderBy($this->titleColumn, 'asc');
-        return $query->orderBy($this->key, 'asc');
+            : $query->orderBy($this->column($this->titleColumn), 'asc');
+        return $query->orderBy($this->column($this->key), 'asc');
     }
 
     /** @return list<array{id: string, label: string}> */

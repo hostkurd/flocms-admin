@@ -27,7 +27,7 @@ final class RelationFilter extends Filter
     /** @var array<string, string> */
     private array $titles = [];
 
-    public function emptyValue(): string|array
+    public function emptyFilterValue(): string|array
     {
         return $this->getPivot() === null ? '' : [];
     }
@@ -63,14 +63,14 @@ final class RelationFilter extends Filter
         return $query->whereRaw($sql, $bindings);
     }
 
-    public function describe(string|array $value): ?string
+    public function describeFilterValue(string|array $value): ?string
     {
         $ids = is_array($value) ? $value : [$value];
         $titles = $this->titlesOf($ids);
         return implode(', ', array_map(static fn (string $id): string => $titles[$id] ?? '#' . $id, $ids));
     }
 
-    public function renderInput(string $id, string|array $value, string $invalid, string $prefix): ?string
+    public function renderFilterInput(string $id, string|array $value, string $invalid): ?string
     {
         $multiple = $this->getPivot() !== null;
         $selected = is_array($value) ? $value : ($value === '' ? [] : [$value]);

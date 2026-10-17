@@ -88,6 +88,42 @@ test('relation filters narrow the list and show chips', async ({ page }) => {
   await expect(page.locator('.fa-chip')).toContainText('Parking');
 });
 
+test('Reactive updates rebuild the controls: a dialog keeps its features through an error', async ({ page }) => {
+  await page.goto('/en/admin/home-dialogs');
+  await page.locator('#fa-admin-resource-edit-1').click();
+  const dialog = page.locator('dialog.fa-editor[open]');
+  await expect(dialog.locator('.fa-relation-chip')).toHaveText(['Garden×', 'Pool×']);
+  await dialog.locator('[name="title"]').fill('');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog.getByText('Title is required.')).toBeVisible();
+  // The update morphed the dialog: the chips and search box are back, not the plain select
+  await expect(dialog.locator('.fa-relation-chip')).toHaveText(['Garden×', 'Pool×']);
+  await expect(dialog.locator('select[name="features[]"]')).toBeHidden();
+  await dialog.locator('[id$="f-features-search"]').fill('sea');
+  await dialog.locator('[id$="f-features-listbox"] [role="option"]', { hasText: 'Sea view' }).click();
+  await dialog.locator('[name="title"]').fill('Villa');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('dialog.fa-editor[open]')).toHaveCount(0);
+  await expect(page.locator('tbody')).toContainText('Garden, Pool');
+  await page.locator('#fa-admin-resource-edit-1').click();
+  await expect(page.locator('dialog.fa-editor[open] .fa-relation-chip')).toHaveText(['Garden×', 'Pool×', 'Sea view×']);
+});
+
+test('a relation filter still works after the list updates', async ({ page }) => {
+  await page.goto('/en/admin/homes');
+  await page.locator('[id$="-filters-menu"] summary').click();
+  await page.locator('[id$="filter-features-search"]').click();
+  await page.locator('[id$="filter-features-listbox"] [role="option"]', { hasText: 'Parking' }).click();
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await page.locator('[id$="-filters-menu"] summary').click();
+  await expect(page.locator('[id$="filter-features-search"]')).toBeVisible();
+  await expect(page.locator('[id$="-filters-menu"] .fa-relation-chip')).toHaveText(['Parking×']);
+  await page.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('.fa-chip')).toContainText('Parking');
+});
+
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
   test('native selects edit and save the relations', async ({ page }) => {

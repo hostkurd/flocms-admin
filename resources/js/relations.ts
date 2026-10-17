@@ -13,12 +13,12 @@
 type Option = { id: string; label: string };
 type Strings = Record<string, string>;
 
-const ready = new WeakSet<HTMLElement>();
 let counter = 0;
 
 function text(strings: Strings, key: string, replace: Record<string, string> = {}): string {
   let value = strings[key] || '';
-  for (const [name, part] of Object.entries(replace)) value = value.replace(':' + name, part);
+  // split/join: a label containing "$&" must not be read as a replacement pattern
+  for (const [name, part] of Object.entries(replace)) value = value.split(':' + name).join(part);
   return value;
 }
 
@@ -44,6 +44,8 @@ class RelationControl {
 
   constructor(private readonly root: HTMLElement) {
     this.select = root.querySelector<HTMLSelectElement>('[data-relation-select]')!;
+    // A Reactive update may have put back the server markup around an old control: start over.
+    root.querySelectorAll(':scope > .fa-relation-ui').forEach(old => old.remove());
     this.multiple = root.dataset.mode === 'multi';
     this.strings = JSON.parse(root.dataset.strings || '{}');
     this.json = root.querySelector<HTMLInputElement>('[data-relation-json]');
@@ -234,10 +236,10 @@ class RelationControl {
       const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: request.signal });
       if (!response.ok) throw new Error(String(response.status));
       const data = await response.json() as { results?: Option[] };
-      if (request.signal.aborted) return;
+      if (request.signal.aborted || !this.focused()) return;
       this.show(Array.isArray(data.results) ? data.results.filter(o => typeof o?.id === 'string' && typeof o?.label === 'string') : []);
     } catch (error) {
-      if ((error as Error).name === 'AbortError') return;
+      if ((error as Error).name === 'AbortError' || !this.focused()) return;
       this.show([], text(this.strings, 'failed'));
     }
   }
@@ -284,7 +286,12 @@ class RelationControl {
     if (item) { this.input.setAttribute('aria-activedescendant', item.id); item.scrollIntoView({ block: 'nearest' }); }
   }
 
+  private focused(): boolean {
+    return this.root.contains(document.activeElement);
+  }
+
   private close(): void {
+    window.clearTimeout(this.timer);
     this.request?.abort();
     this.list.hidden = true;
     this.input.setAttribute('aria-expanded', 'false');
@@ -371,11 +378,17 @@ class RelationControl {
   }
 }
 
+/**
+ * Enhance every relation control that shows its server markup: new ones, and
+ * those a Reactive update morphed back (the select is visible again and the
+ * JSON input disabled), so the value is never sent the no-JavaScript way by mistake.
+ */
 export function initializeRelations(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-admin-relation]').forEach(element => {
-    if (ready.has(element) || element.dataset.relationReady === 'true') return;
-    ready.add(element);
-    element.dataset.relationReady = 'true';
+    const select = element.querySelector<HTMLSelectElement>('[data-relation-select]');
+    if (!select) return;
+    const built = element.querySelector(':scope > .fa-relation-ui') !== null && select.hidden;
+    if (built) return;
     new RelationControl(element);
   });
 }

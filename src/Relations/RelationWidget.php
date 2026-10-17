@@ -54,6 +54,10 @@ final class RelationWidget
         if ($multiple && ($c['jsonName'] ?? null) !== null) {
             // Used once the script runs (it keeps the chosen order); without JavaScript the select is sent.
             $html .= '<input type="hidden" name="' . Str::e((string) $c['jsonName']) . '" value="' . Str::e(json_encode($selected, JSON_THROW_ON_ERROR)) . '" data-relation-json disabled>';
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', (string) $c['jsonName']) === 1) {
+                // Marks the field as sent even when nothing is chosen (an empty multiple select sends nothing)
+                $html .= '<input type="hidden" name="' . Str::e($c['jsonName'] . \FloCMS\Admin\Form\Fields\BelongsToMany::PRESENT) . '" value="1">';
+            }
         }
         if (!$c['complete'] && ($c['lookup'] ?? '') === '') {
             $html .= '<p class="fa-help fa-relation-more">' . Str::e(AdminLang::get('relations.first_only', ['count' => (string) RelationSource::PLAIN])) . '</p>';

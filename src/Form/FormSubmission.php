@@ -13,7 +13,7 @@ final class FormSubmission
     {
         $state = [];
         foreach ($form->fields() as $name => $field) {
-            $state[$name] = $field->isWritable()
+            $state[$name] = $field->isWritable() && $field->submitted($input)
                 ? $field->stateFromInput($input, Languages::all())
                 : $field->stateFromRecord($record, Languages::default());
         }
@@ -35,10 +35,15 @@ final class FormSubmission
             fn (Field $field, string $value, ?string $language = null): bool =>
                 $this->repository->exists($field->getName(), $value, $except, $language), $record !== null);
         $errors = $validator->validate($form, $state, $this->skip($form, $state, $record));
-        // A record cannot be its own parent (a category tree)
+        $db = $this->repository->connection();
         foreach ($form->writableFields() as $name => $field) {
-            if ($record !== null && $field instanceof \FloCMS\Admin\Form\Fields\BelongsTo && !isset($errors[$name]) && $field->hasRelation()
-                && $field->relation()->table() === $this->resource::getTable() && ($state[$name] ?? '') !== '' && $state[$name] === (string) ($record->{$pk} ?? '')) {
+            if (!($field instanceof \FloCMS\Admin\Form\Fields\BelongsTo || $field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany) || !$field->hasRelation()) { continue; }
+            // An unchanged value stays valid even if the related record left the scope since (archived)
+            if (isset($errors[$name]) && $record !== null && $field->unchanged((string) ($state[$name] ?? ''), $record)) { unset($errors[$name]); }
+            // A record cannot be its own parent (a category tree)
+            if ($record !== null && $field instanceof \FloCMS\Admin\Form\Fields\BelongsTo && !isset($errors[$name])
+                && $field->relation()->table() === $this->resource::getTable() && ($state[$name] ?? '') !== ''
+                && ($field->relation()->existing($db, [(string) $state[$name]])[0] ?? $state[$name]) === (string) ($record->{$pk} ?? '')) {
                 $errors[$name] = \FloCMS\Admin\Support\AdminLang::get('validation.relation_self', ['attribute' => $field->getLabel()]);
             }
         }
@@ -87,13 +92,13 @@ final class FormSubmission
                 if ($guarded) { $this->repository->updateUnchanged($id, $data, $record); }
                 else { $this->repository->update($id, $data); }
             }
+            $saved = $id !== '' ? $this->repository->find($id) : null;
             // Values kept outside the row (pivot tables), in the same transaction
             foreach ($form->writableFields() as $name => $field) {
-                if (!$field->storesInColumn() && !in_array($name, $skip, true) && $id !== '') {
-                    $field->persist($this->repository->connection(), $id, $state[$name] ?? '');
+                if (!$field->storesInColumn() && !in_array($name, $skip, true) && $saved !== null) {
+                    $field->saveRelated($this->repository->connection(), $saved, $state[$name] ?? '');
                 }
             }
-            $saved = $id !== '' ? $this->repository->find($id) : null;
             if ($saved !== null) { $class->afterSave($saved); }
             return $id;
         });

@@ -53,7 +53,7 @@ final class PageView
 
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $slug);
         $visible = $visibility->visibleColumns();
-        foreach ($visible as $column) { $column->prepare($result['data']); }
+        foreach ($visible as $column) { $column->prepareRecords($result['data']); }
         $columns = [];
         foreach ($visible as $name => $column) {
             $sortUrl = null;

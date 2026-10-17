@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace FloCMS\Admin\Tests\Feature;
 
-use FloCMS\Admin\Tests\Fixtures\Relations\{CategoryResource, CityResource, CountryResource, FeatureResource, HomeResource};
+use FloCMS\Admin\Tests\Fixtures\Relations\{CategoryResource, CityResource, CountryResource, FeatureResource, HomeDialogResource, HomeResource};
 
 final class RelationsRequestTest extends RequestTestCase
 {
-    private const RESOURCES = [HomeResource::class, CityResource::class, CountryResource::class, FeatureResource::class, CategoryResource::class];
+    private const RESOURCES = [HomeResource::class, HomeDialogResource::class, CityResource::class, CountryResource::class, FeatureResource::class, CategoryResource::class];
 
     private static function options(array $extra = []): array
     {
@@ -179,5 +179,43 @@ final class RelationsRequestTest extends RequestTestCase
         self::assertTrue($response['redirected']);
         self::assertNotNull(self::row('cities', 1));
         self::assertStringContainsString('still used by other records', json_encode($response['session'], JSON_UNESCAPED_UNICODE));
+    }
+
+    public function testReactiveDialogKeepsLinksWhenTheDraftLacksThemAndSavesThemWhenSent(): void
+    {
+        $options = self::options(['admin_config' => ['reactive' => true]]);
+        $update = static function (array $previous, string $action, array $state = []) use ($options): array {
+            preg_match('/data-rx-snapshot="([^"]+)"/', $previous['body'], $match);
+            return self::post('/en/flo-reactive/update', ['_snapshot' => html_entity_decode($match[1], ENT_QUOTES), '_action' => $action, 'state' => $state], $options + ['session' => $previous['session']]);
+        };
+        $opened = $update(self::request('GET', '/en/admin/home-dialogs', $options), 'edit', ['selectedId' => '1']);
+        self::assertStringContainsString('name="features__present" value="1"', $opened['body']);
+        // A 422, then a save whose draft has no features key (an old page): the links stay
+        $invalid = $update($opened, 'save', ['draft' => json_encode(['title' => '', 'country_id' => '1', 'city_id' => '1'])]);
+        self::assertSame(422, $invalid['status']);
+        $saved = $update($invalid, 'save', ['draft' => json_encode(['title' => 'Villa 2', 'country_id' => '1', 'city_id' => '1', 'agent_id' => ''])]);
+        self::assertSame(200, $saved['status'], $saved['body']);
+        self::assertSame('Villa 2', self::row('homes', 1)['title']);
+        self::assertSame([2 => 1, 1 => 2, 3 => 3], array_map('intval', self::pivot(1)));
+        // Sent with the presence marker and nothing chosen: the links go
+        $again = $update($update(self::request('GET', '/en/admin/home-dialogs', $options), 'edit', ['selectedId' => '1']), 'save',
+            ['draft' => json_encode(['title' => 'Villa 3', 'country_id' => '1', 'city_id' => '1', 'features' => '', 'features__present' => '1'])]);
+        self::assertSame(200, $again['status'], $again['body']);
+        self::assertSame([], self::pivot(1));
+    }
+
+    public function testUnchangedValuesStayValidAndRefreshKeepsValidFeatures(): void
+    {
+        // Erbil is archived after the home chose it: editing the title still saves
+        self::pdo()->exec('UPDATE cities SET archived = 1 WHERE id = 1');
+        $saved = self::post('/en/admin/homes/edit/1', ['title' => 'Renamed', 'country_id' => '1', 'city_id' => '1', 'features' => '["2","1","3"]', '_close' => '1'], self::options());
+        self::assertTrue($saved['redirected'], $saved['body']);
+        self::assertSame('Renamed', self::row('homes', 1)['title']);
+        // Choosing it anew elsewhere is refused
+        $other = self::post('/en/admin/homes/edit/2', ['title' => 'Flat', 'country_id' => '1', 'city_id' => '1'], self::options());
+        self::assertFalse($other['redirected']);
+        // "07" is the same record as 7: stored once, no churn
+        self::post('/en/admin/homes/edit/2', ['title' => 'Flat', 'country_id' => '2', 'city_id' => '3', 'features' => '["04","2"]', '_close' => '1'], self::options());
+        self::assertSame([4 => 1, 2 => 2], array_map('intval', self::pivot(2)));
     }
 }
