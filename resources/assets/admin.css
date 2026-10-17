@@ -841,3 +841,33 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-columns-list{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:12rem}
 .fa-columns-legend{padding:0;margin-block-end:4px;font-size:12.5px;font-weight:600;color:var(--fa-muted)}
 .fa-columns-dot{color:var(--fa-primary)}
+
+/* 0.15 Relation fields and filters: combobox (single) and chips (multi) */
+.fa-relation{position:relative;min-width:0}
+.fa-relation-ui{position:relative;display:flex;align-items:center;min-width:0}
+.fa-relation-ui>.fa-relation-input{flex:1;min-width:0;padding-inline-end:34px}
+.fa-relation-clear{position:absolute;inset-inline-end:6px;inset-block-start:7px;inline-size:26px;block-size:26px;border:0;border-radius:var(--fa-radius-sm);background:transparent;color:var(--fa-muted);font-size:18px;line-height:1;cursor:pointer}
+.fa-relation-clear:hover{background:var(--fa-surface-3);color:var(--fa-text)}
+.fa-relation-clear[hidden]{display:none}
+.fa-relation-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;inline-size:100%;min-height:40px;padding:5px 6px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius);background:var(--fa-surface);cursor:text}
+.fa-relation-chips:focus-within{border-color:var(--fa-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--fa-focus) 22%,transparent)}
+.fa-relation-ui.is-multi .fa-relation-input{flex:1 1 8rem;min-width:6rem;border:0;box-shadow:none;padding:4px 6px;min-height:28px;background:transparent}
+.fa-relation-ui.is-multi .fa-relation-input:focus{outline:none;box-shadow:none}
+.fa-relation-chip{display:inline-flex;align-items:center;gap:4px;max-inline-size:100%;padding:3px 4px 3px 10px;border-radius:999px;background:var(--fa-primary-soft);color:var(--fa-primary-text);font-size:13px;font-weight:500}
+[dir="rtl"] .fa-relation-chip{padding:3px 10px 3px 4px}
+.fa-relation-chip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-relation-chip-remove{inline-size:20px;block-size:20px;border:0;border-radius:999px;background:transparent;color:inherit;font-size:15px;line-height:1;cursor:pointer}
+.fa-relation-chip-remove:hover,.fa-relation-chip-remove:focus-visible{background:color-mix(in srgb,var(--fa-primary) 18%,transparent)}
+.fa-relation-list{position:absolute;inset-inline:0;inset-block-start:calc(100% + 4px);z-index:30;max-block-size:16rem;overflow:auto;margin:0;padding:4px;list-style:none;background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius);box-shadow:var(--fa-shadow-lg)}
+.fa-relation-list[hidden]{display:none}
+.fa-relation-option{padding:8px 10px;border-radius:var(--fa-radius-sm);cursor:pointer;color:var(--fa-text)}
+.fa-relation-option.is-active{background:var(--fa-surface-3)}
+.fa-relation-option[aria-selected="true"]{font-weight:600;color:var(--fa-primary-text)}
+.fa-relation-option[aria-selected="true"]::after{content:"✓";margin-inline:8px}
+.fa-relation-empty{padding:8px 10px;color:var(--fa-muted);font-size:13.5px}
+.fa-relation-list[aria-busy="true"] .fa-relation-empty{font-style:italic}
+.fa-relation-select[multiple]{min-height:8rem}
+.fa-relation-more{margin:4px 0 0}
+.fa-filters .fa-relation-ui{flex-wrap:wrap}
+.fa-filters .fa-relation-list{position:static;flex-basis:100%;box-shadow:none;margin-block-start:4px}
+.fa-relation-option,.fa-relation-chip>span,.fa-relation-input{unicode-bidi:plaintext}

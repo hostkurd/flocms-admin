@@ -46,7 +46,7 @@ if (!Session::get('fixture')) {
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -83,6 +83,22 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='settings'
 }
 // Each browser session has its own database, so the shared settings cache is rebuilt on every request.
 @unlink(ROOT . '/storage/cache/flocms-admin-settings.php');
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='homes'")->fetchColumn()) {
+    $pdo->exec('CREATE TABLE countries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
+    $pdo->exec('CREATE TABLE cities (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, country_id INTEGER, archived INTEGER NOT NULL DEFAULT 0)');
+    $pdo->exec('CREATE TABLE features (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
+    $pdo->exec('CREATE TABLE agents (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT)');
+    $pdo->exec('CREATE TABLE homes (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, country_id INTEGER, city_id INTEGER, agent_id INTEGER)');
+    $pdo->exec('CREATE TABLE home_feature (home_id INTEGER NOT NULL, feature_id INTEGER NOT NULL, sort INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (home_id, feature_id))');
+    $pdo->exec("INSERT INTO countries (name) VALUES ('Iraq'), ('Greece')");
+    $pdo->exec("INSERT INTO cities (name, country_id) VALUES ('{\"en\":\"Erbil\",\"ar\":\"أربيل\",\"ku\":\"هەولێر\"}', 1), ('{\"en\":\"Sulaimani\",\"ku\":\"سلێمانی\"}', 1), ('{\"en\":\"Athens\"}', 2), ('{\"en\":\"Thessaloniki\"}', 2)");
+    // Many agents: their control searches the server instead of listing everyone
+    $insert = $pdo->prepare('INSERT INTO agents (full_name) VALUES (?)');
+    foreach (['Dara', 'Lana', 'Sara', 'Rebin', 'Shilan', 'Aram', 'Nyan', 'Hemin'] as $first) { foreach (range(1, 10) as $n) { $insert->execute([$first . ' Agent ' . $n]); } }
+    foreach (['Pool', 'Garden', 'Sea view', 'Parking', 'Balcony', 'Fireplace'] as $feature) { $pdo->prepare('INSERT INTO features (name) VALUES (?)')->execute([json_encode(['en' => $feature])]); }
+    $pdo->exec("INSERT INTO homes (title, country_id, city_id, agent_id) VALUES ('Villa', 1, 1, 3), ('Flat', 2, 3, NULL)");
+    $pdo->exec("INSERT INTO home_feature (home_id, feature_id, sort) VALUES (1, 2, 1), (1, 1, 2), (2, 4, 1)");
+}
 // Editor media and settings files, as a web server would serve public/uploads (the public folder is the web root).
 if (preg_match('~^/uploads/(editor|settings)/([A-Za-z0-9/_.-]+)$~', (string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), $media) === 1 && !str_contains($media[2], '..')) {
     $file = ROOT . '/public/uploads/' . $media[1] . '/' . $media[2];

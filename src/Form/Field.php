@@ -247,6 +247,35 @@ abstract class Field
         return $this->columnSpan;
     }
 
+    /** Whether the value is a column of the resource's table (false: kept elsewhere, e.g. a pivot table). */
+    public function storesInColumn(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Write a value kept outside the record's row (storesInColumn() false). Runs
+     * inside the save transaction, after the row was inserted or updated, with
+     * the saved row.
+     *
+     * @param string|array<string, string> $state
+     */
+    public function saveRelated(\FloCMS\Core\Database $db, object $record, string|array $state): void
+    {
+    }
+
+    /**
+     * Whether the input carries this field at all. A field that is missing (an
+     * old draft, a form without it) keeps the stored value instead of being
+     * emptied. Plain fields always count as submitted.
+     *
+     * @param array<string, mixed> $input
+     */
+    public function submitted(array $input): bool
+    {
+        return true;
+    }
+
     /** Whether the value is written to the table. */
     public function isWritable(): bool
     {

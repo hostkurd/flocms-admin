@@ -240,6 +240,30 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString("'settings.manage',", $this->runCommand(new ListCommand(), ['--permissions'])->getDisplay());
     }
 
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testDoctorChecksRelationsAndSuggestsForeignKeys(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'panel_settings' => false, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Relations\\HomeResource::class]];");
+        $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
+        $pdo->exec('CREATE TABLE homes (id INTEGER PRIMARY KEY, title TEXT, country_id INTEGER, city_id INTEGER, agent_id INTEGER)');
+        $pdo->exec('CREATE TABLE countries (id INTEGER PRIMARY KEY, name TEXT)');
+        $pdo->exec('CREATE TABLE cities (id INTEGER PRIMARY KEY, name TEXT, country_id INTEGER, archived INTEGER)');
+        $pdo->exec('CREATE TABLE features (id INTEGER PRIMARY KEY, name TEXT)');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Relation field "agent_id": table "agents" not found', $display);
+        self::assertStringContainsString('Relation field "features": pivot table "home_feature" not found', $display);
+        self::assertStringContainsString('no foreign key on homes.city_id', $display);
+        self::assertStringContainsString('REFERENCES `cities` (`id`) ON DELETE RESTRICT', $display);
+        self::assertStringNotContainsString('Column "features"', $display, 'a pivot field is not a column of homes');
+    }
+
     private function lint(string $file): void
     {
         exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file), $out, $lint);

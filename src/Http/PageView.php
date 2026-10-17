@@ -46,10 +46,14 @@ final class PageView
         $pagination = $result['pagination'];
         $page = (int) $pagination['cur_page'];
         $filters ??= new \FloCMS\Admin\Table\FilterSet($table);
+        foreach ($table->getFilters() as $filter) {
+            if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $filter->lookupFrom(Admin::url($slug . '/lookup')); }
+        }
         $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
 
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $slug);
         $visible = $visibility->visibleColumns();
+        foreach ($visible as $column) { $column->prepareRecords($result['data']); }
         $columns = [];
         foreach ($visible as $name => $column) {
             $sortUrl = null;

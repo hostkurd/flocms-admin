@@ -13,6 +13,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Optional Admin login design** with existing FloCMS authentication; see [upgrade instructions](UPGRADING.md).
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
 - **Website settings**: settings pages declared in PHP, a page-level language switch, one image per language, and a cached `setting('site.title')` helper for templates. [Settings guide](docs/settings.md).
+- **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
 - **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
 
@@ -185,6 +186,9 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `Slug` | text | `->from('title')` fills it from the default-language title while empty (in the browser and on save) |
 | `Hidden` | hidden | Written, not shown |
 | `Placeholder` | read-only text | `->content(fn (?object $record) => ...)`; never written |
+| `BelongsTo` | searchable combobox | The related key in this table's column: `->resource(CityResource::class)` or `->table('brands', 'name')`, `->titleColumn()`, `->dependsOn('country_id')` ([guide](docs/relationships.md)) |
+| `BelongsToMany` | chips with search | A pivot table: `->pivot('property_feature', 'property_id', 'feature_id')`, `->orderColumn('sort')`, `->max(20)` ([guide](docs/relationships.md)) |
+| `ColorPicker` | colour | `#rrggbb` with a swatch |
 
 Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->requiredOnCreate()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`.
 
@@ -202,6 +206,7 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `BooleanColumn` | Yes / No badge | |
 | `DateColumn` | a date | `->dateFormat('Y-m-d H:i')` |
 | `BadgeColumn` | a coloured badge | `->colors([...])` (gray, green, blue, yellow, red, purple), `->labels([...])` |
+| `RelationColumn` | related titles | `->resource(CityResource::class)`; many-to-many with `->pivot(...)`, `->limit(3)` ([guide](docs/relationships.md)) |
 
 Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
 
@@ -348,7 +353,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.9: the redesign: tokens, light/dark/auto theme, shipped fonts, new list page, dialogs and forms, sidebar and topbar with brand settings, phone layouts and dashboard polish
 - 0.10: `RichEditor` with image/video uploads and YouTube/Vimeo embeds
 - 0.14: website settings pages with `setting()`, Admin panel settings, My preferences, the Columns button
-- Next: relationship fields and managers
+- 0.15: relationship fields (`BelongsTo`, `BelongsToMany`), relation columns and filters
+- Next: has-many managers (editing a record's photos or rooms inside its page), inline "create new" from a relation
 
 ## Development
 

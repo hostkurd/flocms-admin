@@ -11,7 +11,7 @@ final class ActionForm
     {
         $state = [];
         foreach ($form->fields() as $name => $field) {
-            $state[$name] = $field->isWritable() ? $field->stateFromInput($input, Languages::all()) : $field->stateFromRecord($record, Languages::default());
+            $state[$name] = $field->isWritable() && $field->submitted($input) ? $field->stateFromInput($input, Languages::all()) : $field->stateFromRecord($record, Languages::default());
         }
         $form->evaluate($state, $record);
         foreach ($form->fields() as $field) { $state = $field->prepare($state, Languages::default()); }
@@ -32,6 +32,7 @@ final class ActionForm
         $form = $form->evaluate($input);
         $safe = [];
         foreach ($form->writableFields() as $name => $field) {
+            if (!$field->submitted($input)) { continue; }
             $safe[$name] = $field instanceof TextInput && $field->getType() === 'password' ? '' : $field->stateFromInput($input, Languages::all());
         }
         return $safe;

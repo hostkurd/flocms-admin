@@ -19,8 +19,8 @@ final class FilterSet
         if (array_diff_key($input, $table->getFilters()) !== []) { throw new HttpException(400); }
         $values = []; $errors = [];
         foreach ($table->getFilters() as $name => $filter) {
-            try { $values[$name] = $filter->value($input[$name] ?? ($filter instanceof DateRangeFilter ? [] : '')); }
-            catch (\InvalidArgumentException) { $values[$name] = $filter instanceof DateRangeFilter ? array_map(static fn ($date): string => is_string($date) && strlen($date) <= 10 ? $date : '', array_intersect_key(is_array($input[$name] ?? null) ? $input[$name] : [], ['from' => '', 'until' => '']) + ['from' => '', 'until' => '']) : ''; $errors[$name] = AdminLang::get('filters.invalid', ['label' => $filter->getLabel()]); }
+            try { $values[$name] = $filter->value($input[$name] ?? ($filter instanceof DateRangeFilter ? [] : $filter->emptyFilterValue())); }
+            catch (\InvalidArgumentException) { $values[$name] = $filter instanceof DateRangeFilter ? array_map(static fn ($date): string => is_string($date) && strlen($date) <= 10 ? $date : '', array_intersect_key(is_array($input[$name] ?? null) ? $input[$name] : [], ['from' => '', 'until' => '']) + ['from' => '', 'until' => '']) : $filter->emptyFilterValue(); $errors[$name] = AdminLang::get('filters.invalid', ['label' => $filter->getLabel()]); }
         }
         $this->values = $values; $this->errors = $errors;
     }
@@ -49,7 +49,9 @@ final class FilterSet
         foreach ($this->table->getFilters() as $name => $filter) {
             if (!array_key_exists($name, $active)) { continue; }
             $value = $active[$name];
-            if ($filter instanceof SelectFilter) {
+            if (($described = $filter->describeFilterValue($value)) !== null) {
+                $text = $described;
+            } elseif ($filter instanceof SelectFilter) {
                 $options = $filter->getOptions();
                 $text = AdminLang::label((string) ($options[$value] ?? $value));
             } else {
@@ -73,7 +75,9 @@ final class FilterSet
             $id = $prefix . '-filter-' . $name;
             $invalid = isset($this->errors[$name]) ? ' aria-invalid="true" aria-describedby="' . Str::e($id . '-error') . '"' : '';
             $html .= '<div class="fa-filter"><label class="fa-label" for="' . Str::e($filter instanceof DateRangeFilter ? $id . '-from' : $id) . '">' . Str::e($filter->getLabel()) . '</label>';
-            if ($filter instanceof SelectFilter) {
+            if (($custom = $filter->renderFilterInput($id, $this->values[$name], $invalid)) !== null) {
+                $html .= $custom;
+            } elseif ($filter instanceof SelectFilter) {
                 $html .= '<select class="fa-input" id="' . Str::e($id) . '" name="filter[' . Str::e($name) . ']" data-admin-filter="' . Str::e($name) . '"' . $invalid . '><option value="">' . Str::e(AdminLang::get('filters.all')) . '</option>';
                 foreach ($filter->getOptions() as $key => $label) { $html .= '<option value="' . Str::e((string) $key) . '"' . ($this->values[$name] === (string) $key ? ' selected' : '') . '>' . Str::e(AdminLang::label($label)) . '</option>'; }
                 $html .= '</select>';

@@ -171,12 +171,12 @@ final class DoctorCommand extends Command
 
         $needed = [$class::getPrimaryKey() => 'primary key'];
         foreach ($form->writableFields() as $name => $field) {
-            $needed[$name] = 'form field';
+            if ($field->storesInColumn()) { $needed[$name] = 'form field'; }
         }
         foreach ($table->getColumns() as $name => $column) {
-            $needed[$name] ??= 'list column';
+            if ($column->isDatabaseColumn()) { $needed[$name] ??= 'list column'; }
         }
-        foreach ($table->getFilters() as $filter) { $needed[$filter->getColumn()] ??= 'filter column'; }
+        foreach ($table->getFilters() as $filter) { if (!($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter && $filter->getPivot() !== null)) { $needed[$filter->getColumn()] ??= 'filter column'; } }
         foreach ($extraColumns as $name) {
             $needed[$name] = 'set on create';
         }
@@ -191,11 +191,82 @@ final class DoctorCommand extends Command
             }
         }
 
+        $this->checkRelations($class, $form, $table, $db);
+
         foreach ($form->translatableNames() as $name) {
             $type = $columns[strtolower($name)] ?? null;
             if ($type !== null && preg_match('/json|text|longtext|mediumtext|clob/i', $type) !== 1) {
                 $this->caution('Column "' . $name . '" is translatable but its type is ' . $type . ': use JSON (or a TEXT type)');
             }
+        }
+    }
+
+    /**
+     * Relation fields, columns and filters: the related table and its key and
+     * title columns, the pivot table and its key columns; a tip when a
+     * key column has no foreign key (so the database protects related records).
+     *
+     * @param class-string<Resource> $class
+     */
+    private function checkRelations(string $class, Form $form, Table $table, Database $db): void
+    {
+        $items = [];
+        foreach ($form->fields() as $field) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\BelongsTo || $field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany) { $items['field "' . $field->getName() . '"'] = $field; }
+        }
+        foreach ($table->getColumns() as $column) {
+            if ($column instanceof \FloCMS\Admin\Table\Columns\RelationColumn) { $items['column "' . $column->getName() . '"'] = $column; }
+        }
+        foreach ($table->getFilters() as $filter) {
+            if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $items['filter "' . $filter->getName() . '"'] = $filter; }
+        }
+        foreach ($items as $what => $item) {
+            try {
+                $source = $item->relation();
+            } catch (Throwable $e) {
+                $this->bad('Relation ' . $what . ': ' . $e->getMessage());
+                continue;
+            }
+            $related = $this->columns($db, $source->table());
+            if ($related === null) {
+                $this->bad('Relation ' . $what . ': table "' . $source->table() . '" not found');
+                continue;
+            }
+            foreach ([$source->key(), $source->titleColumn()] as $column) {
+                if (!array_key_exists(strtolower($column), $related)) { $this->bad('Relation ' . $what . ': column "' . $column . '" missing in "' . $source->table() . '"'); }
+            }
+            $pivot = method_exists($item, 'getPivot') ? $item->getPivot() : null;
+            if (($item instanceof \FloCMS\Admin\Form\Fields\BelongsToMany || $item instanceof \FloCMS\Admin\Table\Columns\RelationColumn && $pivot !== null || $item instanceof \FloCMS\Admin\Table\Filters\RelationFilter && $pivot !== null)) {
+                if ($pivot === null) { $this->bad('Relation ' . $what . ': call ->pivot(\'table\', \'owner_key\', \'related_key\')'); continue; }
+                $pivotColumns = $this->columns($db, $pivot->table);
+                if ($pivotColumns === null) { $this->bad('Relation ' . $what . ': pivot table "' . $pivot->table . '" not found'); continue; }
+                foreach (array_filter([$pivot->ownerKey, $pivot->relatedKey, $pivot->orderColumn]) as $column) {
+                    if (!array_key_exists(strtolower($column), $pivotColumns)) { $this->bad('Relation ' . $what . ': column "' . $column . '" missing in pivot table "' . $pivot->table . '"'); }
+                }
+                if ($pivot->parentKey !== $class::getPrimaryKey()) { $this->caution('Relation ' . $what . ': pivot parent key "' . $pivot->parentKey . '" is not the primary key "' . $class::getPrimaryKey() . '"; saving uses the primary key'); }
+                continue;
+            }
+            if ($item instanceof \FloCMS\Admin\Form\Fields\BelongsTo && !$this->hasForeignKey($db, $class::getTable(), $item->getName())) {
+                $this->line('  <fg=cyan>i</> Relation ' . $what . ': no foreign key on ' . $class::getTable() . '.' . $item->getName() . '. Adding one keeps related records from being deleted while in use: '
+                    . 'ALTER TABLE `' . $class::getTable() . '` ADD FOREIGN KEY (`' . $item->getName() . '`) REFERENCES `' . $source->table() . '` (`' . $source->key() . '`) ON DELETE RESTRICT;');
+            }
+        }
+    }
+
+    /** Whether $table.$column has a foreign key (MySQL/MariaDB and SQLite). */
+    private function hasForeignKey(Database $db, string $table, string $column): bool
+    {
+        try {
+            if ($db->driver() === 'sqlite') {
+                foreach ($db->query('PRAGMA foreign_key_list(`' . $table . '`)')->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                    if (strcasecmp((string) $row['from'], $column) === 0) { return true; }
+                }
+                return false;
+            }
+            $statement = $db->query('SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL', [$table, $column]);
+            return (int) $statement->fetchColumn() > 0;
+        } catch (Throwable) {
+            return true; // unknown: no tip
         }
     }
 

@@ -46,7 +46,7 @@ document.addEventListener('keydown', event => {
 document.addEventListener('change', event => {
   const input = event.target;
   if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement) || !input.closest('[data-admin-live]')) return;
-  if (input.closest('.fa-lang-dialog')) return;
+  if (input.closest('.fa-lang-dialog') || input.matches('[data-relation-search]')) return;
   const form = input.closest<HTMLFormElement>('form');
   const button = form?.querySelector<HTMLButtonElement>('[data-admin-form-refresh]');
   if (!form || !button || form.closest('[aria-busy=true]')) return;

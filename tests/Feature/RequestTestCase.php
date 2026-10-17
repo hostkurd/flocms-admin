@@ -79,7 +79,7 @@ abstract class RequestTestCase extends TestCase
         }
     }
 
-    private static function createTable(PDO $pdo, string $sql): void
+    protected static function createTable(PDO $pdo, string $sql): void
     {
         if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
             $sql = str_replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'INT AUTO_INCREMENT PRIMARY KEY', $sql);

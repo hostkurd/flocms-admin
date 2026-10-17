@@ -213,6 +213,9 @@ final class ResourceComponent extends Component
     {
         $resource = $this->resource(); $table = $resource->table(new Table());
         $filters = new \FloCMS\Admin\Table\FilterSet($table, $this->filters);
+        foreach ($table->getFilters() as $filter) {
+            if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $filter->lookupFrom(Admin::url($resource::getSlug() . '/lookup')); }
+        }
         $resourceForm = $resource->form(new Form());
         foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $resourceForm->translatableNames(), true)); }
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $resource::getSlug());
@@ -222,6 +225,7 @@ final class ResourceComponent extends Component
             $table->getPerPage() ?? Admin::config()->perPage(), AdminLang::language(), $filters);
         $last = max(1, (int) $result['pagination']['last_page']);
         if ($this->page > $last) { $this->page = $last; return $this->render(); }
+        foreach ($visibility->visibleColumns() as $column) { $column->prepareRecords($result['data']); }
         $registry = new ActionRegistry($resource, $table);
         $selected = \FloCMS\Admin\Actions\BulkExecutor::ids($this->selectedIds, true);
         $bulkActions = array_filter($registry->all('bulk'), fn ($action): bool => $action->available($resource));
@@ -262,7 +266,9 @@ final class ResourceComponent extends Component
             'uploadUrl' => Admin::url($resource::getSlug() . '/upload'), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
             'formFields' => (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record),
-                in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/media') : null, $this->operation))->render($form),
+                in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/media') : null, $this->operation,
+                lookupUrl: in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/lookup') : null,
+                recordId: $this->editingId !== '' ? $this->editingId : null, ownTable: $resource::getTable()))->render($form),
             'notifications' => NotificationView::pending($this->instanceKey),
         ]);
     }

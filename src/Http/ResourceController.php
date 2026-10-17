@@ -56,6 +56,7 @@ final class ResourceController extends PanelController
             'admin_upload' => $class::permission('view'),
             'admin_file' => $class::permission('view'),
             'admin_media' => $class::permission('view'),
+            'admin_lookup' => $class::permission('view'),
         ];
     }
 
@@ -165,11 +166,17 @@ final class ResourceController extends PanelController
 
         $batch = new \FloCMS\Admin\Uploads\UploadBatch();
         $batch->deleting($this->resource, $record);
-        $this->repository()->delete($this->recordId());
+        $back = $this->safeBackUrl((string) ($this->request->input('_back') ?? ''));
+        try {
+            $this->repository()->delete($this->recordId());
+        } catch (\FloCMS\Core\ValidationException $error) {
+            // Still used by other records (a foreign key): nothing was deleted.
+            Session::setFlash(implode(' ', array_map(static fn ($m): string => implode(' ', (array) $m), $error->getErrors())), 'danger');
+            $this->redirect($back ?? Admin::url($class::getSlug()));
+        }
         $batch->commit();
         Session::setFlash(AdminLang::get('flash.deleted', ['label' => $class::getLabel()]), 'success');
 
-        $back = $this->safeBackUrl((string) ($this->request->input('_back') ?? ''));
         $this->redirect($back ?? Admin::url($class::getSlug()));
     }
 
@@ -268,11 +275,60 @@ final class ResourceController extends PanelController
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
             'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record),
-                mediaUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/media') : null))->render($form),
+                mediaUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/media') : null,
+                lookupUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/lookup') : null,
+                recordId: $id !== '' ? $id : null, ownTable: $this->resource::getTable()))->render($form),
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '')),
             'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),
         ]), $this->resource::getSlug());
+    }
+
+    /**
+     * GET /admin/<slug>/lookup/<field>?q=…: related records for a relation field
+     * of this resource's form (needs create or update), or with ?for=filter for
+     * a relation filter of its list (needs view). Only declared relations; the
+     * related table, title and scope come from PHP, never from the request.
+     * Answers [{"id": "7", "label": "Erbil"}], at most 20.
+     */
+    public function admin_lookup(): \FloCMS\Core\Http\Response
+    {
+        if (!$this->request->isMethod('GET', 'HEAD')) { throw new HttpException(405); }
+        $name = (string) ($this->params[0] ?? '');
+        $term = $this->request->queryValue('q', '');
+        $parent = $this->request->queryValue('parent', '');
+        $except = $this->request->queryValue('record', '');
+        foreach ([$term, $parent, $except] as $value) { if (!is_string($value) || strlen($value) > 400) { throw new HttpException(400); } }
+        $db = \FloCMS\Core\App::db() ?? throw new HttpException(503);
+        $where = [];
+
+        if ($this->request->queryValue('for', '') === 'filter') {
+            $filter = $this->table()->getFilters()[$name] ?? null;
+            if (!$filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { throw new HttpException(404); }
+            $source = $filter->relation();
+            $except = '';
+        } else {
+            if (!$this->can('create') && !$this->can('update')) { throw new HttpException(403); }
+            $form = $this->form();
+            $field = $form->field($name);
+            if (!($field instanceof \FloCMS\Admin\Form\Fields\BelongsTo || $field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany) || !$field->isWritable()) { throw new HttpException(404); }
+            if (($dependsOn = $field->getDependsOn()) !== null) {
+                // The parent value must itself be a valid choice of the parent field.
+                $parent = trim($parent);
+                $state = [$dependsOn => $parent];
+                $parentField = $parent === '' ? null : $form->evaluate($state)->field($dependsOn);
+                if ($parentField === null || $parentField->typeError($parent) !== null) {
+                    return \FloCMS\Core\Http\Response::json(['results' => []])->header('Cache-Control', 'no-store');
+                }
+                $where = $field->conditionsFor($parent);
+            }
+            $source = $field->relation();
+            // A record is never offered as its own parent
+            $except = $source->table() === $this->resourceClass::getTable() ? trim($except) : '';
+        }
+
+        $results = $source->search($db, $term, \FloCMS\Admin\Relations\RelationSource::LIMIT, $where, $except !== '' ? $except : null);
+        return \FloCMS\Core\Http\Response::json(['results' => $results])->header('Cache-Control', 'no-store')->header('X-Content-Type-Options', 'nosniff');
     }
 
     /** Multipart transport for a declared CRUD action; never a generic upload API. */
@@ -442,7 +498,8 @@ final class ResourceController extends PanelController
             }
         }
 
-        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record), mediaUrl: Admin::url($this->resource::getSlug() . '/media'));
+        $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record), mediaUrl: Admin::url($this->resource::getSlug() . '/media'),
+            lookupUrl: Admin::url($this->resource::getSlug() . '/lookup'), recordId: $isEdit ? $this->recordId() : null, ownTable: $class::getTable());
         $view = new PageView($class);
         $title = $isEdit
             ? AdminLang::get('form.edit_title', ['label' => $class::getLabel()])

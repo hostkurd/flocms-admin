@@ -89,6 +89,9 @@ final class Form
         $resolved = $this->evaluate($state, $record);
         foreach ($resolved->fields() as $name => $field) {
             if ($field instanceof \FloCMS\Admin\Form\Fields\Select && $field->hasDependentOptions() && $field->typeError((string) ($state[$name] ?? '')) !== null) { $state[$name] = ''; }
+            // A related record that does not belong to the new parent is cleared (a city of another country).
+            if ($field instanceof \FloCMS\Admin\Form\Fields\BelongsTo && $field->getDependsOn() !== null && is_string($state[$name] ?? null) && $field->typeError($state[$name]) !== null) { $state[$name] = ''; }
+            if ($field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany && $field->getDependsOn() !== null && is_string($state[$name] ?? null)) { $state[$name] = $field->onlyValid($state[$name]); }
         }
         $this->evaluate($state, $record);
     }

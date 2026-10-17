@@ -13,7 +13,7 @@ final class FormSubmission
     {
         $state = [];
         foreach ($form->fields() as $name => $field) {
-            $state[$name] = $field->isWritable()
+            $state[$name] = $field->isWritable() && $field->submitted($input)
                 ? $field->stateFromInput($input, Languages::all())
                 : $field->stateFromRecord($record, Languages::default());
         }
@@ -35,6 +35,18 @@ final class FormSubmission
             fn (Field $field, string $value, ?string $language = null): bool =>
                 $this->repository->exists($field->getName(), $value, $except, $language), $record !== null);
         $errors = $validator->validate($form, $state, $this->skip($form, $state, $record));
+        $db = $this->repository->connection();
+        foreach ($form->writableFields() as $name => $field) {
+            if (!($field instanceof \FloCMS\Admin\Form\Fields\BelongsTo || $field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany) || !$field->hasRelation()) { continue; }
+            // An unchanged value stays valid even if the related record left the scope since (archived)
+            if (isset($errors[$name]) && $record !== null && $field->unchanged((string) ($state[$name] ?? ''), $record)) { unset($errors[$name]); }
+            // A record cannot be its own parent (a category tree)
+            if ($record !== null && $field instanceof \FloCMS\Admin\Form\Fields\BelongsTo && !isset($errors[$name])
+                && $field->relation()->table() === $this->resource::getTable() && ($state[$name] ?? '') !== ''
+                && ($field->relation()->existing($db, [(string) $state[$name]])[0] ?? $state[$name]) === (string) ($record->{$pk} ?? '')) {
+                $errors[$name] = \FloCMS\Admin\Support\AdminLang::get('validation.relation_self', ['attribute' => $field->getLabel()]);
+            }
+        }
         return $errors !== [] ? $errors : $this->resource->validate($state, $record);
     }
 
@@ -52,7 +64,7 @@ final class FormSubmission
             $skip = $this->skip($form, $state, $record);
             $data = [];
             foreach ($form->writableFields() as $name => $field) {
-                if (in_array($name, $skip, true)) { continue; }
+                if (in_array($name, $skip, true) || !$field->storesInColumn()) { continue; }
                 $value = $state[$name];
                 if ($record !== null && $field->isTranslatable()) {
                     $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
@@ -81,6 +93,12 @@ final class FormSubmission
                 else { $this->repository->update($id, $data); }
             }
             $saved = $id !== '' ? $this->repository->find($id) : null;
+            // Values kept outside the row (pivot tables), in the same transaction
+            foreach ($form->writableFields() as $name => $field) {
+                if (!$field->storesInColumn() && !in_array($name, $skip, true) && $saved !== null) {
+                    $field->saveRelated($this->repository->connection(), $saved, $state[$name] ?? '');
+                }
+            }
             if ($saved !== null) { $class->afterSave($saved); }
             return $id;
         });
