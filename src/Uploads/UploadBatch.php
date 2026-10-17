@@ -31,6 +31,8 @@ final class UploadBatch
     }
     public function deleting(Resource $resource, object $record): void
     {
+        // A trashed record keeps its files until it is deleted for good (Trash::purge()).
+        if (\FloCMS\Admin\Trash\Trash::enabledFor($resource)) { return; }
         foreach ($resource->form(new Form())->fields() as $name => $field) {
             if ($field instanceof FileUpload && Uploads::managed((string) ($record->{$name} ?? ''), $resource, $field)) { $this->removed[] = (string) $record->{$name}; }
         }

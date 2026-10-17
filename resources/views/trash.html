@@ -1,0 +1,115 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $description }}</p></div>
+    <div class="fa-action-group">
+        @if($backUrl !== null)<a class="fa-btn fa-btn-ghost" href="{{ $backUrl }}">{!! $backIcon !!}<span>{{ $backLabel }}</span></a>@endif
+        @if($canEmpty)
+        <form method="post" action="{{ $postUrl }}" class="fa-inline" data-confirm data-confirm-title="{{ $emptyTitle }}" data-confirm-text="{{ $emptyText }}" data-confirm-button="{{ $emptyLabel }}">
+            {!! $csrf !!}
+            <input type="hidden" name="_query" value="{{ $query }}">
+            <button type="submit" name="task" value="empty" class="fa-btn fa-btn-danger-outline">{!! $trashIcon !!}<span>{{ $emptyLabel }}</span></button>
+        </form>
+        @endif
+    </div>
+</div>
+<div class="fa-card fa-trash">
+    @if(count($tabs) > 0 || $hasSearch)
+    <div class="fa-list-toolbar">
+        @if(count($tabs) > 0)
+        <nav class="fa-segmented" aria-label="{{ $t('trash.type') }}">
+            @foreach($tabs as $tab)<a href="{{ $tab['url'] }}"@if($tab['current']) aria-current="page" class="is-current"@endif>{{ $tab['label'] }}<span class="fa-segmented-count fa-ltr">{{ $tab['count'] }}</span></a>@endforeach
+        </nav>
+        @endif
+        <span class="fa-toolbar-spacer"></span>
+        <form class="fa-trash-filters" method="get" action="{{ $listUrl }}" role="search">
+            @if($type !== '')<input type="hidden" name="type" value="{{ $type }}">@endif
+            <span class="fa-search">
+                {!! $searchIcon !!}
+                <label class="fa-sr" for="fa-trash-search">{{ $t('trash.search') }}</label>
+                <input type="search" id="fa-trash-search" name="q" value="{{ $search }}" placeholder="{{ $t('trash.search') }}" class="fa-input">
+                @if($search !== '')<a class="fa-search-clear" href="{{ $clearUrl }}" aria-label="{{ $t('table.clear') }}" title="{{ $t('table.clear') }}">{!! $removeIcon !!}</a>@endif
+            </span>
+            @if(count($people) > 1)
+            <label class="fa-select-inline"><span class="fa-sr">{{ $t('trash.deleted_by') }}</span>
+                <select name="by" class="fa-input fa-select" data-admin-autosubmit>
+                    <option value="">{{ $t('trash.deleted_by_anyone') }}</option>
+                    @foreach($people as $person)<option value="{{ $person['id'] }}"@if($person['selected']) selected @endif>{{ $person['name'] }}</option>@endforeach
+                </select>
+            </label>
+            @endif
+            <button type="submit" class="fa-btn fa-btn-sm fa-trash-apply">{{ $t('table.search_button') }}</button>
+        </form>
+    </div>
+    @endif
+    @if(count($rows) > 0 && ($canRestore || $canPurge))
+    <form class="fa-bulk-toolbar" id="fa-list-bulk" data-admin-standard-bulk method="post" action="{{ $postUrl }}" data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}" hidden>
+        {!! $csrf !!}
+        <input type="hidden" name="_query" value="{{ $query }}">
+        <span class="fa-bulk-count" data-admin-selection-count role="status"></span>
+        <span class="fa-bulk-actions" role="group" aria-label="{{ $t('bulk.action') }}">
+            @if($canRestore)<button class="fa-btn fa-btn-sm" type="submit" name="task" value="restore">{!! $undoIcon !!}<span>{{ $t('trash.restore') }}</span></button>@endif
+            @if($canPurge)<button class="fa-btn fa-btn-sm fa-btn-danger-outline" type="submit" name="task" value="purge" data-admin-confirm-submit data-confirm-title="{{ $t('trash.purge_selected_title') }}" data-confirm-text="{{ $t('trash.purge_selected_text') }}" data-confirm-button="{{ $t('trash.purge') }}">{{ $t('trash.purge') }}</button>@endif
+        </span>
+    </form>
+    @endif
+    @if(count($rows) > 0)
+    <div class="fa-table-wrap">
+        <table class="fa-table fa-table-list">
+            <thead>
+                <tr>
+                    @if($canRestore || $canPurge)<th class="fa-selection-col"><label class="fa-select-page"><input type="checkbox" data-admin-select-page-standard aria-label="{{ $t('bulk.select_page') }}"><span class="fa-select-page-label" aria-hidden="true">{{ $t('bulk.select_page') }}</span></label></th>@endif
+                    @foreach($columns as $column)<th scope="col" class="{{ $column['class'] }}">{{ $column['label'] }}</th>@endforeach
+                    <th scope="col">{{ $t('trash.deleted_by') }}</th>
+                    <th scope="col">{{ $t('trash.deleted') }}</th>
+                    <th scope="col">{{ $t('trash.purged_in') }}</th>
+                    <th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($rows as $row)
+                <tr>
+                    @if($canRestore || $canPurge)<td class="fa-selection-col"><input type="checkbox" form="fa-list-bulk" name="ids[]" value="{{ $row['id'] }}" aria-label="{{ $t('trash.select', ['title' => $row['label']]) }}"></td>@endif
+                    @foreach($row['cells'] as $cell)<td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>@endforeach
+                    <td data-label="{{ $t('trash.deleted_by') }}"><span class="fa-who"><span class="fa-avatar fa-avatar-sm {{ $row['avatar'] }}" aria-hidden="true">{{ $row['initial'] }}</span>{{ $row['who'] }}</span></td>
+                    <td class="fa-muted" data-label="{{ $t('trash.deleted') }}"><time datetime="{{ $row['deletedAt'] }}" title="{{ $row['deletedFull'] }}">{{ $row['when'] }}</time></td>
+                    <td data-label="{{ $t('trash.purged_in') }}"><span class="{{ $row['soon'] ? 'fa-soon' : '' }}">{{ $row['left'] }}</span></td>
+                    <td class="fa-actions">
+                        @if($row['canRestore'])
+                        <form method="post" action="{{ $postUrl }}" class="fa-inline">
+                            {!! $csrf !!}<input type="hidden" name="_query" value="{{ $query }}"><input type="hidden" name="ids[]" value="{{ $row['id'] }}">
+                            <button type="submit" name="task" value="restore" class="fa-btn fa-btn-sm">{!! $undoIcon !!}<span>{{ $t('trash.restore') }}</span></button>
+                        </form>
+                        @endif
+                        @if($row['canPurge'])
+                        <form method="post" action="{{ $postUrl }}" class="fa-inline" data-confirm data-confirm-title="{{ $t('trash.purge_one_title') }}" data-confirm-text="{{ $row['purgeText'] }}" data-confirm-button="{{ $t('trash.purge') }}">
+                            {!! $csrf !!}<input type="hidden" name="_query" value="{{ $query }}"><input type="hidden" name="ids[]" value="{{ $row['id'] }}">
+                            <button type="submit" name="task" value="purge" class="fa-icon-btn" aria-label="{{ $t('trash.purge_named', ['title' => $row['label']]) }}" title="{{ $t('trash.purge') }}">{!! $trashIcon !!}</button>
+                        </form>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @else
+    <div class="fa-blank">
+        {!! $trashIconLarge !!}
+        <p>{{ $search !== '' || $deletedBy !== null ? $t('trash.no_results') : $emptyMessage }}</p>
+    </div>
+    @endif
+    <div class="fa-table-foot">
+        <span class="fa-trash-note">{!! $infoIcon !!}<span>{{ $note }}</span></span>
+        <span class="fa-trash-pages">
+            @if($summary !== '')<span class="fa-muted fa-ltr">{{ $summary }}</span>@endif
+            @if(count($pages) > 0)
+            <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
+                @foreach($pages as $link)
+                @if($link['current'])<span class="fa-page-link is-current" aria-current="page">{{ $link['label'] }}</span>
+                @elseif($link['url'] !== null)<a class="fa-page-link" href="{{ $link['url'] }}">{{ $link['label'] }}</a>
+                @else<span class="fa-page-gap">…</span>@endif
+                @endforeach
+            </nav>
+            @endif
+        </span>
+    </div>
+</div>

@@ -14,7 +14,7 @@ final class InstallCommand extends Command
 
     protected string $description = 'Set up flocms-admin: create config/admin.php and admin/Resources/';
 
-    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences and media library tables (once). Running it again only adds what is missing.';
+    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences, media library, trash and activity log tables (once). Running it again only adds what is missing.';
 
     protected function handle(): int
     {
@@ -42,7 +42,8 @@ final class InstallCommand extends Command
         // (the settings table is FloCMS's own: a site that already has a migration for it keeps that one)
         // and of the media library (0.17), named as config/admin.php says ('media_library' => ['table' => …])
         $values = is_file($config) ? (static fn (string $file): mixed => require $file)($config) : [];
-        $library = (new \FloCMS\Admin\AdminConfig(is_array($values) ? $values : [], $project->path(''), true))->mediaLibrary();
+        $settings = new \FloCMS\Admin\AdminConfig(is_array($values) ? $values : [], $project->path(''), true);
+        $library = $settings->mediaLibrary();
         $migrations = [
             ['settings-migration', \FloCMS\Admin\Settings\SettingsStore::TABLE, []],
             ['preferences-migration', 'admin_user_preferences', []],
@@ -52,25 +53,33 @@ final class InstallCommand extends Command
             // Folders, fingerprint and focal point (0.18): changes the media table, so it is written last.
             $migrations[] = ['media-folders-migration', $library['folders_table'], ['table' => $library['table'], 'folders_table' => $library['folders_table']]];
         }
+        // The trash and the activity log (0.19), one migration for both tables.
+        $trash = $settings->trash();
+        $activity = $settings->activity();
+        if ($trash['enabled'] || $activity['enabled']) {
+            $migrations[] = ['trash-activity-migration', $trash['table'] . '_and_' . $activity['table'], ['trash_table' => $trash['table'], 'activity_table' => $activity['table']], 'tables'];
+        }
         // Each new file a second later than the one before, so they run in this order.
         $time = time();
-        foreach ($migrations as [$stub, $name, $more]) {
-            $existing = glob($project->path('database/migrations') . DIRECTORY_SEPARATOR . '*_create_' . $name . '_table.php') ?: [];
+        foreach ($migrations as $migration) {
+            [$stub, $name, $more] = $migration;
+            $suffix = $migration[3] ?? 'table';
+            $existing = glob($project->path('database/migrations') . DIRECTORY_SEPARATOR . '*_create_' . $name . '_' . $suffix . '.php') ?: [];
             if ($existing !== []) {
                 $this->note('A migration for "' . $name . '" already exists: ' . basename($existing[0]));
                 continue;
             }
-            $migration = 'database/migrations/' . date('Y_m_d_His', $time++) . '_create_' . $name . '_table.php';
-            if (Stub::write($project->path($migration), Stub::render($stub, $more + ['table' => $name]))) {
-                $this->success('Created ' . $migration);
+            $file = 'database/migrations/' . date('Y_m_d_His', $time++) . '_create_' . $name . '_' . $suffix . '.php';
+            if (Stub::write($project->path($file), Stub::render($stub, $more + ['table' => $name]))) {
+                $this->success('Created ' . $file);
             } else {
-                $this->fail('Could not write ' . $migration . ': check the folder permissions.');
+                $this->fail('Could not write ' . $file . ': check the folder permissions.');
             }
         }
 
         $this->newLine();
         $this->line('Next steps:');
-        $this->line('  1. php flo migrate                              (settings, preferences and media library tables)');
+        $this->line('  1. php flo migrate                              (settings, preferences, media library, trash and activity tables)');
         $this->line('  2. php flo make:admin-resource Post --migration');
         $this->line('  3. php flo make:admin-settings                  (website settings pages, optional)');
         $this->line('  4. Log in, then open /admin/dashboard');

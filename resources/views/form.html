@@ -1,5 +1,5 @@
 @if($deleteUrl !== null)
-<form method="post" action="{{ $deleteUrl }}" id="fa-record-delete" class="fa-inline" data-confirm>
+<form method="post" action="{{ $deleteUrl }}" id="fa-record-delete" class="fa-inline" data-confirm data-confirm-text="{{ $deleteText }}">
     {!! $csrf !!}
     <input type="hidden" name="_back" value="{{ $backUrl }}">
 </form>
@@ -15,6 +15,9 @@
         </div>
         <div class="fa-record-actions">
             <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
+            @if($history !== null)
+            <a class="fa-btn" href="{{ $history['url'] }}" data-admin-drawer="fa-history-drawer" aria-haspopup="dialog">{!! $historyIcon !!}<span>{{ $t('activity.history') }}</span></a>
+            @endif
             @if($deleteUrl !== null)
             <button type="submit" form="fa-record-delete" class="fa-btn fa-btn-danger-ghost">{!! $trashIcon !!}<span>{{ $t('actions.delete') }}</span></button>
             @endif
@@ -32,3 +35,15 @@
         {!! $fields !!}
     </div>
 </form>
+@if($history !== null)
+<dialog class="fa-drawer" id="fa-history-drawer" aria-labelledby="fa-history-title">
+    <div class="fa-drawer-head">
+        <div class="fa-drawer-heading">
+            <h2 class="fa-dialog-title" id="fa-history-title">{{ $t('activity.history') }}</h2>
+            <p class="fa-drawer-sub">{{ $history['title'] }}</p>
+        </div>
+        <button type="button" class="fa-icon-btn fa-dialog-close" data-admin-dialog-close aria-label="{{ $t('actions.close') }}">{!! $closeIcon !!}</button>
+    </div>
+    <div class="fa-drawer-body">{!! $history['html'] !!}</div>
+</dialog>
+@endif

@@ -60,11 +60,13 @@
                 "FloCMS\\Admin\\Console\\ListCommand",
                 "FloCMS\\Admin\\Console\\DoctorCommand",
                 "FloCMS\\Admin\\Console\\MediaImportCommand",
-                "FloCMS\\Admin\\Console\\MediaUsageCommand"
+                "FloCMS\\Admin\\Console\\MediaUsageCommand",
+                "FloCMS\\Admin\\Console\\TrashPurgeCommand",
+                "FloCMS\\Admin\\Console\\ActivityPurgeCommand"
             ]
         },
         "branch-alias": {
-            "dev-main": "0.18-dev"
+            "dev-main": "0.19-dev"
         }
     },
     "scripts": {

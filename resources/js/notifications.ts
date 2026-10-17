@@ -38,11 +38,14 @@ export function receiveNotifications(): void {
 function autoClose(message: HTMLElement): void {
   const seconds = Number(message.dataset.adminNotificationDuration || '0');
   if (!(seconds > 0)) return;
+  // A notification with an action (Undo) shows its time running out; hovering or focusing it pauses the bar too.
+  const bar = message.querySelector<HTMLElement>('.fa-notification-timer i');
+  if (bar) bar.style.animationDuration = `${seconds}s`;
   let left = seconds * 1000;
   let started = 0;
   let timer = 0;
-  const start = () => { started = Date.now(); timer = window.setTimeout(() => closeNotification(message), left); };
-  const pause = () => { if (!timer) return; window.clearTimeout(timer); timer = 0; left = Math.max(1500, left - (Date.now() - started)); };
+  const start = () => { started = Date.now(); message.classList.remove('is-paused'); timer = window.setTimeout(() => closeNotification(message), left); };
+  const pause = () => { if (!timer) return; window.clearTimeout(timer); timer = 0; message.classList.add('is-paused'); left = Math.max(1500, left - (Date.now() - started)); };
   const resume = () => { if (!timer && !message.matches(':hover') && !message.contains(document.activeElement)) start(); };
   message.addEventListener('mouseenter', pause);
   message.addEventListener('focusin', pause);
@@ -68,6 +71,17 @@ document.addEventListener('click', event => {
   const message = dismiss.closest<HTMLElement>('[data-admin-notification]');
   if (message) closeNotification(message);
 });
+// The action (Undo) returns to the page the person is on.
+document.addEventListener('submit', event => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-admin-notification-action')) return;
+  const back = form.querySelector<HTMLInputElement>('[data-admin-notification-back]');
+  if (back) back.value = location.pathname + location.search;
+  form.querySelectorAll<HTMLButtonElement>('button[type="submit"]').forEach(button => { button.disabled = true; });
+  // The button's own request; the panel's page navigation never takes it.
+  event.stopImmediatePropagation();
+  window.setTimeout(() => form.querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.disabled = false; }), 8000);
+}, true);
 document.addEventListener('flo-reactive:updated', receiveNotifications);
 document.addEventListener('flo-admin:navigated', receiveNotifications);
 

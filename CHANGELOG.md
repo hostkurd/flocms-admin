@@ -2,6 +2,40 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.19.0 - 2026-10-17
+
+Deleted records go to a **trash** and can be restored; every change in the panel is written to an **activity log**. One migration (`admin_trash` and `admin_activity`); until it has run, deleting works as before and nothing is logged. See the [Trash and activity log guide](docs/trash-and-activity.md).
+
+### Trash
+
+- Delete (a row, **Delete selected**, the record page, a Delete action) moves the record to the trash: the row leaves its table at once (the website stops showing it) and a copy waits with its many-to-many links, upload files and media usage.
+- A toast "Post deleted." offers **Undo** for 10 seconds, with a bar counting down (hovering or focusing it pauses it). A bulk delete undoes as one.
+- **Trash (n)** in each list's toolbar opens that resource's trash with the list's columns, who deleted each record, when, and the days left. **Restore**, **Delete for good**, bulk selection and **Empty trash**. **Site → Trash** shows every type, with a tab each.
+- Restore puts the record back with the same id. It is refused with a reason when a unique value (a slug) is now taken, a parent is gone or the id is used again; the record then stays in the trash.
+- Upload files and media usage are kept while the record waits ("Listings · Villa (in trash)") and removed when it is deleted for good.
+- Records are kept 30 days (`'trash' => ['days' => 30]`, `0` = until emptied), purged by panel pages at most hourly and by `php flo admin:trash-purge`.
+- Restoring needs the resource's `create` permission, deleting for good its `delete` permission.
+- `protected static bool $trash = false;` deletes a resource's records at once. Users are logged, not trashed.
+- Delete confirmations say where the record goes ("It goes to the trash for 30 days and can be restored from there.").
+- A resource that narrows `query()` shows each person only the records they deleted, unless it defines `canSeeInTrash()`.
+- Hooks `Resource::beforeRestore()` and `afterRestore()`; `Trash::restore()`, `Trash::purge()` for scripts.
+
+### Activity log
+
+- Create, edit (each changed field, before → after), delete, restore, delete for good, custom and bulk actions, reorder, settings saves, media uploads, edits, replacements, moves and deletes, users and profile changes. Sign-ins with `'activity' => ['logins' => true]`.
+- Passwords are never recorded; `->hiddenFromActivity()` or `Resource::$activityExcept` record a change without its value. Rich text and long text by their length, relations by name, media by title, choices by label, translations per language.
+- **History** on each record's page opens a side panel: its entries by day, the first changes inline, **Show changes** for the whole before → after table (a dialog). Anyone who can edit the record sees it.
+- **Site → Activity** (permission `activity.view`): filters for the person, type, period and action, and a search over titles and changed values.
+- Kept 365 days (`'activity' => ['days' => 365]`), purged by panel pages and by `php flo admin:activity-purge`. No IP addresses.
+- `Activity::log('published', $record, ['reason' => …], ListingResource::class)` writes your own entries.
+
+### Also
+
+- `Notification::action($label, $url)`: a button that POSTs to a panel URL; with a duration, a countdown bar. `->neutral()` and `->icon($name)`.
+- Confirmation dialogs take their title, text and button from `data-confirm-title`, `data-confirm-text` and `data-confirm-button`, and a submit button with `data-admin-confirm-submit` asks before its own action only.
+- `admin:install` writes the migration; `admin:doctor` checks both tables and warns about `ON DELETE CASCADE` foreign keys the trash can't undo.
+- Lang keys under `trash.`, `activity.` and `dates.`; `actions.close`, `delete.text_trash`, `bulk.confirm_trash`, `bulk.confirm_delete`.
+
 ## 0.18.1 - 2026-10-17
 
 No migration.

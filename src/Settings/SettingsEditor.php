@@ -143,9 +143,26 @@ final class SettingsEditor
         $batch->commit();
         Settings::forget();
         $this->stored = null;
+        $this->logChanges($record);
         $this->page->runAfterSave($values);
 
         return ['state' => $state, 'errors' => [], 'saved' => true];
+    }
+
+    /** One "settings saved" activity entry with the fields that changed (none: nothing is written). */
+    private function logChanges(object $before): void
+    {
+        try {
+            if (!\FloCMS\Admin\Activity\Activity::enabled()) { return; }
+            $form = $this->page->form();
+            $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form,
+                \FloCMS\Admin\Activity\ActivityChanges::state($form, $before),
+                \FloCMS\Admin\Activity\ActivityChanges::state($form, $this->record()));
+            if ($changes === []) { return; }
+            \FloCMS\Admin\Activity\Activity::record('settings_saved', 'settings', $this->page->getName(), strip_tags($this->page->getLabel()), $changes);
+        } catch (\Throwable $error) {
+            error_log('flocms-admin: could not log the settings change: ' . $error->getMessage());
+        }
     }
 
     /** The value kept in the table: null for empty (the default applies again). */

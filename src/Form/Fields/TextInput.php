@@ -55,6 +55,12 @@ class TextInput extends Field
         return $this;
     }
 
+    /** A password field: the activity log never records it (0.19). */
+    public function isPassword(): bool
+    {
+        return $this->type === 'password';
+    }
+
     public function maxLength(int $length): static
     {
         $this->maxLength = max(1, $length);

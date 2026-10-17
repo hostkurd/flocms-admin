@@ -67,10 +67,16 @@ final class ActionExecutor
                     $errors = ActionForm::errors($action, $form, $state, $record);
                     if ($errors !== []) { throw new ValidationException($errors); }
                     $action->invoke(new ActionContext($this->resource, $this->repository, $record, $batch), ActionForm::dehydrate($form, $state));
+                    \FloCMS\Admin\Activity\Activity::record('action', $this->resource::getSlug(),
+                        $record !== null ? (string) ($record->{$this->resource::getPrimaryKey()} ?? '') : null,
+                        $record !== null ? \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record) : null,
+                        meta: ['action' => mb_substr(strip_tags($action->getLabel($this->resource)), 0, 120)], db: $this->repository->connection());
                 }
-                if ($kind !== 'custom') {
+                if ($kind === 'delete') {
+                    \FloCMS\Admin\Trash\Trash::notifyDeleted($this->resource, 1, [self::label($this->resource, $record)]);
+                } elseif ($kind !== 'custom') {
                     Notification::make()->title(AdminLang::get(match ($kind) {
-                        'create' => 'flash.created', 'edit' => 'flash.updated', 'delete' => 'flash.deleted',
+                        'create' => 'flash.created', 'edit' => 'flash.updated',
                     }, ['label' => $this->resource::getLabel()]))->success()->send();
                 }
             });
@@ -78,6 +84,15 @@ final class ActionExecutor
         } catch (\Throwable $error) { $batch->rollback(); throw $error; }
         $batch->commit();
         OperationStore::consume($token);
+    }
+
+    /** A record's title as the list shows it, for notices. */
+    public static function label(Resource $resource, ?object $record): string
+    {
+        if ($record === null) { return ''; }
+        $text = trim(\FloCMS\Admin\Translation\Translations::get(\FloCMS\Admin\Trash\Trash::titleOf($resource, $record), \FloCMS\Admin\Support\AdminLang::language()));
+        $text = trim((string) preg_replace('/\s+/u', ' ', strip_tags($text)));
+        return $text !== '' ? $text : '#' . (string) ($record->{$resource::getPrimaryKey()} ?? '');
     }
 
     private function limit(array &$accepted, ?int $maxBytes): void

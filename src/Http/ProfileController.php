@@ -66,7 +66,15 @@ final class ProfileController extends PanelController
             }
 
             if ($errors === []) {
+                $before = \FloCMS\Admin\Activity\Activity::enabled() ? \FloCMS\Admin\Activity\ActivityChanges::state($form, $user) : [];
                 $this->save($db, (int) $id, $state);
+                if (\FloCMS\Admin\Activity\Activity::enabled()) {
+                    $saved = $db->table('users')->where('id', '=', (int) $id)->first();
+                    $changes = $saved !== null ? \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved)) : [];
+                    if ($changes !== []) {
+                        \FloCMS\Admin\Activity\Activity::record('profile_updated', 'accounts', (string) (int) $id, (string) ($saved->full_name ?? ''), $changes, db: $db);
+                    }
+                }
                 Session::setFlash(AdminLang::get('profile.saved'), 'success');
                 $this->redirect(Admin::url('profile'));
             }

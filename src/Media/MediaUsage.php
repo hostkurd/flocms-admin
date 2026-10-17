@@ -117,6 +117,12 @@ final class MediaUsage
         $title = '#' . $row['record_id'];
         try {
             $record = (new \FloCMS\Admin\Data\RecordRepository($resource, MediaLibrary::store()->connection(), \FloCMS\Admin\Translation\Translations::store()))->find($row['record_id']);
+            // A record waiting in the trash keeps its media (0.19) until it is deleted for good.
+            $trashed = $record === null ? \FloCMS\Admin\Trash\Trash::findRecord($row['resource'], $row['record_id'], MediaLibrary::store()->connection()) : null;
+            if ($trashed !== null) {
+                return ['label' => $class::getPluralLabel() . ' · ' . \FloCMS\Admin\Support\AdminLang::get('trash.in_trash_label', ['title' => $trashed->label()]) . ' · ' . ($field?->getLabel() ?? $row['field']),
+                    'url' => \FloCMS\Admin\Http\TrashPage::mayOpen($class) ? Admin::url($row['resource'] . '/trash') : null];
+            }
             $table = $resource->table(new \FloCMS\Admin\Table\Table());
             $primary = $table->primaryColumn();
             if ($record !== null && $primary !== null && isset($record->{$primary})) {
@@ -160,6 +166,18 @@ final class MediaUsage
                         $counts[$slug]++;
                     }
                 } while (count($rows) === 200);
+                // Records waiting in the trash keep their usage (0.19).
+                if (\FloCMS\Admin\Trash\Trash::enabled($store->connection())) {
+                    $page = 1;
+                    do {
+                        $entries = \FloCMS\Admin\Trash\Trash::entries([$slug], '', null, $page++, 200, $store->connection())['items'];
+                        foreach ($entries as $entry) {
+                            if ($store->connection()->table($class::getTable())->where($pk, '=', $entry->recordId)->first() === null) {
+                                self::recordValues($slug, $entry->recordId, $form, $entry->data);
+                            }
+                        }
+                    } while (count($entries) === 200);
+                }
             }
             foreach (Admin::settings()->all() as $name => $page) {
                 $form = $page->form();

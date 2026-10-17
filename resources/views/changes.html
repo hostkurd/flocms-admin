@@ -1,0 +1,54 @@
+@if(!$dialog)
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1></div>
+    <div class="fa-action-group"><a class="fa-btn fa-btn-ghost" href="{{ $backUrl }}">{{ $t('activity.back') }}</a></div>
+</div>
+@endif
+<div class="fa-changes @if(!$dialog) fa-card @endif" data-admin-changes>
+    <div class="fa-dialog-head fa-changes-head">
+        <div class="fa-changes-heading">
+            @if($dialog)<h2 class="fa-dialog-title" id="fa-changes-title">{{ $title }}</h2>@endif
+            <p class="fa-changes-meta">
+                <span class="fa-who"><span class="fa-avatar fa-avatar-sm {{ $avatar }}" aria-hidden="true">{{ $initial }}</span>{{ $who }}</span>
+                <span aria-hidden="true">·</span><span class="fa-ltr">{{ $when }}</span>
+                <span aria-hidden="true">·</span><span class="fa-badge fa-badge-{{ $badgeColor }} fa-badge-dot">{{ $badge }}</span>
+                @if($reference !== '')<span aria-hidden="true">·</span><span>{{ $reference }}</span>@endif
+            </p>
+        </div>
+        @if($dialog)<button type="button" class="fa-icon-btn fa-dialog-close" data-admin-dialog-close aria-label="{{ $t('actions.close') }}">{!! $closeIcon !!}</button>@endif
+    </div>
+    <div class="fa-changes-body">
+        @if(count($rows) > 0)
+        <table class="fa-table fa-diff">
+            <thead><tr><th scope="col">{{ $t('activity.field') }}</th><th scope="col">{{ $t('activity.before') }}</th><th scope="col">{{ $t('activity.after') }}</th></tr></thead>
+            <tbody>
+                @foreach($rows as $row)
+                <tr>
+                    <th scope="row" class="fa-diff-field">{{ $row['label'] }}@if($row['sub'] !== '')<span class="fa-diff-sub">{{ $row['sub'] }}</span>@endif</th>
+                    @if($row['note'] !== '')
+                    <td colspan="2" class="fa-diff-note">{{ $row['note'] }}</td>
+                    @else
+                    <td class="fa-diff-before">@if($row['beforeEmpty'])<span class="fa-diff-empty">{{ $t('activity.empty') }}</span>@else<span class="fa-diff-old"@if($row['lang'] !== '') lang="{{ $row['lang'] }}" dir="{{ $row['dir'] }}"@endif>{{ $row['before'] }}</span>@endif</td>
+                    <td class="fa-diff-after">@if($row['afterEmpty'])<span class="fa-diff-empty">{{ $t('activity.empty') }}</span>@else<span class="fa-diff-new"@if($row['lang'] !== '') lang="{{ $row['lang'] }}" dir="{{ $row['dir'] }}"@endif>{{ $row['after'] }}</span>@endif</td>
+                    @endif
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+        @if(count($details) > 0)
+        <dl class="fa-changes-details">
+            @foreach($details as $label => $value)
+            <div><dt>{{ $label }}</dt><dd>{{ $value }}</dd></div>
+            @endforeach
+        </dl>
+        @endif
+    </div>
+    <div class="fa-dialog-foot fa-changes-foot">
+        <span class="fa-muted fa-changes-note">{{ $t('activity.passwords_note') }}</span>
+        <span class="fa-action-group">
+            @if($openUrl !== null)<a class="fa-btn" href="{{ $openUrl }}">{{ $openLabel }}</a>@endif
+            @if($dialog)<button type="button" class="fa-btn fa-btn-primary" data-admin-dialog-close>{{ $t('actions.close') }}</button>@endif
+        </span>
+    </div>
+</div>

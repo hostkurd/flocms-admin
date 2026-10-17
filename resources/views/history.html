@@ -1,0 +1,37 @@
+@if(!$drawer)
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $t('activity.history') }}</h1><p class="fa-page-description">{{ $title }}</p></div>
+</div>
+<div class="fa-card fa-history-page">
+@endif
+<div class="fa-history">
+    @if(count($days) === 0)
+    <p class="fa-history-empty">{{ $t('activity.history_empty') }}</p>
+    @endif
+    @foreach($days as $day)
+    <h3 class="fa-history-day">{{ $day['label'] }}</h3>
+    <ol class="fa-timeline">
+        @foreach($day['items'] as $item)
+        <li class="fa-timeline-item">
+            <span class="fa-avatar {{ $item['avatar'] }}" aria-hidden="true">{{ $item['initial'] }}</span>
+            <div class="fa-timeline-body">
+                <p class="fa-timeline-line"><strong>{{ $item['who'] }}</strong> {{ $item['phrase'] }}</p>
+                <p class="fa-timeline-time"><span class="fa-ltr">{{ $item['time'] }}</span>@if($item['badge'] !== '') · <span class="fa-badge fa-badge-{{ $item['badgeColor'] }} fa-badge-xs">{{ $item['badge'] }}</span>@endif</p>
+                @if($item['hasChanges'])
+                <div class="fa-timeline-changes">
+                    @foreach($item['changes'] as $change)
+                    <div class="fa-change-line"><span class="fa-change-key">{{ $change['label'] }}</span><span class="fa-change-value">@if($change['arrow'] !== '')<span class="fa-change-old">{{ $change['old'] }}</span><span class="fa-change-arrow" aria-hidden="true">{{ $change['arrow'] }}</span>@endif<span class="fa-change-new">{{ $change['new'] }}</span></span></div>
+                    @endforeach
+                    @if($item['showUrl'] !== null)<a class="fa-change-more" href="{{ $item['showUrl'] }}" data-admin-dialog-url>{{ $item['showLabel'] }}</a>@endif
+                </div>
+                @endif
+            </div>
+        </li>
+        @endforeach
+    </ol>
+    @endforeach
+    <p class="fa-history-note">{{ $kept }}</p>
+</div>
+@if(!$drawer)
+</div>
+@endif

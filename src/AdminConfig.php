@@ -182,6 +182,50 @@ final class AdminConfig
         ];
     }
 
+    /**
+     * The trash (0.19): deleted records wait here before they are deleted for good.
+     * On unless 'trash' => false; 'days' (default 30, 0 = until emptied by hand)
+     * and 'table' (default admin_trash) can be set: ['days' => 14].
+     *
+     * @return array{enabled: bool, table: string, days: int}
+     */
+    public function trash(): array
+    {
+        $value = $this->values['trash'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $days = is_int($options['days'] ?? null) ? max(0, min(3650, $options['days'])) : 30;
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_trash'),
+            'days' => $days,
+        ];
+    }
+
+    /**
+     * The activity log (0.19): who changed what, and when. On unless 'activity' => false;
+     * 'days' (default 365, 0 = forever), 'table' (default admin_activity) and
+     * 'logins' (default false: sign-ins are not recorded).
+     *
+     * @return array{enabled: bool, table: string, days: int, logins: bool}
+     */
+    public function activity(): array
+    {
+        $value = $this->values['activity'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $days = is_int($options['days'] ?? null) ? max(0, min(36500, $options['days'])) : 365;
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_activity'),
+            'days' => $days,
+            'logins' => ($options['logins'] ?? false) === true,
+        ];
+    }
+
+    private static function tableName(mixed $candidate, string $default): string
+    {
+        return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $candidate) === 1 ? $candidate : $default;
+    }
+
     /** Absolute path of the file that declares the settings pages (default admin/settings.php). */
     public function settingsPath(): string
     {

@@ -59,6 +59,14 @@ return [
     // e.g. when a "media" table already exists.
     'media_library' => true,
 
+    // The trash (/admin/trash): deleted records wait here and can be restored.
+    // 'days' => 0 keeps them until emptied; false deletes at once. Needs php flo migrate.
+    'trash' => ['days' => 30],
+
+    // The activity log (/admin/activity, History on each record; permission activity.view).
+    // 'logins' => true also records sign-ins; false switches the log off.
+    'activity' => ['days' => 365, 'logins' => false],
+
     // Name at the top of the sidebar
     'brand' => \FloCMS\Core\Env::get('SITE_NAME_ADMIN', 'Admin'),
 

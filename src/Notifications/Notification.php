@@ -11,6 +11,9 @@ final class Notification
     private string $body = '';
     private string $level = 'info';
     private ?int $duration = null;
+    /** @var array{label: string, url: string}|null */
+    private ?array $action = null;
+    private ?string $icon = null;
 
     /** Seconds before success and info notifications close by themselves. */
     public const DURATION = 5;
@@ -21,6 +24,20 @@ final class Notification
     public function warning(): self { $this->level = 'warning'; return $this; }
     public function danger(): self { $this->level = 'danger'; return $this; }
     public function info(): self { $this->level = 'info'; return $this; }
+    /** A plain notice without a colour (the trash's "Listing deleted." with Undo). */
+    public function neutral(): self { $this->level = 'neutral'; return $this; }
+    /** An icon name from the panel's set (Icons), shown before the title. */
+    public function icon(string $name): self { $this->icon = in_array($name, \FloCMS\Admin\Support\Icons::names(), true) ? $name : null; return $this; }
+    /**
+     * One button that POSTs to a panel URL (with the CSRF token), e.g. Undo. A
+     * notification with an action shows a bar counting down its duration.
+     */
+    public function action(string $label, string $url): self
+    {
+        if (!str_starts_with($url, \FloCMS\Admin\Admin::url('') )) { throw new \InvalidArgumentException('Notification actions point to the admin panel.'); }
+        $this->action = ['label' => $label, 'url' => $url];
+        return $this;
+    }
     /** Seconds on screen before it closes itself (hover or focus pauses it); 0 keeps it until dismissed. */
     public function duration(int $seconds): self { $this->duration = max(0, min(600, $seconds)); return $this; }
     /** Keep it until the user closes it (the default for warning and danger). */
@@ -42,6 +59,8 @@ final class Notification
             'body' => mb_strcut(AdminLang::label($this->body), 0, 4096, 'UTF-8'),
             'lang' => $lang, 'dir' => Languages::direction($lang),
             'dismiss' => AdminLang::get('notifications.dismiss'), 'issued' => time(),
+            'action' => $this->action === null ? null : ['label' => mb_strcut(AdminLang::label($this->action['label']), 0, 80, 'UTF-8'), 'url' => $this->action['url']],
+            'icon' => $this->icon,
         ]);
     }
 }

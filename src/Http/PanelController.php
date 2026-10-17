@@ -19,6 +19,8 @@ abstract class PanelController extends Controller
         if ($this->request->method() === 'GET' && ($url = self::languageRedirect()) !== null) {
             $this->redirect($url);
         }
+        \FloCMS\Admin\Support\Housekeeping::noteLogin();
+        if ($this->request->method() === 'GET') { \FloCMS\Admin\Support\Housekeeping::run(); }
         $this->data = (new PanelView())->data($title, $html, $active);
 
         if ($this->request->header('X-Flo-Admin') === 'navigate') {

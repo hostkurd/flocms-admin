@@ -67,6 +67,21 @@ abstract class Resource
      */
     protected static array $permissions = [];
 
+    /**
+     * Deleting a record puts it in the trash (0.19), where it can be restored for
+     * the configured number of days. false deletes this resource's records at once.
+     */
+    protected static bool $trash = true;
+
+    /**
+     * Fields whose values stay out of the activity log (0.19): a change shows as
+     * "Changed. The value is not recorded." Password fields are never logged.
+     * The same as ->hiddenFromActivity() on the field.
+     *
+     * @var list<string>
+     */
+    protected static array $activityExcept = [];
+
     abstract public function form(Form $form): Form;
 
     abstract public function table(Table $table): Table;
@@ -115,6 +130,49 @@ abstract class Resource
     /** Runs right after a record was deleted (inside the action's transaction when there is one). */
     public function afterDelete(object $record): void
     {
+    }
+
+    /**
+     * Runs inside the restore transaction before the row goes back into its table
+     * ($record holds the row as it was deleted). Throw a
+     * \FloCMS\Core\ValidationException(['_form' => '…']) to refuse with a reason.
+     */
+    public function beforeRestore(object $record): void
+    {
+    }
+
+    /** Runs inside the restore transaction after the record, its links and its media usage are back. */
+    public function afterRestore(object $record): void
+    {
+    }
+
+    /**
+     * Whether the current user may see this deleted record in the trash (and restore
+     * it or delete it for good). $record holds the row as it was deleted.
+     *
+     * A resource that narrows query() (records of one site, one owner) shows only the
+     * records the current user deleted, unless it overrides this with its own rule:
+     *
+     *     public function canSeeInTrash(object $record, ?int $deletedBy): bool
+     *     {
+     *         return (int) $record->site_id === current_site_id();
+     *     }
+     */
+    public function canSeeInTrash(object $record, ?int $deletedBy): bool
+    {
+        if (!self::narrowsQuery(static::class)) { return true; }
+        return $deletedBy !== null && $deletedBy === \FloCMS\Admin\Support\Actor::id();
+    }
+
+    /** Whether a resource narrows query() or has its own trash rule (the trash then checks every entry). */
+    public static function hasTrashRule(string $class): bool
+    {
+        return self::narrowsQuery($class) || (new \ReflectionMethod($class, 'canSeeInTrash'))->getDeclaringClass()->getName() !== self::class;
+    }
+
+    private static function narrowsQuery(string $class): bool
+    {
+        return (new \ReflectionMethod($class, 'query'))->getDeclaringClass()->getName() !== self::class;
     }
 
     /** Return false to refuse creating records (the New button is hidden, the page answers 403). */
@@ -184,6 +242,18 @@ abstract class Resource
     public static function getPrimaryKey(): string
     {
         return static::$primaryKey;
+    }
+
+    /** Whether deleting puts records in the trash (when the trash is set up). */
+    public static function usesTrash(): bool
+    {
+        return static::$trash;
+    }
+
+    /** @return list<string> */
+    public static function activityExcept(): array
+    {
+        return array_values(array_filter(static::$activityExcept, 'is_string'));
     }
 
     public static function usesTimestamps(): bool

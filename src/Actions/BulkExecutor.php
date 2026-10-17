@@ -27,6 +27,17 @@ final class BulkExecutor
         }
         sort($ids, SORT_STRING); return $ids;
     }
+    /** The confirmation text of a bulk action: Delete selected says where the records go. */
+    public static function confirmText(Resource $resource, ?Action $action, int $count): string
+    {
+        if ($action instanceof BulkAction && $action->isDeleting() && \FloCMS\Admin\Trash\Trash::enabledFor($resource)) {
+            $days = \FloCMS\Admin\Trash\Trash::days();
+            return AdminLang::get($days > 0 ? 'bulk.confirm_trash' : 'bulk.confirm_trash_kept', ['count' => $count, 'days' => $days]);
+        }
+        if ($action instanceof BulkAction && $action->isDeleting()) { return AdminLang::get('bulk.confirm_delete', ['count' => $count]); }
+        return AdminLang::get('bulk.confirm', ['count' => $count]);
+    }
+
     private static function digest(array $ids): string { return hash('sha256', json_encode($ids, JSON_THROW_ON_ERROR)); }
     public function open(BulkAction $action, array $ids): array
     {
@@ -86,7 +97,15 @@ final class BulkExecutor
                 $errors = ActionForm::errors($action, $form, $state, null);
                 if ($errors !== []) { throw new ValidationException($errors); }
                 $action->invokeBulk(new BulkActionContext($this->resource, $this->repository, $records, $batch), ActionForm::dehydrate($form, $state));
-                Notification::make()->title(AdminLang::get('bulk.completed', ['count' => count($ids)]))->success()->send();
+                if ($action->isDeleting()) {
+                    \FloCMS\Admin\Trash\Trash::notifyDeleted($this->resource, count($records), array_map(fn (object $record): string => ActionExecutor::label($this->resource, $record), $records));
+                } else {
+                    \FloCMS\Admin\Activity\Activity::record('bulk_action', $this->resource::getSlug(), meta: [
+                        'action' => mb_substr(strip_tags($action->getLabel($this->resource)), 0, 120), 'count' => count($records),
+                        'titles' => array_slice(array_map(fn (object $record): string => \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record), $records), 0, 20),
+                    ], db: $this->repository->connection());
+                    Notification::make()->title(AdminLang::get('bulk.completed', ['count' => count($ids)]))->success()->send();
+                }
             });
         });
         } catch (\Throwable $error) { $batch->rollback(); throw $error; }
