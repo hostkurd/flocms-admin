@@ -1485,7 +1485,9 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-topsearch-input{width:100%;height:36px;padding-inline:36px 76px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius);background:var(--fa-surface-2);color:var(--fa-text);font:inherit;font-size:13.5px;cursor:pointer}
 .fa-topsearch-input::placeholder{color:var(--fa-muted)}
 .fa-topsearch-input:focus-visible{outline:2px solid var(--fa-focus);outline-offset:1px}
-.fa-topsearch-keys{position:absolute;inset-inline-end:8px;display:inline-flex;gap:3px;pointer-events:none;direction:ltr}
+.fa-topsearch-keys{position:absolute;inset-inline-end:8px;display:inline-flex;gap:3px;pointer-events:none}
+/* Keys read Ctrl K in every language (the box itself stays right to left) */
+.fa-panel[dir="rtl"] .fa-topsearch-keys{flex-direction:row-reverse}
 .fa-panel dialog.fa-cmdk{width:min(640px,94vw);max-height:min(720px,calc(100dvh - 96px));margin:72px auto auto;overflow:hidden}
 .fa-panel dialog.fa-cmdk[open]{display:flex;flex-direction:column}
 .fa-cmdk-field{display:flex;align-items:center;gap:12px;flex:none;height:60px;padding-inline:16px;border-block-end:1px solid var(--fa-border);color:var(--fa-muted)}
