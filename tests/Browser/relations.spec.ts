@@ -125,6 +125,30 @@ test('Reactive updates rebuild the controls: a dialog keeps its features through
   await expect(page.locator('dialog.fa-editor[open] .fa-relation-chip')).toHaveText(['Garden×', 'Pool×', 'Sea view×']);
 });
 
+test('in a dialog the list floats over it: no scroll bar, nothing cut off', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await page.goto('/en/admin/home-dialogs');
+  await page.locator('#fa-admin-resource-edit-1').click();
+  const dialog = page.locator('dialog.fa-editor[open]');
+  const body = dialog.locator('.fa-dialog-body');
+  await expect(body).toBeVisible();
+  expect((await body.boundingBox())!.height).toBeGreaterThanOrEqual(239);
+  const scrollable = () => body.evaluate(element => element.scrollHeight > element.clientHeight + 1);
+  const before = await scrollable();
+  await dialog.locator('[id$="f-city_id-search"]').click();
+  const list = dialog.locator('[id$="f-city_id-listbox"]');
+  await expect(list.locator('[role="option"]').first()).toBeVisible();
+  expect(await scrollable()).toBe(before);
+  await expect(list).toHaveCSS('position', 'fixed');
+  const box = (await list.boundingBox())!;
+  const field = (await dialog.locator('[id$="f-city_id-search"]').boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(560);
+  expect(Math.abs(box.x - field.x)).toBeLessThan(2);
+  // Every option can be chosen with the mouse
+  await list.locator('[role="option"]').last().click();
+  await expect(list).toBeHidden();
+});
+
 test('a relation filter still works after the list updates', async ({ page }) => {
   await page.goto('/en/admin/homes');
   await page.locator('[id$="-filters-menu"] summary').click();

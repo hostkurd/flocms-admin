@@ -34,7 +34,7 @@ class PostActionResource extends PostResource
                     $context->update(['status' => 'published']);
                     // Same-connection audit work is transactional with the update.
                     \FloCMS\Core\App::db()->table('tags')->insert(['name' => 'Published: ' . $data['reason']]);
-                    Notification::make()->title('demo.published')->body($data['reason'])->success()->send();
+                    Notification::make()->title('demo.published')->body($data['reason'])->success()->persistent()->send();
                 }),
             Action::make('unpublish')->label('demo.unpublish')->color('warning')
                 ->visible(static fn (?object $record): bool => $record?->status === 'published')

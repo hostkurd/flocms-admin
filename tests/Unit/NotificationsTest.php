@@ -70,4 +70,21 @@ final class NotificationsTest extends TestCase
         self::assertSame('rtl', $pending[0]['dir']);
         self::assertSame('ku', $pending[0]['lang']);
     }
+
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    public function testSuccessAndInfoCloseByThemselvesWarningsStay(): void
+    {
+        if (!defined('DS')) { define('DS', DIRECTORY_SEPARATOR); }
+        if (!defined('VIEWS_PATH')) { define('VIEWS_PATH', sys_get_temp_dir()); }
+        \FloCMS\Core\Config::set('view.cache', false);
+        Notification::make()->title('Saved')->success()->send();
+        Notification::make()->title('Note')->info()->duration(12)->send();
+        Notification::make()->title('Kept')->success()->persistent()->send();
+        Notification::make()->title('Careful')->warning()->send();
+        Notification::make()->title('Failed')->danger()->duration(9)->send();
+        // An entry queued by an older version has no duration
+        $_SESSION['_flo_admin_notifications'][] = ['id' => 'old', 'level' => 'success', 'title' => 'Old', 'body' => '', 'lang' => 'en', 'dir' => 'ltr', 'dismiss' => 'Dismiss', 'issued' => time()];
+        preg_match_all('/data-admin-notification-duration="(\d+)"/', NotificationView::pending(), $durations);
+        self::assertSame(['5', '12', '0', '0', '9', '5'], $durations[1]);
+    }
 }

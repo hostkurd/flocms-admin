@@ -78,7 +78,7 @@ Notification::make()->title('Unable to continue')->danger()->send();
 Notification::make()->title('Publishing guide')->info()->send();
 ```
 
-Notifications are text-only in-app messages. Success/info use polite status announcements; warning/danger use alerts. They remain visible until dismissed, with accessible localized close buttons. They retain their original language and direction while the surrounding panel changes language. No message HTML or scripts are evaluated.
+Notifications are text-only in-app messages. Success/info use polite status announcements; warning/danger use alerts. Success and info close by themselves after 5 seconds (hovering or focusing one pauses it); warning and danger stay until dismissed. Change it per notification with `->duration(10)` (seconds) or `->persistent()`. Every notification has an accessible localized close button. They retain their original language and direction while the surrounding panel changes language. No message HTML or scripts are evaluated.
 
 Messages sent inside an action are staged until its transaction succeeds. Exceptions and validation failures discard staged messages. Elsewhere, `send()` queues a session delivery for the next Admin response. Existing Core flash messages are converted to the same presentation, including standard CRUD and profile messages.
 
