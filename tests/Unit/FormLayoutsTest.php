@@ -59,4 +59,21 @@ final class FormLayoutsTest extends TestCase
         self::assertSame([], $validator->validate($form, ['kind' => 'rent', 'price' => '']));
         self::assertFalse($form->field('price')->isRequired());
     }
+
+    public function testErrorsNameTheirTabAndMarkIt(): void
+    {
+        $form = (new Form())->schema([
+            TextInput::make('title')->translatable(),
+            Tabs::make('listing')->schema([
+                Tab::make('details')->label('Details')->schema([Section::make('money')->schema([TextInput::make('price')])]),
+                Tab::make('media')->label('Media')->schema([TextInput::make('caption')]),
+            ]),
+        ])->aside([TextInput::make('status')]);
+        $errors = ['price' => 'Price is required.', 'title.ar' => 'Too long.', 'status' => 'Pick one.', 'record' => 'This item was deleted meanwhile.'];
+        self::assertSame('Price (Details), Title, Status, This item was deleted meanwhile.', $form->errorSummary($errors));
+        self::assertSame('', $form->errorSummary([]));
+        $html = (new FormRenderer([], ['price' => 'Price is required.'], ['en'], 'en'))->render($form);
+        self::assertMatchesRegularExpression('~data-admin-tab="[^"]*-0" class="has-error" aria-describedby="[^"]*-0-errors">Details<span class="fa-tab-error"~', $html);
+        self::assertMatchesRegularExpression('~data-admin-tab="[^"]*-1">Media</button>~', $html);
+    }
 }

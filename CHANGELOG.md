@@ -2,6 +2,15 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.18.1 - 2026-10-17
+
+No migration.
+
+### Fixed
+
+- Rich text: resizing an image or video follows the pointer smoothly; the size it keeps is still the nearest 5 % step (shown while dragging), which it settles on when released.
+- A failed save names the fields and their tabs in its message ("Please check: Price (Details)."), and every tab holding an error has a red mark, so an error in a tab not shown is not missed.
+
 ## 0.18.0 - 2026-10-17
 
 The media library becomes a file manager, and every file input becomes a drop area. One migration (a `media_folders` table and four columns on `media`); the library is off until it has run. See the [Media library guide](docs/media.md).

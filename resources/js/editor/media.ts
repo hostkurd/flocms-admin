@@ -1,7 +1,7 @@
 /*
  * Images, videos and embeds in the editor: width and position stored as the
  * classes of rich-text.css (rt-w-60, rt-align-center, rt-wrap-left), shown in a
- * node view with corner and side grips to resize them. Sizes snap to 5 % steps
+ * node view with corner and side grips to resize them. Dragging is smooth; sizes are kept in 5 % steps
  * of the text column and keep the media's proportions.
  */
 import { Extension } from '@tiptap/core';
@@ -83,7 +83,9 @@ export function mediaView(options: ViewOptions): NodeView {
   if (options.caption) dom.append(caption);
 
   const apply = (current: PMNode) => {
-    dom.className = ['fa-media', ...mediaClasses(current.attrs), dom.classList.contains('ProseMirror-selectednode') ? 'ProseMirror-selectednode' : ''].filter(Boolean).join(' ');
+    // Keep the state classes the node view sets itself (selected, settling after a resize).
+    const keep = ['ProseMirror-selectednode', 'is-settling'].filter(name => dom.classList.contains(name));
+    dom.className = ['fa-media', ...mediaClasses(current.attrs), ...keep].join(' ');
     const text = options.caption?.(current) ?? '';
     caption.textContent = text;
     caption.hidden = text === '';
@@ -112,10 +114,13 @@ export function mediaView(options: ViewOptions): NodeView {
     let size = Number(node.attrs.size) || Math.min(100, Math.max(10, Math.round(startWidth / column * 20) * 5));
     grip.setPointerCapture(event.pointerId);
     dom.classList.add('is-resizing');
+    // The frame follows the pointer smoothly; the size it keeps is the nearest 5 % step
+    // (the label shows it), which it settles on when the grip is let go.
     const move = (moveEvent: PointerEvent) => {
       const width = startWidth + sign * (moveEvent.clientX - startX) * factor;
-      size = Math.min(100, Math.max(10, Math.round(width / column * 20) * 5));
-      dom.style.width = `${size}%`;
+      const exact = Math.min(100, Math.max(10, width / column * 100));
+      size = Math.min(100, Math.max(10, Math.round(exact / 5) * 5));
+      dom.style.width = `${exact}%`;
       label.textContent = (options.strings.width_now ?? ':size%').replace(':size', String(size));
     };
     const up = () => {
@@ -123,6 +128,9 @@ export function mediaView(options: ViewOptions): NodeView {
       grip.removeEventListener('pointerup', up);
       grip.removeEventListener('pointercancel', up);
       dom.classList.remove('is-resizing');
+      // A short glide from where the pointer left it to the kept step.
+      dom.classList.add('is-settling');
+      window.setTimeout(() => dom.classList.remove('is-settling'), 200);
       dom.style.width = '';
       const position = options.getPos();
       if (position === undefined) return;

@@ -94,7 +94,12 @@ final class FormRenderer
                     if (isset($names[$tab->getName()])) { throw new \LogicException('Tab names must be unique in a group.'); }
                     $names[$tab->getName()] = true;
                     $tabId = $id . '-' . $tabIndex;
-                    $buttons .= '<button type="button" id="' . Str::e($tabId . '-tab') . '" data-admin-tab="' . Str::e($tabId) . '">' . Str::e($tab->getLabel()) . '</button>';
+                    // A tab holding an error says so, so an error in a tab not shown is not missed.
+                    $invalid = $this->hasErrors($tab);
+                    // The tab's name stays its label; screen readers hear the error as its description.
+                    $buttons .= '<button type="button" id="' . Str::e($tabId . '-tab') . '" data-admin-tab="' . Str::e($tabId) . '"'
+                        . ($invalid ? ' class="has-error" aria-describedby="' . Str::e($tabId . '-errors') . '"' : '') . '>' . Str::e($tab->getLabel())
+                        . ($invalid ? '<span class="fa-tab-error" aria-hidden="true"></span><span id="' . Str::e($tabId . '-errors') . '" hidden>' . Str::e(AdminLang::get('form.tab_has_errors')) . '</span>' : '') . '</button>';
                     $panels .= '<section id="' . Str::e($tabId) . '" data-admin-tab-panel aria-labelledby="' . Str::e($tabId . '-title') . '"><h3 class="fa-tab-heading" id="' . Str::e($tabId . '-title') . '">' . Str::e($tab->getLabel()) . '</h3>' . $this->nodes($tab->children(), $form, $tab->getColumns(), $live, $tabId) . '</section>';
                 }
                 $html .= '<div class="fa-tabs fa-span-full" id="' . Str::e($id) . '" data-admin-tabs><div class="fa-tab-list" data-admin-tab-list aria-label="' . $label . '" hidden>' . $buttons . '</div>' . $panels . '</div>';

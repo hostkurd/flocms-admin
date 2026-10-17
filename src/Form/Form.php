@@ -102,6 +102,39 @@ final class Form
         return array_values(array_unique($names));
     }
 
+    /**
+     * Where the errors are, for the message above the form: "Price (Details), City (Location)".
+     * Errors of fields inside a tab name the tab; an error with no field gives its own text.
+     *
+     * @param array<string, mixed> $errors
+     */
+    public function errorSummary(array $errors): string
+    {
+        $tabs = [];
+        $walk = function (array $nodes, ?string $tab) use (&$walk, &$tabs): void {
+            foreach ($nodes as $node) {
+                if ($node instanceof \FloCMS\Admin\Form\Layout\Tab) { $walk($node->children(), $node->getLabel()); }
+                elseif ($node instanceof \FloCMS\Admin\Form\Layout\Layout) { $walk($node->children(), $tab); }
+                elseif ($node instanceof Field) { $tabs[$node->getName()] = $tab; }
+            }
+        };
+        $walk($this->components, null);
+        $walk($this->aside, null);
+        $places = [];
+        foreach ($errors as $key => $message) {
+            $name = explode('.', (string) $key, 2)[0];
+            $field = $this->fields[$name] ?? null;
+            if ($field === null) {
+                $text = is_array($message) ? implode(' ', array_filter($message, 'is_string')) : (is_string($message) ? $message : '');
+                if ($text !== '') { $places[$text] = $text; }
+                continue;
+            }
+            $tab = $tabs[$name] ?? null;
+            $places[$name] = $field->getLabel() . ($tab !== null && $tab !== '' ? ' (' . $tab . ')' : '');
+        }
+        return implode(\FloCMS\Admin\Support\AdminLang::get('form.list_separator'), array_values($places));
+    }
+
     /** @return array<string, Field> */
     public function fields(): array
     {
