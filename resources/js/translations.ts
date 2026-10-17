@@ -70,7 +70,17 @@ document.addEventListener('input', event => {
   if (dialog && mirror && !dialog.open) { mirror.value = input.value; refresh(dialog); }
 });
 
+/** The input keeps room for its language badge: the badge's own width, measured once it is visible. */
+const badgeSpace = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(entries => {
+  for (const entry of entries) {
+    const badge = entry.target as HTMLElement;
+    const width = badge.offsetWidth;
+    if (width > 0) badge.parentElement?.style.setProperty('--fa-lang-badge-space', `${width + 13}px`);
+  }
+});
+
 export function initializeTranslations(root: HTMLElement): void {
+  root.querySelectorAll<HTMLElement>('.fa-input-row > .fa-lang-badge').forEach(badge => badgeSpace?.observe(badge));
   root.querySelectorAll<HTMLDialogElement>('.fa-lang-dialog').forEach(dialog => {
     if (initialized.has(dialog)) return;
     initialized.add(dialog);

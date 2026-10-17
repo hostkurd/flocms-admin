@@ -164,10 +164,13 @@ test('the language badge follows the page: left on right-to-left pages, clear of
   // Arabic page: the badge is inside the input on its left, like other controls' buttons
   expect(mark!.x).toBeGreaterThanOrEqual(field!.x);
   expect(mark!.x + mark!.width).toBeLessThan(field!.x + field!.width / 2);
-  // English text keeps its own direction and starts after the badge
+  // English text keeps its own direction (punctuation) but sits on the right like other fields;
+  // the room kept for the badge is the badge's own width plus a small gap
   await expect(input).toHaveAttribute('dir', 'ltr');
+  await expect(input).toHaveCSS('text-align', 'right');
   const start = await input.evaluate(element => parseFloat(getComputedStyle(element).paddingLeft));
   expect(field!.x + start).toBeGreaterThanOrEqual(mark!.x + mark!.width);
+  expect(field!.x + start - (mark!.x + mark!.width)).toBeLessThan(12);
   await expect(badge.locator('.fa-dot')).toHaveCount(2);
 
   // English page: on the right
@@ -175,4 +178,8 @@ test('the language badge follows the page: left on right-to-left pages, clear of
   const [field2, mark2] = [await input.boundingBox(), await badge.boundingBox()];
   expect(mark2!.x).toBeGreaterThan(field2!.x + field2!.width / 2);
   expect(mark2!.x + mark2!.width).toBeLessThanOrEqual(field2!.x + field2!.width);
+  await expect(input).toHaveCSS('text-align', 'left');
+  const end = await input.evaluate(element => parseFloat(getComputedStyle(element).paddingRight));
+  expect(field2!.x + field2!.width - end).toBeLessThanOrEqual(mark2!.x);
+  expect(mark2!.x - (field2!.x + field2!.width - end)).toBeLessThan(12);
 });

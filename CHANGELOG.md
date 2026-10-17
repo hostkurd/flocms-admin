@@ -2,6 +2,13 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.15.5 - 2026-10-17
+
+### Changed
+
+- Translatable fields on right-to-left pages: the text sits on the right like in every other field, also when the default language is written left to right. It keeps its own direction, so punctuation stays in place. On left-to-right pages it sits on the left.
+- The room kept between the text and the language badge is the badge's own width plus a small gap, measured in the browser (also inside dialogs), instead of a fixed 96 or 140 px.
+
 ## 0.15.4 - 2026-10-17
 
 ### Changed
