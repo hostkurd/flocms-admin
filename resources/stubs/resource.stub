@@ -24,7 +24,7 @@ final class {{ class }} extends Resource
     protected static ?string $icon = 'list';
 
     // How Create and Edit open: 'page' (full page), 'modal' (dialog) or 'slide-over'
-    protected static string $formMode = 'page';
+    protected static string $formMode = '{{ formMode }}';
 
     public function form(Form $form): Form
     {

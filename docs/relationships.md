@@ -6,7 +6,7 @@ Admin 0.15 lets a record point to other records:
 - **`BelongsToMany`**: several related records, kept in a pivot table (a property's features).
 - **`RelationColumn`** and **`RelationFilter`**: related titles in the list, and filtering by them.
 
-They need no new table and no change to the website: `city_id` is an ordinary column and the pivot table an ordinary table.
+They need no new table and no change to the website: `city_id` is an ordinary column and the pivot table an ordinary table. On MySQL/MariaDB, create tables with `CHARACTER SET utf8mb4` (`DEFAULT CHARSET=utf8mb4`) so titles in every language are kept; `admin:doctor` reports tables that are not.
 
 ## Declaring where related records come from
 

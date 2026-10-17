@@ -52,7 +52,7 @@ protected static string $formMode = 'modal';      // a dialog over the list (cat
 protected static string $formMode = 'slide-over'; // a panel from the side of the window
 ```
 
-or per action: `CreateAction::make()->modal()`, `EditAction::make()->slideOver()`, `EditAction::make()->page()`. Delete and custom actions are short confirmations and stay dialogs (a custom action may use `slideOver()`). An unknown `$formMode` falls back to `'page'` and `admin:doctor` reports it. Without Reactive (`'reactive' => false`), Create and Edit are always pages.
+`php flo make:admin-resource Tag --form=modal` writes the mode into a new resource. Set it per resource, or per action: `CreateAction::make()->modal()`, `EditAction::make()->slideOver()`, `EditAction::make()->page()`. Delete and custom actions are short confirmations and stay dialogs (a custom action may use `slideOver()`). An unknown `$formMode` falls back to `'page'` and `admin:doctor` reports it. Without Reactive (`'reactive' => false`), Create and Edit are always pages.
 
 On the page:
 

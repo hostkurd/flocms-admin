@@ -2,6 +2,17 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.15.1 - 2026-10-17
+
+### Fixed
+
+- Right-to-left pages: a relation title in a Latin script ("Turkey") was aligned to the left in the combobox and its list. It now sits on the right like every other field.
+
+### Added
+
+- `php flo admin:doctor` reports MySQL/MariaDB tables whose text columns are not UTF-8 (for example `latin1`, the default of older MariaDB servers), which save Arabic, Kurdish and other non-Latin text as `?`, and prints the `ALTER TABLE … CONVERT TO CHARACTER SET utf8mb4` fix. It checks resource tables and the related tables of relations.
+- `php flo make:admin-resource City --form=modal` (or `slide-over`, `page`) sets `$formMode` in the new class. Small resources such as categories, cities and tags read well in a dialog.
+
 ## 0.15.0 - 2026-10-17
 
 Relationship fields, relation columns and relation filters. No new dependency, migration or table: relations use the site's own columns and pivot tables. See the [Relationships guide](docs/relationships.md).

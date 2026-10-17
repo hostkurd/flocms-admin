@@ -88,6 +88,15 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('protected static bool $timestamps = false;', $code);
         self::assertStringNotContainsString('DateColumn', $code);
         self::assertSame([], glob($this->root . '/database/migrations/*') ?: []);
+        self::assertStringContainsString("\$formMode = 'page'", $code);
+
+        $tester = $this->runCommand(new MakeResourceCommand(), ['City', '--form=modal']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringContainsString("\$formMode = 'modal'", (string) file_get_contents($this->root . '/admin/Resources/CityResource.php'));
+
+        $tester = $this->runCommand(new MakeResourceCommand(), ['Country', '--form=popup']);
+        self::assertNotSame(0, $tester->getStatusCode());
+        self::assertFileDoesNotExist($this->root . '/admin/Resources/CountryResource.php');
     }
 
     public function testMakeResourceRefusesBadNames(): void

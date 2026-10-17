@@ -99,4 +99,17 @@ final class MysqlRepositoryTest extends RepositoryTestCase
         $result = $this->repository->paginate($this->table, 'فيلا', 'title', 'asc', 1, 10, 'ar');
         self::assertSame([$id], array_map(static fn (object $r): string => (string) $r->id, $result['data']));
     }
+
+    public function testDoctorFindsTablesThatCannotHoldArabic(): void
+    {
+        $this->db->query('DROP TABLE IF EXISTS doctor_latin');
+        $this->db->query('CREATE TABLE doctor_latin (id INT PRIMARY KEY, name VARCHAR(50), note TEXT CHARACTER SET utf8mb4, n INT) CHARACTER SET latin1');
+        try {
+            self::assertSame(['name' => 'latin1'], \FloCMS\Admin\Console\DoctorCommand::narrowTextColumns($this->db, 'doctor_latin'));
+            $this->db->query('ALTER TABLE doctor_latin CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+            self::assertSame([], \FloCMS\Admin\Console\DoctorCommand::narrowTextColumns($this->db, 'doctor_latin'));
+        } finally {
+            $this->db->query('DROP TABLE IF EXISTS doctor_latin');
+        }
+    }
 }
