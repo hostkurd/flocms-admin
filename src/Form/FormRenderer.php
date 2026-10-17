@@ -340,9 +340,10 @@ final class FormRenderer
             ? AdminLang::get('translations.all_filled')
             : AdminLang::get('translations.missing', ['languages' => implode(', ', $missing)]);
 
-        // The row takes the default language's direction, so the badge sits at the
-        // end of that text (left for Arabic content, right for English) on any page.
-        $html = '<div class="fa-input-row' . (count($this->languages) > 6 ? ' is-many' : '') . '" dir="' . Languages::direction($default) . '">' . $control;
+        // The badge is part of the interface: it sits at the end of the page's
+        // direction (left on Arabic pages, like every other control). The input
+        // keeps the default language's own direction for the text typed in it.
+        $html = '<div class="fa-input-row' . (count($this->languages) > 6 ? ' is-many' : '') . '">' . $control;
         $html .= '<button type="button" class="fa-lang-badge' . ($langErrors !== [] ? ' is-invalid' : '') . '"'
             . ' data-dialog="' . Str::e($dialogId) . '" aria-haspopup="dialog" aria-controls="' . Str::e($dialogId) . '"'
             . ' data-missing-text="' . Str::e(AdminLang::get('translations.missing', ['languages' => ''])) . '"'

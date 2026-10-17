@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.15.4
+
+Update with `composer require "hostkurd/flocms-admin:^0.15.4" -W`, run `php flo view:clear` and reload open Admin pages. No migration. The `.fa-input-row` around a translatable input no longer has a `dir` attribute (the input keeps its own); site CSS or tests that relied on it should use the input's `dir`.
+
+---
+
 # Upgrading to Admin 0.15.3
 
 Update with `composer require "hostkurd/flocms-admin:^0.15.3" -W`, run `php flo view:clear` and reload open Admin pages. No migration. To give an existing list a Columns menu, add `->toggleable()` (or `->toggleable(hiddenByDefault: true)`) to the columns users may hide.

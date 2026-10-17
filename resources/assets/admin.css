@@ -294,8 +294,11 @@ body:has(> .fa-panel){margin:0}
 .fa-field{position:relative}
 .fa-input-row{position:relative;display:block}
 /* The badge sits inside the input's end edge (top corner for long text). */
-.fa-panel .fa-input-row > .fa-input{padding-inline-end:96px}
-.fa-panel .fa-input-row.is-many > .fa-input{padding-inline-end:140px}
+/* The input may have another direction than the page (English text on an Arabic page): reserve the badge's room on the page's side. */
+.fa-panel .fa-input-row > .fa-input{padding-left:12px;padding-right:96px}
+.fa-panel .fa-input-row:dir(rtl) > .fa-input{padding-right:12px;padding-left:96px}
+.fa-panel .fa-input-row.is-many > .fa-input{padding-right:140px}
+.fa-panel .fa-input-row.is-many:dir(rtl) > .fa-input{padding-right:12px;padding-left:140px}
 .fa-lang-badge{position:absolute;inset-inline-end:5px;inset-block-start:5px;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px;border:0;border-radius:var(--fa-radius-sm);background:var(--fa-primary-soft);cursor:pointer;font:650 15px/1 var(--fa-mono);letter-spacing:.02em;text-transform:uppercase;color:var(--fa-primary-text)}
 .fa-lang-badge .fa-dot{width:7px;height:7px}
 .fa-lang-badge:hover{background:color-mix(in srgb,var(--fa-primary-soft) 70%,var(--fa-primary-border))}
@@ -395,7 +398,7 @@ body:has(> .fa-panel){margin:0}
 
 /* Standard forms remain usable before enhancement or with JavaScript disabled. */
 .fa-panel:not([data-admin-initialized]) .fa-lang-dialog:not([open]){display:block;position:static;margin:.5rem 0 0;width:auto;max-width:none;box-shadow:none}
-.fa-panel:not([data-admin-initialized]) .fa-input-row > .fa-input{padding-inline-end:12px}
+.fa-panel:not([data-admin-initialized]) .fa-input-row > .fa-input{padding-left:12px;padding-right:12px}
 .fa-panel:not([data-admin-initialized]) .fa-lang-dialog .fa-mirror-row,.fa-panel:not([data-admin-initialized]) .fa-lang-dialog .fa-dialog-foot,.fa-panel:not([data-admin-initialized]) .fa-lang-badge{display:none}
 @media (max-width:900px){
  .fa-panel:not([data-admin-initialized]){flex-direction:column}
