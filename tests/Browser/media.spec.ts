@@ -160,6 +160,20 @@ test('the rich editor inserts an image from the library with its alt text, and u
   await expect(page.locator('#fa-media-replace')).toHaveCount(0);
 });
 
+test('without media create, editor uploads stay with the field and do not join the library', async ({ page }) => {
+  await page.request.post('/__test/writer');
+  await page.goto('/en/admin/listings/edit/1');
+  const body = page.locator('[data-field=body]');
+  await expect(body.locator('.fa-rich')).toHaveClass(/is-ready/);
+  await body.locator('.fa-rich-content').first().click();
+  const chooser = page.waitForEvent('filechooser');
+  await body.getByRole('button', { name: 'Image', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Upload an image/ }).click();
+  await (await chooser).setFiles(photo);
+  await expect(body.locator('.fa-rich-content img')).toHaveAttribute('src', /^\/uploads\/editor\/listings\/body\/\d{4}\//);
+  expect((await state(page)).media).toHaveLength(4);
+});
+
 test('Arabic: the library and the field work right to left', async ({ page }) => {
   await page.goto('/ar/admin/media');
   await expect(page.locator('.fa-panel')).toHaveAttribute('dir', 'rtl');

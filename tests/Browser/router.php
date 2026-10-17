@@ -36,10 +36,10 @@ Config::set('default_action', 'index');
 Config::set('languages', ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
 Config::set('reactive.key', hash('sha256', __FILE__));
-Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*']]);
-Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin']);
-Config::set('auth.user_loader', static fn (int $id) => ['role' => Session::get('read_only') ? 1 : 3, 'status' => Session::get('expired') ? 3 : 1]);
-Config::set('admin_access_roles', [1, 3]);
+Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']]);
+Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin', 4 => 'Writer']);
+Config::set('auth.user_loader', static fn (int $id) => ['role' => Session::get('read_only') ? 1 : (Session::get('writer') ? 4 : 3), 'status' => Session::get('expired') ? 3 : 1]);
+Config::set('admin_access_roles', [1, 3, 4]);
 if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
@@ -128,6 +128,8 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/widgets': Session::set('widget_demo', true); Session::set('widget_static', ($_POST['static'] ?? '') === '1'); break;
         case '/__test/widget-add': App::$db->table('posts')->insert(['title'=>'{"en":"Fresh widget post"}', 'slug'=>'widget-'.bin2hex(random_bytes(4)), 'status'=>'published', 'featured'=>1, 'views'=>7]); break;
         case '/__test/readonly': Session::set('read_only', true); break;
+        // Edits listings and sees the media library, but may not add to it (no content.media.create).
+        case '/__test/writer': Session::set('writer', true); break;
         case '/__test/faqs': Session::set('faq_count', max(1, (int) ($_POST['count'] ?? 5))); App::$db->query('DROP TABLE IF EXISTS faqs'); break;
         case '/__test/media':
             // The media library (off until a test asks): its tables, and with seed=1 three items with real files.

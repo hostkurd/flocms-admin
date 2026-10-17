@@ -541,7 +541,14 @@ final class ResourceController extends PanelController
             $errors = $refreshing ? [] : $submission->errors($form, $state, $record);
 
             if (!$refreshing && $errors === []) {
-                $id = $submission->save($form, $state, $record);
+                try {
+                    $id = $submission->save($form, $state, $record);
+                } catch (\FloCMS\Core\ValidationException $error) {
+                    // Refused inside the save (a chosen media item was deleted meanwhile): nothing was written.
+                    foreach ($error->getErrors() as $field => $messages) { $errors[(string) $field] = implode(' ', (array) $messages); }
+                }
+            }
+            if (!$refreshing && $errors === []) {
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
                 // Save and close → back to the list it came from; Save and create

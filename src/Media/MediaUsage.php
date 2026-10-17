@@ -24,20 +24,21 @@ final class MediaUsage
         if (!MediaLibrary::enabled()) { return; }
         $id = (string) ($saved->{$resource::getPrimaryKey()} ?? '');
         if ($id === '') { return; }
-        self::recordValues($resource::getSlug(), $id, $form, (array) $saved);
+        self::recordValues($resource::getSlug(), $id, $form, (array) $saved, true);
     }
 
     /**
      * Usage of one owner (a resource record, or a settings page with resource "settings").
      *
      * @param array<string, mixed> $values Stored column values by field name
+     * @param bool $strict A save: refuse it when a chosen item was deleted meanwhile
      */
-    public static function recordValues(string $resource, string $recordId, Form $form, array $values): void
+    public static function recordValues(string $resource, string $recordId, Form $form, array $values, bool $strict = false): void
     {
         $store = MediaLibrary::store();
         foreach ($form->fields() as $name => $field) {
             if ($field instanceof MediaPicker) {
-                $store->syncUsage($resource, $recordId, $name, MediaPicker::ids($values[$name] ?? null));
+                $store->syncUsage($resource, $recordId, $name, MediaPicker::ids($values[$name] ?? null), $strict);
             } elseif ($field instanceof RichEditor) {
                 $store->syncUsage($resource, $recordId, $name, self::idsInText($values[$name] ?? null));
             }
@@ -80,10 +81,13 @@ final class MediaUsage
         return $paths === [] ? [] : $store->idsForPaths($paths);
     }
 
-    /** Whether a usage row's field is rich text (an unknown one counts as text, to be safe). */
-    public static function isTextField(string $resource, string $field): bool
+    /**
+     * Whether a usage row's field is rich text (an unknown one counts as text, to be safe).
+     * For settings rows, $recordId is the settings page's name.
+     */
+    public static function isTextField(string $resource, string $field, string $recordId = ''): bool
     {
-        $form = self::formFor($resource);
+        $form = self::formFor($resource, $recordId);
         if ($form === null) { return true; }
         $found = $form->field($field);
         return $found === null || $found instanceof RichEditor;
@@ -133,34 +137,38 @@ final class MediaUsage
     public static function rebuild(): array
     {
         $store = MediaLibrary::store();
-        $counts = [];
-        foreach (Admin::registry()->all() as $slug => $class) {
-            /** @var class-string<Resource> $class */
-            $resource = new $class();
-            $form = $resource->form(new Form());
-            if (!self::hasMediaFields($form)) { continue; }
-            $store->forgetResource($slug);
-            $counts[$slug] = 0;
-            $pk = $class::getPrimaryKey();
-            $after = null;
-            do {
-                $query = $store->connection()->table($class::getTable());
-                if ($after !== null) { $query = $query->where($pk, '>', $after); }
-                $rows = $query->orderBy($pk, 'asc')->limit(200)->get();
-                foreach ($rows as $row) {
-                    self::recordValues($slug, (string) $row->{$pk}, $form, (array) $row);
-                    $after = $row->{$pk};
-                    $counts[$slug]++;
-                }
-            } while (count($rows) === 200);
-        }
-        foreach (Admin::settings()->all() as $name => $page) {
-            $form = $page->form();
-            if (!self::hasMediaFields($form)) { continue; }
-            self::recordValues('settings', $name, $form, ($store2 = \FloCMS\Admin\Settings\Settings::store()) !== null ? (new \FloCMS\Admin\Settings\SettingsEditor($page, $store2))->stored() : []);
-            $counts['settings'] = ($counts['settings'] ?? 0) + 1;
-        }
-        return $counts;
+        // One transaction from an empty table: rows of removed resources, fields and settings
+        // pages go away, and the panel never sees a resource with no usage rows half-way.
+        return $store->connection()->transaction(static function () use ($store): array {
+            $store->forgetAll();
+            $counts = [];
+            foreach (Admin::registry()->all() as $slug => $class) {
+                /** @var class-string<Resource> $class */
+                $resource = new $class();
+                $form = $resource->form(new Form());
+                if (!self::hasMediaFields($form)) { continue; }
+                $counts[$slug] = 0;
+                $pk = $class::getPrimaryKey();
+                $after = null;
+                do {
+                    $query = $store->connection()->table($class::getTable());
+                    if ($after !== null) { $query = $query->where($pk, '>', $after); }
+                    $rows = $query->orderBy($pk, 'asc')->limit(200)->get();
+                    foreach ($rows as $row) {
+                        self::recordValues($slug, (string) $row->{$pk}, $form, (array) $row);
+                        $after = $row->{$pk};
+                        $counts[$slug]++;
+                    }
+                } while (count($rows) === 200);
+            }
+            foreach (Admin::settings()->all() as $name => $page) {
+                $form = $page->form();
+                if (!self::hasMediaFields($form)) { continue; }
+                self::recordValues('settings', $name, $form, ($store2 = \FloCMS\Admin\Settings\Settings::store()) !== null ? (new \FloCMS\Admin\Settings\SettingsEditor($page, $store2))->stored() : []);
+                $counts['settings'] = ($counts['settings'] ?? 0) + 1;
+            }
+            return $counts;
+        });
     }
 
     public static function hasMediaFields(Form $form): bool
@@ -171,9 +179,9 @@ final class MediaUsage
         return false;
     }
 
-    private static function formFor(string $resource): ?Form
+    private static function formFor(string $resource, string $recordId = ''): ?Form
     {
-        if ($resource === 'settings') { return null; }
+        if ($resource === 'settings') { return Admin::settings()->find($recordId)?->form(); }
         $class = Admin::registry()->find($resource);
         if ($class === null) { return null; }
         return (new $class())->form(new Form());

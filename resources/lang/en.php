@@ -410,6 +410,7 @@ return [
     'media.no_file' => 'Choose a file first.',
     'media.not_arrived' => 'The file did not arrive.',
     'media.missing' => 'This media item no longer exists.',
+    'media.gone' => 'An item chosen here was deleted in the meantime. Choose another one.',
     'media.replace_kind' => 'Choose a file of the same type (an image for an image, a video for a video).',
     'media.in_use' => 'This item is used, so it cannot be deleted.',
     'media.not_ready' => 'The media library is not set up: run php flo admin:install and php flo migrate.',

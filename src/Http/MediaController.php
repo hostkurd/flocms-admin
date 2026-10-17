@@ -40,6 +40,8 @@ final class MediaController extends PanelController
     {
         parent::__construct($data);
         $this->actionPermissions = [
+            // Any action not listed below needs at least view.
+            '*' => MediaLibrary::permission('view'),
             'admin_index' => MediaLibrary::permission('view'),
             'admin_lookup' => MediaLibrary::permission('view'),
             'admin_edit' => MediaLibrary::permission('view'),
@@ -146,15 +148,21 @@ final class MediaController extends PanelController
                     $result = $chunks->complete($id, MediaFiles::owner());
                     $name = (string) Session::get('media_upload_' . $id, '');
                     Session::delete('media_upload_' . $id);
-                    $item = MediaLibrary::store()->create(MediaFiles::video($result, $name), self::userId());
+                    $item = MediaLibrary::add(MediaFiles::video($result, $name), self::userId());
                     return $json(['item' => $item->toArray() + ['editUrl' => Admin::url('media/edit/' . $item->id)]]);
                 case 'abort':
                     if (!is_string($id)) { throw new HttpException(400); }
                     $chunks->abort($id, MediaFiles::owner());
                     return $json(['ok' => true]);
             }
+        } catch (\FloCMS\Uploader\Exceptions\ChunkOffsetException $error) {
+            // A part arrived twice or was lost: the browser goes on from what the server has.
+            return $json(['error' => 'offset', 'received' => $error->expectedOffset()], 409);
         } catch (\FloCMS\Uploader\Exceptions\ValidationException $error) {
             return $json(['error' => $error->getMessage()], 422);
+        } catch (\FloCMS\Uploader\Exceptions\UploadException) {
+            // Storage failed (a full disk, a folder that can't be written): a JSON answer, not an error page.
+            return $json(['error' => AdminLang::get('media.failed')], 500);
         }
         throw new HttpException(404);
     }
@@ -232,9 +240,11 @@ final class MediaController extends PanelController
                 MediaFiles::delete($files);
                 $deleted++;
             } catch (ValidationException) {
-                $kept++;
+                // Already gone (another editor deleted it): nothing to keep or report as used.
+                if ($store->find($id) !== null) { $kept++; }
             }
         }
+        if ($deleted === 0 && $kept === 0) { Session::setFlash(AdminLang::get('media.missing'), 'warning'); $this->redirect(Admin::url('media')); }
         // One message (the session keeps one): what was deleted, and what was kept because it is used.
         $messages = array_filter([$deleted > 0 ? AdminLang::get('media.deleted', ['count' => (string) $deleted]) : null, $kept > 0 ? AdminLang::get('media.kept_in_use', ['count' => (string) $kept]) : null]);
         Session::setFlash(implode(' ', $messages), $kept === 0 ? 'success' : ($deleted > 0 ? 'warning' : 'danger'));
@@ -276,7 +286,7 @@ final class MediaController extends PanelController
     {
         $mime = self::mime($file);
         $data = str_starts_with($mime, 'video/') ? $this->storeVideo($file) : MediaFiles::image($file, MediaLibrary::maxImageBytes());
-        return MediaLibrary::store()->create($data, self::userId())->toArray();
+        return MediaLibrary::add($data, self::userId())->toArray();
     }
 
     /** A video sent in one request (no JavaScript, or a small file). */

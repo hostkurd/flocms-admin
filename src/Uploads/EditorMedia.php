@@ -41,8 +41,8 @@ final class EditorMedia
     public static function image(array $file, RichEditor $field, string $slug): array
     {
         // With the media library (0.17) the image becomes a library item, so it can be found and reused.
-        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) {
-            $item = \FloCMS\Admin\Media\MediaLibrary::store()->create(\FloCMS\Admin\Media\MediaFiles::image($file, $field->getMaxImageBytes()), self::userId());
+        if (self::library()) {
+            $item = \FloCMS\Admin\Media\MediaLibrary::add(\FloCMS\Admin\Media\MediaFiles::image($file, $field->getMaxImageBytes()), self::userId());
             return ['url' => $item->url(), 'width' => $item->width, 'height' => $item->height, 'id' => $item->id];
         }
         foreach (['tmp_name', 'name', 'error'] as $key) { if (!isset($file[$key]) || !is_scalar($file[$key])) { throw new ValidationException('The image did not arrive.'); } }
@@ -77,8 +77,8 @@ final class EditorMedia
         $result = self::chunks($slug, $field)->complete($id, self::owner());
         $name = (string) Session::get('media_upload_' . $id, '');
         Session::delete('media_upload_' . $id);
-        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) {
-            $item = \FloCMS\Admin\Media\MediaLibrary::store()->create(\FloCMS\Admin\Media\MediaFiles::video($result, $name), self::userId());
+        if (self::library()) {
+            $item = \FloCMS\Admin\Media\MediaLibrary::add(\FloCMS\Admin\Media\MediaFiles::video($result, $name), self::userId());
             return ['url' => $item->url(), 'id' => $item->id];
         }
         return ['url' => self::path((string) $result->path())];
@@ -89,6 +89,15 @@ final class EditorMedia
         self::chunks($slug, $field)->abort($id, self::owner());
     }
 
+    /**
+     * Whether editor uploads become library items: the library is set up and the user may
+     * add to it (media create). Otherwise they are stored for the field as before 0.17.
+     */
+    private static function library(): bool
+    {
+        return \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('create');
+    }
+
     /** Folder for unfinished video parts (private, outside the web root). */
     public static function chunkDirectory(): string
     {
@@ -97,7 +106,7 @@ final class EditorMedia
 
     private static function chunks(string $slug, RichEditor $field): ChunkedUploader
     {
-        if (\FloCMS\Admin\Media\MediaLibrary::enabled()) { return \FloCMS\Admin\Media\MediaFiles::chunks($field->getMaxVideoBytes()); }
+        if (self::library()) { return \FloCMS\Admin\Media\MediaFiles::chunks($field->getMaxVideoBytes()); }
         $directory = self::chunkDirectory();
         if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) { throw new \RuntimeException('Cannot create the video upload folder.'); }
         $video = Uploader::video(self::config())->onDisk('editor')->directory($slug . '/' . $field->getName())->useDatePath()->maxBytes($field->getMaxVideoBytes());

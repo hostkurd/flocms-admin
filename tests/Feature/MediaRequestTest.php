@@ -174,6 +174,13 @@ final class MediaRequestTest extends RequestTestCase
         $form = self::request('GET', '/en/admin/listings/edit/1', $off)['body'];
         self::assertStringContainsString('The media library is not set up', $form);
         self::assertStringNotContainsString('data-admin-media="', $form);
+
+        // Saving keeps the stored ids: the field had no input, so it must not write NULL.
+        self::pdo()->exec("UPDATE listings SET gallery = '[\"2\"]' WHERE id = 1");
+        $saved = self::post('/en/admin/listings/edit/1', ['title' => 'Villa house'], $off);
+        self::assertTrue($saved['redirected'], $saved['body']);
+        $row = self::row('listings', 1);
+        self::assertSame(['Villa house', '1', '["2"]'], [$row['title'], (string) $row['cover_id'], $row['gallery']]);
     }
 
     public function testArabicPage(): void

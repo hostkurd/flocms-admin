@@ -151,4 +151,43 @@ abstract class MediaLibraryTestCase extends TestCase
         self::assertSame(['listings' => 205], MediaUsage::rebuild());
         self::assertSame([1 => 103, 3 => 102], array_intersect_key($this->store()->usageCounts([1, 3]), [1 => 0, 3 => 0]));
     }
+
+    public function testRebuildDropsRowsOfRemovedResourcesFieldsAndPages(): void
+    {
+        $this->db->query('INSERT INTO listings (title, cover_id) VALUES (?, ?)', ['Villa', 1]);
+        $this->store()->syncUsage('listings', '1', 'old_field', [2]);
+        $this->store()->syncUsage('projects', '9', 'cover_id', [3]);
+        $this->store()->syncUsage('settings', 'gone', 'logo_id', [4]);
+        MediaUsage::rebuild();
+        self::assertSame([1 => 1, 2 => 0, 3 => 0, 4 => 0], $this->store()->usageCounts([1, 2, 3, 4]), 'only the listing\'s cover is used now');
+    }
+
+    public function testAPickerOnASettingsPageAllowsReplace(): void
+    {
+        $file = sys_get_temp_dir() . '/flo-admin-media-settings-' . getmypid() . '.php';
+        file_put_contents($file, '<?php return [\\FloCMS\\Admin\\Settings\\SettingsPage::make("brand")->schema([\\FloCMS\\Admin\\Form\\Fields\\MediaPicker::make("logo_id"), \\FloCMS\\Admin\\Form\\Fields\\RichEditor::make("footer")])];');
+        try {
+            Admin::useConfig(['resources' => [ListingResource::class], 'settings_path' => $file, 'media' => ['root' => sys_get_temp_dir() . '/flo-admin-media-int', 'url' => '/uploads/editor']], true, sys_get_temp_dir());
+            $this->store()->syncUsage('settings', 'brand', 'logo_id', [1]);
+            $this->store()->syncUsage('settings', 'brand', 'footer', [2]);
+            self::assertSame([], $this->store()->usedInText(1), 'the logo picker is not rich text');
+            self::assertCount(1, $this->store()->usedInText(2), 'the footer is');
+        } finally {
+            @unlink($file);
+        }
+    }
+
+    public function testASaveIsRefusedWhenAChosenItemWasDeletedMeanwhile(): void
+    {
+        self::assertSame([2 => 'image'], $this->store()->kinds([2]), 'the form check saw it (and cached it)');
+        $this->db->query('DELETE FROM media WHERE id = 2');
+        try {
+            $this->store()->syncUsage('listings', '1', 'gallery', [1, 2], true);
+            self::fail('saved a deleted item');
+        } catch (ValidationException $error) {
+            self::assertSame(['gallery' => 'An item chosen here was deleted in the meantime. Choose another one.'], $error->getErrors());
+        }
+        $this->store()->syncUsage('listings', '1', 'gallery', [1, 2]);
+        self::assertSame([1 => 1, 2 => 0], $this->store()->usageCounts([1, 2]), 'a rebuild just skips missing items');
+    }
 }

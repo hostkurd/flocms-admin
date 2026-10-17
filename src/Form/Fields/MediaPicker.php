@@ -72,7 +72,8 @@ class MediaPicker extends Field
 
     private function encode(array $ids): string
     {
-        $ids = array_slice(MediaStore::ids($ids), 0, self::MAX);
+        // Not cut to MAX here: typeError() reports too many items instead of dropping some silently.
+        $ids = MediaStore::ids($ids);
         if (!$this->multiple) { return $ids === [] ? '' : (string) $ids[0]; }
         return $ids === [] ? '' : json_encode(array_map('strval', $ids), JSON_THROW_ON_ERROR);
     }
@@ -97,12 +98,22 @@ class MediaPicker extends Field
         return $this->encode(self::ids(is_array($value) ? array_values($value) : (is_scalar($value) ? (string) $value : '')));
     }
 
+    /**
+     * Without the library (switched off, or its tables not migrated yet) the field
+     * shows no input, so it must keep the stored ids instead of writing NULL.
+     */
+    public function skipsWrite(string|array $state, bool $isEdit): bool
+    {
+        return MediaLibrary::storeOrNull() === null;
+    }
+
     public function typeError(string $value): ?array
     {
         $ids = self::ids($value);
         if ($ids === []) { return null; }
         if (!$this->multiple && count($ids) > 1) { return ['validation.media', []]; }
-        if ($this->max !== null && count($ids) > $this->max) { return ['validation.media_max', ['max' => (string) $this->max]]; }
+        $max = $this->max ?? self::MAX;
+        if (count($ids) > $max) { return ['validation.media_max', ['max' => (string) $max]]; }
         $store = MediaLibrary::storeOrNull();
         if ($store === null) { return ['validation.media', []]; }
         $kinds = $store->kinds($ids);
@@ -136,7 +147,7 @@ class MediaPicker extends Field
             'moveBefore' => AdminLang::get('media.move_before'), 'moveAfter' => AdminLang::get('media.move_after'), 'moved' => AdminLang::get('media.moved'),
             'max' => $this->max !== null ? AdminLang::get('media.max', ['max' => (string) $this->max]) : '', 'missing' => AdminLang::get('media.missing_item')];
         $html = '<div class="fa-media-field" data-admin-media-field data-kind="' . Str::e($this->kind ?? '') . '" data-multiple="' . ($this->multiple ? 'true' : 'false') . '"'
-            . ($this->max !== null ? ' data-max="' . $this->max . '"' : '')
+            . ($this->multiple ? ' data-max="' . ($this->max ?? self::MAX) . '"' : '')
             . ' data-items="' . Str::e(json_encode(array_map(static fn (MediaItem $item): array => $item->toArray(), $chosen), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '"'
             . ' data-strings="' . Str::e(json_encode($strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)) . '">';
 

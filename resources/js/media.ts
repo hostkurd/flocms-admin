@@ -68,12 +68,16 @@ function size(bytes: number): string {
 
 /* ------------------------------------------------------------------ Uploads */
 
-class UploadFailed extends Error {}
+class UploadFailed extends Error {
+  /** Set when the server expects the next part at another offset (409). */
+  constructor(message: string, readonly received: number | null = null) { super(message); }
+}
 
 async function post(url: string, body: FormData, csrf: string): Promise<Record<string, unknown>> {
   body.append('_token', csrf);
   const response = await fetch(url, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf } });
   const result = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (response.status === 409 && typeof result.received === 'number') throw new UploadFailed('', result.received);
   if (!response.ok) throw new UploadFailed(typeof result.error === 'string' ? result.error : (Array.isArray(result.errors) && typeof result.errors[0] === 'string' ? result.errors[0] : ''));
   return result;
 }
@@ -89,12 +93,20 @@ export async function uploadMedia(cfg: Config, file: File, progress: (percent: n
     const id = String(begun.upload_id ?? '');
     const chunk = Number(begun.chunk_size) || cfg.chunk;
     let offset = Number(begun.received) || 0;
+    let resyncs = 0;
     try {
       while (offset < file.size) {
         const part = new FormData();
         part.append('upload_id', id); part.append('offset', String(offset));
         part.append('chunk', file.slice(offset, offset + chunk), 'chunk');
-        const status = await post(`${cfg.video}/chunk`, part, cfg.csrf);
+        let status: Record<string, unknown>;
+        try {
+          status = await post(`${cfg.video}/chunk`, part, cfg.csrf);
+        } catch (error) {
+          // The server has a different amount (a part sent twice or lost): go on from there.
+          if (error instanceof UploadFailed && error.received !== null && resyncs < 3) { resyncs++; offset = error.received; continue; }
+          throw error;
+        }
         offset = Number(status.received) || offset + chunk;
         progress(Math.min(99, Math.round(offset / file.size * 100)));
       }
@@ -213,19 +225,22 @@ export function pick(options: PickOptions): Promise<MediaItem[] | null> {
 
   async function load(reset: boolean): Promise<void> {
     const mine = ++token;
-    if (reset) page = 1;
+    // The page asked for; kept only when it loads, so "Show more" can be tried again after a failure.
+    const want = reset ? 1 : page + 1;
     status.textContent = s.loading;
     const url = new URL(cfg!.lookup, location.href);
     url.searchParams.set('q', search.value.trim());
     if (options.kind) url.searchParams.set('kind', options.kind);
-    url.searchParams.set('page', String(page));
+    url.searchParams.set('page', String(want));
     try {
       const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(String(response.status));
       const data = await response.json() as { items: MediaItem[]; page: number; pages: number };
       if (mine !== token) return;
       if (reset) grid.replaceChildren();
-      data.items.forEach(item => tile(item));
+      page = want;
+      // Items uploaded in this dialog are already at the top: don't list them twice.
+      data.items.forEach(item => { if (!grid.querySelector(`[data-id="${item.id}"]`)) tile(item); });
       pages = data.pages;
       more.hidden = page >= pages;
       status.textContent = grid.children.length === 0 ? (search.value.trim() ? s.no_results : s.empty) : '';
@@ -255,7 +270,7 @@ export function pick(options: PickOptions): Promise<MediaItem[] | null> {
 
   search.addEventListener('input', () => { clearTimeout(timer); timer = window.setTimeout(() => void load(true), 250); });
   search.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); clearTimeout(timer); void load(true); } });
-  more.addEventListener('click', () => { page += 1; void load(false); });
+  more.addEventListener('click', () => { void load(false); });
   close.addEventListener('click', () => finish(null));
   cancel.addEventListener('click', () => finish(null));
   use?.addEventListener('click', () => finish([...chosen]));

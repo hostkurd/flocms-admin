@@ -14,7 +14,7 @@ php flo migrate
 php flo admin:doctor    # checks the tables, the folder, GD and the permissions
 ```
 
-Until the tables exist the panel works as before: no Media link, and media fields say "The media library is not set up".
+Until the tables exist the panel works as before: no Media link, and media fields say "The media library is not set up" and keep the ids already stored when the record is saved. The same holds with `'media_library' => false`.
 
 Files are stored with flocms-uploader in the public media folder (`media` in `config/admin.php`, `public/uploads/editor` by default), under `library/<year>/<month>/`:
 
@@ -34,7 +34,7 @@ Files are stored with flocms-uploader in the public media folder (`media` in `co
 
 `false` switches the library off. Rename the tables **before** the first migration, for example when the project already has a `media` table of its own: the migration stops with a message when it finds a table with that name that isn't the library's.
 
-PHP's own limits (`upload_max_filesize`, `post_max_size`) still apply to images; videos come in 1 MB parts, so only the limit above counts for them.
+PHP's own limits (`upload_max_filesize`, `post_max_size`) still apply to images. New videos come in 1 MB parts, so only the limit above counts for them; **Replace file** for a video, and uploads on a page without JavaScript, send the whole file at once, so PHP's limits apply there too.
 
 ## The Media page
 
@@ -51,7 +51,7 @@ PHP's own limits (`upload_max_filesize`, `post_max_size`) still apply to images;
 | Ability | Permission | Allows |
 | --- | --- | --- |
 | view | `content.media.view` | the Media page, details, choosing items in fields |
-| create | `content.media.create` | uploading (also from a field or the editor) |
+| create | `content.media.create` | uploading (also from a field's picker or the rich text editor) |
 | update | `content.media.update` | saving the title and alt text, replacing a file |
 | delete | `content.media.delete` | deleting unused items |
 
@@ -77,7 +77,7 @@ MediaPicker::make('attachment_id')->any(),                        // an image or
 
 The field shows the chosen items as thumbnails with **Change** and **Remove** (multiple: **Add media**, and the thumbnails can be dragged, or moved with their arrow buttons, into another order). **Choose** opens the picker: search, filter, upload a new file right there, and click an item to use it (with `multiple()`, click several, then **Use selected**). Without JavaScript the field is a plain list of the newest 200 items.
 
-On save the server checks that every id exists and has the right kind, and `->max()` (1 to 100) limits the number of items. `->required()` works as for any field.
+On save the server checks that every id exists and has the right kind, and `->max()` (1 to 100; 100 without it) limits the number of items. If another editor deletes a chosen item while the form is open, the save is refused with a message on the field and nothing is written. `->required()` works as for any field.
 
 ### In lists
 
@@ -93,6 +93,8 @@ The column loads every item of the page in one query and shows its thumbnail (a 
 ## In the rich text editor
 
 When the library is set up, the editor's **Image** menu has **Choose from the library**, and images and videos uploaded from the editor become library items too (their files go to `library/` like any other). The inserted image takes the item's alt text in the field's language.
+
+An editor without `content.media.create` can still upload in the rich text editor (with the field's own permissions, as before 0.17): those files are stored for the field and don't join the library.
 
 The library counts an item as used in rich text when the text contains its address, so these items show "Used in" and can't be deleted either.
 
@@ -129,7 +131,7 @@ php flo admin:media-usage              # rebuild "Used in" from every record and
 
 `admin:media-import` adds the images and videos already in the media folder (for example those uploaded by the editor before 0.17), skipping `thumb/` folders and files the library already has, and then rebuilds the usage. Imported images keep their files as they are (no new web version or thumbnail is made).
 
-Usage is kept up to date by every save and delete in the panel. Run `admin:media-usage` after changing records outside the panel (an import script, SQL by hand) or after adding a media field to a resource that already has records.
+Usage is kept up to date by every save and delete in the panel. Run `admin:media-usage` after changing records outside the panel (an import script, SQL by hand), after adding a media field to a resource that already has records, or after removing a field, a resource or a settings page (their old usage then goes away).
 
 ## Limits
 

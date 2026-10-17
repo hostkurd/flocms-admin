@@ -68,6 +68,22 @@ final class MediaLibrary
     }
 
     /** The store, or null when the library is off (website helpers). */
+    /**
+     * A new item for files just stored (MediaFiles::image() or video()). When the row can't be
+     * written, the files are deleted again so nothing is left behind.
+     *
+     * @param array{kind: string, path: string, thumb_path: ?string, mime: string, bytes: int, width: ?int, height: ?int, file_name: string} $file
+     */
+    public static function add(array $file, ?int $uploadedBy, string $title = ''): MediaItem
+    {
+        try {
+            return self::store()->create($file, $uploadedBy, $title);
+        } catch (\Throwable $error) {
+            MediaFiles::delete(array_values(array_filter([$file['path'], $file['thumb_path'] ?? null])));
+            throw $error;
+        }
+    }
+
     public static function storeOrNull(): ?MediaStore
     {
         return self::enabled() ? self::store() : null;

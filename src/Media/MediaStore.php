@@ -146,7 +146,9 @@ final class MediaStore
     {
         $item = $this->find($id) ?? throw self::refusal(['_form' => AdminLang::get('media.missing')]);
         if ($this->usage($id) !== []) { throw self::refusal(['_form' => AdminLang::get('media.in_use')]); }
-        $this->db->table($this->table)->where('id', '=', $id)->delete();
+        // One statement, so a record saved meanwhile can't start using the item between the check and the delete.
+        $deleted = $this->db->query('DELETE FROM ' . $this->table . ' WHERE id = ? AND NOT EXISTS (SELECT 1 FROM ' . $this->usageTable . ' WHERE media_id = ?)', [$id, $id])->rowCount();
+        if ($deleted === 0) { throw self::refusal(['_form' => AdminLang::get('media.in_use')]); }
         $this->cache[$id] = null;
         return array_values(array_filter([$item->path, $item->thumbPath]));
     }
@@ -172,7 +174,7 @@ final class MediaStore
     /** @return list<array{resource: string, record_id: string, field: string}> Places where the item is inside rich text. */
     public function usedInText(int $id): array
     {
-        return array_values(array_filter($this->usage($id), fn (array $row): bool => MediaUsage::isTextField($row['resource'], $row['field'])));
+        return array_values(array_filter($this->usage($id), fn (array $row): bool => MediaUsage::isTextField($row['resource'], $row['field'], $row['record_id'])));
     }
 
     /** Items whose web or thumb file is one of these paths. @param list<string> $paths @return list<int> */
@@ -205,12 +207,24 @@ final class MediaStore
     }
 
     /** Replace one record field's usage rows. @param list<int> $ids */
-    public function syncUsage(string $resource, string $recordId, string $field, array $ids): void
+    public function syncUsage(string $resource, string $recordId, string $field, array $ids, bool $strict = false): void
     {
         $this->db->table($this->usageTable)->where('resource', '=', $resource)->where('record_id', '=', $recordId)->where('field', '=', $field)->delete();
+        $ids = self::ids($ids);
         $existing = array_keys($this->kinds($ids));
         foreach ($existing as $id) {
             $this->db->table($this->usageTable)->insert(['media_id' => $id, 'resource' => $resource, 'record_id' => $recordId, 'field' => $field]);
+        }
+        if (!$strict || $ids === []) { return; }
+        // A save: an item deleted by someone else since the form was checked refuses it (the
+        // caller's transaction rolls back). Read fresh, not from the cache the form check filled;
+        // MySQL/MariaDB with a lock, past this transaction's snapshot; SQLite runs one writer at a time.
+        $marks = implode(', ', array_fill(0, count($ids), '?'));
+        $lock = $this->db->driver() === 'mysql' ? ' FOR UPDATE' : '';
+        $found = $this->db->query('SELECT id FROM ' . $this->table . ' WHERE id IN (' . $marks . ')' . $lock, $ids)->fetchAll(\PDO::FETCH_COLUMN);
+        if (count($found) !== count($ids)) {
+            foreach ($ids as $id) { if (!in_array((string) $id, array_map('strval', $found), true)) { $this->cache[$id] = null; } }
+            throw self::refusal([$field => AdminLang::get('media.gone')]);
         }
     }
 
@@ -220,10 +234,10 @@ final class MediaStore
         $this->db->table($this->usageTable)->where('resource', '=', $resource)->where('record_id', '=', $recordId)->delete();
     }
 
-    /** Remove all usage rows of a resource (rebuilds). */
-    public function forgetResource(string $resource): void
+    /** Remove every usage row (a rebuild starts from nothing). */
+    public function forgetAll(): void
     {
-        $this->db->table($this->usageTable)->where('resource', '=', $resource)->delete();
+        $this->db->query('DELETE FROM ' . $this->usageTable);
     }
 
     /** The newest items (the picker's list without JavaScript). @return list<MediaItem> */
