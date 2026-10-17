@@ -1477,3 +1477,81 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-toasts .fa-notification-action .fa-btn:disabled{opacity:.6;cursor:progress}
 .fa-toasts .fa-notification-symbol{background:var(--fa-surface-3);color:var(--fa-text-2)}
 .fa-toasts .fa-notification.fa-alert-neutral{background-image:none}
+
+/* Ctrl+K search (0.20) */
+.fa-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border:1px solid var(--fa-border-strong);border-block-end-width:2px;border-radius:5px;background:var(--fa-surface);font:600 11px/1 var(--fa-font);color:var(--fa-text-2);unicode-bidi:isolate;direction:ltr}
+.fa-topsearch{position:relative;display:flex;align-items:center;flex:0 1 320px;min-width:0;margin-inline-start:16px;color:var(--fa-muted)}
+.fa-topsearch>.fa-icon{position:absolute;inset-inline-start:11px;width:16px;height:16px;pointer-events:none}
+.fa-topsearch-input{width:100%;height:36px;padding-inline:36px 76px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius);background:var(--fa-surface-2);color:var(--fa-text);font:inherit;font-size:13.5px;cursor:pointer}
+.fa-topsearch-input::placeholder{color:var(--fa-muted)}
+.fa-topsearch-input:focus-visible{outline:2px solid var(--fa-focus);outline-offset:1px}
+.fa-topsearch-keys{position:absolute;inset-inline-end:8px;display:inline-flex;gap:3px;pointer-events:none}
+/* Keys read Ctrl K in every language (the box itself stays right to left) */
+.fa-panel[dir="rtl"] .fa-topsearch-keys{flex-direction:row-reverse}
+.fa-panel dialog.fa-cmdk{width:min(640px,94vw);max-height:min(720px,calc(100dvh - 96px));margin:72px auto auto;overflow:hidden}
+.fa-panel dialog.fa-cmdk[open]{display:flex;flex-direction:column}
+.fa-cmdk-field{display:flex;align-items:center;gap:12px;flex:none;height:60px;padding-inline:16px;border-block-end:1px solid var(--fa-border);color:var(--fa-muted)}
+.fa-cmdk-input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;color:var(--fa-text);font:inherit;font-size:17px}
+.fa-cmdk-input::placeholder{color:var(--fa-muted)}
+.fa-panel .fa-cmdk-input:focus,.fa-panel .fa-cmdk-input:focus-visible{outline:none;box-shadow:none;border:0}
+.fa-cmdk-field:focus-within{box-shadow:inset 0 -2px 0 var(--fa-primary)}
+.fa-cmdk-esc{display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;background:none;color:var(--fa-muted);cursor:pointer}
+.fa-cmdk-x{display:none}
+.fa-cmdk-body{flex:1;min-height:0;overflow:auto}
+.fa-cmdk-list{margin:0;padding:6px 8px 10px;list-style:none}
+.fa-cmdk-list ul{margin:0;padding:0;list-style:none}
+.fa-cmdk-group{padding-block-start:4px}
+.fa-cmdk-label{padding:10px 10px 6px;font:600 11.5px/1 var(--fa-font);letter-spacing:.06em;text-transform:uppercase;color:var(--fa-muted)}
+.fa-cmdk[aria-busy="true"] .fa-cmdk-list{opacity:.6}
+.fa-panel .fa-cmdk-link{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:48px;padding:6px 10px;border-radius:var(--fa-radius);color:var(--fa-text);text-decoration:none}
+.fa-cmdk-opt.is-active .fa-cmdk-link{background:var(--fa-primary-soft)}
+.fa-cmdk-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--fa-radius);background:var(--fa-surface-3);color:var(--fa-muted)}
+.fa-cmdk-ico .fa-icon{width:16px;height:16px}
+.fa-cmdk-opt.is-active .fa-cmdk-ico{background:var(--fa-surface);color:var(--fa-primary-text)}
+.fa-cmdk-thumb{display:block;width:32px;height:32px;border-radius:6px;object-fit:cover;background:var(--fa-surface-3)}
+.fa-cmdk-text{min-width:0}
+.fa-cmdk-title,.fa-cmdk-detail{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fa-cmdk-title{font-weight:500}
+.fa-cmdk-title mark{background:none;color:var(--fa-primary-text);font-weight:700}
+.fa-cmdk-detail{font-size:12.5px;color:var(--fa-muted)}
+.fa-cmdk-type{font-size:12px;color:var(--fa-muted);white-space:nowrap}
+.fa-panel .fa-cmdk-more .fa-cmdk-link{display:flex;min-height:36px;padding-inline-start:54px;font-size:13px;font-weight:600;color:var(--fa-primary-text)}
+.fa-cmdk-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;flex:none;padding:10px 16px;border-block-start:1px solid var(--fa-border);background:var(--fa-surface-2);font-size:12.5px;color:var(--fa-muted)}
+.fa-cmdk-foot span{display:inline-flex;align-items:center;gap:5px}
+.fa-cmdk-empty{padding:48px 24px 56px;text-align:center;color:var(--fa-muted)}
+.fa-cmdk-empty b{display:block;margin-block-end:6px;color:var(--fa-text);font-size:15px;font-weight:600}
+/* The results page (no JavaScript) */
+.fa-search-page .fa-blank p+p{margin-block-start:4px}
+.fa-search-group{padding:4px 8px 8px}
+.fa-panel .fa-search-label{margin:0;padding:12px 10px 6px;font:600 11.5px/1 var(--fa-font);letter-spacing:.06em;text-transform:uppercase;color:var(--fa-muted)}
+.fa-search-items{margin:0;padding:0;list-style:none}
+.fa-panel .fa-search-item{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:48px;padding:6px 10px;border-radius:var(--fa-radius);color:var(--fa-text);text-decoration:none}
+.fa-panel .fa-search-item:hover{background:var(--fa-surface-2)}
+.fa-search-ico{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--fa-radius);background:var(--fa-surface-3);color:var(--fa-muted)}
+.fa-search-ico .fa-icon{width:16px;height:16px}
+.fa-search-thumb{width:32px;height:32px;border-radius:6px;object-fit:cover}
+.fa-search-text{min-width:0}
+.fa-search-title,.fa-search-detail{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-search-title{font-weight:500}
+.fa-search-detail{font-size:12.5px;color:var(--fa-muted)}
+.fa-search-type{font-size:12px;color:var(--fa-muted)}
+.fa-panel .fa-search-more{display:inline-block;margin:2px 0 4px;padding:6px 10px;padding-inline-start:54px;font-size:13px;font-weight:600}
+@media (max-width:900px){
+  .fa-topsearch{flex:0 0 40px;margin-inline-start:4px}
+  .fa-topsearch-input{padding:0;width:40px;color:transparent}
+  .fa-topsearch-input::placeholder{color:transparent}
+  .fa-topsearch>.fa-icon{inset-inline-start:12px}
+  .fa-topsearch-keys{display:none}
+  /* Without JavaScript the field opens wide enough to type in. */
+  .fa-topsearch:focus-within{flex-basis:220px}
+  .fa-topsearch-input:focus{width:100%;padding-inline:36px 10px;color:var(--fa-text)}
+}
+@media (max-width:640px){
+  .fa-panel dialog.fa-cmdk{width:100%;max-width:none;height:100dvh;max-height:none;margin:0;border-radius:0}
+  .fa-cmdk-foot{display:none}
+  .fa-cmdk-esc{width:44px;height:44px;margin-inline-end:-10px}
+  .fa-cmdk-esc .fa-kbd{display:none}
+  .fa-cmdk-x{display:inline-flex}
+  .fa-panel .fa-cmdk-link{grid-template-columns:32px minmax(0,1fr)}
+  .fa-cmdk-type{display:none}
+}

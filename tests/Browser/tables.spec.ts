@@ -96,7 +96,7 @@ test('filter and search changes clear selection', async ({ page }) => {
   await expect(selected(page)).toHaveText('0 records selected');
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await expect(page.locator('tbody tr')).toHaveCount(3); await select(page, 8);
-  await page.locator('input[type=search]').fill('Studio');
+  await page.locator('.fa-content input[type=search]').fill('Studio');
   await expect(selected(page)).toHaveText('0 records selected');
   await expect(page.locator('tbody tr')).toHaveCount(1);
 });
@@ -112,7 +112,7 @@ test('full-page filters and bulk deletion work with JavaScript disabled', async 
     await expect(page).toHaveURL(/static=1/);
     await page.locator('[name="ids[]"][value="8"]').check();
     await page.locator('[data-admin-bulk-action=delete]').click();
-    await expect(page.locator('form')).toContainText('Delete the selected record?');
+    await expect(page.locator('.fa-content form')).toContainText('Delete the selected record?');
     await page.getByRole('button', { name: 'Delete selected', exact: true }).click();
     await expect(page.locator('tbody')).not.toContainText('Studio');
   } finally { await context.close(); }

@@ -43,6 +43,14 @@
                 @else<li><span>{{ $crumb['label'] }}</span></li>@endif
                 @endforeach
             </ol></nav>
+            @if($search !== null)
+            <form class="fa-topsearch" method="get" action="{{ $search['url'] }}" role="search" data-admin-search="{{ $search['url'] }}" data-admin-search-shortcut="{{ $search['shortcut'] ? '1' : '0' }}">
+                {!! $searchIcon !!}
+                <label class="fa-sr" for="fa-topsearch-q">{{ $t('search.title') }}</label>
+                <input type="search" id="fa-topsearch-q" name="q" class="fa-topsearch-input" placeholder="{{ $t('search.short_placeholder') }}" maxlength="100" autocomplete="off"@if($search['shortcut']) aria-keyshortcuts="Control+K Meta+K"@endif>
+                @if($search['shortcut'])<span class="fa-topsearch-keys" aria-hidden="true"><kbd class="fa-kbd" data-admin-search-mod>{{ $search['mac'] ? '⌘' : 'Ctrl' }}</kbd><kbd class="fa-kbd">K</kbd></span>@endif
+            </form>
+            @endif
             <span class="fa-topbar-spacer"></span>
             <a class="fa-topbar-action" href="{{ $siteUrl }}" target="_blank" rel="noopener" title="{{ $t('nav.view_site') }}">{!! $externalIcon !!}<span class="fa-topbar-action-label">{{ $t('nav.view_site') }}</span></a>
             @if(count($languages) > 0)
@@ -81,6 +89,28 @@
             <button type="button" class="fa-btn fa-btn-danger" data-confirm-yes data-default="{{ $t('actions.delete') }}">{{ $t('actions.delete') }}</button>
         </div>
     </dialog>
+    @if($search !== null)
+    <dialog class="fa-cmdk" id="fa-search-dialog" aria-labelledby="fa-cmdk-title" data-admin-search-dialog data-results="{{ $t('search.results_count', ['count' => ':count']) }}" data-results-one="{{ $t('search.results_one') }}" data-none="{{ $t('search.no_results', ['query' => ':query']) }}" data-hint="{{ $t('search.no_results_hint') }}" data-failed="{{ $t('search.failed') }}" data-partial="{{ $t('search.partial') }}" data-see-all="{{ $t('search.see_all', ['label' => ':label']) }}" data-loading="{{ $t('reactive.loading') }}">
+        <h2 class="fa-sr" id="fa-cmdk-title">{{ $t('search.title') }}</h2>
+        <div class="fa-cmdk-field">
+            {!! $searchIcon !!}
+            <label class="fa-sr" for="fa-cmdk-q">{{ $t('search.title') }}</label>
+            <input id="fa-cmdk-q" class="fa-cmdk-input" type="text" role="combobox" aria-expanded="false" aria-controls="fa-cmdk-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" maxlength="100" placeholder="{{ $t('search.placeholder') }}">
+            <button type="button" class="fa-cmdk-esc" data-admin-dialog-close aria-label="{{ $t('actions.close') }}"><kbd class="fa-kbd" aria-hidden="true">Esc</kbd><span class="fa-cmdk-x">{!! $closeIcon !!}</span></button>
+        </div>
+        <p class="fa-sr" role="status" aria-live="polite" data-admin-search-status></p>
+        <div class="fa-cmdk-body">
+            <ul class="fa-cmdk-list" id="fa-cmdk-list" role="listbox" aria-label="{{ $t('search.results') }}"></ul>
+            <div class="fa-cmdk-empty" data-admin-search-empty hidden></div>
+        </div>
+        <div class="fa-cmdk-foot" aria-hidden="true">
+            <span><kbd class="fa-kbd">↑</kbd><kbd class="fa-kbd">↓</kbd>{{ $t('search.key_move') }}</span>
+            <span><kbd class="fa-kbd">Enter</kbd>{{ $t('search.key_open') }}</span>
+            <span><kbd class="fa-kbd" data-admin-search-mod>{{ $search['mac'] ? '⌘' : 'Ctrl' }}</kbd><kbd class="fa-kbd">Enter</kbd>{{ $t('search.key_new_tab') }}</span>
+            <span><kbd class="fa-kbd">Esc</kbd>{{ $t('search.key_close') }}</span>
+        </div>
+    </dialog>
+    @endif
     <dialog class="fa-changes-dialog" id="fa-changes-dialog" aria-labelledby="fa-changes-title">
         <div class="fa-changes-dialog-content" data-admin-dialog-content></div>
     </dialog>

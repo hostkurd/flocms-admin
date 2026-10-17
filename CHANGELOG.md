@@ -2,6 +2,19 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.20.0 - 2026-10-18
+
+**Ctrl+K search**: one box, from any page of the panel, that finds records, pages, actions, settings and media. Nothing to install. See the [Search guide](docs/search.md).
+
+- A search field in the top bar (an icon on phones). **Ctrl+K**, **⌘K** or `/` open the search box from anywhere; without JavaScript the field opens a results page.
+- Results arrive as you type (after a 200 ms pause, from 2 characters or 1 digit), grouped: Pages and actions ("New post"), each resource in sidebar order, Settings, Media, then the site's own groups. 5 per group (`'search' => ['per_group' => 5]`) and **See all in Posts**, which opens the list already searched.
+- Records are found by the columns their table marks `->searchable()`, in every language; a title that starts with the words comes first; `#42` finds record 42.
+- Before typing: the last 8 records opened (kept in the session) and the panel's pages.
+- Only what the person may open: the resource's `view` permission and `query()`, `canEdit()` for the edit page (else the list searched for it), settings and media permissions.
+- Keyboard and screen readers: the ARIA combobox pattern (↑ ↓ wrap, Enter, Ctrl/⌘+Enter for a new tab, Esc), a live count of results; right to left in Arabic and Kurdish.
+- For developers: `protected static bool $globallySearchable = false;`, `Resource::searchDetails()`, `Resource::searchUrl()`, and `SearchSource` classes in `'search' => ['sources' => [...]]`. `'search' => false` switches it off; `'shortcut' => false` keeps Ctrl+K for the browser.
+- Groups are asked one after another within 1.5 s, so one slow table never blocks the box.
+
 ## 0.19.1 - 2026-10-18
 
 - Fix: form and action dialogs kept an empty space of up to 150 px under their content (a minimum height on the dialog body). The body now fits its content, and a confirmation without fields has no body at all.

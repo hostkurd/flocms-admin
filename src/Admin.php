@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.19.1';
+    public const VERSION = '0.20.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -90,6 +90,10 @@ final class Admin
         }
         if ($controller === 'activity' && $config->activity()['enabled']) {
             return \FloCMS\Admin\Http\ActivityController::class;
+        }
+        // Ctrl+K search (0.20); a site resource with that slug keeps it.
+        if ($controller === 'search' && $config->search()['enabled']) {
+            return \FloCMS\Admin\Http\SearchController::class;
         }
 
         return null;

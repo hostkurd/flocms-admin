@@ -148,6 +148,9 @@ final class ResourceController extends PanelController
         if (!$this->resource->canEdit($record)) {
             throw new HttpException(403);
         }
+        if ($this->request->isMethod('GET')) {
+            \FloCMS\Admin\Search\RecentRecords::remember($this->resourceClass::getSlug(), $this->recordId(), \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record));
+        }
 
         return $this->handleForm($record);
     }

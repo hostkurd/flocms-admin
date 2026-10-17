@@ -82,6 +82,12 @@ abstract class Resource
      */
     protected static array $activityExcept = [];
 
+    /**
+     * Ctrl+K search (0.20) finds this resource's records by its table's searchable
+     * columns; false leaves it out (its list search still works).
+     */
+    protected static bool $globallySearchable = true;
+
     abstract public function form(Form $form): Form;
 
     abstract public function table(Table $table): Table;
@@ -175,6 +181,24 @@ abstract class Resource
         return (new \ReflectionMethod($class, 'query'))->getDeclaringClass()->getName() !== self::class;
     }
 
+    /**
+     * The line under a record's title in Ctrl+K search (0.20). Null: the next
+     * searchable column of the table.
+     */
+    public function searchDetails(object $record): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Where a record found by Ctrl+K search opens (0.20). Null: its edit page when
+     * the person may edit it, else the list searched for its title.
+     */
+    public function searchUrl(object $record): ?string
+    {
+        return null;
+    }
+
     /** Return false to refuse creating records (the New button is hidden, the page answers 403). */
     public function canCreate(): bool
     {
@@ -254,6 +278,11 @@ abstract class Resource
     public static function activityExcept(): array
     {
         return array_values(array_filter(static::$activityExcept, 'is_string'));
+    }
+
+    public static function isGloballySearchable(): bool
+    {
+        return static::$globallySearchable;
     }
 
     public static function usesTimestamps(): bool

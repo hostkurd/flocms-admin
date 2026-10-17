@@ -49,6 +49,10 @@ return [
     // the body of every form and action dialog. One action: ->modalMinHeight(320)
     'dialog_min_height' => null,
 
+    // Ctrl+K search: false switches it off; 'per_group' => 5 results per group,
+    // 'shortcut' => false keeps Ctrl+K for the browser, 'sources' => [your SearchSource classes]
+    'search' => true,
+
     // Public media (the media library and rich text uploads): folder (relative to
     // the project) and its public URL. The folder must be inside the web root and
     // writable; admin:doctor checks it.
