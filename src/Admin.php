@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.16.1';
+    public const VERSION = '0.17.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -75,6 +75,9 @@ final class Admin
         if ($controller === 'settings') {
             return \FloCMS\Admin\Http\SettingsController::class;
         }
+        if ($controller === 'media' && \FloCMS\Admin\Media\MediaLibrary::enabled()) {
+            return \FloCMS\Admin\Http\MediaController::class;
+        }
         if ($controller === 'profile' && $config->usersEnabled()) {
             return ProfileController::class;
         }
@@ -131,6 +134,7 @@ final class Admin
         self::$registry = null;
         self::$settings = null;
         \FloCMS\Admin\Settings\Settings::reset();
+        \FloCMS\Admin\Media\MediaLibrary::reset();
         Languages::setRtl(self::$config->rtlLanguages());
 
         return self::$config;
@@ -156,6 +160,7 @@ final class Admin
         self::$settings = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Preferences\Preferences::reset();
+        \FloCMS\Admin\Media\MediaLibrary::reset();
         self::$problemsLogged = false;
         Languages::reset();
     }

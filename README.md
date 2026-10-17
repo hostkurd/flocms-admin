@@ -14,6 +14,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
 - **Website settings**: settings pages declared in PHP, a page-level language switch, one image per language, and a cached `setting('site.title')` helper for templates. [Settings guide](docs/settings.md).
 - **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
+- **Media library**: images and videos uploaded once, with titles and alt text per language, picked in forms and the rich text editor, with "used in" tracking and responsive `<img>` output on the website. [Media guide](docs/media.md).
 - **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
 
@@ -191,6 +192,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `BelongsTo` | searchable combobox | The related key in this table's column: `->resource(CityResource::class)` or `->table('brands', 'name')`, `->titleColumn()`, `->dependsOn('country_id')` ([guide](docs/relationships.md)) |
 | `BelongsToMany` | chips with search | A pivot table: `->pivot('property_feature', 'property_id', 'feature_id')`, `->orderColumn('sort')`, `->max(20)` ([guide](docs/relationships.md)) |
 | `ColorPicker` | colour | `#rrggbb` with a swatch |
+| `MediaPicker` | thumbnails with a picker | Items of the media library: `->images()` (default), `->videos()`, `->any()`, `->multiple()`, `->max(12)`; stores an id, or a JSON list of ids in order ([guide](docs/media.md)) |
 
 Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->requiredOnCreate()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`.
 
@@ -209,6 +211,7 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `DateColumn` | a date | `->dateFormat('Y-m-d H:i')` |
 | `BadgeColumn` | a coloured badge | `->colors([...])` (gray, green, blue, yellow, red, purple), `->labels([...])` |
 | `RelationColumn` | related titles | `->resource(CityResource::class)`; many-to-many with `->pivot(...)`, `->limit(3)` ([guide](docs/relationships.md)) |
+| `MediaColumn` | thumbnails of media items | `->limit(3)`; loads the page's items in one query ([guide](docs/media.md)) |
 
 Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
 
@@ -293,6 +296,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `settings_path` | `'admin/settings.php'` | File that declares the website settings pages |
 | `settings_uploads` | `public/uploads/settings` at `/uploads/settings` | `['root' => …, 'url' => …]`: where files uploaded on settings pages are stored (public) |
 | `per_page` | `25` | Rows per page |
+| `media_library` | `true` | The media library (`/admin/media`), media fields and the editor's library; `false` switches it off; `['table' => …, 'usage_table' => …, 'max_image_kb' => …, 'max_video_mb' => …]` changes its tables and limits ([guide](docs/media.md)) |
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
@@ -317,12 +321,14 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 
 | Command | |
 | --- | --- |
-| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings and preferences migrations (never overwrites; run again after an upgrade to add what is missing) |
+| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences and media library migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration; `--reorderable` adds a `sort` column and the Reorder button |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages and the settings and preferences tables |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables and the media library |
+| `php flo admin:media-import [--dry-run]` | Add the images and videos already in the media folder to the media library, then rebuild where they are used |
+| `php flo admin:media-usage` | Rebuild where media library items are used (after changing records outside the panel) |
 
 ## Removing the package
 
@@ -342,9 +348,13 @@ See the [Actions and Notifications guide](docs/actions-and-notifications.md) for
 
 Admin 0.7 provides single-file `FileUpload` and `ImageUpload` fields for resource CRUD forms, including Reactive dialogs and no-JavaScript pages. Files use private managed storage with editor-authorized downloads, server-side validation, retained selections on validation errors, and transaction-aware replacement/removal. See the [Uploads guide](docs/uploads.md) for configuration, limits, permissions and cleanup.
 
+## Media library
+
+Admin 0.17 adds a media library at **Content → Media**: upload images and videos once (with progress; videos in parts), give each a title and an alt text per language, and pick them in forms with `MediaPicker` or in the rich text editor (**Image → Choose from the library**). Images get a web version and a thumbnail; the library records where each item is used, shows it on the item's page and refuses to delete an item in use. Its tables are `media` and `media_usage` (generic, for the website and apps too). On the website, `media($record->cover_id)?->img()` prints a responsive `<img>` with its alt text, and `media_list($record->gallery)` returns a gallery in order. Run `php flo admin:install` and `php flo migrate` to set it up. See the [Media library guide](docs/media.md).
+
 ## Rich text
 
-Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
+Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`; with the media library, into its `library/` folder as library items), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
 
 ## Dashboard widgets
 
@@ -361,6 +371,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.14: website settings pages with `setting()`, Admin panel settings, My preferences, the Columns button
 - 0.15: relationship fields (`BelongsTo`, `BelongsToMany`), relation columns and filters
 - 0.16: drag-and-drop ordering (`->reorderable()`, Reorder mode)
+- 0.17: the media library (`/admin/media`, `MediaPicker`, `MediaColumn`, the editor's library, `media()` on the website)
 - Next: has-many managers (editing a record's photos or rooms inside its page), inline "create new" from a relation
 
 ## Development

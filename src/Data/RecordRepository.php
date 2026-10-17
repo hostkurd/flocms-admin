@@ -192,6 +192,7 @@ final class RecordRepository
     {
         $this->db->transaction(function () use ($id, $original): void {
             $this->detachRelations($original);
+            \FloCMS\Admin\Media\MediaUsage::forget($this->resource, $id);
             [$where, $bindings] = $this->originalCondition($id, $original);
             $statement = $this->db->pdo()->prepare('DELETE FROM ' . self::quote($this->resource::getTable()) . ' WHERE ' . $where);
             $this->refusedWhenInUse(static fn () => $statement->execute($bindings));
@@ -259,6 +260,7 @@ final class RecordRepository
         $this->db->transaction(function () use ($id): void {
             $record = $this->find($id);
             if ($record !== null) { $this->detachRelations($record); }
+            \FloCMS\Admin\Media\MediaUsage::forget($this->resource, $id);
             $this->refusedWhenInUse(fn () => $this->newQuery()->where($this->resource::getPrimaryKey(), '=', $id)->delete());
             if ($record !== null) { $this->resource->afterDelete($record); }
         });

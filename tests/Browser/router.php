@@ -36,17 +36,17 @@ Config::set('default_action', 'index');
 Config::set('languages', ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
 Config::set('reactive.key', hash('sha256', __FILE__));
-Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*']]);
-Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin']);
-Config::set('auth.user_loader', static fn (int $id) => ['role' => Session::get('read_only') ? 1 : 3, 'status' => Session::get('expired') ? 3 : 1]);
-Config::set('admin_access_roles', [1, 3]);
+Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']]);
+Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin', 4 => 'Writer']);
+Config::set('auth.user_loader', static fn (int $id) => ['role' => Session::get('read_only') ? 1 : (Session::get('writer') ? 4 : 3), 'status' => Session::get('expired') ? 3 : 1]);
+Config::set('admin_access_roles', [1, 3, 4]);
 if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -88,6 +88,10 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='faqs'")->
         App::$db->table('faqs')->insert(['question' => json_encode(['en' => $en, 'ar' => $names[$en] ?? 'سؤال ' . ($i + 1)], JSON_UNESCAPED_UNICODE), 'category' => $i % 2 === 0 ? 'shipping' : 'billing', 'sort' => 0, 'archived' => 0]);
     }
 }
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='listings'")->fetchColumn()) {
+    $pdo->exec('CREATE TABLE listings (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, cover_id INTEGER NULL, gallery TEXT NULL, video_id INTEGER NULL, body TEXT NULL)');
+    App::$db->table('listings')->insert(['title' => 'Villa', 'body' => '{"en":"<p>Welcome</p>"}']);
+}
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='settings'")->fetchColumn()) {
     $pdo->exec('CREATE TABLE settings (`param` VARCHAR(190) NOT NULL, `value` TEXT NULL, `lang` VARCHAR(10) NOT NULL DEFAULT \'\', PRIMARY KEY (`param`, `lang`))');
     $pdo->exec('CREATE TABLE admin_user_preferences (`user_id` INTEGER NOT NULL, `key` VARCHAR(100) NOT NULL, `value` TEXT NULL, `updated_at` DATETIME NULL, PRIMARY KEY (`user_id`, `key`))');
@@ -124,7 +128,27 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/widgets': Session::set('widget_demo', true); Session::set('widget_static', ($_POST['static'] ?? '') === '1'); break;
         case '/__test/widget-add': App::$db->table('posts')->insert(['title'=>'{"en":"Fresh widget post"}', 'slug'=>'widget-'.bin2hex(random_bytes(4)), 'status'=>'published', 'featured'=>1, 'views'=>7]); break;
         case '/__test/readonly': Session::set('read_only', true); break;
+        // Edits listings and sees the media library, but may not add to it (no content.media.create).
+        case '/__test/writer': Session::set('writer', true); break;
         case '/__test/faqs': Session::set('faq_count', max(1, (int) ($_POST['count'] ?? 5))); App::$db->query('DROP TABLE IF EXISTS faqs'); break;
+        case '/__test/media':
+            // The media library (off until a test asks): its tables, and with seed=1 three items with real files.
+            \FloCMS\Admin\Tests\Fixtures\Media\MediaTables::create(App::$db);
+            if (($_POST['seed'] ?? '') === '1') {
+                $root = ROOT . '/public/uploads/editor';
+                foreach (\FloCMS\Admin\Tests\Fixtures\Media\MediaTables::seed(App::$db) as $files) {
+                    foreach ($files as $file) {
+                        if (!is_dir(dirname($root . '/' . $file))) { mkdir(dirname($root . '/' . $file), 0777, true); }
+                        copy($package . '/tests/Browser/fixtures/' . (str_ends_with($file, '.mp4') ? 'clip.mp4' : 'photo.png'), $root . '/' . $file);
+                    }
+                }
+            }
+            break;
+        case '/__test/listing': header('Content-Type: application/json'); echo json_encode([
+            'row' => App::$db->table('listings')->where('id', '=', 1)->first(),
+            'usage' => App::$db->query('SELECT media_id, field FROM media_usage WHERE resource = \'listings\' ORDER BY media_id, field')->fetchAll(PDO::FETCH_ASSOC),
+            'media' => App::$db->query('SELECT id, title, alt, path FROM media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
+        case '/__test/media-off': App::$db->query('DROP TABLE IF EXISTS media_usage'); App::$db->query('DROP TABLE IF EXISTS media'); break;
         case '/__test/faq-add': App::$db->table('faqs')->insert(['question' => '{"en":"Added elsewhere"}', 'category' => 'billing', 'sort' => 99, 'archived' => 0]); break;
         case '/__test/faq-order': header('Content-Type: application/json'); echo json_encode(array_map('intval', App::$db->query('SELECT id FROM faqs ORDER BY sort, id')->fetchAll(PDO::FETCH_COLUMN))); exit;
         case '/__test/expire': Csrf::rotate(); break;

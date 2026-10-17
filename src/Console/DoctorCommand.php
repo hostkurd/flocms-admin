@@ -116,6 +116,7 @@ final class DoctorCommand extends Command
         }
 
         $this->checkSettings($config, $db);
+        $this->checkLibrary($config, $db, $project);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -503,6 +504,48 @@ final class DoctorCommand extends Command
         if (!extension_loaded('gd') && !extension_loaded('imagick')) {
             $this->bad('Rich text images need the GD or Imagick PHP extension to make their web size.');
         }
+    }
+
+    /** The media library (0.17): its two tables, its folder and image processing. */
+    private function checkLibrary(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        $library = $config->mediaLibrary();
+        if (!$library['enabled']) { return; }
+        $this->section('Media library  (/admin/media)');
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the media library tables were not checked.'); return; }
+        }
+        $needed = [$library['table'] => ['id', 'kind', 'path', 'thumb_path', 'mime', 'bytes', 'width', 'height', 'file_name', 'title', 'alt', 'uploaded_by', 'created_at', 'updated_at'],
+            $library['usage_table'] => ['media_id', 'resource', 'record_id', 'field']];
+        $ready = true;
+        foreach ($needed as $table => $columns) {
+            $found = $this->columns($db, $table);
+            if ($found === null) {
+                $this->bad('Table "' . $table . '" not found: run php flo admin:install, then php flo migrate.');
+                $ready = false;
+                continue;
+            }
+            $missing = array_values(array_diff($columns, array_keys($found)));
+            if ($missing !== []) {
+                $this->bad('Table "' . $table . '" exists but is not the media library\'s (missing ' . implode(', ', $missing) . '). Rename the library\'s tables in config/admin.php: \'media_library\' => [\'table\' => \'site_media\', \'usage_table\' => \'site_media_usage\'], then run php flo admin:install and php flo migrate.');
+                $ready = false;
+                continue;
+            }
+            $this->ok('Table "' . $table . '"');
+            $this->checkCharset($db, $table);
+        }
+        $media = $config->media();
+        $parent = $media['root'];
+        while (!is_dir($parent) && dirname($parent) !== $parent) { $parent = dirname($parent); }
+        if (!is_writable($parent)) {
+            $this->bad('Media folder ' . $media['root'] . ' is not writable: nobody can upload to the library.');
+        } elseif ($ready) {
+            $this->ok('Files in ' . $media['root'] . '/' . \FloCMS\Admin\Media\MediaFiles::DIRECTORY . ' (served at ' . $media['url'] . '/' . \FloCMS\Admin\Media\MediaFiles::DIRECTORY . ')');
+        }
+        if (!extension_loaded('gd') && !extension_loaded('imagick')) {
+            $this->bad('Library images need the GD or Imagick PHP extension to make their web and thumb versions.');
+        }
+        $this->line('  Permissions: ' . \FloCMS\Admin\Media\MediaLibrary::permission('view') . ', …create, …update, …delete');
     }
 
     private function ok(string $text): void

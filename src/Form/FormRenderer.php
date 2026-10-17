@@ -419,6 +419,8 @@ final class FormRenderer
         $config = [
             'toolbar' => $toolbar, 'images' => $field->allowsImages(), 'videos' => $field->allowsVideos() && $media !== '',
             'uploads' => $media !== '', 'embeds' => $field->getEmbeds(), 'media' => $media,
+            // The media library's picker (0.17): choose an image uploaded before.
+            'library' => $field->allowsImages() && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view'),
             'maxImage' => $field->getMaxImageBytes(), 'maxVideo' => $field->getMaxVideoBytes(), 'csrf' => \FloCMS\Core\Csrf::token(),
         ];
         $t = static fn (string $key, array $replace = []): string => AdminLang::get('editor.' . $key, $replace);
@@ -480,14 +482,15 @@ final class FormRenderer
                     $tip = $label . (isset($keys[$command]) ? ' (' . $keys[$command] . ')' : '');
                     $toggle = !in_array($command, ['image', 'video', 'embed', 'undo', 'redo', 'horizontalRule', 'textAlign', 'indent', 'outdent', 'clearFormatting'], true);
                     // With uploads, Image offers "Upload" and "From a link" in a small menu; alignment is a menu too.
-                    $menu = ($command === 'image' && $config['uploads']) || $command === 'textAlign' ? ($command === 'image' ? 'image' : 'align') : null;
+                    $menu = ($command === 'image' && ($config['uploads'] || $config['library'])) || $command === 'textAlign' ? ($command === 'image' ? 'image' : 'align') : null;
                     $html .= '<button type="button" class="fa-rich-btn' . ($menu !== null ? ' has-menu' : '') . '" data-command="' . $command . '" title="' . Str::e($tip) . '" aria-label="' . Str::e($label) . '"'
                         . ($toggle ? ' aria-pressed="false"' : '') . ($menu !== null ? ' aria-haspopup="menu" aria-expanded="false" aria-controls="' . Str::e($id . '-' . $menu . '-menu') . '"' : '')
                         . (in_array($command, ['link', 'embed'], true) || ($command === 'image' && $menu === null) ? ' aria-haspopup="dialog"' : '') . ' tabindex="-1">'
                         . '<span class="fa-rich-btn-icon" data-rich-icon>' . EditorIcons::svg($command === 'textAlign' ? 'alignLeft' : $command) . '</span>' . ($menu !== null ? $caret : '') . '</button>';
                     if ($menu === 'image') {
                         $menus .= '<div class="fa-rich-menu" id="' . Str::e($id . '-image-menu') . '" role="menu" aria-label="' . Str::e($label) . '" data-rich-menu="image" hidden>'
-                            . '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-upload" tabindex="-1">' . EditorIcons::svg('upload') . '<span><strong>' . Str::e($t('image_upload')) . '</strong><small>' . Str::e($t('image_limit', ['size' => $this->bytes($field->getMaxImageBytes())])) . '</small></span></button>'
+                            . ($config['uploads'] ? '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-upload" tabindex="-1">' . EditorIcons::svg('upload') . '<span><strong>' . Str::e($t('image_upload')) . '</strong><small>' . Str::e($t('image_limit', ['size' => $this->bytes($field->getMaxImageBytes())])) . '</small></span></button>' : '')
+                            . ($config['library'] ? '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-library" tabindex="-1">' . EditorIcons::svg('library') . '<span><strong>' . Str::e(AdminLang::get('media.choose_from_library')) . '</strong><small>' . Str::e(AdminLang::get('media.choose_from_library_help')) . '</small></span></button>' : '')
                             . '<button type="button" role="menuitem" class="fa-rich-menuitem" data-rich-action="image-link" tabindex="-1">' . EditorIcons::svg('fromLink') . '<span><strong>' . Str::e($t('image_from_link')) . '</strong><small>' . Str::e($t('image_from_link_help')) . '</small></span></button>'
                             . '</div>';
                     }

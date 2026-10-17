@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace FloCMS\Admin\Console;
 
 use FloCMS\Admin\Admin;
+use FloCMS\Admin\Media\MediaLibrary;
 use FloCMS\Admin\Translation\Languages;
 use FloCMS\Admin\Widgets\WidgetRegistry;
 use FloCMS\CLI\Console\Command;
@@ -67,6 +68,9 @@ final class ListCommand extends Command
                     $registry->isBuiltIn($slug) ? 'built in' : $this->short($class),
                 ];
             }
+            if ($config->mediaLibrary()['enabled']) {
+                $rows[] = ['Media', '/admin/media', $config->mediaLibrary()['table'], MediaLibrary::permission('view') . ' (+create, update, delete)', 'built in'];
+            }
             $this->table(['Resource', 'URL', 'Table', 'Permissions', 'Class'], $rows);
         }
 
@@ -119,6 +123,11 @@ final class ListCommand extends Command
         foreach ($resources as $class) {
             foreach (self::ABILITIES as $ability) {
                 $names[] = $class::permission($ability);
+            }
+        }
+        if (Admin::config()->mediaLibrary()['enabled']) {
+            foreach (self::ABILITIES as $ability) {
+                $names[] = MediaLibrary::permission($ability);
             }
         }
         foreach ($widgets->all() as $widget) {

@@ -1,0 +1,46 @@
+<div class="fa-page-head">
+    <div><p class="fa-page-back"><a href="{{ $listUrl }}">{{ $t('media.title') }}</a></p><h1 class="fa-page-title" dir="auto">{{ $title }}</h1></div>
+</div>
+<div class="fa-media-details">
+    <div class="fa-card fa-media-preview">
+        @if($item->isImage())<img src="{{ $item->url() }}" alt="{{ $item->alt() }}"@if($item->width !== null) width="{{ $item->width }}" height="{{ $item->height }}"@endif>
+        @else<video src="{{ $item->url() }}" controls preload="metadata" playsinline></video>@endif
+        <dl class="fa-media-facts">
+            <div><dt>{{ $t('media.file') }}</dt><dd dir="auto">{{ $item->fileName !== '' ? $item->fileName : '—' }}</dd></div>
+            <div><dt>{{ $t('media.type') }}</dt><dd>{{ $item->mime }} · {{ $size }}</dd></div>
+            @if($item->width !== null)<div><dt>{{ $t('media.dimensions') }}</dt><dd>{{ $item->width }} × {{ $item->height }} px</dd></div>@endif
+            <div><dt>{{ $t('media.uploaded') }}</dt><dd>{{ $item->createdAt ?? '—' }}@if($uploader !== null) · {{ $uploader }}@endif</dd></div>
+            <div class="fa-media-address"><dt><label for="fa-media-url">{{ $t('media.address') }}</label></dt><dd><input class="fa-input" id="fa-media-url" value="{{ $absoluteUrl }}" readonly dir="ltr"><button type="button" class="fa-btn fa-btn-sm" data-media-copy="fa-media-url" data-copied="{{ $t('media.copied') }}" hidden>{{ $t('media.copy') }}</button></dd></div>
+        </dl>
+    </div>
+    <div class="fa-media-side">
+        <form class="fa-card fa-form fa-media-form" method="post" action="{{ $action }}"@if($hasErrors) data-dirty="true"@endif>
+            {!! $csrf !!}
+            <fieldset class="fa-media-fields"@if(!$canUpdate) disabled @endif>{!! $fields !!}</fieldset>
+            @if($canUpdate)<div class="fa-form-actions"><button type="submit" class="fa-btn fa-btn-primary">{{ $t('actions.save') }}</button></div>@endif
+        </form>
+        <section class="fa-card fa-media-usage" aria-labelledby="fa-media-usage-title">
+            <h2 class="fa-section-title" id="fa-media-usage-title">{{ $t('media.used_in') }}</h2>
+            @if(count($usage) > 0)
+            <ul class="fa-media-places">@foreach($usage as $place)<li>@if($place['url'] !== null)<a href="{{ $place['url'] }}" dir="auto">{{ $place['label'] }}</a>@else<span dir="auto">{{ $place['label'] }}</span>@endif</li>@endforeach</ul>
+            @else<p class="fa-muted">{{ $t('media.used_nowhere') }}</p>@endif
+            <p class="fa-help">{{ $t('media.usage_help') }}</p>
+        </section>
+        @if($canUpdate)
+        <form class="fa-card fa-media-replace" method="post" action="{{ $replaceUrl }}" enctype="multipart/form-data">
+            {!! $csrf !!}
+            <h2 class="fa-section-title"><label for="fa-media-replace">{{ $t('media.replace') }}</label></h2>
+            @if($inText)<p class="fa-alert fa-alert-warning">{{ $t('media.replace_in_text') }}</p>
+            @else<p class="fa-help">{{ $t('media.replace_help') }}</p>
+            <div class="fa-media-replace-row"><input class="fa-input" type="file" id="fa-media-replace" name="file" accept="{{ $accept }}" required><button type="submit" class="fa-btn">{{ $t('media.replace_button') }}</button></div>@endif
+        </form>
+        @endif
+        @if($canDelete)
+        <form class="fa-card fa-media-delete" method="post" action="{{ $deleteUrl }}" data-confirm>
+            {!! $csrf !!}
+            @if(count($usage) > 0)<p class="fa-help">{{ $t('media.delete_in_use') }}</p><button type="button" class="fa-btn fa-btn-danger-outline" disabled>{{ $t('media.delete') }}</button>
+            @else<button type="submit" class="fa-btn fa-btn-danger-outline">{{ $t('media.delete') }}</button>@endif
+        </form>
+        @endif
+    </div>
+</div>

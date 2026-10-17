@@ -9,6 +9,7 @@ import { initializeEditors } from './editors';
 import { initializeSettings } from './settings';
 import { initializeRelations } from './relations';
 import { initializeReorder } from './reorder';
+import { initializeMedia } from './media';
 import './popovers';
 import { startProgress, finishProgress } from './progress';
 import { initializeRecord, isDirty, confirmLeave } from './record';
@@ -55,6 +56,7 @@ function initialize(): void {
   initializeSettings(root);
   initializeRelations(root);
   initializeReorder(root);
+  initializeMedia(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
@@ -304,7 +306,7 @@ document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) { initializeForms(root); initializeTranslations(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); }
+  if (root) { initializeForms(root); initializeTranslations(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

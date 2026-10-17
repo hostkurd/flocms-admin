@@ -118,9 +118,26 @@ final class SettingsEditor
                 $rows[$this->page->key((string) $name)] = $value;
             }
             $batch->replaced($this->page, $uploadFields, $this->stored(), $values);
-            $this->store->put($rows);
+            if (\FloCMS\Admin\Media\MediaLibrary::enabled()) {
+                // The values and where they use library items, in one transaction.
+                \FloCMS\Admin\Media\MediaLibrary::store()->connection()->transaction(function () use ($rows): void {
+                    $this->store->put($rows);
+                    $this->stored = null;
+                    \FloCMS\Admin\Media\MediaUsage::recordValues('settings', $this->page->getName(), $this->page->form(), $this->stored(), true);
+                });
+            } else {
+                $this->store->put($rows);
+            }
+        } catch (\FloCMS\Core\ValidationException $error) {
+            // A chosen media item was deleted meanwhile: nothing was saved.
+            $batch->rollback();
+            $this->stored = null;
+            $errors = [];
+            foreach ($error->getErrors() as $field => $messages) { $errors[(string) $field] = implode(' ', (array) $messages); }
+            return ['state' => $state, 'errors' => $errors, 'saved' => false];
         } catch (\Throwable $error) {
             $batch->rollback();
+            $this->stored = null;
             throw $error;
         }
         $batch->commit();

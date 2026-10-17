@@ -587,6 +587,7 @@ class RichField {
         const action = item.dataset.richAction!;
         this.closeMenu(false);
         if (action === 'image-upload') this.pick('image');
+        else if (action === 'image-library') void this.insertFromLibrary();
         else if (action === 'image-link') this.openImageDialog(false);
         else if (action.startsWith('align-')) this.align(action.slice(6));
       });
@@ -887,6 +888,17 @@ class RichField {
     if (at !== undefined) this.current()?.commands.setTextSelection(at);
     void (image ? this.insertImage(file) : this.insertVideo(file));
     return true;
+  }
+
+  /** An image chosen from the media library (0.17), with its alt text in this panel's language. */
+  private async insertFromLibrary(): Promise<void> {
+    const editor = this.current();
+    const lang = this.active;
+    const api = (window as unknown as { FloAdminMedia?: { pick: (o: { kind: 'image'; multiple: false }) => Promise<Array<{ url: string; alt: string; alts?: Record<string, string>; width: number | null; height: number | null }> | null> } }).FloAdminMedia;
+    const picked = await api?.pick({ kind: 'image', multiple: false });
+    const item = picked?.[0];
+    if (!item || !editor || editor.isDestroyed) { editor?.commands.focus(); return; }
+    insertBlock(editor, { type: 'image', attrs: { src: item.url, alt: (lang && item.alts?.[lang]) || item.alt || '', width: item.width, height: item.height } });
   }
 
   private async insertImage(file: File): Promise<void> {

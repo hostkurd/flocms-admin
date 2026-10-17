@@ -154,6 +154,32 @@ final class AdminConfig
         return ['root' => $root, 'url' => $url];
     }
 
+    /**
+     * The media library (0.17): on unless 'media_library' => false. Its tables
+     * default to media and media_usage; ['table' => …, 'usage_table' => …]
+     * renames them (for a site that already has a media table of its own).
+     * Upload limits: 'max_image_kb' (default 10240) and 'max_video_mb' (default 200).
+     *
+     * @return array{enabled: bool, table: string, usage_table: string, max_image_bytes: int, max_video_bytes: int}
+     */
+    public function mediaLibrary(): array
+    {
+        $value = $this->values['media_library'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $name = static function (mixed $candidate, string $default): string {
+            return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $candidate) === 1 ? $candidate : $default;
+        };
+        $image = is_int($options['max_image_kb'] ?? null) ? max(1, min(65536, $options['max_image_kb'])) : 10240;
+        $video = is_int($options['max_video_mb'] ?? null) ? max(1, min(4096, $options['max_video_mb'])) : 200;
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'table' => $name($options['table'] ?? null, 'media'),
+            'usage_table' => $name($options['usage_table'] ?? null, 'media_usage'),
+            'max_image_bytes' => $image * 1024,
+            'max_video_bytes' => $video * 1024 * 1024,
+        ];
+    }
+
     /** Absolute path of the file that declares the settings pages (default admin/settings.php). */
     public function settingsPath(): string
     {

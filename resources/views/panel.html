@@ -1,5 +1,5 @@
 {!! $assets !!}
-<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-width="{{ $contentWidth }}" data-density="{{ $density }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}">
+<div class="fa-panel" dir="{{ $dir }}" lang="{{ $lang }}" data-theme="{{ $theme }}" data-sidebar="{{ $sidebar }}" data-width="{{ $contentWidth }}" data-density="{{ $density }}" data-admin-navigation="{{ $navigation ? 'true' : 'false' }}" data-admin-base="{{ $panelBase }}" data-admin-title="{{ $title }}" data-admin-error="{{ $t('reactive.request_failed') }}" data-admin-large-form="{{ $t('reactive.large_form') }}" data-admin-expired="{{ $t('reactive.expired') }}" data-admin-forbidden="{{ $t('reactive.forbidden') }}" data-admin-operation-expired="{{ $t('reactive.operation_expired') }}" data-admin-missing="{{ $t('reactive.missing') }}" data-admin-notifications-label="{{ $t('notifications.label') }}" data-admin-busy="{{ $t('reactive.loading') }}"@if($mediaPicker !== '') data-admin-media="{{ $mediaPicker }}"@endif>
 
     <aside id="fa-sidebar" class="fa-sidebar" aria-label="{{ $t('nav.label') }}">
         <a class="fa-brand" href="{{ $dashboardUrl }}">
@@ -8,11 +8,12 @@
         </a>
         <nav class="fa-nav">
             <a class="fa-nav-link{{ $dashboardActive ? ' is-active' : '' }}" href="{{ $dashboardUrl }}"@if($dashboardActive) aria-current="page"@endif>{!! $dashboardIcon !!}<span>{{ $t('nav.dashboard') }}</span></a>
-            @if(count($nav) > 0)
+            @if(count($nav) > 0 || $mediaUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.resources') }}</p>
             @foreach($nav as $item)
             <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span></a>
             @endforeach
+            @if($mediaUrl !== null)<a class="fa-nav-link{{ $mediaActive ? ' is-active' : '' }}" href="{{ $mediaUrl }}"@if($mediaActive) aria-current="page"@endif>{!! $mediaIcon !!}<span>{{ $t('media.title') }}</span></a>@endif
             @endif
             @if($usersUrl !== null || $settingsUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>

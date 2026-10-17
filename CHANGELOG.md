@@ -2,11 +2,45 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## 0.16.1 - 2026-10-17
+## 0.17.0 - 2026-10-17
+
+The media library. One migration (two tables, `media` and `media_usage`); nothing changes for existing forms. See the [Media library guide](docs/media.md).
+
+### Media library
+
+- **Content → Media** (`/admin/media`): a grid of the site's images and videos, newest first, with search (file name, title, alt text), an Images / Videos filter and a **Not used** view. Upload by choosing or dropping files, with progress for each; videos are sent in 1 MB parts.
+- Images (JPEG, PNG, WebP, GIF) are stored through flocms-uploader as a web version of at most 1920 px and a 400 px thumbnail; videos (MP4, WebM) as uploaded. Files go to `library/<year>/<month>/` in the public media folder.
+- Each item's page: preview, size, dimensions and address (with a copy button), a **title** and an **alt text per language**, **Used in** (every record and settings page using it, with links), **Replace file** (same item, new file) and **Delete** (only when unused; several unused items can be deleted at once).
+- Usage is recorded on every save and delete in the panel (records and settings pages), inside the same transaction; rich text counts an item when it contains its address. A save is refused when a chosen item was deleted by another editor meanwhile, and an item is deleted only if nothing started using it in between.
+- Permissions `content.media.view`, `.create`, `.update`, `.delete` (with the configured prefix), listed by `admin:list --permissions`.
+- `'media_library'` in `config/admin.php`: `true` (default), `false`, or `['table', 'usage_table', 'max_image_kb', 'max_video_mb']`. The tables are generic (`media`, not `admin_media`) so the website and apps can read them. The migration stops with a message when a `media` table that isn't the library's already exists: rename the library's tables in the config.
+
+### Forms and lists
+
+- `MediaPicker` field: one item (an id in an `INT` column) or, with `->multiple()`, several in order (a JSON list in a `TEXT` column), `->images()` (default), `->videos()`, `->any()`, `->max(n)`. Thumbnails with Change / Remove, a picker dialog with search, filters and upload, reordering by dragging (also right to left) or with arrow buttons. The server checks every id and kind. Without JavaScript: a select of the newest 200 items.
+- `MediaColumn`: thumbnails in lists (`->limit(3)` then "+n"), loaded in one query per page.
+
+### Rich text
+
+- **Image → Choose from the library** inserts a library image with its alt text in the field's language.
+- With the library set up, images and videos uploaded in the editor become library items (for users with `content.media.create`; others upload for the field as before).
+
+### Website
+
+- `media($id)` returns a `MediaItem` (or `null`); `media_list($ids)` the items of a gallery in order; `media_preload([...])` loads many in one query.
+- `MediaItem::img()` prints `<img>` with `alt`, `width`, `height`, `srcset` with the thumbnail, `loading="lazy"` and `decoding="async"`; `video()` and `html()` likewise. `url()`, `url('thumb')`, `alt($lang)`, `label()`.
+
+### Commands
+
+- `admin:install` writes the media library migration.
+- `admin:media-import [--dry-run]` adds the images and videos already in the media folder to the library, then rebuilds the usage.
+- `admin:media-usage` rebuilds where items are used, from scratch and in one transaction (rows of removed resources, fields and settings pages go away).
+- `admin:doctor` checks the library's tables and columns, their character set, the folder, GD and the permissions.
 
 ### Fixed
 
 - Rich text fields: after a failed save, focus goes into the invalid editor even when it was lost on the way (another update ran first, or the page lost focus before the editor started). Before, the editor took focus only when the hidden field it replaces still had it, so on slow devices (and once in a while on CI) focus was left nowhere.
+- The upload list shows every chosen file at once ("Waiting: …"), then uploads them one after another.
 
 ## 0.16.0 - 2026-10-17
 

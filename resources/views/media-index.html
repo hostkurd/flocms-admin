@@ -1,0 +1,72 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $t('media.description') }}</p></div>
+    @if($canUpload)
+    <div class="fa-action-group">
+        <form class="fa-media-upload" method="post" action="{{ $uploadUrl }}" enctype="multipart/form-data" data-admin-media-upload
+            data-video-url="{{ $videoUrl }}" data-csrf="{{ $csrfToken }}" data-max-image="{{ $maxImage }}" data-max-video="{{ $maxVideo }}" data-chunk="{{ $chunk }}"
+            data-text-uploading="{{ $t('media.uploading') }}" data-text-waiting="{{ $t('media.waiting') }}" data-text-done="{{ $t('media.upload_done') }}" data-text-failed="{{ $t('media.failed') }}" data-text-too-big="{{ $t('media.too_big') }}" data-text-drop="{{ $t('media.drop') }}">
+            {!! $csrf !!}
+            <label class="fa-btn fa-btn-primary fa-media-upload-button">{!! $uploadIcon !!}<span>{{ $t('media.upload') }}</span><input class="fa-sr" type="file" name="files[]" multiple accept="{{ $accept }}" data-media-files></label>
+            <button type="submit" class="fa-btn" data-media-send>{{ $t('media.send') }}</button>
+        </form>
+    </div>
+    @endif
+</div>
+<div class="fa-card fa-media-library" data-admin-media-library>
+    @if($canUpload)<p class="fa-media-limits fa-muted">{{ $limits }}</p>
+    <ul class="fa-media-progress" data-media-progress aria-live="polite"></ul>@endif
+    <form class="fa-list-toolbar fa-media-toolbar" method="get" action="{{ $listUrl }}" role="search">
+        <span class="fa-search">
+            {!! $searchIcon !!}
+            <label class="fa-sr" for="fa-media-search">{{ $t('media.search') }}</label>
+            <input type="search" id="fa-media-search" name="q" value="{{ $term }}" placeholder="{{ $t('media.search') }}" class="fa-input" maxlength="100">
+        </span>
+        <label class="fa-sr" for="fa-media-kind">{{ $t('media.kind') }}</label>
+        <select id="fa-media-kind" name="kind" class="fa-input fa-select fa-media-kind">
+            <option value="">{{ $t('media.all') }}</option>
+            <option value="image"@if($kind === 'image') selected @endif>{{ $t('media.images') }}</option>
+            <option value="video"@if($kind === 'video') selected @endif>{{ $t('media.videos') }}</option>
+        </select>
+        <label class="fa-check"><input type="checkbox" name="unused" value="1"@if($unused) checked @endif> {{ $t('media.unused') }}</label>
+        <button type="submit" class="fa-btn">{{ $t('filters.apply') }}</button>
+        @if($hasFilters)<a class="fa-btn fa-btn-ghost" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>@endif
+    </form>
+    @if(count($items) > 0)
+    <form method="post" action="{{ $deleteUrl }}" data-confirm id="fa-media-bulk">
+        {!! $csrf !!}
+        <input type="hidden" name="_back" value="{{ $pageUrl($page) }}">
+        <ul class="fa-media-grid">
+            @foreach($items as $item)
+            <li class="fa-media-tile{{ $item['used'] ? '' : ' is-unused' }}">
+                <a class="fa-media-link" href="{{ $item['editUrl'] }}">
+                    <span class="fa-media-box">
+                        @if($item['kind'] === 'image')<img src="{{ $item['thumb'] }}" alt="{{ $item['alt'] }}" loading="lazy"@if($item['thumbWidth'] !== null) width="{{ $item['thumbWidth'] }}" height="{{ $item['thumbHeight'] }}"@endif>
+                        @else<span class="fa-media-video">{!! $videoIcon !!}</span>@endif
+                    </span>
+                    <span class="fa-media-name" dir="auto">{{ $item['label'] }}</span>
+                </a>
+                @if(!$item['used'])<span class="fa-badge fa-badge-gray fa-media-unused">{{ $t('media.not_used') }}</span>@endif
+                @if($canDelete && $unused && !$item['used'])<label class="fa-media-pick"><input type="checkbox" name="ids[]" value="{{ $item['id'] }}" aria-label="{{ $t('media.select_item', ['name' => $item['label']]) }}"></label>@endif
+            </li>
+            @endforeach
+        </ul>
+        @if($canDelete && $unused)<div class="fa-media-bulk"><button type="submit" class="fa-btn fa-btn-danger-outline fa-btn-sm">{{ $t('media.delete_selected') }}</button></div>@endif
+    </form>
+    <div class="fa-table-foot">
+        <span class="fa-muted">{{ $t('media.count', ['count' => $total]) }}</span>
+        @if($pages > 1)
+        <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
+            @if($page > 1)<a class="fa-page-link fa-page-step" href="{{ $pageUrl($page - 1) }}" rel="prev" aria-label="{{ $t('table.previous') }}">{!! $prevIcon !!}</a>@endif
+            @foreach($pageNumbers as $number)
+            @if($number === null)<span class="fa-page-gap">…</span>
+            @elseif($number === $page)<span class="fa-page-link is-current" aria-current="page">{{ $number }}</span>
+            @else<a class="fa-page-link" href="{{ $pageUrl($number) }}" aria-label="{{ $t('table.page', ['page' => $number]) }}">{{ $number }}</a>@endif
+            @endforeach
+            @if($page < $pages)<a class="fa-page-link fa-page-step" href="{{ $pageUrl($page + 1) }}" rel="next" aria-label="{{ $t('table.next') }}">{!! $nextIcon !!}</a>@endif
+        </nav>
+        @endif
+    </div>
+    @else
+    <div class="fa-blank"><p>{{ $hasFilters ? $t('media.no_results') : $t('media.empty') }}</p></div>
+    @endif
+</div>
