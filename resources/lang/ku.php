@@ -92,6 +92,9 @@ return [
     'flash.updated' => ':label پاشەکەوتکرا.',
     'flash.deleted' => ':label سڕایەوە.',
     'flash.fix_errors' => 'تکایە هەڵەکانی خوارەوە ڕاست بکەرەوە.',
+    'flash.fix_errors_in' => 'تکایە ئەمانە بپشکنە: :fields.',
+    'form.tab_has_errors' => 'ئەم تابە هەڵەی تێدایە',
+    'form.list_separator' => '، ',
 
     'validation.required' => ':attribute پێویستە.',
     'validation.string' => ':attribute دەبێت دەق بێت.',

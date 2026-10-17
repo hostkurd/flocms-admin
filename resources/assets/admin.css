@@ -476,6 +476,9 @@ body:has(> .fa-login){margin:0}
 .fa-tab-list button{font:inherit;font-weight:500;color:var(--fa-muted);background:transparent;border:0;border-block-end:2px solid transparent;padding:10px 14px;white-space:nowrap;cursor:pointer}
 .fa-tab-list button:hover{color:var(--fa-text)}
 .fa-tab-list [aria-selected=true]{color:var(--fa-primary-text);border-color:var(--fa-primary-text);font-weight:600}
+.fa-tab-list button.has-error{color:var(--fa-danger)}
+.fa-tab-list button.has-error[aria-selected=true]{border-color:var(--fa-danger)}
+.fa-tab-error{display:inline-block;width:7px;height:7px;margin-inline-start:6px;border-radius:50%;background:var(--fa-danger);vertical-align:middle}
 .fa-tabs[data-admin-tabs-ready]>.fa-tab-heading,.fa-tabs[data-admin-tabs-ready]>[data-admin-tab-panel]>.fa-tab-heading{display:none}
 @media (max-width:900px){.fa-panel .fa-form-grid{grid-template-columns:minmax(0,1fr)}.fa-panel .fa-field{grid-column:1/-1}}
 
@@ -666,6 +669,8 @@ body:has(> .fa-login){margin:0}
 .fa-rich-content .fa-media:not(.rt-wrap-left):not(.rt-wrap-right){display:flow-root}
 .fa-media[class*="rt-w-"]{max-width:none}
 .fa-media.is-resizing{max-width:none}
+.fa-media.is-settling{transition:width .12s ease-out}
+@media (prefers-reduced-motion:reduce){.fa-media.is-settling{transition:none}}
 .fa-media-frame{position:relative;border-radius:var(--fa-radius-sm)}
 /* The media fills its frame; without a width the frame shrinks to the media's own size. */
 .fa-media img,.fa-media video{display:block;width:100%;max-width:100%;height:auto;margin:0;border-radius:var(--fa-radius-sm);cursor:pointer}
