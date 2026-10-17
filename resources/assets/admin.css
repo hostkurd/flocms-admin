@@ -381,7 +381,7 @@ body:has(> .fa-panel){margin:0}
 .fa-editor .fa-dialog-title{font-size:17px}
 .fa-panel .fa-dialog-close{margin-inline-end:-6px}
 .fa-editor .fa-dialog-foot{border-end-start-radius:var(--fa-radius-xl);border-end-end-radius:var(--fa-radius-xl)}
-.fa-editor .fa-dialog-body{max-height:calc(100dvh - 220px);min-block-size:min(240px,calc(100dvh - 220px))}
+.fa-editor .fa-dialog-body{max-height:calc(100dvh - 220px);min-block-size:min(150px,calc(100dvh - 220px))}
 .fa-editor [data-admin-full-page]{padding:0 24px 14px}
 .fa-editor .fa-confirm-text,.fa-editor>.fa-alert{padding:16px 24px}
 .fa-modal-status:empty{display:none}.fa-modal-status{padding:8px 24px}

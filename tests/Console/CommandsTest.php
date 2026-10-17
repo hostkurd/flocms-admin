@@ -89,6 +89,7 @@ final class CommandsTest extends TestCase
         self::assertStringNotContainsString('DateColumn', $code);
         self::assertSame([], glob($this->root . '/database/migrations/*') ?: []);
         self::assertStringContainsString("\$formMode = 'page'", $code);
+        self::assertStringContainsString("TextColumn::make('id')->sortable()->toggleable()", $code, 'new resources get a Columns menu');
 
         $tester = $this->runCommand(new MakeResourceCommand(), ['City', '--form=modal']);
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());

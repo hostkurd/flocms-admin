@@ -83,7 +83,7 @@ final class MakeResourceCommand extends Command
             'formMode' => $formMode,
             'label' => ucfirst(strtolower($label)),
             'pluralLabel' => Str::headline($slug),
-            'dateColumn' => $withMigration ? "\n                DateColumn::make('updated_at')->sortable()," : '',
+            'dateColumn' => $withMigration ? "\n                DateColumn::make('updated_at')->sortable()->toggleable()," : '',
         ]);
         if (!$withMigration) {
             $content = str_replace("use FloCMS\\Admin\\Table\\Columns\\DateColumn;\n", '', $content);
