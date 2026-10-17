@@ -134,6 +134,7 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/media':
             // The media library (off until a test asks): its tables, and with seed=1 three items with real files.
             \FloCMS\Admin\Tests\Fixtures\Media\MediaTables::create(App::$db);
+            App::$db->query('UPDATE listings SET cover_id = NULL, gallery = NULL, video_id = NULL, body = ? WHERE id = 1', ['{"en":"<p>Welcome</p>"}']);
             if (($_POST['seed'] ?? '') === '1') {
                 $root = ROOT . '/public/uploads/editor';
                 foreach (\FloCMS\Admin\Tests\Fixtures\Media\MediaTables::seed(App::$db) as $files) {
@@ -147,7 +148,8 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/listing': header('Content-Type: application/json'); echo json_encode([
             'row' => App::$db->table('listings')->where('id', '=', 1)->first(),
             'usage' => App::$db->query('SELECT media_id, field FROM media_usage WHERE resource = \'listings\' ORDER BY media_id, field')->fetchAll(PDO::FETCH_ASSOC),
-            'media' => App::$db->query('SELECT id, title, alt, path FROM media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
+            'media' => App::$db->query('SELECT id, title, alt, path, folder_id, focal_x, focal_y FROM media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+            'folders' => App::$db->query('SELECT id, parent_id, name FROM media_folders ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
         case '/__test/media-off': App::$db->query('DROP TABLE IF EXISTS media_folders'); App::$db->query('DROP TABLE IF EXISTS media_usage'); App::$db->query('DROP TABLE IF EXISTS media'); break;
         case '/__test/faq-add': App::$db->table('faqs')->insert(['question' => '{"en":"Added elsewhere"}', 'category' => 'billing', 'sort' => 99, 'archived' => 0]); break;
         case '/__test/faq-order': header('Content-Type: application/json'); echo json_encode(array_map('intval', App::$db->query('SELECT id FROM faqs ORDER BY sort, id')->fetchAll(PDO::FETCH_COLUMN))); exit;

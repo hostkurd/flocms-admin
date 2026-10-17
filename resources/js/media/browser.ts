@@ -622,8 +622,10 @@ export class MediaBrowser {
   }
 
   private changed(): void {
+    // Drawing the tiles again drops the focus; keep it on the focused tile.
+    const hadFocus = this.grid.contains(document.activeElement);
     this.renderItems();
-    this.focusTile(this.focused, false);
+    if (hadFocus && this.focused !== null) this.grid.querySelector<HTMLElement>(`[data-id="${this.focused}"]`)?.focus({ preventScroll: true });
     this.options.onSelection?.(this.selection());
   }
 
@@ -860,40 +862,54 @@ export class MediaBrowser {
     const manage = this.options.mode === 'manage';
     const canEdit = cfg.can.update;
 
-    // Preview; for images with "Set focal point" on, a click places the point.
+    // Preview; for images with "Focal point" on, a click (or the arrow keys) places the point.
+    // Only the dot moves: the form below keeps what was typed.
     const frame = element('div', 'fa-mb-preview');
+    const tools = element('div', 'fa-mb-tools');
     if (item.kind === 'image') {
       const image = element('img');
       image.src = item.url; image.alt = item.alt; image.decoding = 'async';
       frame.append(image);
-      if (this.focal) {
-        const dot = element('span', 'fa-mb-focal');
-        dot.setAttribute('aria-hidden', 'true');
-        frame.append(dot);
+      const showDot = () => {
+        let dot = frame.querySelector<HTMLElement>('.fa-mb-focal');
+        if (!this.focal) { dot?.remove(); return; }
+        if (!dot) { dot = element('span', 'fa-mb-focal'); dot.setAttribute('aria-hidden', 'true'); frame.append(dot); }
         placeFocal(frame, image, dot, this.focal);
-      }
-      if (this.focalEditing) {
-        frame.classList.add('is-focal');
-        frame.tabIndex = 0;
-        frame.setAttribute('role', 'button');
-        frame.setAttribute('aria-label', t(cfg, 'focal_help'));
-        frame.addEventListener('click', event => {
-          this.focal = focalFromClick(image, event);
-          this.renderDetails();
-          this.detailsPane.querySelector<HTMLElement>('.fa-mb-preview')?.focus();
-        });
-        frame.addEventListener('keydown', event => {
-          const step = event.shiftKey ? 10 : 2;
-          const point = this.focal ?? { x: 50, y: 50 };
-          const rtl = getComputedStyle(frame).direction === 'rtl';
-          const moves: Record<string, [number, number]> = { ArrowLeft: [rtl ? step : -step, 0], ArrowRight: [rtl ? -step : step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-          const move = moves[event.key];
-          if (!move) return;
-          event.preventDefault();
-          this.focal = { x: Math.max(0, Math.min(100, point.x + move[0])), y: Math.max(0, Math.min(100, point.y + move[1])) };
-          this.renderDetails();
-          this.detailsPane.querySelector<HTMLElement>('.fa-mb-preview')?.focus();
-        });
+      };
+      showDot();
+      frame.addEventListener('click', event => {
+        if (!this.focalEditing) return;
+        this.focal = focalFromClick(image, event);
+        showDot();
+      });
+      frame.addEventListener('keydown', event => {
+        if (!this.focalEditing) return;
+        const step = event.shiftKey ? 10 : 2;
+        const point = this.focal ?? { x: 50, y: 50 };
+        const rtl = getComputedStyle(frame).direction === 'rtl';
+        const moves: Record<string, [number, number]> = { ArrowLeft: [rtl ? step : -step, 0], ArrowRight: [rtl ? -step : step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+        const move = moves[event.key];
+        if (!move) return;
+        event.preventDefault();
+        this.focal = { x: Math.max(0, Math.min(100, point.x + move[0])), y: Math.max(0, Math.min(100, point.y + move[1])) };
+        showDot();
+      });
+      if (canEdit) {
+        const focal = button('fa-btn fa-btn-sm', t(cfg, 'focal_set'), 'target');
+        const label = focal.querySelector('span')!;
+        const setEditing = (on: boolean) => {
+          this.focalEditing = on;
+          if (on && !this.focal) { this.focal = { x: 50, y: 50 }; showDot(); }
+          focal.classList.toggle('is-on', on);
+          focal.setAttribute('aria-pressed', String(on));
+          label.textContent = t(cfg, on ? 'focal_done' : 'focal_set');
+          frame.classList.toggle('is-focal', on);
+          if (on) { frame.tabIndex = 0; frame.setAttribute('role', 'button'); frame.setAttribute('aria-label', t(cfg, 'focal_help')); }
+          else { frame.removeAttribute('tabindex'); frame.removeAttribute('role'); frame.removeAttribute('aria-label'); }
+        };
+        setEditing(this.focalEditing);
+        focal.addEventListener('click', () => { setEditing(!this.focalEditing); if (this.focalEditing) frame.focus(); });
+        tools.append(focal);
       }
     } else {
       const video = element('video');
@@ -902,13 +918,6 @@ export class MediaBrowser {
     }
     pane.append(frame);
 
-    const tools = element('div', 'fa-mb-tools');
-    if (item.kind === 'image' && canEdit) {
-      const focal = button(`fa-btn fa-btn-sm${this.focalEditing ? ' is-on' : ''}`, t(cfg, this.focalEditing ? 'focal_done' : 'focal_set'), 'target');
-      focal.setAttribute('aria-pressed', String(this.focalEditing));
-      focal.addEventListener('click', () => { this.focalEditing = !this.focalEditing; if (this.focalEditing && !this.focal) this.focal = { x: 50, y: 50 }; this.renderDetails(); });
-      tools.append(focal);
-    }
     if (manage && item.canReplace) {
       const replace = button('fa-btn fa-btn-sm', t(cfg, 'replace'), 'upload');
       replace.addEventListener('click', () => this.replace(item));
@@ -937,6 +946,7 @@ export class MediaBrowser {
     // The form: title, alt text per language, folder (Media page).
     const form = element('form', 'fa-mb-form');
     form.noValidate = true;
+    form.dataset.adminLocal = '';
     const field = (labelText: string, control: HTMLElement, id: string, extra?: HTMLElement) => {
       const wrap = element('div', 'fa-mb-field');
       const label = element('label', 'fa-mb-label', labelText);

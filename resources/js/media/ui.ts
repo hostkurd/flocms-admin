@@ -34,8 +34,8 @@ export function confirmDialog(cfg: Config, message: string, ok: string, danger =
 export function promptDialog(cfg: Config, label: string, value: string, ok: string): Promise<string | null> {
   return new Promise(resolve => {
     const dialog = element('dialog', 'fa-dialog fa-mb-confirm');
-    const form = element('form', 'fa-dialog-panel');
-    form.method = 'dialog';
+    // Not a <form>: the panel's navigation handles form submissions.
+    const form = element('div', 'fa-dialog-panel');
     const id = `fa-mb-prompt-${Math.random().toString(36).slice(2)}`;
     const caption = element('label', 'fa-label', label);
     caption.htmlFor = id;
@@ -45,14 +45,16 @@ export function promptDialog(cfg: Config, label: string, value: string, ok: stri
     const cancel = element('button', 'fa-btn', t(cfg, 'cancel'));
     cancel.type = 'button';
     const yes = element('button', 'fa-btn fa-btn-primary', ok);
-    yes.type = 'submit';
+    yes.type = 'button';
     actions.append(cancel, yes);
     form.append(caption, input, actions);
     dialog.append(form);
     dialog.setAttribute('aria-label', label);
     const opener = document.activeElement as HTMLElement | null;
     let answer: string | null = null;
-    form.addEventListener('submit', event => { event.preventDefault(); if (input.value.trim() === '') { input.focus(); return; } answer = input.value.trim(); dialog.close(); });
+    const submit = () => { if (input.value.trim() === '') { input.focus(); return; } answer = input.value.trim(); dialog.close(); };
+    yes.addEventListener('click', submit);
+    input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); submit(); } });
     cancel.addEventListener('click', () => dialog.close());
     dialog.addEventListener('close', () => { dialog.remove(); opener?.focus({ preventScroll: true }); resolve(answer); });
     (document.querySelector('.fa-panel') ?? document.body).append(dialog);

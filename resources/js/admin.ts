@@ -212,7 +212,8 @@ document.addEventListener('submit', event => {
     return;
   }
   // Legacy delete confirmation owns its initial submit, then requests a new one.
-  if (!enabled() || form.hasAttribute('data-rx-submit') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
+  // data-admin-local: a form that a script sends itself (the media details panel and editor).
+  if (!enabled() || form.hasAttribute('data-rx-submit') || form.hasAttribute('data-admin-local') || (form.hasAttribute('data-confirm') && !(form as any)._confirmed)) return;
   const url = internal(form.action);
   if (!url || (event.target instanceof Element && event.target.closest('[data-admin-file-link]'))) return;
   event.preventDefault();

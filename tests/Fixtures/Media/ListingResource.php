@@ -26,7 +26,7 @@ final class ListingResource extends Resource
     {
         return $form->schema([
             TextInput::make('title')->required(),
-            MediaPicker::make('cover_id')->label('Cover'),
+            MediaPicker::make('cover_id')->label('Cover')->folder('Listings/Covers')->aspectRatio('16:9'),
             MediaPicker::make('gallery')->label('Gallery')->multiple()->max(3),
             MediaPicker::make('video_id')->label('Video')->videos(),
             RichEditor::make('body')->label('Body')->translatable(),

@@ -47,6 +47,7 @@ export function editDetails(cfg: Config, items: MediaItem[], done: (changed: Med
   const stage = element('div', 'fa-mb-editor-stage');
   const form = element('form', 'fa-mb-editor-form');
   form.noValidate = true;
+  form.dataset.adminLocal = '';
   body.append(stage, form);
   const strip = element('div', 'fa-mb-strip');
   strip.setAttribute('role', 'list');
