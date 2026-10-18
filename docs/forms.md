@@ -125,7 +125,7 @@ Errors are never hidden behind the switch: a language with errors gets a red cou
 
 A form without translatable fields shows no switch. Create and Edit dialogs show the same switch in their head, so a unit in a relation manager (0.22) is translated like its property: a dialog opened from a record page being translated starts in the page's language, otherwise in the language you last saved in. Custom action forms with translatable fields get the switch too, in the dialog and on the action's full page. Bulk action forms keep the badges.
 
-Settings pages keep their select, and now show the counts, **Next missing** and the reference lines.
+Settings pages use the same switch under their title (since 0.23.1), with the counts, **Next missing** and the reference lines.
 
 ### What still needs translating
 

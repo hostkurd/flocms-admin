@@ -6,9 +6,9 @@
         <div class="fa-record-heading">
             <h1 class="fa-page-title">{{ $title }}</h1>
             @if($description !== null)<p class="fa-page-description">{{ $description }}</p>@endif
+            @if($switch){!! $switchHtml !!}@endif
         </div>
         <div class="fa-record-actions">
-            @if($switch){!! $switchHtml !!}@endif
             <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
             <button type="submit" name="_save" value="1" class="fa-btn fa-btn-primary" data-admin-save title="{{ $t('form.save_shortcut') }}"@if(!$ready) disabled @endif>{{ $t('actions.save') }}</button>
         </div>

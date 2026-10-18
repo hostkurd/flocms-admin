@@ -2,6 +2,14 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.23.1 - 2026-10-18
+
+Polish for page-level translation.
+
+- Settings pages use the same "Editing" switch as record pages (segmented buttons for up to four languages, a select above), under the page title, instead of their own select.
+- Empty inputs are dashed only while translating (another language than the default one); a new record in the default language looks as before.
+- The rich text toolbar keeps its rounded top corners when the switch hides the editor's language tabs.
+
 ## 0.23.0 - 2026-10-18
 
 **Page-level translation**: an **Editing: English · Arabic 7/9 · Kurdish 0/9** switch shows the whole form in one language, so a translator works through a record from top to bottom. Storage is unchanged (one JSON object per translatable column): no migration, the website is the same, and a resource can move between modes at any time. See [Forms](docs/forms.md#page-level-translation-023).
