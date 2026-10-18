@@ -16,6 +16,8 @@ abstract class Widget
     final public function __construct() {}
     final public function title(): string { return AdminLang::label($this->title !== '' ? $this->title : Str::headline(preg_replace('/Widget$/', '', (new \ReflectionClass($this))->getShortName()) ?? '')); }
     final public function sort(): int { return $this->sort; }
+    /** The widget's own permission, or null (0.21: listed on the Roles page). */
+    final public function permission(): ?string { return $this->permission; }
     final public function columnSpan(): int|string { return $this->columnSpan; }
     final public function resources(): array { return $this instanceof RecordsWidget ? array_merge($this->resources, [$this->resourceClass()]) : $this->resources; }
     /** Narrow visibility after the permission and registered-resource checks. */

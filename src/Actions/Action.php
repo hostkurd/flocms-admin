@@ -94,6 +94,8 @@ class Action
     }
 
     public function getName(): string { return $this->name; }
+    /** The permission set with permission(), or null when the resource's ability decides (0.21). */
+    public function getPermission(): ?string { return $this->permission; }
     public function getKind(): string { return $this->kind; }
     public function getIcon(): ?string { return $this->icon; }
     public function getColor(): string { return $this->color; }

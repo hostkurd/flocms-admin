@@ -1,0 +1,38 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * The Roles page (flocms-admin 0.21).
+ *
+ * "{{ table }}": roles changed or added in the admin panel. A row for a role of
+ * config/config.php replaces that role's name, level, panel access and
+ * permissions ("Reset to default" deletes the row); other rows are new roles.
+ * Without rows (or with 'roles' => false in config/admin.php) the roles of
+ * config/config.php apply unchanged.
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $text = $db->driver() === 'sqlite' ? 'TEXT' : 'LONGTEXT';
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
+            `role` INTEGER NOT NULL PRIMARY KEY,
+            `name` TEXT NOT NULL,
+            `level` INTEGER NOT NULL,
+            `admin_access` SMALLINT NOT NULL DEFAULT 0,
+            `permissions` ' . $text . ' NOT NULL,
+            `created_at` DATETIME NOT NULL,
+            `updated_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+    }
+
+    /** Rolling back drops the table: the config roles apply again. */
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ table }}`');
+    }
+};

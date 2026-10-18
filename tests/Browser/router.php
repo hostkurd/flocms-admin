@@ -157,6 +157,22 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             file_put_contents($file, \FloCMS\Admin\Console\Stub::render('trash-activity-migration', ['trash_table' => 'admin_trash', 'activity_table' => 'admin_activity']));
             (require $file)->up(App::$db);
             break;
+        case '/__test/roles':
+            // The Roles page (0.21): its table, three editors, and a role added in the panel with two users.
+            $file = ROOT . '/roles-migration.php';
+            file_put_contents($file, \FloCMS\Admin\Console\Stub::render('roles-migration', ['table' => 'admin_roles']));
+            (require $file)->up(App::$db);
+            App::$db->query('DELETE FROM admin_roles');
+            App::$db->query("DELETE FROM users WHERE email LIKE '%@seaside.example'");
+            foreach ([['Nikos Papadakis', 1], ['Maria Kosta', 1], ['Omar Saleh', 1], ['Lana Aziz', 5], ['Rebin Kamal', 5], ['Hana Ali', 0]] as [$name, $role]) {
+                App::$db->table('users')->insert(['full_name' => $name, 'email' => strtolower(strtok($name, ' ')) . '@seaside.example', 'login' => strtolower(strtok($name, ' ')), 'password' => '', 'role' => $role, 'status' => 1]);
+            }
+            App::$db->table('admin_roles')->insert(['role' => 5, 'name' => json_encode(['en' => 'Author', 'ar' => 'كاتب', 'ku' => 'نووسەر'], JSON_UNESCAPED_UNICODE), 'level' => 1, 'admin_access' => 1, 'permissions' => '["content.articles.view","content.articles.create","content.articles.update","content.media.view"]', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
+            break;
+        case '/__test/roles-off': App::$db->query('DROP TABLE IF EXISTS admin_roles'); App::$db->query("DELETE FROM users WHERE email LIKE '%@seaside.example'"); break;
+        case '/__test/roles-state': header('Content-Type: application/json'); echo json_encode([
+            'roles' => App::$db->query('SELECT role, name, level, admin_access, permissions FROM admin_roles ORDER BY role')->fetchAll(PDO::FETCH_ASSOC),
+            'users' => App::$db->query('SELECT full_name, role FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
         case '/__test/history-off': App::$db->query('DROP TABLE IF EXISTS admin_trash'); App::$db->query('DROP TABLE IF EXISTS admin_activity'); break;
         case '/__test/trash': header('Content-Type: application/json'); echo json_encode([
             'trash' => App::$db->query('SELECT resource, record_id, batch FROM admin_trash ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),

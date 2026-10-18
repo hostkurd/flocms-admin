@@ -159,6 +159,7 @@ final class ActivityController extends PanelController
                 $class !== null => $class::getPluralLabel(),
                 $value === 'settings' => AdminLang::get('settings.title'),
                 $value === 'media' => AdminLang::get('media.title'),
+                $value === 'roles' => AdminLang::get('roles.title'),
                 default => $value,
             };
         }

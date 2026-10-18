@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.20.0';
+    public const VERSION = '0.21.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -35,6 +35,8 @@ final class Admin
         self::$booted = true;
 
         App::resolveControllersUsing(static fn (string $controller, string $route): ?string => self::resolve($controller, $route));
+        // Roles edited on the Roles page (0.21, flocms-core 2.4+); read only when a permission is checked.
+        \FloCMS\Admin\Roles\Roles::boot();
         if (Config::get('auth.login_view') === null) { Config::set('auth.login_view', static fn (): ?string => \FloCMS\Admin\Auth\LoginView::render()); }
 
         // Where the skeleton's /admin page sends logged-in users (skeleton 1.8+).
@@ -90,6 +92,10 @@ final class Admin
         }
         if ($controller === 'activity' && $config->activity()['enabled']) {
             return \FloCMS\Admin\Http\ActivityController::class;
+        }
+        // Roles and permissions (0.21); a site resource with that slug keeps it.
+        if ($controller === 'roles' && $config->roles()['enabled']) {
+            return \FloCMS\Admin\Http\RolesController::class;
         }
         // Ctrl+K search (0.20); a site resource with that slug keeps it.
         if ($controller === 'search' && $config->search()['enabled']) {
@@ -151,6 +157,7 @@ final class Admin
         \FloCMS\Admin\Media\MediaLibrary::reset();
         \FloCMS\Admin\Trash\Trash::reset();
         \FloCMS\Admin\Activity\Activity::reset();
+        \FloCMS\Admin\Roles\Roles::reset();
         Languages::setRtl(self::$config->rtlLanguages());
 
         return self::$config;
@@ -179,6 +186,7 @@ final class Admin
         \FloCMS\Admin\Media\MediaLibrary::reset();
         \FloCMS\Admin\Trash\Trash::reset();
         \FloCMS\Admin\Activity\Activity::reset();
+        \FloCMS\Admin\Roles\Roles::reset();
         self::$problemsLogged = false;
         Languages::reset();
     }

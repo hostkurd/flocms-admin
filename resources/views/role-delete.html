@@ -1,0 +1,20 @@
+<div class="fa-page-head"><div><h1 class="fa-page-title">{{ $title }}</h1></div></div>
+<div class="fa-card fa-role-delete-page">
+    <form method="post" action="{{ $url }}">
+        {!! $csrf !!}
+        @if($users > 0)
+        <p>{{ $usersText }}</p>
+        <label class="fa-label" for="fa-role-delete-move">{{ $t('roles.move_to') }}</label>
+        <select class="fa-input fa-select" id="fa-role-delete-move" name="move_to" required>
+            @foreach($targets as $target)<option value="{{ $target['number'] }}"@if($target['selected']) selected @endif>{{ $target['label'] }}</option>@endforeach
+        </select>
+        <p class="fa-help">{{ $t('roles.move_help') }}</p>
+        @else
+        <p>{{ $t('roles.delete_text') }}</p>
+        @endif
+        <div class="fa-role-delete-actions">
+            <a class="fa-btn" href="{{ $cancelUrl }}">{{ $t('actions.cancel') }}</a>
+            <button type="submit" class="fa-btn fa-btn-danger">{{ $users > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
+        </div>
+    </form>
+</div>

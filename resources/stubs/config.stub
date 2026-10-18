@@ -75,6 +75,12 @@ return [
     // 'logins' => true also records sign-ins; false switches the log off.
     'activity' => ['days' => 365, 'logins' => false],
 
+    // The Roles page (/admin/roles; permission roles.manage, Super Admin by default):
+    // roles and permissions edited in the panel, on top of config/config.php.
+    // false switches it off and the config roles apply again. Name your own
+    // permissions so they get a row: 'permissions' => ['reports.export' => 'Export reports'].
+    'roles' => ['permissions' => []],
+
     // Name at the top of the sidebar
     'brand' => \FloCMS\Core\Env::get('SITE_NAME_ADMIN', 'Admin'),
 

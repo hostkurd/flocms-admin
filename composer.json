@@ -27,7 +27,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "ext-pdo": "*",
-        "hostkurd/flocms-core": "^2.3.2",
+        "hostkurd/flocms-core": "^2.4.0",
         "hostkurd/flocms-reactive": "^0.5.1",
         "hostkurd/flocms-uploader": "^1.2.1"
     },
@@ -62,11 +62,13 @@
                 "FloCMS\\Admin\\Console\\MediaImportCommand",
                 "FloCMS\\Admin\\Console\\MediaUsageCommand",
                 "FloCMS\\Admin\\Console\\TrashPurgeCommand",
-                "FloCMS\\Admin\\Console\\ActivityPurgeCommand"
+                "FloCMS\\Admin\\Console\\ActivityPurgeCommand",
+                "FloCMS\\Admin\\Console\\RolesCommand",
+                "FloCMS\\Admin\\Console\\RolesResetCommand"
             ]
         },
         "branch-alias": {
-            "dev-main": "0.20-dev"
+            "dev-main": "0.21-dev"
         }
     },
     "scripts": {

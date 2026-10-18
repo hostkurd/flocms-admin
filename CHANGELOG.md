@@ -2,6 +2,23 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.21.0 - 2026-10-18
+
+**Roles and permissions**: change what each role may do, and add roles, on **Site → Roles** (`/admin/roles`, permission `roles.manage`). Needs flocms-core 2.4 and one migration (`admin_roles`). See the [Roles guide](docs/roles.md).
+
+- `config/config.php` stays the default. Changing a config role stores it in `admin_roles` ("From config · changed"); **Reset to default** brings the config values back. Roles added on the page get the next free number and any level below yours ("Custom").
+- The panel gives the roles to flocms-core with `Auth::loadRolesUsing()` (core 2.4), so the whole site sees them: the panel, the skeleton's login, your controllers' `$actionPermissions`, `Auth::can()` in templates. Changes apply on each person's next request.
+- The list: level, panel access, users, permissions and source of each role; the top role is locked.
+- The role page: a permission grid (one row per resource with View / Create / Edit / Delete, **All content** = `content.*` covering new resources and the media library, the media library, each settings page with **All settings pages**, users, the panel's own pages, actions and widgets with their own permission, the site's named permissions, and **Other** for any other name), the name per language, level, panel access, a summary and the users holding it. Works without JavaScript; on phones each resource is a card.
+- Safety: the highest-level role holding `*` is locked; you change only roles below your own level (never your own); nobody gives or takes away a permission they don't hold; levels stay below yours; a save, reset or delete that would leave no active user with panel access and `roles.manage` is refused. The server enforces all of it.
+- Deleting a role added in the panel moves its users to a role you choose, in one transaction. Config roles are reset, not deleted.
+- Every change is in the activity log ("Role changed": name, level, panel access, then **Given** / **Taken away** in words). Ctrl+K finds roles by name.
+- `'roles' => ['permissions' => ['reports.export' => 'Export reports']]` gives the site's own permissions a row; `'roles' => false` switches the page off and the config roles apply again (the emergency switch, no shell needed).
+- Commands `php flo admin:roles` (the roles in force) and `php flo admin:roles-reset [role]`. `admin:install` writes the migration; `admin:doctor` checks the table.
+- The Users page lists roles added on the Roles page and compares levels (`Auth::canAssignRole()` / `canManageUser()`).
+- For developers: `Action::getPermission()`, `Widget::permission()`; icons `crown`, `lock`, `check`, `info`.
+- Requires flocms-core ^2.4.0.
+
 ## 0.20.0 - 2026-10-18
 
 **Ctrl+K search**: one box, from any page of the panel, that finds records, pages, actions, settings and media. Nothing to install. See the [Search guide](docs/search.md).

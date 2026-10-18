@@ -11,6 +11,7 @@ import { initializeRelations } from './relations';
 import { initializeReorder } from './reorder';
 import { initializeMedia } from './media';
 import { initializeFileDrops } from './filedrop';
+import { initializeRoles } from './roles';
 import './popovers';
 import './dialogs';
 import './search';
@@ -58,6 +59,7 @@ function initialize(): void {
   initializeRecord(root);
   initializeSettings(root);
   initializeRelations(root);
+  initializeRoles(root);
   initializeReorder(root);
   initializeMedia(root);
   initializeFileDrops(root);
