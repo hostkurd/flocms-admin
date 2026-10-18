@@ -216,7 +216,7 @@ final class PageView
 
     public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors,
         ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false, ?array $history = null,
-        string $managers = '', ?string $relatedText = null, ?array $parent = null): string
+        string $managers = '', ?string $relatedText = null, ?array $parent = null, ?array $translation = null): string
     {
         $class = $this->resource;
         $trashed = $deleteUrl !== null && \FloCMS\Admin\Trash\Trash::enabledFor($class);
@@ -248,6 +248,8 @@ final class PageView
             'history' => $history,
             'historyIcon' => Icons::svg('history'),
             'closeIcon' => Icons::svg('x'),
+            // Page-level translation (0.23): the switch, the note and the language shown first.
+            'translation' => $translation,
         ]);
     }
 

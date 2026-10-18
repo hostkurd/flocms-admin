@@ -33,6 +33,8 @@ final class ResourceComponent extends Component
     #[State(writable: false)] public string $mode = '';
     #[State(writable: false)] public string $operation = '';
     #[State(maxBytes: 65536)] public string $draft = '';
+    /** Page-level translation (0.23): the language the dialog's switch shows. */
+    #[State(rules: 'max:16')] public string $editing = '';
     /** A relation manager (0.22): the parent's slug and id and the manager's name, signed. */
     #[State(writable: false)] public string $parentSlug = '';
     #[State(writable: false)] public string $parentId = '';
@@ -121,6 +123,8 @@ final class ResourceComponent extends Component
         $this->editingId = $id; $this->operation = $opened['operation'];
         $this->fingerprint = $opened['record'] !== null ? RecordRepository::fingerprint($opened['record']) : '';
         $this->mode = $action->getKind();
+        // An existing record opens in the language last saved in; a new one in the default language.
+        $this->editing = \FloCMS\Admin\Translation\EditingLanguage::resolve(null, $opened['record'] !== null);
         $this->draft = json_encode((object) ActionForm::safe($action->getForm($resource), $opened['state']), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         if (strlen($this->draft) > 64000) {
             $this->discard(); throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]);
@@ -161,8 +165,11 @@ final class ResourceComponent extends Component
             }
         } catch (ValidationException $error) {
             $this->draft = json_encode((object) $accepted, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            // The dialog opens on the language of the first error.
+            if ($this->switches($action)) { $this->editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($error->getErrors(), $this->editingLanguage()); }
             throw $error;
         }
+        if ($this->switches($action) && in_array($this->mode, ['create', 'edit'], true)) { \FloCMS\Admin\Translation\EditingLanguage::remember($this->editingLanguage()); }
         $this->discard();
     }
     #[Action] public function save(): void
@@ -180,7 +187,16 @@ final class ResourceComponent extends Component
     {
         OperationStore::consume($this->operation);
         $this->bulkIds = '[]';
-        $this->mode = $this->activeAction = $this->activePlacement = $this->editingId = $this->fingerprint = $this->draft = $this->operation = '';
+        $this->mode = $this->activeAction = $this->activePlacement = $this->editingId = $this->fingerprint = $this->draft = $this->operation = $this->editing = '';
+    }
+    /** Whether the open dialog shows the language switch: a page-mode resource and a form with translatable fields (not bulk forms). */
+    private function switches(?Definition $action): bool
+    {
+        return $action !== null && $this->mode !== 'bulk' && $this->mode !== 'delete' && $this->resource()::usesLanguageSwitchFor($action->getForm($this->resource()));
+    }
+    private function editingLanguage(): string
+    {
+        return \FloCMS\Admin\Translation\EditingLanguage::valid($this->editing) ?? Languages::default();
     }
     private function active(): Definition
     {
@@ -208,7 +224,8 @@ final class ResourceComponent extends Component
     private function table(): Table
     {
         $resource = $this->resource(); $table = $resource->table(new Table());
-        return ($scope = $resource->parentScope()) !== null ? $scope->adjustTable($table) : $table;
+        $table = ($scope = $resource->parentScope()) !== null ? $scope->adjustTable($table) : $table;
+        return $table->prepare($resource->form(new Form()));
     }
     private function repository(): RecordRepository
     {
@@ -236,8 +253,6 @@ final class ResourceComponent extends Component
         foreach ($table->getFilters() as $filter) {
             if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $filter->lookupFrom(Admin::url($resource::getSlug() . '/lookup')); }
         }
-        $resourceForm = $resource->form(new Form());
-        foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $resourceForm->translatableNames(), true)); }
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $this->columnsKey());
         // Sorting by a column the user hid falls back to the default sort.
         if ($this->sort !== '' && $visibility->isHidden($this->sort)) { $this->sort = ''; $this->direction = 'asc'; }
@@ -263,6 +278,15 @@ final class ResourceComponent extends Component
             if (strlen($this->draft) > 64000) { $this->draft = '{}'; $this->errors['_form'] = AdminLang::get('reactive.large_form'); }
         }
         $prefix = 'fa-' . $this->instanceKey;
+        $switch = $this->switches($action);
+        $editing = $this->editingLanguage();
+        $formRenderer = new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record),
+            in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/media') : null, $this->operation,
+            lookupUrl: in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/lookup') : null,
+            recordId: $this->editingId !== '' ? $this->editingId : null, ownTable: $resource::getTable(),
+            languageSwitch: $switch, editing: $editing, switchActive: $switch,
+            sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name(Languages::default())]) : null);
+        $formFields = $form->components() === [] && $form->asideComponents() === [] ? '' : $formRenderer->render($form);
         $renderer = new ActionRenderer($resource, $registry);
         $listUrl = $this->listUrl($resource::getSlug());
         return $this->view(dirname(__DIR__, 2) . '/resources/views/reactive-resource.html', [
@@ -296,10 +320,11 @@ final class ResourceComponent extends Component
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
             'formShowsFields' => array_filter($form->fields(), static fn ($field): bool => $field->isVisible() && !$field instanceof \FloCMS\Admin\Form\Fields\Hidden) !== [],
             // No body for a confirmation without fields (it only padded the dialog).
-            'formFields' => $form->components() === [] && $form->asideComponents() === [] ? '' : (new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record),
-                in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/media') : null, $this->operation,
-                lookupUrl: in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/lookup') : null,
-                recordId: $this->editingId !== '' ? $this->editingId : null, ownTable: $resource::getTable()))->render($form),
+            'formFields' => $formFields,
+            'translation' => $switch ? [
+                'editing' => $editing, 'defaultLang' => Languages::default(),
+                'switch' => \FloCMS\Admin\Form\LanguageSwitch::render($prefix . '-switch', Languages::all(), Languages::default(), $editing, $formRenderer->languageStats(), true),
+            ] : null,
             'notifications' => NotificationView::pending($this->instanceKey),
         ]);
     }

@@ -51,8 +51,46 @@ final class FormRenderer
         private readonly ?string $lookupUrl = null,
         private readonly ?string $recordId = null,
         // The table of the resource being edited: a relation to the same table never offers this record.
-        private readonly ?string $ownTable = null
+        private readonly ?string $ownTable = null,
+        // Page-level translation (0.23): the language the switch shows first (null: the default one).
+        private readonly ?string $editing = null,
+        // A Reactive dialog renders the switch's state itself (it only exists with JavaScript),
+        // so a morph keeps it: the current panes, locked shared fields and reference lines.
+        private readonly bool $switchActive = false,
+        // The note on a shared field outside the default language; null keeps "All languages".
+        private readonly ?string $sameNote = null
     ) {
+    }
+
+    /** @var array{total: int, filled: array<string, int>, errors: array<string, int>} */
+    private array $stats = ['total' => 0, 'filled' => [], 'errors' => []];
+    private bool $hasShared = false;
+
+    /**
+     * What the language switch shows after render(): the number of translatable
+     * fields, and per language how many are filled and how many have errors.
+     *
+     * @return array{total: int, filled: array<string, int>, errors: array<string, int>}
+     */
+    public function languageStats(): array
+    {
+        return $this->stats;
+    }
+
+    /** Whether the rendered form has fields that are the same in every language (locked outside the default one). */
+    public function hasSharedFields(): bool
+    {
+        return $this->hasShared;
+    }
+
+    private function editingLanguage(): string
+    {
+        return $this->editing !== null && in_array($this->editing, $this->languages, true) ? $this->editing : $this->defaultLang;
+    }
+
+    private function locksShared(): bool
+    {
+        return $this->languageSwitch && $this->switchActive && count($this->languages) > 1 && $this->editingLanguage() !== $this->defaultLang;
     }
 
     private ?Form $resolvedForm = null;
@@ -161,20 +199,28 @@ final class FormRenderer
         if ($isUpload && $field->isTranslatable() && $this->uploadControl === null) {
             throw new \LogicException('Translatable uploads ("' . $name . '") are supported on settings pages only.');
         }
-        $panes = $field->isTranslatable() && !$field instanceof Fields\RichEditor && ($this->languageSwitch || $isUpload);
-        if ($this->languageSwitch && !$field->isTranslatable()) { $classes[] = 'is-shared'; }
+        $isRich = $field instanceof Fields\RichEditor;
+        $panes = $field->isTranslatable() && !$isRich && ($this->languageSwitch || $isUpload);
+        $switched = $this->languageSwitch && $field->isTranslatable();
+        $shared = $this->languageSwitch && !$field->isTranslatable();
+        if ($shared) { $classes[] = 'is-shared'; $this->hasShared = true; }
+        if ($shared && $this->locksShared()) { $classes[] = 'is-locked'; }
+        if ($switched && !$isUpload && count($this->languages) > 1) { $this->count($field, $langErrors); }
 
-        $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '"' . ($this->languageSwitch && !$field->isTranslatable() ? ' data-same-all' : '') . ($panes ? ' data-translatable' : '') . '>';
-        $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . ($panes && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
-        if ($this->languageSwitch && !$field->isTranslatable()) {
-            $html .= '<p class="fa-same-note" hidden>' . Str::e(AdminLang::get('settings.same_all_languages')) . '</p>';
-        }
+        $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '"' . ($shared ? ' data-same-all' : '')
+            . ($panes || $switched ? ' data-translatable' : '') . ($switched && $isRich ? ' data-rich' : '') . ($switched && $isUpload ? ' data-uncounted' : '') . '>';
+        $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . (($panes || ($switched && $isRich)) && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
+        // Settings pages: an "All languages" pill above the input; record forms: a line below it.
+        $note = $shared ? '<p class="fa-same-note' . ($this->sameNote !== null ? ' is-line' : '') . '"' . ($this->locksShared() ? '' : ' hidden') . '>'
+            . ($this->sameNote !== null ? Icons::svg('lock', 'fa-icon fa-same-icon') : '') . '<span>' . Str::e($this->sameNote ?? AdminLang::get('settings.same_all_languages')) . '</span></p>' : '';
+        if ($this->sameNote === null) { $html .= $note; }
         if ($panes) {
             $html .= $this->panes($field, $id, $langErrors);
         } elseif ($isUpload && $this->uploadControl !== null) {
             $html .= ($this->uploadControl)($field, $id, $name, $this->stringState($field), null, $this->describedBy($field, $id));
         } elseif ($field instanceof Fields\RichEditor) {
             $html .= $this->richEditor($field, $id, $langErrors);
+            if ($switched && count($this->languages) > 1) { $html .= $this->references($field, $id, true); }
         } elseif ($field->isTranslatable() && count($this->languages) > 1) {
             $html .= $this->translatable($field, $id, $langErrors);
         } elseif ($field->isTranslatable()) {
@@ -189,6 +235,7 @@ final class FormRenderer
         if ($error !== null) {
             $html .= '<p class="fa-error" role="alert" id="' . Str::e($id) . '-error">' . Str::e($error) . '</p>';
         }
+        if ($this->sameNote !== null) { $html .= $note; }
 
         return $html . '</div>';
     }
@@ -256,9 +303,10 @@ final class FormRenderer
         $values = is_array($values) ? $values : [];
         $dots = '';
         foreach ($this->languages as $lang) {
-            $filled = ($values[$lang] ?? '') !== '';
+            $filled = $field instanceof Fields\RichEditor ? !\FloCMS\Admin\Support\RichText::isEmpty((string) ($values[$lang] ?? '')) : ($values[$lang] ?? '') !== '';
             $state = $filled ? 'is-filled' : 'is-empty';
             if ($lang === $this->defaultLang ? isset($this->errors[$field->getName()]) : isset($this->errors[$field->getName() . '.' . $lang])) { $state .= ' is-invalid'; }
+            if ($this->languageSwitch && $lang === $this->editingLanguage()) { $state .= ' is-current'; }
             $dots .= '<span class="fa-dot ' . $state . '" data-lang="' . Str::e($lang) . '" title="' . Str::e(Languages::name($lang)) . '"></span>';
         }
         return ' <span class="fa-dots fa-label-dots" aria-hidden="true">' . $dots . '</span>';
@@ -288,7 +336,9 @@ final class FormRenderer
             if ($isDefault && isset($this->errors[$name])) { $describedBy[] = $id . '-error'; $attributes['aria-invalid'] = 'true'; }
             if (!$isDefault && isset($langErrors[$lang])) { $describedBy[] = $inputId . '-error'; $attributes['aria-invalid'] = 'true'; }
             if ($describedBy !== []) { $attributes['aria-describedby'] = implode(' ', $describedBy); }
-            $html .= '<div class="fa-lang-pane' . (!$isDefault && isset($langErrors[$lang]) ? ' has-error' : '') . '" data-lang="' . Str::e($lang) . '" data-input="' . Str::e($inputId) . '">';
+            $invalid = $isDefault ? isset($this->errors[$name]) : isset($langErrors[$lang]);
+            $html .= '<div class="fa-lang-pane' . (!$isDefault && isset($langErrors[$lang]) ? ' has-error' : '') . ($lang === $this->editingLanguage() ? ' is-current' : '') . '" data-lang="' . Str::e($lang) . '" data-input="' . Str::e($inputId) . '"'
+                . ($invalid && $this->languageSwitch && count($languages) > 1 ? ' data-lang-error="' . Str::e($lang) . '"' : '') . '>';
             if (count($languages) > 1) {
                 $html .= '<span class="fa-lang-pane-code"><code class="fa-lang-code' . ($isDefault ? ' is-default' : '') . '">' . Str::e($lang) . '</code> ' . Str::e(Languages::name($lang)) . '</span>';
             }
@@ -302,9 +352,62 @@ final class FormRenderer
             if (!$isDefault && isset($langErrors[$lang])) {
                 $html .= '<p class="fa-error" role="alert" id="' . Str::e($inputId . '-error') . '">' . Str::e($langErrors[$lang]) . '</p>';
             }
+            if (!$isDefault && $this->languageSwitch && !$field instanceof Fields\FileUpload) {
+                $html .= $this->reference($lang, $inputId, $id, $value, (string) ($values[$default] ?? ''), false);
+            }
             $html .= '</div>';
         }
         return $html . '</div>';
+    }
+
+    /** Count a translatable field for the switch: filled values and errors per language. */
+    private function count(Field $field, array $langErrors): void
+    {
+        $values = $this->state[$field->getName()] ?? [];
+        $values = is_array($values) ? $values : [];
+        $this->stats['total']++;
+        foreach ($this->languages as $lang) {
+            $value = (string) ($values[$lang] ?? '');
+            $filled = $field instanceof Fields\RichEditor ? !\FloCMS\Admin\Support\RichText::isEmpty($value) : trim($value) !== '';
+            $this->stats['filled'][$lang] = ($this->stats['filled'][$lang] ?? 0) + ($filled ? 1 : 0);
+            $invalid = $lang === $this->defaultLang ? isset($this->errors[$field->getName()]) : isset($langErrors[$lang]);
+            if ($invalid) { $this->stats['errors'][$lang] = ($this->stats['errors'][$lang] ?? 0) + 1; }
+        }
+    }
+
+    /** Reference lines of a rich text field (below the editor), one per other language. */
+    private function references(Field $field, string $id, bool $rich): string
+    {
+        $values = $this->state[$field->getName()] ?? [];
+        $values = is_array($values) ? $values : [];
+        $html = '';
+        foreach ($this->languages as $lang) {
+            if ($lang === $this->defaultLang) { continue; }
+            $html .= $this->reference($lang, $id . '-' . $lang, $id, (string) ($values[$lang] ?? ''), (string) ($values[$this->defaultLang] ?? ''), $rich);
+        }
+        return $html === '' ? '' : '<div class="fa-ref-lines">' . $html . '</div>';
+    }
+
+    /**
+     * "English: Sea view villa" under an empty input in another language. The
+     * script shows it for the language being edited (and keeps its text in step
+     * with the default language's input); a Reactive dialog renders it shown.
+     */
+    private function reference(string $lang, string $inputId, string $sourceId, string $value, string $source, bool $rich): string
+    {
+        $limit = $rich ? 200 : 0;
+        $text = $rich ? \FloCMS\Admin\Support\RichText::plain($source) : trim($source);
+        $empty = $rich ? \FloCMS\Admin\Support\RichText::isEmpty($value) : trim($value) === '';
+        $shown = $this->switchActive && $lang === $this->editingLanguage() && $empty && $text !== '';
+        $long = $limit > 0 && mb_strlen($text) > $limit;
+        $default = $this->defaultLang;
+        return '<p class="fa-ref-line" data-ref-line data-lang="' . Str::e($lang) . '" data-ref-input="' . Str::e($inputId) . '" data-ref-source="' . Str::e($sourceId) . '"'
+            . ($limit > 0 ? ' data-ref-limit="' . $limit . '"' : '') . ($shown ? '' : ' hidden') . '>'
+            . '<b dir="auto">' . Str::e(AdminLang::get('translations.reference', ['language' => Languages::name($default)])) . '</b> '
+            . '<span data-ref-text dir="' . Languages::direction($default) . '" lang="' . Str::e($default) . '">' . Str::e($long ? rtrim(mb_substr($text, 0, $limit)) . '…' : $text) . '</span>'
+            . ($limit > 0 ? ' <button type="button" class="fa-link-btn" data-ref-more aria-expanded="false" data-more="' . Str::e(AdminLang::get('translations.show_all')) . '" data-less="' . Str::e(AdminLang::get('translations.show_less')) . '"' . ($long ? '' : ' hidden') . '>'
+                . Str::e(AdminLang::get('translations.show_all')) . '</button>' : '')
+            . '</p>';
     }
 
     /** @param array<string, string> $langErrors */
@@ -524,7 +627,9 @@ final class FormRenderer
             if ($isDefault && isset($this->errors[$name])) { $describedBy[] = $id . '-error'; $controlAttributes['aria-invalid'] = 'true'; }
             if (!$isDefault && isset($langErrors[$lang])) { $describedBy[] = $inputId . '-error'; $controlAttributes['aria-invalid'] = 'true'; }
             if ($describedBy !== []) { $controlAttributes['aria-describedby'] = implode(' ', $describedBy); }
+            $invalid = $lang !== '' && ($isDefault ? isset($this->errors[$name]) : isset($langErrors[$lang]));
             $html .= '<div class="fa-rich-panel" id="' . Str::e($id . '-' . ($lang === '' ? 'value' : $lang) . '-panel') . '"' . ($lang === '' ? '' : ' data-lang="' . Str::e($lang) . '" dir="' . $direction . '" lang="' . Str::e($lang) . '"')
+                . ($lang !== '' && $this->languageSwitch ? ' data-input="' . Str::e($inputId) . '"' . ($invalid && $tabbed ? ' data-lang-error="' . Str::e($lang) . '"' : '') : '')
                 . ($tabbed ? ' aria-labelledby="' . Str::e($id . '-' . $lang . '-tab') . '"' : '') . '>';
             if ($tabbed) {
                 $html .= '<p class="fa-rich-lang" data-rich-lang-title><span class="fa-code">' . Str::e($lang) . '</span> ' . Str::e(Languages::name($lang)) . '</p>';

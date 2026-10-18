@@ -118,7 +118,38 @@ final class Table
         return $this->columns[$name] ?? null;
     }
 
-    /** @return array<string, Column> */
+    /**
+     * Fit the list to its resource's form: columns whose field is translatable
+     * read JSON values, a TranslationsColumn counts the translatable fields and
+     * adds its "Missing in" filter (0.23).
+     *
+     * @internal
+     */
+    public function prepare(\FloCMS\Admin\Form\Form $form): self
+    {
+        $translatable = $form->translatableNames();
+        $rich = array_values(array_filter($translatable, static fn (string $name): bool => $form->field($name) instanceof \FloCMS\Admin\Form\Fields\RichEditor));
+        $missing = null;
+        foreach ($this->columns as $name => $column) {
+            $column->detectTranslatable(in_array($name, $translatable, true));
+            if ($column instanceof Columns\TranslationsColumn) {
+                $column->useFormFields($translatable, $rich);
+                if ($column->addsFilter() && $missing === null) { $missing = $column; }
+            }
+        }
+        $languages = count(\FloCMS\Admin\Translation\Languages::all()) > 1;
+        foreach ($this->filters as $filter) {
+            if ($filter instanceof Filters\MissingTranslationFilter) {
+                if ($filter->getFields() === []) { $filter->fields($missing?->countedFields() ?? $translatable, $rich); }
+                $missing = null;
+            }
+        }
+        if ($missing !== null && $languages && $missing->countedFields() !== [] && !isset($this->filters['missing_in'])) {
+            $this->filters['missing_in'] = Filters\MissingTranslationFilter::make('missing_in')->fields($missing->countedFields(), $rich);
+        }
+        return $this;
+    }
+
     /** The column that titles a row on phones: the first searchable column, else the first column. */
     public function primaryColumn(): ?string
     {

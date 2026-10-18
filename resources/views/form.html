@@ -4,15 +4,17 @@
     <input type="hidden" name="_back" value="{{ $backUrl }}">
 </form>
 @endif
-<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-record{{ $hasAside ? ' has-aside' : '' }}" id="fa-record-form" novalidate data-admin-record-form data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}">
+<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-record{{ $hasAside ? ' has-aside' : '' }}" id="fa-record-form" novalidate data-admin-record-form data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}"@if($translation !== null) data-lang-scope data-lang-url data-default-lang="{{ $translation['defaultLang'] }}" data-editing="{{ $translation['editing'] }}"@endif>
     {!! $csrf !!}
     <input type="hidden" name="_back" value="{{ $backUrl }}">
+    @if($translation !== null)<input type="hidden" name="_editing" value="{{ $translation['editing'] }}" data-lang-editing-value>@endif
     <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $t('actions.save') }}</button>
     <div class="fa-record-head">
         <div class="fa-record-heading">
             @if($parent !== null)<p class="fa-back-link"><a href="{{ $parent['url'] }}">{!! $backIcon !!}<span>{{ $parent['title'] }}</span></a></p>@endif
             <h1 class="fa-page-title">{{ $title }}</h1>
             @if($description !== null)<p class="fa-page-description">{{ $description }}</p>@endif
+            @if($translation !== null){!! $translation['switch'] !!}@endif
         </div>
         <div class="fa-record-actions">
             <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
@@ -33,6 +35,7 @@
         </div>
     </div>
     <div class="fa-record-body">
+        @if($translation !== null){!! $translation['other'] !!}@endif
         {!! $fields !!}
     </div>
 </form>

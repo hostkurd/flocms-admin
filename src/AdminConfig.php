@@ -18,6 +18,20 @@ final class AdminConfig
     ) {
     }
 
+    /** How translatable fields are edited (0.23): one language at a time on the page, or a badge per field. */
+    public const TRANSLATION_MODES = ['page', 'field'];
+
+    /**
+     * The panel's translation mode: 'page' (an "Editing: language" switch shows
+     * the whole form in one language) or 'field' (a language badge per field).
+     * Missing or unknown: 'field', so sites from before 0.23 do not change.
+     */
+    public function translationMode(): string
+    {
+        $mode = $this->values['translation_mode'] ?? 'field';
+        return is_string($mode) && in_array($mode, self::TRANSLATION_MODES, true) ? $mode : 'field';
+    }
+
     /** Whether config/admin.php exists: without it the package stays out of the way. */
     public function isInstalled(): bool
     {

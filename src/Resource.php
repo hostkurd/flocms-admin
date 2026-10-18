@@ -56,6 +56,15 @@ abstract class Resource
 
     public const FORM_MODES = ['page', 'modal', 'slide-over'];
 
+    /**
+     * How translatable fields are edited (0.23): 'page' (an "Editing: language"
+     * switch shows the whole form in one language, best for content such as
+     * posts and properties) or 'field' (a language badge on each field, best
+     * for small records with one translatable name). '' follows the panel's
+     * 'translation_mode' in config/admin.php.
+     */
+    protected static string $translationMode = '';
+
     /** Prefix of the permission names; default "<config permission_prefix>.<slug>". */
     protected static ?string $permissionPrefix = null;
 
@@ -361,6 +370,30 @@ abstract class Resource
     public static function configuredFormMode(): string
     {
         return static::$formMode;
+    }
+
+    /** 'page' or 'field': this resource's own choice, else the panel's. An unknown value falls back to the panel's (admin:doctor reports it). */
+    public static function getTranslationMode(): string
+    {
+        return in_array(static::$translationMode, AdminConfig::TRANSLATION_MODES, true) ? static::$translationMode : Admin::config()->translationMode();
+    }
+
+    /** The value as written ('' follows the panel), for admin:doctor. */
+    public static function configuredTranslationMode(): string
+    {
+        return static::$translationMode;
+    }
+
+    /** Whether forms of this resource show the "Editing: language" switch: page mode on a site with more than one language. */
+    public static function usesLanguageSwitch(): bool
+    {
+        return static::getTranslationMode() === 'page' && count(\FloCMS\Admin\Translation\Languages::all()) > 1;
+    }
+
+    /** Whether this form shows the switch: page mode, several languages and at least one translatable field. */
+    public static function usesLanguageSwitchFor(Form $form): bool
+    {
+        return static::usesLanguageSwitch() && $form->translatableNames() !== [];
     }
 
     public static function getNavigationSort(): int

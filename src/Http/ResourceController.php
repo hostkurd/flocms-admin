@@ -317,12 +317,24 @@ final class ResourceController extends PanelController
             if (!$field->isWritable()) { $safe[$fieldName] = $field->stateFromRecord($record, Languages::default()); }
         }
         $title = $action->getTitle($this->resource);
+        // Page-level translation (0.23): the same switch as the dialog this page stands in for.
+        $switch = $action->getKind() !== 'delete' && $this->resourceClass::usesLanguageSwitchFor($form);
+        $editing = $switch ? \FloCMS\Admin\Translation\EditingLanguage::resolve($this->isPost() ? $this->request->input('_editing') : $this->request->queryValue('editing'), $record !== null) : Languages::default();
+        if ($switch && $errors !== []) { $editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($errors, $editing); }
+        $renderer = new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record),
+            mediaUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/media') : null,
+            lookupUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/lookup') : null,
+            recordId: $id !== '' ? $id : null, ownTable: $this->resource::getTable(),
+            languageSwitch: $switch, editing: $editing, sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name(Languages::default())]) : null);
+        $fieldsHtml = $renderer->render($form);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription($this->resource),
-            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record),
-                mediaUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/media') : null,
-                lookupUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/lookup') : null,
-                recordId: $id !== '' ? $id : null, ownTable: $this->resource::getTable()))->render($form),
+            'fields' => $fieldsHtml,
+            'translation' => $switch ? [
+                'editing' => $editing, 'defaultLang' => Languages::default(),
+                'switch' => \FloCMS\Admin\Form\LanguageSwitch::render('fa-action-switch', Languages::all(), Languages::default(), $editing, $renderer->languageStats()),
+                'other' => \FloCMS\Admin\Form\LanguageSwitch::otherNote(Languages::default(), $editing, false, $renderer->hasSharedFields()),
+            ] : null,
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : ''), ['parent' => $this->scope?->token()]),
             'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),
@@ -584,6 +596,9 @@ final class ResourceController extends PanelController
         $default = Languages::default();
         $isEdit = $record !== null;
         $errors = [];
+        // Page-level translation (0.23): the language the form shows first.
+        $switch = $class::usesLanguageSwitchFor($form);
+        $editing = $switch ? \FloCMS\Admin\Translation\EditingLanguage::resolve($this->isPost() ? $this->request->input('_editing') : $this->request->queryValue('editing'), $isEdit) : $default;
 
         if ($this->isPost()) {
             $submission = new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository());
@@ -602,6 +617,8 @@ final class ResourceController extends PanelController
                 }
             }
             if (!$refreshing && $errors === []) {
+                if ($switch) { \FloCMS\Admin\Translation\EditingLanguage::remember($editing); }
+                $editingQuery = $switch && $editing !== $default ? $editing : null;
                 Session::setFlash(AdminLang::get($isEdit ? 'flash.updated' : 'flash.created', ['label' => $class::getLabel()]), 'success');
 
                 // Save and close → back to the list it came from; Save and create
@@ -614,9 +631,10 @@ final class ResourceController extends PanelController
                 }
                 $saved = $id !== '' ? $this->repository()->find($id) : null;
                 $stay = $this->request->input('_close') === null && $this->can('update') && $saved !== null && $this->resource->canEdit($saved);
-                $this->redirect($stay ? Admin::url($class::getSlug() . '/edit/' . $id, ['parent' => $parent, 'back' => $returnTo]) : $back);
+                $this->redirect($stay ? Admin::url($class::getSlug() . '/edit/' . $id, ['parent' => $parent, 'back' => $returnTo, 'editing' => $editingQuery]) : $back);
             }
 
+            if ($switch && $errors !== []) { $editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($errors, $editing); }
             if (!$refreshing) {
                 $where = $form->errorSummary($errors);
                 Session::setFlash($where === '' ? AdminLang::get('flash.fix_errors') : AdminLang::get('flash.fix_errors_in', ['fields' => $where]), 'danger');
@@ -629,7 +647,15 @@ final class ResourceController extends PanelController
         }
 
         $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record), mediaUrl: Admin::url($this->resource::getSlug() . '/media'),
-            lookupUrl: Admin::url($this->resource::getSlug() . '/lookup'), recordId: $isEdit ? $this->recordId() : null, ownTable: $class::getTable());
+            lookupUrl: Admin::url($this->resource::getSlug() . '/lookup'), recordId: $isEdit ? $this->recordId() : null, ownTable: $class::getTable(),
+            languageSwitch: $switch, editing: $editing, sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name($default)]) : null);
+        $fieldsHtml = $renderer->render($form);
+        $translation = $switch ? [
+            'editing' => $editing,
+            'defaultLang' => $default,
+            'switch' => \FloCMS\Admin\Form\LanguageSwitch::render('fa-record-switch', $languages, $default, $editing, $renderer->languageStats()),
+            'other' => \FloCMS\Admin\Form\LanguageSwitch::otherNote($default, $editing, false, $renderer->hasSharedFields()),
+        ] : null;
         $view = new PageView($class);
         $title = $isEdit
             ? AdminLang::get('form.edit_title', ['label' => $class::getLabel()])
@@ -654,10 +680,10 @@ final class ResourceController extends PanelController
         // Related records (0.22): below the form once the record exists; the create page says they come after saving.
         $managers = $this->scope !== null ? '' : ($isEdit ? \FloCMS\Admin\Relations\ManagersView::render($this->resource, $this->recordId()) : \FloCMS\Admin\Relations\ManagersView::pending($this->resource));
         $deleteText = $deleteUrl !== null ? \FloCMS\Admin\Relations\ManagersView::deleteCount($this->resource, $this->recordId()) : null;
-        $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
+        $html = $view->form($title, $action, $fieldsHtml, $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
             !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== [], $history, $managers, $deleteText,
             $this->scope !== null ? ['url' => $this->scope->parentUrl(), 'title' => $this->scope->parentTitle()]
-                : ($isEdit && !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null));
+                : ($isEdit && !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null), $translation);
 
         return $this->panel($title, $html, $this->activeSlug());
     }
@@ -671,12 +697,7 @@ final class ResourceController extends PanelController
         $table = $this->resource->table(new Table());
         // Inside a parent: the manager's columns, page size and sort, never the key column or its filter.
         if ($this->scope !== null) { $table = $this->scope->adjustTable($table); }
-        $translatable = $this->form()->translatableNames();
-        foreach ($table->getColumns() as $name => $column) {
-            $column->detectTranslatable(in_array($name, $translatable, true));
-        }
-
-        return $table;
+        return $table->prepare($this->form());
     }
 
     private function form(): Form

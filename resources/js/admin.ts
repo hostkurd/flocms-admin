@@ -315,6 +315,8 @@ document.addEventListener('flo-reactive:error', ((event: CustomEvent) => {
     element.textContent = messages[event.detail.status] || root.dataset.adminError || '';
   });
 }) as EventListener);
+// The language switch keeps ?editing= in the address (translations.ts).
+document.addEventListener('flo-admin:url-replaced', () => { displayedUrl = location.href; });
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();

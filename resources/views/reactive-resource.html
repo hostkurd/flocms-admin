@@ -116,12 +116,13 @@
     </div>
     @endif
 </div>
-<dialog class="fa-editor{{ $dialogStyle === 'slide-over' ? ' is-slide-over' : '' }}" id="{{ $prefix }}-editor" data-rx-dialog="editor" data-rx-open="{{ $mode !== '' ? 'true' : 'false' }}" data-rx-close="cancel" aria-labelledby="{{ $prefix }}-editor-title"@if($dialogMinHeight !== null) data-admin-dialog-min-height="{{ $dialogMinHeight }}"@endif>
-    <div class="fa-dialog-head"><h2 id="{{ $prefix }}-editor-title" class="fa-dialog-title">{{ $actionTitle }}</h2><button class="fa-icon-action fa-dialog-close" type="button" data-rx-dialog-close="editor" aria-label="{{ $t('actions.cancel') }}" title="{{ $t('actions.cancel') }}">{!! $removeIcon !!}</button></div>
+<dialog class="fa-editor{{ $dialogStyle === 'slide-over' ? ' is-slide-over' : '' }}{{ $translation !== null ? ' is-switching' : '' }}" id="{{ $prefix }}-editor" data-rx-dialog="editor" data-rx-open="{{ $mode !== '' ? 'true' : 'false' }}" data-rx-close="cancel" aria-labelledby="{{ $prefix }}-editor-title"@if($dialogMinHeight !== null) data-admin-dialog-min-height="{{ $dialogMinHeight }}"@endif@if($translation !== null) data-lang-scope data-default-lang="{{ $translation['defaultLang'] }}" data-editing="{{ $translation['editing'] }}"@endif>
+    <div class="fa-dialog-head{{ $translation !== null ? ' has-switch' : '' }}"><h2 id="{{ $prefix }}-editor-title" class="fa-dialog-title">{{ $actionTitle }}</h2>@if($translation !== null)<div class="fa-dialog-switch">{!! $translation['switch'] !!}</div>@endif<button class="fa-icon-action fa-dialog-close" type="button" data-rx-dialog-close="editor" aria-label="{{ $t('actions.cancel') }}" title="{{ $t('actions.cancel') }}">{!! $removeIcon !!}</button></div>
     @if(isset($errors['_form']))<p class="fa-alert fa-alert-danger" role="alert" tabindex="-1" data-rx-error-summary>{{ $errors['_form'] }}</p>@endif
     @if($mode !== '')
     <form data-rx-submit="{{ $submitAction }}" data-admin-draft data-upload-url="{{ $uploadUrl }}" data-upload-operation="{{ $uploadOperation }}" data-upload-placement="{{ $uploadPlacement }}" data-upload-action="{{ $uploadAction }}" data-upload-id="{{ $uploadId }}" data-upload-csrf="{{ $uploadCsrf }}" novalidate>
         <input type="hidden" data-rx-bind="draft" value="">
+        @if($translation !== null)<input type="hidden" data-rx-bind="editing" data-rx-model="defer" value="{{ $translation['editing'] }}" data-lang-editing-value>@endif
         @if(in_array($mode, ['custom', 'delete', 'bulk'], true))<p class="fa-confirm-text">{{ $actionDescription }}</p>@endif
         @if($formFields !== '')<div class="fa-dialog-body{{ $formShowsFields ? '' : ' is-empty' }}">{!! $formFields !!}</div>@endif
         <div class="fa-dialog-foot"><span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span><span class="fa-toolbar-spacer"></span><button type="button" class="fa-btn" data-rx-dialog-close="editor">{{ $t('actions.cancel') }}</button><button type="submit" class="fa-btn{{ $submitColor === 'default' ? ' fa-btn-primary' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button></div>

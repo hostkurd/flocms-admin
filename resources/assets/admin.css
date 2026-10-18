@@ -830,9 +830,9 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-lang-panes{display:flex;flex-direction:column;gap:10px}
 .fa-lang-pane{display:flex;flex-direction:column;gap:6px;min-width:0}
 .fa-lang-pane-code{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--fa-muted)}
-.fa-settings.is-switching .fa-lang-pane:not(.is-current){display:none}
-.fa-settings.is-switching .fa-lang-pane-code{display:none}
-.fa-settings.is-switching .fa-rich-tabs{display:none}
+.is-switching[data-lang-scope] .fa-lang-pane:not(.is-current){display:none}
+.is-switching[data-lang-scope] .fa-lang-pane-code{display:none}
+.is-switching[data-lang-scope] .fa-rich-tabs{display:none}
 .fa-label-dots{margin-inline-start:6px;vertical-align:middle;color:var(--fa-primary-text)}
 .fa-field.is-locked > :not(.fa-label):not(.fa-same-note){opacity:.55}
 .fa-same-note{display:inline-flex;margin:0 0 6px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--fa-surface-3);color:var(--fa-muted)}
@@ -849,6 +849,70 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
   .fa-settings-nav:has(.fa-settings-picker:not([hidden])) .fa-settings-tabs{display:none}
 }
 @media (min-width:901px){.fa-settings-picker{display:none}}
+/* Page-level translation (0.23): the "Editing: language" switch */
+.fa-lang-switch{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.fa-lang-switch[hidden]{display:none}
+.fa-record-heading .fa-lang-switch{margin-block-start:10px}
+.fa-record-head:has(.fa-record-heading .fa-lang-switch){align-items:flex-start}
+.fa-record-heading:has(.fa-lang-switch){flex:1 1 340px}
+.fa-record-head:has(.fa-record-heading .fa-lang-switch) > .fa-record-actions{flex:none;margin-block-start:2px}
+.fa-lang-switch-label{font-size:13px;font-weight:500;color:var(--fa-muted)}
+.fa-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--fa-border-strong);border-radius:10px;background:var(--fa-surface-2)}
+.fa-seg-btn{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 11px;border:0;border-radius:7px;background:transparent;color:var(--fa-text-2);font:500 13px/1 var(--fa-font);cursor:pointer;white-space:nowrap}
+.fa-seg-btn:hover{background:var(--fa-surface-3)}
+.fa-seg-btn:focus-visible{outline:2px solid var(--fa-primary);outline-offset:1px}
+.fa-seg-btn[aria-pressed="true"]{background:var(--fa-surface);color:var(--fa-text);font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.12),0 0 0 1px var(--fa-border)}
+.fa-panel[data-theme="dark"] .fa-seg-btn[aria-pressed="true"]{background:var(--fa-surface-3);box-shadow:0 0 0 1px var(--fa-border-strong)}
+.fa-seg-count{font:600 11.5px/1 var(--fa-mono);color:var(--fa-muted);unicode-bidi:isolate;direction:ltr}
+.fa-seg-err{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--fa-danger-solid);color:#fff;font:700 11px/1 var(--fa-font)}
+.fa-seg-err[hidden]{display:none}
+.fa-ring{width:14px;height:14px;flex:none}
+.fa-ring circle{fill:none;stroke-width:2.4}
+.fa-ring-track{stroke:var(--fa-border-strong)}
+.fa-ring-fill{stroke:var(--fa-warning);stroke-linecap:round}
+.fa-ring.is-full .fa-ring-fill{stroke:var(--fa-success)}
+.fa-ring.is-empty .fa-ring-fill{stroke:transparent}
+.fa-next-missing{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--fa-primary-text);font:600 13px/1 var(--fa-font);cursor:pointer}
+.fa-next-missing:hover{background:var(--fa-primary-soft)}
+.fa-next-missing[hidden]{display:none}
+.fa-next-missing .fa-icon{width:15px;height:15px}
+.fa-lang-switch.is-select .fa-editing{padding-inline-end:4px}
+.fa-lang-other,.fa-record-body > .fa-lang-other{margin:0 0 20px}
+.fa-lang-other[hidden]{display:none}
+.fa-dialog-body > .fa-lang-other{margin-block-end:14px}
+.fa-editor .fa-dialog-head.has-switch{flex-wrap:wrap;row-gap:12px}
+.fa-editor .fa-dialog-head.has-switch .fa-dialog-title{flex:1}
+.fa-dialog-switch{flex-basis:100%;order:3}
+.fa-form > .fa-lang-switch{margin-block-end:12px}
+/* One language at a time: the current language's dot, filled, empty or invalid */
+.is-switching[data-lang-scope] .fa-label-dots .fa-dot:not(.is-current){display:none}
+.is-switching[data-lang-scope] .fa-label-dots .fa-dot{width:7px;height:7px;color:var(--fa-success)}
+.is-switching[data-lang-scope] .fa-label-dots .fa-dot.is-empty{color:var(--fa-faint);opacity:1}
+.is-switching[data-lang-scope] .fa-field[data-translatable]:not([data-uncounted]):has(.fa-label-dots .fa-dot.is-current.is-empty) .fa-lang-pane.is-current :is(.fa-input,.fa-textarea){border-style:dashed}
+.fa-ref-line{display:block;margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--fa-muted)}
+.fa-ref-line[hidden]{display:none}
+.fa-ref-line b{font-weight:600;color:var(--fa-text-2);white-space:nowrap;margin-inline-end:4px}
+.fa-ref-line [data-ref-text]{min-width:0;overflow-wrap:anywhere}
+.fa-ref-lines > .fa-ref-line:first-child{margin-block-start:8px}
+.fa-link-btn{padding:0;border:0;background:none;color:var(--fa-primary-text);font:600 12.5px/1.4 var(--fa-font);cursor:pointer}
+.fa-link-btn:hover{text-decoration:underline}
+.fa-link-btn[hidden]{display:none}
+.fa-same-note.is-line{display:flex;align-items:center;gap:6px;margin:6px 0 0;padding:0;border-radius:0;background:none;font-size:12.5px;font-weight:400;color:var(--fa-muted)}
+.fa-same-note.is-line[hidden]{display:none}
+.fa-field.is-locked > .fa-same-note.is-line{opacity:1}
+.fa-same-icon{width:12px;height:12px}
+/* The list's translations column */
+.fa-tr-marks{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fa-tr-mark{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;background:var(--fa-surface-3);font:600 11px/1 var(--fa-mono);color:var(--fa-text-2);white-space:nowrap}
+.fa-tr-mark.is-partial{background:var(--fa-warning-soft);color:var(--fa-warning)}
+.fa-tr-mark.is-none{background:transparent;color:var(--fa-faint);box-shadow:inset 0 0 0 1px var(--fa-border-strong)}
+@media (max-width:720px){
+  .fa-record-heading .fa-lang-switch,.fa-dialog-switch .fa-lang-switch{width:100%}
+  .fa-lang-switch .fa-seg{display:flex;width:100%}
+  .fa-lang-switch .fa-seg-btn{flex:1;justify-content:center;min-height:40px;padding:0 8px}
+  .fa-lang-switch-label{display:none}
+  .fa-record-heading:has(.fa-lang-switch){width:100%}
+}
 .fa-field.is-locked > .fa-label{display:inline-block;margin-inline-end:8px}
 /* Table density: compact list pages (Admin panel settings or My preferences) */
 .fa-panel[data-density="compact"] .fa-table th,.fa-panel[data-density="compact"] .fa-table td{padding:6px 12px}

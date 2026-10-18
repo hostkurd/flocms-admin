@@ -159,6 +159,7 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$description` | `null` | One line under the list page title: text, or a key of the site's lang files |
 | `$navigationSort` | `0` | Order in the sidebar |
 | `$navigation` | `true` | `false` keeps the resource out of the sidebar, e.g. records managed inside their parent (0.22) |
+| `$translationMode` | `''` (the panel's) | How translatable fields are edited: `'page'` (an "Editing: language" switch shows the whole form in one language) or `'field'` (a language badge per field). See [Translatable fields](#translatable-fields) (0.23) |
 | `$formMode` | `'page'` | How Create and Edit open: `'page'` (full page with an optional sidebar), `'modal'` (dialog) or `'slide-over'` (panel from the side). See [Forms](docs/forms.md#pages-dialogs-and-slide-overs-012) |
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
@@ -218,6 +219,7 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `BadgeColumn` | a coloured badge | `->colors([...])` (gray, green, blue, yellow, red, purple), `->labels([...])` |
 | `RelationColumn` | related titles | `->resource(CityResource::class)`; many-to-many with `->pivot(...)`, `->limit(3)` ([guide](docs/relationships.md)) |
 | `MediaColumn` | thumbnails of media items | `->limit(3)`; loads the page's items in one query ([guide](docs/media.md)) |
+| `TranslationsColumn` | how far each record is translated: EN 4/4 · AR 3/4 · KU 0/4 | `->fields([...])` (default: every translatable form field), `->withoutFilter()`; adds a **Missing in: language** filter (0.23) |
 | `CountColumn` | how many related records | `->relation(UnitResource::class, 'property_id')`; one grouped query per page ([guide](docs/relation-managers.md#counts-in-the-parents-list)) |
 
 Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
@@ -235,7 +237,20 @@ LANGUAGES=en,ar,ku
 DEFAULT_LANG=en
 ```
 
-The form shows the default-language input with a language badge beside it. The badge shows which languages are filled; clicking it opens a dialog with one input per language. Arabic, Kurdish and the other right-to-left languages get `dir="rtl"`. Everything is a real form field, so the page also works without JavaScript.
+Translatable fields are edited in one of two ways, chosen in `config/admin.php` and per resource (0.23):
+
+- **Page mode** (`'translation_mode' => 'page'`, written by `admin:install` since 0.23): an **Editing: English · Arabic 7/9 · Kurdish 0/9** switch in the record's head shows the whole form in one language, so a translator works through a post from top to bottom, right to left in Arabic and Kurdish. Each language shows how many translatable fields are filled; **Next missing** jumps to the next empty one, and an empty input shows the default language's text below it as a reference. Fields that are the same in every language (price, city, photo) stay visible but read-only outside the default language. Create and Edit dialogs (relation managers too) get the same switch. Best for content: posts, properties, pages.
+- **Field mode** (`'field'`, the default when the key is missing, so sites from before 0.23 do not change): the form shows the default-language input with a language badge beside it. The badge shows which languages are filled; clicking it opens a dialog with one input per language. Best for small records with one translatable name: categories, cities.
+
+```php
+// config/admin.php: the panel default
+'translation_mode' => 'page',
+
+// a resource that differs from it
+protected static string $translationMode = 'field';
+```
+
+Forms without translatable fields show no switch. Both modes store the same JSON, so a resource can move between them at any time. Arabic, Kurdish and the other right-to-left languages get `dir="rtl"` in either panel language. Everything is a real form field, so the page also works without JavaScript (page mode then shows every language with its code). `TranslationsColumn` shows on the list how far each record is translated, with a **Missing in** filter. See [Forms](docs/forms.md#page-level-translation-023).
 
 `required` applies to the default language only. The other languages are optional, and every other rule (`max:190`, …) applies to them when they are filled.
 
@@ -384,6 +399,8 @@ Admin 0.21 adds **Site → Roles** for people with `roles.manage`. The list show
 
 ## Relation managers
 
+Admin 0.23 adds **page-level translation**: with `'translation_mode' => 'page'` (or `$translationMode = 'page'` on a resource) an "Editing: language" switch shows the whole form in one language, with a count of filled fields per language, **Next missing**, the default language's text under empty inputs, shared fields locked outside the default language and errors in other languages shown in the switch. The last language you saved in is remembered; `?editing=ar` opens one directly. Dialogs get the switch too, settings pages get the counts and Next missing, and `TranslationsColumn` with its **Missing in** filter shows what still needs translating. Storage is unchanged. See [Forms](docs/forms.md#page-level-translation-023).
+
 Admin 0.22 shows a record's related records on its edit page, below the form: a property's units, a country's cities. Declare them on the parent with `relations()` (`RelationManager::make(UnitResource::class, 'property_id')`); the child resource brings its table, form, permissions and rules. Two or more managers become tabs with counts. Units are added, edited and deleted in dialogs without leaving the property; the server limits every read to this property and sets the key on every save, and you need edit rights on the property and view rights on units. Without JavaScript each manager links to the units list limited to the property. `$navigation = false` keeps a child out of the sidebar, `CountColumn` counts related records in the parent's list, and the parent's History lists its children's changes. See the [Relation managers guide](docs/relation-managers.md).
 
 ## Rich text
@@ -411,6 +428,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.20: Ctrl+K search (records, pages, actions, settings and media; recent records)
 - 0.21: the Roles page (permission grid, new roles with levels, reset, activity log; flocms-core 2.4)
 - 0.22: relation managers (related records on the edit page, `CountColumn`, `$navigation`)
+- 0.23: page-level translation (the "Editing: language" switch, `TranslationsColumn`, the Missing in filter)
 - Next: repeater and key-value fields, then CSV import/export
 
 ## Development

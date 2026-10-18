@@ -48,6 +48,9 @@ final class DoctorCommand extends Command
         }
 
         $values = $config->all();
+        if (array_key_exists('translation_mode', $values) && !in_array($values['translation_mode'], \FloCMS\Admin\AdminConfig::TRANSLATION_MODES, true)) {
+            $this->caution("translation_mode must be 'page' or 'field'; using 'field'.");
+        }
         if (array_key_exists('primary_color', $values) && $values['primary_color'] !== null) {
             $color = $config->primaryColor();
             if ($color === null) {
@@ -164,6 +167,13 @@ final class DoctorCommand extends Command
         $this->ok('Permissions: ' . $class::permission('view') . ', ' . $class::permission('create') . ', '
             . $class::permission('update') . ', ' . $class::permission('delete'));
         if (!$class::showsInNavigation()) { $this->line('  Not in the sidebar ($navigation = false): its pages and search still work.'); }
+        if ($class::configuredTranslationMode() !== '' && !in_array($class::configuredTranslationMode(), \FloCMS\Admin\AdminConfig::TRANSLATION_MODES, true)) {
+            $this->caution('translationMode "' . $class::configuredTranslationMode() . "\" is not valid: use 'page' or 'field'; using the panel's ('" . Admin::config()->translationMode() . "').");
+        }
+        if ($form->translatableNames() !== [] && count(Languages::all()) > 1) {
+            $this->line('  Translations: ' . ($class::getTranslationMode() === 'page' ? 'one language at a time (page mode)' : 'a badge per field (field mode)')
+                . ($class::configuredTranslationMode() === '' ? ', the panel default' : ''));
+        }
         $this->checkManagers($class, $resource, $db);
 
         if ($db === null) {
@@ -185,7 +195,11 @@ final class DoctorCommand extends Command
         foreach ($table->getColumns() as $name => $column) {
             if ($column->isDatabaseColumn()) { $needed[$name] ??= 'list column'; }
         }
-        foreach ($table->getFilters() as $filter) { if (!($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter && $filter->getPivot() !== null)) { $needed[$filter->getColumn()] ??= 'filter column'; } }
+        $table->prepare($form);
+        foreach ($table->getFilters() as $filter) {
+            if ($filter instanceof \FloCMS\Admin\Table\Filters\MissingTranslationFilter) { foreach ($filter->getFields() as $name) { $needed[$name] ??= 'translations filter'; } continue; }
+            if (!($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter && $filter->getPivot() !== null)) { $needed[$filter->getColumn()] ??= 'filter column'; }
+        }
         foreach ($extraColumns as $name) {
             $needed[$name] = 'set on create';
         }

@@ -146,8 +146,7 @@ final class GlobalSearch
             /** @var Resource $resource */
             $resource = new $class();
             $table = $resource->table(new Table());
-            $translatable = $resource->form(new \FloCMS\Admin\Form\Form())->translatableNames();
-            foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $translatable, true)); }
+            $table->prepare($resource->form(new \FloCMS\Admin\Form\Form()));
             if ($table->searchableColumns() === [] && preg_match('/^#?\d{1,18}$/D', $query) !== 1) { return null; }
             $repository = new RecordRepository($resource, $db, Translations::store());
             $rows = $repository->search($table, $query, $this->limit() + 1, AdminLang::language());

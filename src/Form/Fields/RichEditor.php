@@ -134,7 +134,10 @@ final class RichEditor extends Field
     {
         // Oversized input is reported by typeError(); do not spend time cleaning it.
         if (strlen($value) > $this->maxBytes * 4) { return str_repeat('x', $this->maxBytes + 1); }
-        return $this->clean(str_replace("\r\n", "\n", $value));
+        $clean = $this->clean(str_replace("\r\n", "\n", $value));
+        // An empty editor ("<p></p>", "<p>&nbsp;</p>") is saved as nothing (0.23), so lists and the
+        // "Missing in" filter agree on what is missing.
+        return RichText::isEmpty($clean) ? '' : $clean;
     }
 
     protected function formatForInput(mixed $value): string
