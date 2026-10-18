@@ -41,6 +41,15 @@ final class MediaUsage
                 $store->syncUsage($resource, $recordId, $name, MediaPicker::ids($values[$name] ?? null), $strict);
             } elseif ($field instanceof RichEditor) {
                 $store->syncUsage($resource, $recordId, $name, self::idsInText($values[$name] ?? null));
+            } elseif ($field instanceof \FloCMS\Admin\Form\Fields\Repeater) {
+                // Media pickers inside the items of a repeater (0.24), together under the repeater's name.
+                $ids = [];
+                foreach ($field->items($values[$name] ?? null) as $item) {
+                    foreach ($field->fields() as $subName => $sub) {
+                        if ($sub instanceof MediaPicker) { array_push($ids, ...MediaPicker::ids($item[$subName] ?? '')); }
+                    }
+                }
+                $store->syncUsage($resource, $recordId, $name, array_values(array_unique($ids)), $strict);
             }
         }
     }

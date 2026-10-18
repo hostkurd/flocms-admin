@@ -91,6 +91,30 @@ final class SettingsRequestTest extends RequestTestCase
         self::assertSame(404, self::request('GET', '/en/admin/settings/edit/nope', self::CONFIG + ['session' => self::ADMIN])['status']);
     }
 
+    public function testKeyValueListsOnSettingsPages(): void
+    {
+        $links = ['_' => '', 'k1' => ['_key' => 'k1', 'key' => 'Instagram', 'value' => '@acme'], 'k2' => ['_key' => 'k2', 'key' => 'Facebook', 'value' => 'fb.com/acme']];
+        // Without JavaScript the list buttons change the list and save nothing
+        $moved = self::post('/en/admin/settings/edit/contact', ['email' => '', 'links' => $links, '_repeater' => 'links:up:k2'], self::CONFIG + ['session' => self::ADMIN]);
+        self::assertFalse($moved['redirected']);
+        self::assertLessThan(strpos($moved['body'], 'value="Instagram"'), strpos($moved['body'], 'value="Facebook"'));
+        self::assertStringNotContainsString('Please', $moved['body']);
+        self::assertNull(self::value('contact.links'));
+        // Saved as the list itself; the website reads it with key_values()
+        $saved = self::post('/en/admin/settings/edit/contact', ['email' => '', 'links' => $links], self::CONFIG + ['session' => self::ADMIN]);
+        self::assertTrue($saved['redirected'], (string) $saved['body']);
+        self::assertSame([['key' => 'Instagram', 'value' => '@acme'], ['key' => 'Facebook', 'value' => 'fb.com/acme']], self::value('contact.links'));
+        self::assertSame(['Instagram' => '@acme', 'Facebook' => 'fb.com/acme'], key_values(self::value('contact.links')));
+        $page = self::request('GET', '/en/admin/settings/edit/contact', self::CONFIG + ['session' => $saved['session']])['body'];
+        self::assertStringContainsString('name="links[k0][key]" type="text" value="Instagram"', $page);
+        // A duplicate network is refused
+        $links['k2']['key'] = 'instagram';
+        $refused = self::post('/en/admin/settings/edit/contact', ['email' => '', 'links' => $links], self::CONFIG + ['session' => self::ADMIN]);
+        self::assertFalse($refused['redirected']);
+        self::assertStringContainsString('class="fa-repeater-item has-error" role="listitem" data-repeater-item data-key="k2"', $refused['body']);
+        self::assertStringContainsString('already has this Network.', $refused['body']);
+    }
+
     public function testWithoutTableTheFormExplainsAndCannotSave(): void
     {
         self::pdo()->exec('DROP TABLE settings');

@@ -1,5 +1,6 @@
 <div class="fa-page-head"><h1 class="fa-page-title">{{ $title }}</h1></div>
 <form method="post" enctype="multipart/form-data" action="{{ $actionUrl }}" class="fa-card fa-form" novalidate@if($translation !== null) data-lang-scope data-default-lang="{{ $translation['defaultLang'] }}" data-editing="{{ $translation['editing'] }}"@endif>
+    <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $submitLabel }}</button>
     {!! $csrf !!}<input type="hidden" name="_operation" value="{{ $operation }}">
     @if($translation !== null)<input type="hidden" name="_editing" value="{{ $translation['editing'] }}" data-lang-editing-value>{!! $translation['switch'] !!}@endif
     <p class="fa-muted">{{ $description }}</p>

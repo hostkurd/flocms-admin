@@ -70,6 +70,25 @@ final class SettingsEditor
     }
 
     /**
+     * A repeater button sent without JavaScript ("rooms:add", 0.24): the posted
+     * values with the list changed, not validated and never saved (an operation
+     * no list takes, e.g. on a disabled one, changes nothing). Chosen files are not kept.
+     *
+     * @param array<string, mixed> $input submitted fields
+     * @return array<string, string|array<string, string>>
+     */
+    public function operate(array $input, mixed $operation): ?array
+    {
+        $record = $this->record();
+        $state = [];
+        foreach ($this->form->fields() as $name => $field) {
+            $state[$name] = $field->isWritable() && !$field instanceof FileUpload ? $field->stateFromInput($input, Languages::all()) : $field->stateFromRecord($record, Languages::default());
+        }
+        $this->form->evaluate($state, $record)->applyRepeaterOperation($state, $operation);
+        return $state;
+    }
+
+    /**
      * Validate the submitted page; when valid, store it.
      *
      * @param array<string, mixed> $input submitted fields
@@ -174,6 +193,12 @@ final class SettingsEditor
                 return $values === [] ? null : $values;
             }
             return is_string($state) && $state !== '' && $state !== SettingsUploads::PENDING ? $state : null;
+        }
+        if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater) {
+            // Stored as the list itself (0.24), so setting('contact.links') is an array.
+            $encoded = $field->dehydrate(is_string($state) ? $state : '');
+            $list = is_string($encoded) ? json_decode($encoded, true) : null;
+            return is_array($list) && $list !== [] ? $list : null;
         }
         if ($field->isTranslatable()) {
             // The field's own dehydrate() (rich text is cleaned there) returns the JSON text.

@@ -169,7 +169,9 @@ class MediaPicker extends Field
         $ids = self::ids($value);
         $store = MediaLibrary::storeOrNull();
         if ($store === null) {
-            return '<p class="fa-help">' . Str::e(AdminLang::get('media.not_ready')) . '</p>';
+            // The chosen ids stay in the form, so a list item keeps its media (0.24).
+            return '<p class="fa-help">' . Str::e(AdminLang::get('media.not_ready')) . '</p>'
+                . ($value !== '' && !$this->isDisabled() ? '<input type="hidden" name="' . Str::e($name) . '" value="' . Str::e($value) . '">' : '');
         }
         $chosen = $store->findMany($ids);
         $folder = $this->folder !== null ? MediaLibrary::folders()->resolve($this->folder) : null;

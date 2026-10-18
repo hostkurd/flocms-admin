@@ -58,8 +58,17 @@ final class FormRenderer
         // so a morph keeps it: the current panes, locked shared fields and reference lines.
         private readonly bool $switchActive = false,
         // The note on a shared field outside the default language; null keeps "All languages".
-        private readonly ?string $sameNote = null
+        private readonly ?string $sameNote = null,
+        // Fields inside a repeater item (0.24): inputs are named "<namePrefix>[name]", e.g. rooms[k1][name][ar].
+        private readonly string $namePrefix = ''
     ) {
+    }
+
+    /** The input name of a field (and language): "title[ar]", or "rooms[k1][name][ar]" inside an item. */
+    private function inputName(string $name, ?string $lang = null): string
+    {
+        $base = $this->namePrefix === '' ? $name : $this->namePrefix . '[' . $name . ']';
+        return $lang === null ? $base : $base . '[' . $lang . ']';
     }
 
     /** @var array{total: int, filled: array<string, int>, errors: array<string, int>} */
@@ -119,7 +128,7 @@ final class FormRenderer
             if ($node instanceof Field) {
                 $field = $form->field($node->getName());
                 if (!$field->isVisible()) { continue; }
-                if ($field instanceof Hidden) { $html .= $field->renderControl($this->prefix . 'f-' . $field->getName(), $field->getName(), $this->stringState($field)); continue; }
+                if ($field instanceof Hidden) { $html .= $field->renderControl($this->prefix . 'f-' . $field->getName(), $this->inputName($field->getName()), $this->stringState($field)); continue; }
                 $rendered = $this->field($field, $columns);
                 if (in_array($field->getName(), $live, true)) { $rendered = str_replace('data-field=', 'data-admin-live data-field=', $rendered); }
                 $html .= $rendered; continue;
@@ -177,6 +186,9 @@ final class FormRenderer
 
     public function field(Field $field, int $columns = 2): string
     {
+        if ($field instanceof Fields\Repeater) {
+            return $this->repeater($field);
+        }
         $name = $field->getName();
         $id = $this->prefix . 'f-' . $name;
         $error = $this->errors[$name] ?? null;
@@ -211,13 +223,14 @@ final class FormRenderer
             . ($panes || $switched ? ' data-translatable' : '') . ($switched && $isRich ? ' data-rich' : '') . ($switched && $isUpload ? ' data-uncounted' : '') . '>';
         $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . (($panes || ($switched && $isRich)) && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
         // Settings pages: an "All languages" pill above the input; record forms: a line below it.
-        $note = $shared ? '<p class="fa-same-note' . ($this->sameNote !== null ? ' is-line' : '') . '"' . ($this->locksShared() ? '' : ' hidden') . '>'
+        // Inside repeater items ($sameNote ''): locked without a note on every field.
+        $note = $shared && $this->sameNote !== '' ? '<p class="fa-same-note' . ($this->sameNote !== null ? ' is-line' : '') . '"' . ($this->locksShared() ? '' : ' hidden') . '>'
             . ($this->sameNote !== null ? Icons::svg('lock', 'fa-icon fa-same-icon') : '') . '<span>' . Str::e($this->sameNote ?? AdminLang::get('settings.same_all_languages')) . '</span></p>' : '';
         if ($this->sameNote === null) { $html .= $note; }
         if ($panes) {
             $html .= $this->panes($field, $id, $langErrors);
         } elseif ($isUpload && $this->uploadControl !== null) {
-            $html .= ($this->uploadControl)($field, $id, $name, $this->stringState($field), null, $this->describedBy($field, $id));
+            $html .= ($this->uploadControl)($field, $id, $this->inputName($name), $this->stringState($field), null, $this->describedBy($field, $id));
         } elseif ($field instanceof Fields\RichEditor) {
             $html .= $this->richEditor($field, $id, $langErrors);
             if ($switched && count($this->languages) > 1) { $html .= $this->references($field, $id, true); }
@@ -237,6 +250,149 @@ final class FormRenderer
         }
         if ($this->sameNote !== null) { $html .= $note; }
 
+        return $html . '</div>';
+    }
+
+    /**
+     * A list of items (0.24): one card per item (or one row with ->table()),
+     * each holding its fields through a renderer of its own whose inputs are
+     * named rooms[<key>][field]. The Add, Remove, Up and Down buttons submit the
+     * form without JavaScript (the server changes the list and shows the page
+     * again); with JavaScript they act at once, with drag and drop, Duplicate,
+     * Collapse and Undo (resources/js/repeater.ts). A <template> holds an empty
+     * item for Add.
+     */
+    private function repeater(Fields\Repeater $field): string
+    {
+        $name = $field->getName();
+        $id = $this->prefix . 'f-' . $name;
+        $items = $field->items($this->stringState($field));
+        $hasErrors = $this->fieldHasError($name);
+        // A disabled list is shown as it is stored: no buttons, read-only fields.
+        $free = $field->hasFreeItems() && $field->isWritable();
+        $table = $field->isTable();
+        // Every item on the page counts, as the script counts them; empty ones are dropped on save.
+        $count = count($items);
+        $t = static fn (string $key, array $replace = []): string => AdminLang::get('repeater.' . $key, $replace);
+
+        $label = Str::e($field->getLabel());
+        if ($field->isRequired() || $field->getMinItems() > 0) { $label .= ' <span class="fa-required" aria-hidden="true">*</span>'; }
+        $classes = ['fa-field', 'fa-span-full', 'fa-repeater'];
+        if ($table) { $classes[] = 'is-table'; }
+        if ($field instanceof Fields\KeyValue) { $classes[] = 'is-key-value'; }
+        if ($hasErrors) { $classes[] = 'has-error'; }
+
+        $html = '<div class="' . implode(' ', $classes) . '" id="' . Str::e($id) . '" data-field="' . Str::e($name) . '" data-repeater data-name="' . Str::e($this->inputName($name)) . '"'
+            . ' data-min="' . $field->getMinItems() . '" data-max="' . $field->getMaxItems() . '"' . ($free ? '' : ' data-fixed')
+            . ' data-item-label="' . Str::e($field->getItemLabelField() ?? '') . '"'
+            . ' data-count-text="' . Str::e($t('count', ['count' => ':count', 'max' => (string) $field->getMaxItems()])) . '"'
+            . ' data-item-text="' . Str::e($t('item', ['number' => ':number'])) . '"'
+            . ' data-removed-text="' . Str::e($t('removed', ['item' => ':item'])) . '"'
+            . ' data-moved-text="' . Str::e($t('moved', ['item' => ':item', 'position' => ':position'])) . '"'
+            . ' data-drag-text="' . Str::e($t('drag', ['item' => ':item'])) . '"'
+            . ' data-collapse-text="' . Str::e($t('collapse')) . '" data-expand-text="' . Str::e($t('expand')) . '">';
+        $html .= '<div class="fa-repeater-head"><span class="fa-label" id="' . Str::e($id . '-label') . '">' . $label . '</span>'
+            . '<span class="fa-repeater-meta" data-repeater-count>' . Str::e($free ? $t('count', ['count' => (string) $count, 'max' => (string) $field->getMaxItems()]) : '') . '</span></div>';
+        if (($help = $field->getHelp()) !== null) { $html .= '<p class="fa-help" id="' . Str::e($id) . '-help">' . Str::e($help) . '</p>'; }
+        // Marks the field as sent even when every item was removed.
+        $html .= '<input type="hidden" name="' . Str::e($this->inputName($name)) . '[_]" value="">';
+
+        $columns = $table ? max(1, count(array_filter($field->fields(), static fn (Field $f): bool => !$f instanceof Hidden))) : $field->getItemColumns();
+        if ($table) {
+            $html .= '<div class="fa-repeater-cols" aria-hidden="true" data-cols="' . min(8, $columns) . '"><span class="fa-repeater-cols-handle"></span><span class="fa-repeater-cols-fields">';
+            foreach ($field->fields() as $sub) {
+                if ($sub instanceof Hidden) { continue; }
+                $html .= '<span>' . Str::e($sub->getLabel()) . ($sub->isRequired() ? ' <span class="fa-required">*</span>' : '') . '</span>';
+            }
+            $html .= '</span><span class="fa-repeater-cols-tools"></span></div>';
+        }
+
+        $html .= '<div class="fa-repeater-items" role="list" aria-labelledby="' . Str::e($id . '-label') . '" data-repeater-items>';
+        foreach ($items as $index => $item) {
+            $html .= $this->repeaterItem($field, $item, $index, count($items), $columns);
+        }
+        $html .= '</div>';
+        if ($items === [] && !$free) { $html .= '<p class="fa-help">' . Str::e($t('empty')) . '</p>'; }
+        if ($free) {
+            $html .= '<div class="fa-repeater-undo" role="status" aria-live="polite" data-repeater-undo hidden><span data-repeater-undo-text></span>'
+                . '<button type="button" class="fa-btn fa-btn-sm" data-repeater-undo-button>' . Str::e($t('undo')) . '</button></div>';
+            $html .= '<button type="submit" name="_repeater" value="' . Str::e($name . ':add') . '" class="fa-repeater-add' . ($table ? ' is-compact' : '') . '" data-repeater-add formnovalidate'
+                . (count($items) >= $field->getMaxItems() ? ' disabled' : '') . '>' . Icons::svg('plus') . '<span>' . Str::e($field->getAddLabel()) . '</span></button>';
+            // An empty item for Add: the script replaces __KEY__ with a new key.
+            $empty = ['_key' => '__KEY__'];
+            foreach ($field->fields() as $subName => $sub) { $empty[$subName] = $sub->stateFromRecord(null, $this->defaultLang); }
+            $html .= '<template data-repeater-template>' . $this->repeaterItem($field, $empty, -1, 0, $columns, true) . '</template>';
+        }
+        if (isset($this->errors[$name])) {
+            $html .= '<p class="fa-error" role="alert" id="' . Str::e($id) . '-error">' . Str::e($this->errors[$name]) . '</p>';
+        }
+        return $html . '</div>';
+    }
+
+    /** One item: its head (handle, number, title, tools) and its fields. */
+    private function repeaterItem(Fields\Repeater $field, array $item, int $index, int $total, int $columns, bool $template = false): string
+    {
+        $name = $field->getName();
+        $key = (string) $item['_key'];
+        $t = static fn (string $k, array $replace = []): string => AdminLang::get('repeater.' . $k, $replace);
+        $prefix = $this->prefix . $name . '-' . $key . '-';
+        // This item's errors, keyed by its own field names ("name", "name.ar").
+        $errors = [];
+        if (!$template) {
+            $start = $name . '.' . $index . '.';
+            foreach ($this->errors as $errorKey => $message) {
+                if (str_starts_with((string) $errorKey, $start)) { $errors[substr((string) $errorKey, strlen($start))] = $message; }
+            }
+        }
+        $state = $item;
+        unset($state['_key']);
+        $fixed = $field instanceof Fields\KeyValue && $field->getFixedKeys() !== null;
+        $schema = $field->fields();
+        if (!$field->isWritable()) { $schema = array_map(static fn (Field $sub): Field => (clone $sub)->disabled(), $schema); }
+        if ($fixed) { $schema['key'] = Fields\Hidden::make('key'); }
+        $form = (new Form())->columns($columns)->schema(array_values($schema));
+        $child = new self($state, $errors, $this->languages, $this->defaultLang, $this->isEdit, false, $prefix, $this->reactive, $this->fileUrl, $this->mediaUrl, $this->editorKey,
+            $this->languageSwitch, null, $this->lookupUrl, $this->recordId, $this->ownTable, $this->editing, $this->switchActive, $this->languageSwitch ? '' : null, $this->inputName($name) . '[' . $key . ']');
+        $body = $child->render($form);
+        if (!$template) {
+            $stats = $child->languageStats();
+            $this->stats['total'] += $stats['total'];
+            foreach (['filled', 'errors'] as $part) {
+                foreach ($stats[$part] as $lang => $n) { $this->stats[$part][$lang] = ($this->stats[$part][$lang] ?? 0) + $n; }
+            }
+            $this->hasShared = $this->hasShared || $child->hasSharedFields();
+        }
+
+        $title = $template ? $t('item', ['number' => '__NUMBER__']) : $field->itemTitle($item, $index);
+        $collapsed = !$template && $field->isCollapsed() && $errors === [] && !$field->isTable();
+        $free = $field->hasFreeItems() && $field->isWritable();
+        $bodyId = $prefix . 'body';
+        $html = '<div class="fa-repeater-item' . ($errors !== [] ? ' has-error' : '') . ($collapsed ? ' is-collapsed' : '') . '" role="listitem" data-repeater-item data-key="' . Str::e($key) . '">';
+        $html .= '<input type="hidden" name="' . Str::e($this->inputName($name) . '[' . $key . '][_key]') . '" value="' . Str::e($key) . '">';
+        $tool = static fn (string $action, string $icon, string $label, string $extra = ''): string => '<button type="' . (in_array($action, ['up', 'down', 'remove'], true) ? 'submit' : 'button') . '"'
+            . (in_array($action, ['up', 'down', 'remove'], true) ? ' name="_repeater" value="' . Str::e($name . ':' . $action . ':' . $key) . '" formnovalidate' : '')
+            . ' class="fa-repeater-tool' . ($action === 'remove' ? ' is-danger' : '') . '" data-repeater-action="' . $action . '" aria-label="' . Str::e($label) . '" title="' . Str::e($label) . '"' . $extra . '>'
+            . Icons::svg($icon) . '</button>';
+        $handle = $free ? '<button type="button" class="fa-repeater-handle" data-repeater-handle aria-label="' . Str::e($t('drag', ['item' => $title])) . '" hidden>' . Icons::svg('grip') . '</button>' : '';
+        if ($field->isTable()) {
+            $html .= '<div class="fa-repeater-row" data-cols="' . min(8, $columns) . '">' . $handle;
+            if ($fixed) { $html .= '<span class="fa-repeater-key">' . Str::e((string) ($item['key'] ?? '')) . '</span>'; }
+            $html .= '<div class="fa-repeater-body" id="' . Str::e($bodyId) . '">' . $body . '</div>';
+            $html .= '<span class="fa-repeater-tools">' . ($free ? $tool('up', 'arrow-up', $t('move_up'), ' data-nojs-only' . ($index === 0 ? ' disabled' : ''))
+                . $tool('down', 'arrow-down', $t('move_down'), ' data-nojs-only' . ($index >= $total - 1 && !$template ? ' disabled' : '')) . $tool('remove', 'trash', $t('remove')) : '') . '</span></div>';
+            return $html . '</div>';
+        }
+        $html .= '<div class="fa-repeater-item-head">' . $handle
+            . '<span class="fa-repeater-num fa-ltr" data-repeater-number>' . ($template ? '__NUMBER__' : (string) ($index + 1)) . '</span>'
+            . '<span class="fa-repeater-title"><span data-repeater-title>' . Str::e($title) . '</span><small data-repeater-summary></small></span>'
+            . '<span class="fa-repeater-tools">'
+            . ($free ? $tool('up', 'arrow-up', $t('move_up'), $index === 0 ? ' disabled' : '')
+                . $tool('down', 'arrow-down', $t('move_down'), $index >= $total - 1 && !$template ? ' disabled' : '')
+                . $tool('duplicate', 'copy', $t('duplicate'), ' hidden')
+                . $tool('remove', 'trash', $t('remove')) : '')
+            . $tool('toggle', 'chevron-down', $collapsed ? $t('expand') : $t('collapse'), ' aria-expanded="' . ($collapsed ? 'false' : 'true') . '" aria-controls="' . Str::e($bodyId) . '" hidden')
+            . '</span></div>';
+        $html .= '<div class="fa-repeater-body" id="' . Str::e($bodyId) . '"' . ($collapsed ? ' hidden' : '') . '>' . $body . '</div>';
         return $html . '</div>';
     }
 
@@ -263,7 +419,7 @@ final class FormRenderer
             $attributes['aria-invalid'] = 'true';
         }
 
-        return $field->renderControl($id, $field->getName(), $this->stringState($field), $attributes);
+        return $field->renderControl($id, $this->inputName($field->getName()), $this->stringState($field), $attributes);
     }
 
     /**
@@ -282,7 +438,7 @@ final class FormRenderer
         if (isset($this->errors[$name])) { $describedBy[] = $id . '-error'; $attributes['aria-invalid'] = 'true'; }
         if ($describedBy !== []) { $attributes['aria-describedby'] = implode(' ', $describedBy); }
 
-        return $field->renderControl($id, $name . '[' . $this->defaultLang . ']', $values[$this->defaultLang] ?? '', $attributes);
+        return $field->renderControl($id, $this->inputName($name, $this->defaultLang), $values[$this->defaultLang] ?? '', $attributes);
     }
 
     /** @return array<string, string> aria attributes of a single control */
@@ -345,9 +501,9 @@ final class FormRenderer
             $value = (string) ($values[$lang] ?? '');
             if ($field instanceof Fields\FileUpload) {
                 $fallback = $isDefault ? null : (string) ($values[$default] ?? '');
-                $html .= ($this->uploadControl)($field, $inputId, $name . '[' . $lang . ']', $value, $fallback === \FloCMS\Admin\Settings\SettingsUploads::PENDING ? null : $fallback, $attributes);
+                $html .= ($this->uploadControl)($field, $inputId, $this->inputName($name, $lang), $value, $fallback === \FloCMS\Admin\Settings\SettingsUploads::PENDING ? null : $fallback, $attributes);
             } else {
-                $html .= $field->renderControl($inputId, $name . '[' . $lang . ']', $value, $attributes);
+                $html .= $field->renderControl($inputId, $this->inputName($name, $lang), $value, $attributes);
             }
             if (!$isDefault && isset($langErrors[$lang])) {
                 $html .= '<p class="fa-error" role="alert" id="' . Str::e($inputId . '-error') . '">' . Str::e($langErrors[$lang]) . '</p>';
@@ -424,7 +580,7 @@ final class FormRenderer
         if (isset($this->errors[$name])) {
             $mainAttributes['aria-invalid'] = 'true';
         }
-        $control = $field->renderControl($id, $name . '[' . $default . ']', $values[$default] ?? '', $mainAttributes);
+        $control = $field->renderControl($id, $this->inputName($name, $default), $values[$default] ?? '', $mainAttributes);
 
         $missing = [];
         $dots = '';
@@ -489,7 +645,7 @@ final class FormRenderer
                 if (isset($langErrors[$lang])) {
                     $attributes['aria-invalid'] = 'true';
                 }
-                $html .= $field->renderControl($inputId, $name . '[' . $lang . ']', $values[$lang] ?? '', $attributes);
+                $html .= $field->renderControl($inputId, $this->inputName($name, $lang), $values[$lang] ?? '', $attributes);
             }
 
             if (isset($langErrors[$lang])) {
@@ -634,7 +790,7 @@ final class FormRenderer
             if ($tabbed) {
                 $html .= '<p class="fa-rich-lang" data-rich-lang-title><span class="fa-code">' . Str::e($lang) . '</span> ' . Str::e(Languages::name($lang)) . '</p>';
             }
-            $html .= $field->renderControl($inputId, $translatable ? $name . '[' . $lang . ']' : $name, $value, $controlAttributes);
+            $html .= $field->renderControl($inputId, $translatable ? $this->inputName($name, $lang) : $this->inputName($name), $value, $controlAttributes);
             if (!$isDefault && isset($langErrors[$lang])) {
                 $html .= '<p class="fa-error" role="alert" id="' . Str::e($inputId . '-error') . '">' . Str::e($langErrors[$lang]) . '</p>';
             }

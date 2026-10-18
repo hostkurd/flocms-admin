@@ -96,6 +96,21 @@ final class Form
         }
         $this->evaluate($state, $record);
     }
+    /**
+     * A repeater's no-JavaScript button (0.24): "rooms:add", "rooms:remove:k1", "rooms:up:k1".
+     * Changes that list in the state; false when the operation names no repeater of this form.
+     */
+    public function applyRepeaterOperation(array &$state, mixed $operation): bool
+    {
+        if (!is_string($operation) || strlen($operation) > 200) { return false; }
+        foreach ($this->fields as $name => $field) {
+            if (!$field instanceof \FloCMS\Admin\Form\Fields\Repeater || !$field->isWritable()) { continue; }
+            $changed = $field->applyOperation(is_string($state[$name] ?? null) ? $state[$name] : '', $operation);
+            if ($changed !== null) { $state[$name] = $changed; return true; }
+        }
+        return false;
+    }
+
     public function liveFields(): array
     {
         $names = [];
@@ -131,6 +146,16 @@ final class Form
                 continue;
             }
             $tab = $tabs[$name] ?? null;
+            // Inside a repeater (0.24): "Rooms → item 3: Name (Arabic)".
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater && preg_match('/^[^.]+\.(\d+)\.([A-Za-z0-9_]+)(?:\.([a-z0-9-]+))?$/', (string) $key, $match) === 1) {
+                $sub = $field->fields()[$match[2]] ?? null;
+                $lang = $match[3] ?? null;
+                $notes = array_values(array_filter([$tab, $sub !== null && $sub->isTranslatable() && $lang !== null && in_array($lang, \FloCMS\Admin\Translation\Languages::all(), true) ? \FloCMS\Admin\Translation\Languages::name($lang) : null],
+                    static fn (?string $part): bool => $part !== null && $part !== ''));
+                $places[(string) $key] = \FloCMS\Admin\Support\AdminLang::get('repeater.error_place', ['field' => $field->getLabel(), 'number' => (string) ((int) $match[1] + 1), 'item' => $sub?->getLabel() ?? $match[2]])
+                    . ($notes !== [] ? ' (' . implode(\FloCMS\Admin\Support\AdminLang::get('form.list_separator'), $notes) . ')' : '');
+                continue;
+            }
             // A translation's error names its language: "Title (Arabic)".
             $lang = explode('.', (string) $key, 2)[1] ?? null;
             $language = $field->isTranslatable() && $lang !== null && in_array($lang, \FloCMS\Admin\Translation\Languages::all(), true)

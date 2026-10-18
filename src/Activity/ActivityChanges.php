@@ -75,6 +75,12 @@ final class ActivityChanges
             $label = mb_substr(trim(strip_tags($field->getLabel())), 0, 120);
             $secret = $field->isHiddenFromActivity() || in_array($name, $hidden, true);
 
+            // A list of items (0.24): added, removed, moved, and changes inside an item.
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater) {
+                array_push($changes, ...self::itemChanges($field, $name, $label, $secret, is_string($old) ? $old : '', is_string($new) ? $new : '', $db));
+                continue;
+            }
+
             if (is_array($old) || is_array($new)) {
                 $old = is_array($old) ? $old : [];
                 $new = is_array($new) ? $new : [];
@@ -93,6 +99,69 @@ final class ActivityChanges
             $changes[] = self::entry($field, $name, $label, null, $secret, $old, $new, $before, $after, $form, $db);
         }
         return array_slice($changes, 0, self::MAX_CHANGES);
+    }
+
+    /**
+     * Changes of a repeater, in words: "Rooms · Added: Kitchen", "Rooms · Bedroom · Size: 18 → 20",
+     * "Rooms · Removed: Bathroom", "Rooms · Order changed". Items are matched by their "_key"
+     * (KeyValue pairs by their key), so a moved item reads as moved.
+     *
+     * @return list<array{field: string, label: string, lang: ?string, type: string, before: string, after: string}>
+     */
+    private static function itemChanges(\FloCMS\Admin\Form\Fields\Repeater $field, string $name, string $label, bool $secret, string $old, string $new, ?Database $db): array
+    {
+        $key = static fn (array $item): string => $field instanceof \FloCMS\Admin\Form\Fields\KeyValue && $field->getFixedKeys() === null
+            ? 'key:' . mb_strtolower(trim(is_string($item['key'] ?? null) ? $item['key'] : '')) : (string) $item['_key'];
+        $index = static function (string $state) use ($field, $key): array {
+            $items = [];
+            foreach ($field->items($state) as $position => $item) {
+                if (!$field->isEmptyItem($item)) { $items[$key($item)] = ['item' => $item, 'position' => $position]; }
+            }
+            return $items;
+        };
+        $before = $index($old);
+        $after = $index($new);
+        if ($before === [] && $after === [] ) { return []; }
+        if ($secret) {
+            return $field->dehydrate($old) === $field->dehydrate($new) ? [] : [['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'hidden', 'before' => '', 'after' => '']];
+        }
+        $changes = [];
+        $title = static fn (array $entry): string => self::clip($field->itemTitle($entry['item'], $entry['position']));
+        foreach ($before as $id => $entry) {
+            if (!isset($after[$id])) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'item', 'before' => $title($entry), 'after' => '']; }
+        }
+        foreach ($after as $id => $entry) {
+            if (!isset($before[$id])) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'item', 'before' => '', 'after' => $title($entry)]; continue; }
+            $form = (new Form())->schema(array_values($field->fields()));
+            $was = $before[$id]['item'];
+            $now = $entry['item'];
+            foreach ($field->fields() as $subName => $sub) {
+                if ($sub instanceof \FloCMS\Admin\Form\Fields\Hidden) { continue; }
+                $subLabel = $label . ' · ' . $title($entry) . ' · ' . mb_substr(trim(strip_tags($sub->getLabel())), 0, 120);
+                $a = $was[$subName] ?? '';
+                $b = $now[$subName] ?? '';
+                if (is_array($a) || is_array($b)) {
+                    $a = is_array($a) ? $a : [];
+                    $b = is_array($b) ? $b : [];
+                    foreach (array_values(array_unique(array_merge(array_keys($a), array_keys($b)))) as $language) {
+                        $x = is_string($a[$language] ?? null) ? $a[$language] : '';
+                        $y = is_string($b[$language] ?? null) ? $b[$language] : '';
+                        if ($x !== $y) { $changes[] = ['field' => $name] + array_diff_key(self::entry($sub, $subName, $subLabel, (string) $language, $secret || $sub->isHiddenFromActivity(), $x, $y, $was, $now, $form, $db), ['field' => true]); }
+                    }
+                    continue;
+                }
+                $x = (string) $a;
+                $y = (string) $b;
+                if ($sub instanceof Toggle) { $x = $x === '1' ? '1' : '0'; $y = $y === '1' ? '1' : '0'; }
+                if ($x !== $y) { $changes[] = ['field' => $name] + array_diff_key(self::entry($sub, $subName, $subLabel, null, $secret || $sub->isHiddenFromActivity(), $x, $y, $was, $now, $form, $db), ['field' => true]); }
+            }
+        }
+        // The same items in another order
+        $common = static fn (array $from, array $to): array => array_values(array_filter(array_keys($from), static fn (string $id): bool => isset($to[$id])));
+        if ($common($before, $after) !== $common($after, $before)) {
+            $changes[] = ['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'order', 'before' => '', 'after' => ''];
+        }
+        return $changes;
     }
 
     /** Fields the log can show: editable, never a password. */

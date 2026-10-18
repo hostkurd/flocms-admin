@@ -2,6 +2,24 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.24.0 - 2026-10-18
+
+**Repeater and key-value fields**: a short list inside a record (a flat's rooms, a tour's days, opening hours, a property's specs), stored as JSON in one column. No migration; add a `TEXT` or `JSON` column for each list you declare. See [Repeaters and key-value lists](docs/repeaters.md).
+
+- `Repeater::make('rooms')->schema([...])` with `->itemLabel()`, `->addLabel()`, `->minItems()`, `->maxItems()` (default 50, at most 200), `->columns(1–4)`, `->collapsed()`, `->table()` and `->distinct()`. Item fields: `TextInput`, `Textarea`, `Select`, `Toggle`, `Date`, `DateTime`, `ColorPicker`, `Hidden` and `MediaPicker`, translatable where they usually are; other fields (passwords, unique, dependent fields, `Slug`, `RichEditor`, uploads, relationships, nested repeaters) are refused when the form is built.
+- `KeyValue::make('specs')` with `->keyLabel()`, `->valueLabel()`, `->translatableValues()` and fixed keys `->keys([...])`. Keys are required and distinct.
+- The editor: cards with number, title, a summary when folded, and Move up, Move down, Duplicate, Remove and Fold; rows for `->table()` and `KeyValue`. Drag the handle, or focus it and press the arrow keys; moves are read out to screen readers. Remove with **Undo** until the form is saved. Phones stack the fields and hide Duplicate.
+- Without JavaScript the Add, Up, Down and Remove buttons send the form and the page returns with the list changed, not saved and not checked.
+- Errors per item: the card and field are marked, the summary names the place ("Please check: Rooms → item 3: Name"), plus distinct, minimum and maximum checks and a size limit of about 48 KB per list (so it fits in a dialog). Empty items are dropped on save.
+- Page-level translation: the items' translatable fields follow the "Editing" switch and count in it; outside the default language the list is locked (no add, remove or move) and only the texts are translated. An error in an item's translation opens its language.
+- Dialogs, relation managers and settings pages support both fields; on a settings page the list is stored as the setting's value (`setting('contact.links')` is an array).
+- History: changes inside items are listed per item ("Rooms · Kitchen · Size"), with lines for added and removed items and a new order. `MediaPicker` ids inside items count as uses in the media library.
+- Website helpers `repeater_items($value, ?$lang)` and `key_values($value, ?$lang)`.
+- `admin:doctor` warns when a list's column is not `TEXT` or `JSON`.
+- New words in the panel's `en`, `ar` and `ku` files (`repeater.*`, `validation.repeater_*`, `activity.item_added`, `activity.item_removed`, `activity.order_changed`).
+- Create/Edit dialogs and action pages start their forms with the hidden default submit button, so Enter in a field saves (never a list button).
+- For developers: `FormRenderer` takes a `namePrefix`; `Form::applyRepeaterOperation()`; `SettingsEditor::operate()`; the dialog draft is read from any input name with up to four `[…]` parts, so nested names keep their structure; icons `copy`, `arrow-up`, `arrow-down`.
+
 ## 0.23.1 - 2026-10-18
 
 Polish for page-level translation.

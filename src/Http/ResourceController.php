@@ -292,12 +292,13 @@ final class ResourceController extends PanelController
             }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
             try {
-                if ($this->request->input('_refresh') !== null) {
+                if ($this->request->input('_refresh') !== null || $this->request->input('_repeater') !== null) {
                     Auth::authorize($this->resource::permission('view'));
                     $record = $executor->record($placement, $id); $action->authorizeRequest($this->resource, $record);
                     $state = in_array($action->getKind(), ['create', 'edit'], true)
                         ? (new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository()))->state($form, $this->request->all(), $record)
                         : \FloCMS\Admin\Actions\ActionForm::state($action, $form, $this->request->all(), $record);
+                    if ($this->request->input('_repeater') !== null) { $form->evaluate($state, $record)->applyRepeaterOperation($state, $this->request->input('_repeater')); }
                     $form->refreshState($state, $record);
                 } else {
                     $executor->execute($action, $placement, $id, $token, $this->request->all(), $state);
@@ -604,7 +605,11 @@ final class ResourceController extends PanelController
             $submission = new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository());
             $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $this->request->all(), $_FILES['_uploads'] ?? [], $this->resource, $record);
             $state = $submission->state($form, $input, $record);
-            $refreshing = $this->request->input('_refresh') !== null;
+            // A repeater's Add, Remove, Up or Down button without JavaScript (0.24) shows the form again, changed.
+            $operation = $this->request->input('_repeater');
+            // A list button never saves, even when no list on the form takes the operation (a disabled one).
+            if ($operation !== null) { $form->evaluate($state, $record)->applyRepeaterOperation($state, $operation); }
+            $refreshing = $this->request->input('_refresh') !== null || $operation !== null;
             if ($refreshing) { $form->refreshState($state, $record); }
             $errors = $refreshing ? [] : $submission->errors($form, $state, $record);
 

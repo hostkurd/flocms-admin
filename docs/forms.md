@@ -172,7 +172,7 @@ Reactive forms refresh on control **change** rather than each keystroke. Standar
 
 ## Larger drafts and upgrades
 
-Admin 0.6 requires Reactive `^0.4.0`; release/install Reactive first. Admin allows **64,000 UTF-8 bytes of complete JSON modal draft**, including all field names, values and translations. This uses Reactive's explicit 65,536-byte scalar allowance with transport/snapshot headroom. The existing full-page recovery path remains for larger records; copy unsaved text before leaving the dialog because the fallback does not transfer it. Nested/object state, repeaters, file uploads and relationship managers are separate features.
+Admin 0.6 requires Reactive `^0.4.0`; release/install Reactive first. Admin allows **64,000 UTF-8 bytes of complete JSON modal draft**, including all field names, values and translations. This uses Reactive's explicit 65,536-byte scalar allowance with transport/snapshot headroom. The existing full-page recovery path remains for larger records; copy unsaved text before leaving the dialog because the fallback does not transfer it. Nested/object state, file uploads and relationship managers are separate features. [Repeaters](repeaters.md) (0.24) live inside the same draft: a dialog's whole list, with every item's fields and translations, counts toward the 64,000 bytes.
 
 No package schema migration is required. Every stored field in your own form still needs its own database column. The property example needs title/description, country/city, listing type and pricing columns; the generator does not add them automatically. Existing flat resources and standard authentication keep working. Core and the skeleton acquire no new dependency or application-file change.
 

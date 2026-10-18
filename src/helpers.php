@@ -122,3 +122,60 @@ if (!function_exists('media_folder')) {
         return $store->search('', null, false, 1, max(1, min(500, $limit)), ['folder' => $id, 'sort' => $sort])['items'];
     }
 }
+
+if (!function_exists('repeater_items')) {
+    /**
+     * The items of a Repeater column (0.24), as plain arrays in the page's
+     * language (translations fall back to the default language), without the
+     * internal "_key":
+     *
+     *     @foreach(repeater_items($property->rooms) as $room)
+     *         <li>{{ $room['name'] }} · {{ $room['size'] }} m²</li>
+     *     @endforeach
+     *
+     * A media picker inside an item stays an id (or a list of ids): media($room['photo']).
+     *
+     * @return list<array<string, mixed>>
+     */
+    function repeater_items(mixed $value, ?string $lang = null): array
+    {
+        if (is_string($value)) { $value = json_decode($value, true); }
+        if (!is_array($value)) { return []; }
+        $items = [];
+        foreach ($value as $entry) {
+            if (!is_array($entry)) { continue; }
+            unset($entry['_key']);
+            foreach ($entry as $name => $part) {
+                // {"en": …, "ar": …} is a translation; a list (several media ids) stays a list.
+                if (is_array($part) && !array_is_list($part)) { $entry[$name] = Translations::get($part, $lang); }
+            }
+            $items[] = $entry;
+        }
+        return $items;
+    }
+}
+
+if (!function_exists('key_values')) {
+    /**
+     * The pairs of a KeyValue column (0.24) in their order, key => value in the
+     * page's language (falling back to the default language):
+     *
+     *     @foreach(key_values($property->specs) as $label => $value)
+     *         <dt>{{ $label }}</dt><dd>{{ $value }}</dd>
+     *     @endforeach
+     *
+     * A numeric key ("2") becomes an integer key, as everywhere in PHP.
+     *
+     * @return array<int|string, string>
+     */
+    function key_values(mixed $value, ?string $lang = null): array
+    {
+        $pairs = [];
+        foreach (repeater_items($value, $lang) as $item) {
+            $key = $item['key'] ?? null;
+            if (!is_scalar($key) || trim((string) $key) === '') { continue; }
+            $pairs[(string) $key] = is_scalar($item['value'] ?? null) ? (string) $item['value'] : '';
+        }
+        return $pairs;
+    }
+}
