@@ -90,6 +90,7 @@ final class GlobalSearch
             if ($group !== null && $group['items'] !== []) { $groups[] = $group; $found++; }
         }
         if ($this->inBudget()) { $groups[] = ['label' => AdminLang::get('nav.settings'), 'items' => $this->settings($query)]; }
+        if ($this->inBudget()) { $groups[] = ['label' => AdminLang::get('roles.title'), 'items' => $this->roles($query)]; }
         if ($this->inBudget()) { $groups[] = ['label' => AdminLang::get('media.title'), 'items' => $this->media($query)]; }
         foreach (Admin::config()->search()['sources'] as $source) {
             if (!$this->inBudget()) { break; }
@@ -115,7 +116,7 @@ final class GlobalSearch
         $page = AdminLang::get('search.type_page');
         $pages = [SearchResult::make(AdminLang::get('nav.dashboard'), Admin::url('dashboard'))->icon('dashboard')->type($page)];
         $urls = PanelView::pageUrls();
-        foreach ([['media', 'media.title', 'image'], ['users', 'nav.users', 'users'], ['settings', 'nav.settings', 'settings'], ['activity', 'activity.title', 'clock'], ['trash', 'trash.title', 'trash'], ['profile', 'nav.profile', 'user']] as [$key, $label, $icon]) {
+        foreach ([['media', 'media.title', 'image'], ['users', 'nav.users', 'users'], ['roles', 'nav.roles', 'shield'], ['settings', 'nav.settings', 'settings'], ['activity', 'activity.title', 'clock'], ['trash', 'trash.title', 'trash'], ['profile', 'nav.profile', 'user']] as [$key, $label, $icon]) {
             if ($urls[$key] !== null) { $pages[] = SearchResult::make(AdminLang::get($label), $urls[$key])->icon($icon)->type($page); }
         }
 
@@ -213,6 +214,27 @@ final class GlobalSearch
                 $results[] = SearchResult::make($page->getLabel(), Admin::url('settings/edit/' . $name))->detail($detail)
                     ->icon($page->getIcon())->type(AdminLang::get('nav.settings'));
             }
+            if (count($results) >= $this->limit()) { break; }
+        }
+        return $results;
+    }
+
+    /**
+     * Roles by name (0.21), for people who may open the Roles page.
+     *
+     * @return list<SearchResult>
+     */
+    private function roles(string $query): array
+    {
+        if (PanelView::pageUrls()['roles'] === null || !\FloCMS\Admin\Roles\Roles::enabled()) { return []; }
+        $results = [];
+        foreach (\FloCMS\Admin\Roles\Roles::all() as $role) {
+            if (!self::contains($role->label(), $query)) { continue; }
+            $count = count($role->permissions);
+            $permissions = $role->holdsEverything() ? AdminLang::get('roles.everything') : AdminLang::get($count === 1 ? 'roles.count_one' : 'roles.count_many', ['count' => $count]);
+            $results[] = SearchResult::make($role->label(), Admin::url('roles/edit/' . $role->number))
+                ->detail(AdminLang::get('roles.search_detail', ['level' => $role->level, 'count' => $permissions]))
+                ->icon('shield')->type(AdminLang::get('roles.details'));
             if (count($results) >= $this->limit()) { break; }
         }
         return $results;

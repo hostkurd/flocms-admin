@@ -263,6 +263,33 @@ final class AdminConfig
         ];
     }
 
+    /**
+     * The Roles page (0.21): roles and permissions edited in the panel and stored
+     * in a table, on top of config/config.php. On unless 'roles' => false (the
+     * emergency switch: the config roles apply again at once). 'table' (default
+     * admin_roles) renames the table; 'permissions' lists the site's own permission
+     * names with a label (a lang key or text) so they get a row in the grid:
+     * ['permissions' => ['reports.export' => 'Export reports']].
+     *
+     * @return array{enabled: bool, table: string, permissions: array<string, string>}
+     */
+    public function roles(): array
+    {
+        $value = $this->values['roles'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $permissions = [];
+        foreach (is_array($options['permissions'] ?? null) ? $options['permissions'] : [] as $name => $label) {
+            if (is_string($name) && \FloCMS\Admin\Roles\Roles::validPattern($name) && !str_contains($name, '*') && is_scalar($label)) {
+                $permissions[$name] = (string) $label;
+            }
+        }
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_roles'),
+            'permissions' => $permissions,
+        ];
+    }
+
     private static function tableName(mixed $candidate, string $default): string
     {
         return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,47}$/D', $candidate) === 1 ? $candidate : $default;

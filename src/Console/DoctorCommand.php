@@ -121,6 +121,7 @@ final class DoctorCommand extends Command
         $this->checkSettings($config, $db);
         $this->checkLibrary($config, $db, $project);
         $this->checkHistory($config, $db, $project, $resources);
+        $this->checkRoles($config, $db, $project);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -566,6 +567,43 @@ final class DoctorCommand extends Command
             $this->bad('Library images need the GD or Imagick PHP extension to make their web and thumb versions.');
         }
         $this->line('  Permissions: ' . \FloCMS\Admin\Media\MediaLibrary::permission('view') . ', …create, …update, …delete');
+    }
+
+    /** The Roles page (0.21): flocms-core 2.4, the config maps it builds on, its table and the stored roles. */
+    private function checkRoles(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        if (!$config->roles()['enabled']) { return; }
+        $this->section('Roles  (/admin/roles)');
+        if (!\FloCMS\Admin\Roles\Roles::coreSupportsRoles()) {
+            $this->bad('The Roles page needs flocms-core 2.4 or later: composer require "hostkurd/flocms-core:^2.4" -W. Until then the roles of config/config.php apply.');
+            return;
+        }
+        if (!is_array(\FloCMS\Core\Config::get('permissions')) || !is_array(\FloCMS\Core\Config::get('admin_access_roles'))) {
+            $this->line('  Off: config/config.php sets no \'permissions\' or \'admin_access_roles\' map, which the Roles page edits (the skeleton 1.8+ config has both).');
+            return;
+        }
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the roles table was not checked.'); return; }
+        }
+        $table = $config->roles()['table'];
+        $found = $this->columns($db, $table);
+        if ($found === null) {
+            $this->bad('Table "' . $table . '" not found: run php flo admin:install, then php flo migrate. Until then the roles of config/config.php apply.');
+            return;
+        }
+        $missing = array_values(array_diff(['role', 'name', 'level', 'admin_access', 'permissions', 'created_at', 'updated_at'], array_keys($found)));
+        if ($missing !== []) {
+            $this->bad('Table "' . $table . '" exists but is not the roles table (missing ' . implode(', ', $missing) . '). Name it in config/admin.php: \'roles\' => [\'table\' => \'site_roles\'], then run php flo admin:install and php flo migrate.');
+            return;
+        }
+        $rows = (new \FloCMS\Admin\Roles\RoleStore($db, $table))->rows();
+        $config_roles = \FloCMS\Admin\Roles\Roles::configRoles();
+        $changed = count(array_intersect_key($rows, $config_roles));
+        $this->ok('Table "' . $table . '": ' . ($rows === [] ? 'no changes, the roles of config/config.php apply' : $changed . ' config role(s) changed, ' . (count($rows) - $changed) . ' added in the panel'));
+        $this->line('  The page needs the permission ' . \FloCMS\Admin\Roles\Roles::PERMISSION . ' (Super Admin has it through *). php flo admin:roles lists the roles in force; php flo admin:roles-reset undoes changes.');
+        if (class_exists(\FloCMS\Admin\Support\Str::appControllerClass('roles'))) {
+            $this->caution('The URL /admin/roles belongs to your site, so the panel\'s Roles page is not shown. Rename that controller to use it.');
+        }
     }
 
     /**

@@ -14,7 +14,7 @@ final class InstallCommand extends Command
 
     protected string $description = 'Set up flocms-admin: create config/admin.php and admin/Resources/';
 
-    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences, media library, trash and activity log tables (once). Running it again only adds what is missing.';
+    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences, media library, trash, activity log and roles tables (once). Running it again only adds what is missing.';
 
     protected function handle(): int
     {
@@ -59,6 +59,11 @@ final class InstallCommand extends Command
         if ($trash['enabled'] || $activity['enabled']) {
             $migrations[] = ['trash-activity-migration', $trash['table'] . '_and_' . $activity['table'], ['trash_table' => $trash['table'], 'activity_table' => $activity['table']], 'tables'];
         }
+        // The Roles page (0.21)
+        $roles = $settings->roles();
+        if ($roles['enabled']) {
+            $migrations[] = ['roles-migration', $roles['table'], []];
+        }
         // Each new file a second later than the one before, so they run in this order.
         $time = time();
         foreach ($migrations as $migration) {
@@ -79,7 +84,7 @@ final class InstallCommand extends Command
 
         $this->newLine();
         $this->line('Next steps:');
-        $this->line('  1. php flo migrate                              (settings, preferences, media library, trash and activity tables)');
+        $this->line('  1. php flo migrate                              (settings, preferences, media library, trash, activity and roles tables)');
         $this->line('  2. php flo make:admin-resource Post --migration');
         $this->line('  3. php flo make:admin-settings                  (website settings pages, optional)');
         $this->line('  4. Log in, then open /admin/dashboard');

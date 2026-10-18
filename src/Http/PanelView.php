@@ -76,6 +76,9 @@ final class PanelView
             'mediaPicker' => self::mediaPicker(),
             'usersUrl' => $urls['users'],
             'usersActive' => $activeSlug === 'accounts',
+            'rolesUrl' => $urls['roles'],
+            'rolesActive' => $activeSlug === 'roles',
+            'rolesIcon' => Icons::svg('shield'),
             'settingsUrl' => $urls['settings'],
             'settingsActive' => $activeSlug === 'settings',
             'settingsIcon' => Icons::svg('settings'),
@@ -189,7 +192,7 @@ final class PanelView
      * The panel's own pages the current person may open (null when not): the sidebar
      * and Ctrl+K search (0.20) show the same set.
      *
-     * @return array{media: ?string, users: ?string, settings: ?string, activity: ?string, trash: ?string, profile: ?string}
+     * @return array{media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, profile: ?string}
      */
     public static function pageUrls(): array
     {
@@ -197,11 +200,24 @@ final class PanelView
         return [
             'media' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media')) && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view') ? Admin::url('media') : null,
             'users' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
+            'roles' => self::rolesUrl(),
             'settings' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
             'activity' => self::activityUrl(),
             'trash' => self::trashUrl(),
             'profile' => $usersEnabled ? Admin::url('profile') : null,
         ];
+    }
+
+    /** Site → Roles, for people with roles.manage (0.21; when no site resource or controller uses the slug). */
+    public static function rolesUrl(): ?string
+    {
+        if (Admin::registry()->find('roles') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('roles'))) { return null; }
+        try {
+            $status = \FloCMS\Admin\Roles\Roles::status();
+            return in_array($status, ['ready', 'missing', 'unsupported'], true) && Auth::can(\FloCMS\Admin\Roles\Roles::PERMISSION) ? Admin::url('roles') : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** Site → Activity, for people with activity.view (when no site resource or controller uses the slug). */
@@ -256,6 +272,12 @@ final class PanelView
         }
         if ($activeSlug === 'accounts') {
             return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];
+        }
+        if ($activeSlug === 'roles' && Admin::registry()->find('roles') === null) {
+            $section = AdminLang::get('roles.title');
+            $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $section, 'url' => $title === $section ? null : Admin::url('roles')]];
+            if ($title !== $section) { $items[] = ['label' => $title, 'url' => null]; }
+            return $items;
         }
         if (in_array($activeSlug, ['trash', 'activity'], true) && Admin::registry()->find($activeSlug) === null) {
             $section = AdminLang::get($activeSlug === 'trash' ? 'trash.title' : 'activity.title');

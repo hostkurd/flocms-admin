@@ -78,6 +78,10 @@ final class Icons
         'clock' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7v5l3 2',
         'history' => 'M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2',
         'calendar-range' => 'M4 6h16v15H4zM4 10h16M8 3v4M16 3v4M8 14h3M13 17h3',
+        'crown' => 'M3 8l4 4 5-7 5 7 4-4-2 11H5z',
+        'lock' => 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
+        'check' => 'M5 12l5 5L20 7',
+        'info' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 11v5M12 8h.01',
     ];
 
     /** @return list<string> */

@@ -20,7 +20,7 @@ use FloCMS\Core\Session;
  *
  * The rules are the skeleton's own (FloCMS\Core\Auth):
  *  - every action needs `users.manage` (Admins and Super Admins by default);
- *  - a role can only be given up to your own (Auth::canAssignRole);
+ *  - a role can only be given up to your own level (Auth::canAssignRole);
  *  - only users of a lower role can be edited or deleted, unless you hold
  *    `users.manage_any` (Auth::canManageUser);
  *  - nobody can delete themselves, change their own role or suspend themselves.
@@ -159,10 +159,11 @@ final class UsersResource extends Resource
         }
     }
 
-    /** @return array<int, string> role number => label, from Config 'roles' */
+    /** @return array<int, string> role number => label: Config 'roles', or the roles of the Roles page */
     public static function roles(): array
     {
-        $roles = Config::get('roles');
+        // Through flocms-core, so roles added on the Roles page (0.21) are listed too.
+        $roles = method_exists(\FloCMS\Core\Auth::class, 'roles') ? \FloCMS\Core\Auth::roles() : Config::get('roles');
         if (!is_array($roles) || $roles === []) {
             $roles = [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin'];
         }

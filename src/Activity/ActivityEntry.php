@@ -68,9 +68,9 @@ final class ActivityEntry
     public function group(): string
     {
         return match ($this->action) {
-            'created', 'media_uploaded' => 'created',
-            'updated', 'settings_saved', 'media_updated', 'media_replaced', 'profile_updated' => 'edited',
-            'deleted', 'purged', 'media_deleted' => 'deleted',
+            'created', 'media_uploaded', 'role_created' => 'created',
+            'updated', 'settings_saved', 'media_updated', 'media_replaced', 'profile_updated', 'role_updated', 'role_reset' => 'edited',
+            'deleted', 'purged', 'media_deleted', 'role_deleted' => 'deleted',
             'restored' => 'restored',
             default => 'other',
         };
@@ -89,9 +89,9 @@ final class ActivityEntry
     public function badgeColor(): string
     {
         return match ($this->action) {
-            'created', 'media_uploaded' => 'green',
-            'updated', 'settings_saved', 'media_updated', 'profile_updated' => 'blue',
-            'deleted', 'purged', 'media_deleted' => 'red',
+            'created', 'media_uploaded', 'role_created' => 'green',
+            'updated', 'settings_saved', 'media_updated', 'profile_updated', 'role_updated', 'role_reset' => 'blue',
+            'deleted', 'purged', 'media_deleted', 'role_deleted' => 'red',
             'restored' => 'purple',
             'media_replaced', 'media_moved' => 'teal',
             'login' => 'yellow',
@@ -135,6 +135,7 @@ final class ActivityEntry
         return match ($this->resource) {
             'settings' => AdminLang::get('settings.title'),
             'media' => AdminLang::get('media.title'),
+            'roles' => AdminLang::get('activity.what.role'),
             null, '' => '',
             default => Str::headline($this->resource),
         };
@@ -228,6 +229,11 @@ final class ActivityEntry
         if ($this->resource === 'settings') {
             $page = Admin::settings()->find($this->recordId);
             return $page !== null && \FloCMS\Core\Auth::can($page->getPermission()) ? Admin::url('settings/edit/' . $this->recordId) : null;
+        }
+        if ($this->resource === 'roles') {
+            if ($this->action === 'role_deleted' || !\FloCMS\Admin\Roles\Roles::canManage() || !is_numeric($this->recordId)) { return null; }
+            $role = \FloCMS\Admin\Roles\Roles::find((int) $this->recordId);
+            return $role !== null ? Admin::url('roles/edit/' . $role->number) : null;
         }
         if ($this->resource === 'media') {
             return \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('update') ? Admin::url('media/edit/' . $this->recordId) : null;

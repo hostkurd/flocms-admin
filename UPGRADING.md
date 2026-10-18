@@ -1,3 +1,28 @@
+# Upgrading to Admin 0.21.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.21.0" -W` (this also installs flocms-core 2.4), then:
+
+```bash
+php flo admin:install   # adds the roles migration (nothing is overwritten)
+php flo migrate         # creates admin_roles
+php flo admin:doctor    # checks it
+php flo view:clear
+```
+
+Reload open Admin pages.
+
+- **Nothing changes until someone saves on the Roles page**: without rows in `admin_roles` the roles of `config/config.php` apply exactly as before.
+- **Who sees the page**: `roles.manage`. Super Admin has it through `*`. Give it to other roles only on purpose.
+- **The page needs** the `permissions` and `admin_access_roles` maps in `config/config.php` (the skeleton 1.8+ has both). Without them it stays off and `admin:doctor` says so.
+- **Once roles are changed on the page, `config/config.php` is no longer the whole story**: edits to a config role there only apply while the role has no changes on the page (Reset to default, or `php flo admin:roles-reset`). `php flo admin:roles` prints the roles in force.
+- **Emergency switch**: `'roles' => false` in `config/admin.php` makes the config roles apply again at once, without deleting anything.
+- **Your own permission checks**: code that compares role numbers to rank users can use `Auth::level($role)` (core 2.4) so it agrees with roles added on the page; `Auth::roles()` lists every role's name. Name your own permissions in `'roles' => ['permissions' => [...]]` to give them a row in the grid.
+- **Skeleton 1.8.7** (optional) asks core for admin access at login, so a new role can sign in at once; older skeletons get there one redirect later.
+- **`/admin/roles`**: a site resource or application controller with the slug `roles` keeps it; the panel's page is then not shown.
+- **Templates and tests**: the sidebar's Site group has a Roles link for people with `roles.manage`, and Ctrl+K a Roles group.
+
+---
+
 # Upgrading to Admin 0.20.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.20.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

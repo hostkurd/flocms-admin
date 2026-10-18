@@ -16,13 +16,14 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
 - **Media library**: images and videos uploaded once, with titles and alt text per language, in folders, picked in forms and the rich text editor, with "used in" tracking, focal points, a duplicate check and responsive `<img>` output on the website. [Media guide](docs/media.md).
 - **Ctrl+K search**: one box, from any page, that finds records of every resource, the panel's pages, settings and media you may open. [Search guide](docs/search.md).
+- **Roles and permissions**: change what each role may do in a permission grid, add roles with their own level, and keep every change in the activity log, on top of `config/config.php`. [Roles guide](docs/roles.md).
 - **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
 
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` ^2.3.2, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
+- `hostkurd/flocms-core` ^2.4.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
 - A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
@@ -66,13 +67,14 @@ That last point has a consequence. If your site has `controllers/PropertiesContr
 | Users | `/admin/accounts` | `users.manage` (Admins and Super Admins in the skeleton) |
 | Profile | `/admin/profile` | Every logged-in admin user, for their own account, with a "My preferences" tab |
 | Settings | `/admin/settings` | `settings.manage` for website settings pages, `settings.panel` for Admin panel (Admins and Super Admins in the skeleton) |
+| Roles | `/admin/roles` | `roles.manage` (Super Admins in the skeleton, through `*`) |
 
 **`/admin`** opens the dashboard on skeleton 1.8+: the package sets `Config 'admin.home'` and the skeleton's `/admin` page follows it. Set `admin.home` in your `config/config.php` to send `/admin` elsewhere, or to `null` to keep the skeleton's page.
 
 **Users** manages the skeleton's `users` table with the skeleton's own rules (`FloCMS\Core\Auth`):
 
-- a role can only be given up to your own (`Auth::canAssignRole()`);
-- only users of a lower role can be edited or deleted, unless you hold `users.manage_any` (`Auth::canManageUser()`);
+- a role can only be given up to your own level (`Auth::canAssignRole()`);
+- only users of a lower level can be edited or deleted, unless you hold `users.manage_any` (`Auth::canManageUser()`);
 - nobody can delete themselves, change their own role or suspend themselves;
 - passwords are hashed like `php flo user:create`, never shown, and kept when left empty;
 - users created here are active and verified (no email is sent); the login defaults to the email;
@@ -82,7 +84,7 @@ That last point has a consequence. If your site has `controllers/PropertiesContr
 
 **Settings** shows the website settings pages of `admin/settings.php` and the panel's own **Admin panel** page. See the [Settings guide](docs/settings.md).
 
-Set `'users' => false` in `config/admin.php` to switch users management and the profile page off. The URLs `dashboard`, `accounts`, `profile` and `settings` belong to the panel and cannot be used as resource slugs.
+Set `'users' => false` in `config/admin.php` to switch users management and the profile page off. The URLs `dashboard`, `accounts`, `profile` and `settings` belong to the panel and cannot be used as resource slugs; `roles`, `trash`, `activity` and `search` can, but the panel's page is then not shown.
 
 ## Resources
 
@@ -277,6 +279,8 @@ With the skeleton's default roles, Editors (`content.*`), Admins and Super Admin
 
 Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for confirmation first. Since 0.19 a deleted record goes to the trash: restoring it needs `create`, deleting it for good needs `delete`. The Activity page needs `activity.view` (History on a record needs `update`).
 
+Since 0.21 the roles and their permissions can be changed on **Site → Roles** (permission `roles.manage`): the panel stores the changes in a table and gives them to flocms-core 2.4+ (`Auth::loadRolesUsing()`), so every check of the site sees them. See the [Roles guide](docs/roles.md).
+
 ## Configuration
 
 `config/admin.php`:
@@ -303,6 +307,7 @@ Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for 
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `trash` | `true` | Deleted records wait in the trash (`/admin/trash`); `['days' => 30, 'table' => 'admin_trash']`, `0` days keeps them until emptied; `false` deletes at once ([guide](docs/trash-and-activity.md)) |
 | `activity` | `true` | The activity log (`/admin/activity`, History on records); `['days' => 365, 'logins' => false, 'table' => 'admin_activity']`; `false` switches it off |
+| `roles` | `true` | The Roles page (`/admin/roles`); `['table' => 'admin_roles', 'permissions' => ['reports.export' => 'Export reports']]` names the site's own permissions; `false` switches it off and the roles of `config/config.php` apply again ([guide](docs/roles.md)) |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
 
@@ -326,16 +331,18 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 
 | Command | |
 | --- | --- |
-| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash and activity log migrations (never overwrites; run again after an upgrade to add what is missing) |
+| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash, activity log and roles migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration; `--reorderable` adds a `sort` column and the Reorder button |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, and the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys) |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys) and the roles table |
 | `php flo admin:media-import [--dry-run]` | Add the images and videos already in the media folder to the media library (and fingerprints to items from before 0.18), then rebuild where they are used |
 | `php flo admin:media-usage` | Rebuild where media library items are used (after changing records outside the panel) |
 | `php flo admin:trash-purge [--all]` | Delete for good the records older than the trash's days (`--all`: empty the whole trash) |
 | `php flo admin:activity-purge` | Remove activity log entries older than its days |
+| `php flo admin:roles` | List the roles in force: level, panel access, source and permissions |
+| `php flo admin:roles-reset [role]` | Undo the Roles page for one role, or all (config roles get their config values back; added roles without users are removed) |
 
 ## Removing the package
 
@@ -367,6 +374,10 @@ Admin 0.19 makes deleting safe and every change traceable. A deleted record goes
 
 Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) or `/` on any page, type, and pick a result with the arrow keys and Enter. It finds records of every resource by the columns their list already searches (`->searchable()`, every language), the panel's pages, "New …" actions, settings pages and media items, grouped and limited to what the person may open; before typing it shows the last 8 records opened. `#42` finds record 42. Nothing to install. See the [Search guide](docs/search.md).
 
+## Roles and permissions
+
+Admin 0.21 adds **Site → Roles** for people with `roles.manage`. The list shows every role with its level, panel access, users and where it comes from (config, changed, or added in the panel). A role opens on a full page with a permission grid: one row per resource with View / Create / Edit / Delete, an **All content** switch (`content.*`, which also covers resources added later and the media library), the media library, each settings page, users, the panel's own pages, actions and widgets with their own permission, and **Other** for names the site's code uses. Beside it: the role's name per language, its level and panel access, and who holds it. Config roles can be changed and reset; new roles get the next free number and any level below yours. The top role is locked, nobody changes their own role or gives a permission they don't hold, and a save that would leave nobody able to manage roles is refused. Every change goes to the activity log. Needs flocms-core 2.4; run `php flo admin:install` and `php flo migrate`. See the [Roles guide](docs/roles.md).
+
 ## Rich text
 
 Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`; with the media library, into its `library/` folder as library items), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
@@ -390,7 +401,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.18: media folders, the file-manager Media page and picker, batch editing, focal points, duplicate check, framed media fields, `FileDrop`
 - 0.19: the trash (Undo, restore with the same id, Site → Trash) and the activity log (History on records, Site → Activity)
 - 0.20: Ctrl+K search (records, pages, actions, settings and media; recent records)
-- Next: a roles & permissions page, CSV import/export
+- 0.21: the Roles page (permission grid, new roles with levels, reset, activity log; flocms-core 2.4)
+- Next: CSV import/export
 
 ## Development
 

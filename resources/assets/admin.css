@@ -1555,3 +1555,132 @@ a.fa-filedrop-name:hover{text-decoration:underline}
   .fa-panel .fa-cmdk-link{grid-template-columns:32px minmax(0,1fr)}
   .fa-cmdk-type{display:none}
 }
+
+/* Roles and permissions (0.21) */
+.fa-roles-table .fa-role-cell{display:flex;align-items:center;gap:12px;min-width:0}
+.fa-role-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:34px;height:34px;border-radius:var(--fa-radius);background:var(--fa-surface-3);color:var(--fa-muted)}
+.fa-role-icon .fa-icon{width:18px;height:18px}
+.fa-role-names{display:grid;min-width:0}
+.fa-role-name{font-weight:600;color:var(--fa-text)}
+.fa-panel a.fa-role-name{color:var(--fa-text)}
+.fa-panel a.fa-role-name:hover{color:var(--fa-primary-text)}
+.fa-role-number{font-size:12px;color:var(--fa-muted)}
+.fa-role-level{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:6px;background:var(--fa-surface-3);font:600 12.5px/1 var(--fa-mono);color:var(--fa-text-2)}
+.fa-role-yes{display:inline-flex;align-items:center;gap:6px;color:var(--fa-success);font-weight:500}
+.fa-role-locked{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fa-muted);white-space:nowrap}
+.fa-roles-table .fa-actions{white-space:nowrap}
+.fa-role-delete-link{color:var(--fa-danger) !important}
+.fa-roles-foot{display:flex;align-items:center;gap:8px;margin:0 !important;padding:12px 16px;border-block-start:1px solid var(--fa-border);background:var(--fa-surface-2);font-size:12.5px;color:var(--fa-muted);border-end-start-radius:var(--fa-radius-lg);border-end-end-radius:var(--fa-radius-lg)}
+.fa-roles-foot .fa-icon,.fa-role-note .fa-icon,.fa-role-source .fa-icon,.fa-role-notice .fa-icon{flex:none;width:16px;height:16px}
+
+.fa-role-title{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.fa-role-notice{display:flex;align-items:center;gap:8px}
+.fa-role-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.fa-role-main,.fa-role-aside{display:flex;flex-direction:column;gap:16px;min-width:0}
+.fa-record .fa-role-aside{position:sticky;inset-block-start:96px;margin:0;padding:0;border:0}
+.fa-role-group,.fa-role-side{padding:20px 24px}
+.fa-role-group-head,.fa-role-side-head{display:flex;align-items:flex-start;gap:16px;margin-block-end:14px}
+.fa-role-group-head > div{flex:1;min-width:0}
+.fa-role-group-head .fa-section-title,.fa-role-side .fa-section-title{margin:0 !important}
+.fa-role-group-head .fa-help{margin-block-start:4px !important}
+.fa-role-side > .fa-section-title{margin-block-end:14px !important}
+.fa-role-side-head{margin-block-end:12px;align-items:center}
+.fa-role-side-head .fa-section-title{flex:1}
+.fa-role-count{margin-inline-start:auto;font-size:12.5px;color:var(--fa-muted);white-space:nowrap}
+.fa-role-code{margin-inline-start:auto;font:500 12px/1.4 var(--fa-mono);color:var(--fa-faint);direction:ltr;unicode-bidi:isolate;white-space:nowrap}
+
+.fa-role-all{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-block-end:14px;border:1px solid var(--fa-border);border-radius:var(--fa-radius);background:var(--fa-surface-2);cursor:pointer}
+.fa-role-all.is-on{border-color:var(--fa-primary-border);background:var(--fa-primary-soft)}
+.fa-role-all .fa-switch{margin:0}
+.fa-role-all-text{flex:1;min-width:0}
+.fa-role-all-text b{display:block;font-weight:600}
+.fa-role-all-text span{display:block;font-size:12.5px;color:var(--fa-muted)}
+.fa-role-all .fa-role-code{color:var(--fa-muted)}
+
+.fa-role-grid-wrap{overflow-x:auto}
+.fa-role-grid{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--fa-border);border-radius:var(--fa-radius)}
+.fa-role-grid th,.fa-role-grid td{padding:10px 14px;border-block-end:1px solid var(--fa-border);text-align:center;vertical-align:middle}
+.fa-role-grid tbody tr:last-child > *{border-block-end:0}
+.fa-role-grid thead th{font-size:12.5px;font-weight:600;color:var(--fa-muted);background:var(--fa-surface-2)}
+.fa-role-grid thead th:first-child{border-start-start-radius:var(--fa-radius)}
+.fa-role-grid thead th:last-child{border-start-end-radius:var(--fa-radius)}
+.fa-role-grid .fa-role-rh{width:44%;text-align:start;font-weight:500;color:var(--fa-text)}
+.fa-role-grid thead .fa-role-rh{color:var(--fa-muted);font-weight:600}
+.fa-role-grid .fa-role-rh small{display:block;font-weight:400;font-size:12px;color:var(--fa-muted)}
+.fa-role-group[data-role-all-on] .fa-role-grid tbody td{background:var(--fa-surface-2)}
+.fa-role-cellbox{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:32px;min-height:32px;cursor:pointer}
+.fa-role-short{display:none}
+
+.fa-role-check{appearance:none;-webkit-appearance:none;position:relative;display:inline-block;flex:none;width:20px;height:20px;margin:0;vertical-align:middle;border:1.5px solid var(--fa-border-strong);border-radius:5px;background:var(--fa-surface);cursor:pointer;transition:background-color .12s,border-color .12s}
+.fa-role-check:checked{background:var(--fa-primary);border-color:var(--fa-primary)}
+.fa-role-check:checked::after{content:"";position:absolute;inset-inline-start:5.5px;inset-block-start:2px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+[dir="rtl"] .fa-role-check:checked::after{inset-inline-start:auto;inset-inline-end:6px}
+.fa-role-check:disabled{cursor:not-allowed}
+.fa-role-check:disabled:not(:checked){background:var(--fa-surface-3);opacity:.7}
+.fa-role-check.is-covered:checked{background:var(--fa-primary-border);border-color:var(--fa-primary-border)}
+.fa-role-check:focus-visible{outline:2px solid var(--fa-focus);outline-offset:2px}
+
+.fa-role-list{border:1px solid var(--fa-border);border-radius:var(--fa-radius)}
+.fa-role-perm{display:flex;align-items:center;gap:12px;padding:11px 14px;border-block-end:1px solid var(--fa-border);cursor:pointer}
+.fa-role-perm:last-child{border-block-end:0}
+.fa-role-perm-text{min-width:0}
+.fa-role-perm-text b{display:block;font-weight:500}
+.fa-role-perm-text small{display:block;font-size:12px;color:var(--fa-muted)}
+.fa-role-note{display:flex;align-items:center;gap:8px;margin:10px 0 0 !important;font-size:12.5px;color:var(--fa-muted)}
+.fa-role-note[hidden]{display:none}
+
+.fa-role-chips{display:flex;flex-wrap:wrap;gap:8px}
+.fa-role-chips:not(:empty){margin-block-end:12px}
+.fa-role-chip{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding-inline:12px 6px;border:1px solid var(--fa-border);border-radius:999px;background:var(--fa-surface-2);font:500 12.5px/1 var(--fa-mono);color:var(--fa-text-2);cursor:pointer}
+.fa-role-chip input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.fa-role-chip-x{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;color:var(--fa-muted)}
+.fa-role-chip:hover .fa-role-chip-x{background:var(--fa-surface-3);color:var(--fa-text)}
+.fa-role-chip:has(input:not(:checked)){text-decoration:line-through;opacity:.55}
+.fa-role-chip:has(input:focus-visible){outline:2px solid var(--fa-focus);outline-offset:2px}
+.fa-role-add{display:flex;gap:8px}
+.fa-role-add .fa-input{flex:1;font-family:var(--fa-mono);text-align:left}
+
+.fa-role-side .fa-form-grid{display:flex;flex-direction:column;gap:18px}
+.fa-role-zero{margin:14px 0 0 !important}
+.fa-role-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fa-role-summary div{padding:10px 12px;border:1px solid var(--fa-border);border-radius:var(--fa-radius);background:var(--fa-surface-2)}
+.fa-role-summary b{display:block;font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.fa-role-summary span{font-size:12px;color:var(--fa-muted)}
+.fa-role-source{display:flex;align-items:flex-start;gap:8px;margin:12px 0 0 !important;padding:10px 12px;border-radius:var(--fa-radius);background:var(--fa-surface-2);font-size:12.5px;color:var(--fa-text-2)}
+.fa-role-source .fa-icon{margin-block-start:2px}
+.fa-role-people{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.fa-role-people li{display:flex;align-items:center;gap:10px;min-width:0}
+.fa-role-person{display:grid;min-width:0}
+.fa-role-person b{font-weight:500;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-role-person small{font-size:12px;color:var(--fa-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-role-users-link{display:inline-flex;align-items:center;gap:6px;margin-block-start:12px;font-weight:600;font-size:13px}
+
+.fa-role-delete{width:min(480px,calc(100vw - 32px))}
+.fa-role-delete-body{display:flex;gap:16px}
+.fa-role-delete-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:999px;background:var(--fa-danger-soft);color:var(--fa-danger)}
+.fa-role-delete-text{flex:1;min-width:0}
+.fa-role-delete-text .fa-label{margin-block-start:16px}
+.fa-role-delete-page{max-width:560px;padding:24px}
+.fa-role-delete-page p{margin:0 0 16px}
+.fa-role-delete-actions{display:flex;justify-content:flex-end;gap:8px;margin-block-start:20px}
+
+@media (max-width:1100px){
+  .fa-role-layout{grid-template-columns:minmax(0,1fr)}
+  .fa-record .fa-role-aside{position:static}
+}
+@media (max-width:640px){
+  .fa-role-group,.fa-role-side{padding:16px}
+  .fa-role-all .fa-role-code,.fa-role-perm .fa-role-code{display:none}
+  .fa-role-grid,.fa-role-grid tbody,.fa-role-grid tr,.fa-role-grid th,.fa-role-grid td{display:block}
+  .fa-role-grid{border:0}
+  .fa-role-grid thead{display:none}
+  .fa-role-grid tbody{display:flex;flex-direction:column;gap:10px}
+  .fa-role-grid tr{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px 14px;border:1px solid var(--fa-border);border-radius:var(--fa-radius);background:var(--fa-surface)}
+  .fa-role-grid tr > *{border:0 !important;padding:0}
+  .fa-role-grid .fa-role-rh{grid-column:1/-1;width:auto;margin-block-end:4px;font-weight:600}
+  .fa-role-group[data-role-all-on] .fa-role-grid tbody td{background:none}
+  .fa-role-cellbox{display:flex;justify-content:flex-start;gap:10px;min-height:44px;padding:0 10px;border:1px solid var(--fa-border);border-radius:var(--fa-radius);background:var(--fa-surface-2);font-weight:500}
+  .fa-role-short{display:inline}
+  .fa-role-add{flex-direction:column}
+}
+.fa-role-side input[type="number"]{max-width:140px}

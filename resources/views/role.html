@@ -1,0 +1,154 @@
+<form method="post" action="{{ $action }}" class="fa-record fa-role" id="fa-record-form" novalidate data-admin-record-form data-admin-role data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}">
+    {!! $csrf !!}
+    <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $t('actions.save') }}</button>
+    <div class="fa-record-head">
+        <div class="fa-record-heading">
+            <div class="fa-role-title">
+                <h1 class="fa-page-title">{{ $title }}</h1>
+                @if($badge !== null)<span class="fa-badge {{ $badge['class'] }}">{{ $badge['label'] }}</span>@endif
+            </div>
+            <p class="fa-page-description">{{ $t('roles.edit_description') }}</p>
+        </div>
+        <div class="fa-record-actions">
+            <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
+            @if($canDelete)<a class="fa-btn fa-btn-danger-outline" href="{{ $delete['url'] }}" data-admin-drawer="{{ $delete['id'] }}">{{ $t('roles.delete') }}</a>@endif
+            @if($canReset)<button type="submit" form="fa-role-reset" class="fa-btn">{{ $t('roles.reset') }}</button>@endif
+            @if($editable)<button type="submit" name="_save" value="1" class="fa-btn fa-btn-primary" data-admin-save title="{{ $t('form.save_shortcut') }}">{{ $t('actions.save') }}</button>@endif
+        </div>
+    </div>
+    @if($formError !== null)<div class="fa-alert fa-alert-danger" role="alert">{{ $formError }}</div>@endif
+    @if($locked)<div class="fa-alert fa-alert-info fa-role-notice" role="status">{!! $lockIcon !!}<span>{{ $t('roles.locked_help') }}</span></div>
+    @elseif(!$editable)<div class="fa-alert fa-alert-info fa-role-notice" role="status">{!! $lockIcon !!}<span>{{ $t('roles.read_only') }} {{ $t('roles.cannot_edit') }}</span></div>@endif
+    <div class="fa-role-layout">
+        <div class="fa-role-main">
+            @foreach($groups as $group)
+            <section class="fa-card fa-role-group" aria-labelledby="fa-role-g-{{ $group['key'] }}" data-role-group="{{ $group['key'] }}"@if($group['all']) data-role-all-on @endif>
+                <div class="fa-role-group-head">
+                    <div><h2 class="fa-section-title" id="fa-role-g-{{ $group['key'] }}">{{ $group['title'] }}</h2><p class="fa-help">{{ $group['help'] }}</p></div>
+                    <span class="fa-role-count" data-role-count data-template="{{ $t('roles.of', ['count' => ':count', 'total' => ':total']) }}">{{ $group['count'] }}</span>
+                </div>
+                @if($group['wildcard'] !== null)
+                <label class="fa-role-all{{ $group['all'] ? ' is-on' : '' }}">
+                    <input type="checkbox" class="fa-switch" role="switch" name="perm[]" value="{{ $group['wildcard'] }}" data-role-all@if($group['all']) checked @endif@if($group['allDisabled']) disabled @endif>
+                    <span class="fa-role-all-text"><b>{{ $group['wildcardLabel'] }}</b><span>{{ $group['wildcardHelp'] }}</span></span>
+                    <code class="fa-role-code">{{ $group['wildcard'] }}</code>
+                </label>
+                @endif
+                @if(count($group['rows']) > 0)
+                <div class="fa-role-grid-wrap">
+                <table class="fa-role-grid">
+                    <thead><tr><th scope="col" class="fa-role-rh">{{ $t('roles.resource') }}</th>@foreach($group['columns'] as $column)<th scope="col">{{ $column }}</th>@endforeach</tr></thead>
+                    <tbody>
+                        @foreach($group['rows'] as $row)
+                        <tr data-role-row>
+                            <th scope="row" class="fa-role-rh">{{ $row['label'] }}@if($row['sub'] !== '')<small><bdi>{{ $row['sub'] }}</bdi></small>@endif</th>
+                            @foreach($row['cells'] as $cell)
+                            <td>@if($cell['keep'])<input type="hidden" name="perm[]" value="{{ $cell['name'] }}" data-role-keep>@endif<label class="fa-role-cellbox"><input type="checkbox" class="fa-role-check{{ $cell['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $cell['name'] }}" data-role-ability="{{ $cell['ability'] }}" aria-label="{{ $cell['label'] }}"@if($cell['fixed']) data-role-fixed @endif@if($cell['notHeld']) title="{{ $t('roles.not_held') }}" @endif@if($cell['checked']) checked @endif@if($cell['disabled']) disabled @endif><span class="fa-role-short" aria-hidden="true">{{ $cell['short'] }}</span></label></td>
+                            @endforeach
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                </div>
+                @endif
+                @if(count($group['items']) > 0)
+                <div class="fa-role-list">
+                    @foreach($group['items'] as $item)
+                    @if($item['keep'])<input type="hidden" name="perm[]" value="{{ $item['name'] }}" data-role-keep>@endif
+                    <label class="fa-role-perm"@if($item['notHeld']) title="{{ $t('roles.not_held') }}" @endif>
+                        <input type="checkbox" class="fa-role-check{{ $item['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $item['name'] }}"@if($item['fixed']) data-role-fixed @endif@if($item['checked']) checked @endif@if($item['disabled']) disabled @endif>
+                        <span class="fa-role-perm-text"><b>{{ $item['title'] }}</b>@if($item['sub'] !== '')<small>{{ $item['sub'] }}</small>@endif</span>
+                        <code class="fa-role-code">{{ $item['name'] }}</code>
+                    </label>
+                    @endforeach
+                </div>
+                @endif
+                @if($group['everything'])<p class="fa-role-note">{!! $infoIcon !!}<span>{{ $t('roles.covered', ['switch' => $t('roles.everything')]) }}</span></p>
+                @elseif($group['wildcard'] !== null)<p class="fa-role-note" data-role-covered-note@if(!$group['all']) hidden @endif>{!! $infoIcon !!}<span>{{ $group['covered'] }}</span></p>@endif
+                @if($group['key'] === 'content')<p class="fa-role-note" data-role-view-note@if($group['all']) hidden @endif>{!! $infoIcon !!}<span>{{ $t('roles.view_note') }}</span></p>@endif
+            </section>
+            @endforeach
+
+            <section class="fa-card fa-role-group" aria-labelledby="fa-role-g-other" data-role-other>
+                <div class="fa-role-group-head"><div><h2 class="fa-section-title" id="fa-role-g-other">{{ $t('roles.group.other') }}</h2><p class="fa-help">{{ $t('roles.group.other_help') }}</p></div></div>
+                <div class="fa-role-chips" data-role-chips data-remove-label="{{ $t('roles.remove', ['name' => ':name']) }}">
+                    @foreach($others as $other)
+                    <label class="fa-role-chip"><input type="checkbox" name="perm[]" value="{{ $other['name'] }}" checked aria-label="{{ $t('roles.remove', ['name' => $other['name']]) }}"@if($other['disabled']) disabled @endif><span class="fa-ltr">{{ $other['name'] }}</span>@if(!$other['disabled'])<span class="fa-role-chip-x" aria-hidden="true">{!! $xIcon !!}</span>@endif</label>
+                    @endforeach
+                </div>
+                @if($editable)
+                <div class="fa-role-add">
+                    <label class="fa-sr" for="fa-role-add">{{ $t('roles.add_pattern') }}</label>
+                    <input type="text" class="fa-input fa-ltr" id="fa-role-add" name="perm_add" placeholder="reports.view" autocomplete="off" spellcheck="false" aria-describedby="fa-role-add-help" data-role-add>
+                    <button type="button" class="fa-btn" data-role-add-button hidden>{{ $t('roles.add') }}</button>
+                </div>
+                <p class="fa-help" id="fa-role-add-help">{{ $t('roles.add_help') }}</p>
+                @endif
+            </section>
+        </div>
+
+        <aside class="fa-form-aside fa-role-aside" aria-label="{{ $t('roles.details') }}">
+            <section class="fa-card fa-role-side">
+                <h2 class="fa-section-title">{{ $t('roles.details') }}</h2>
+                {!! $fields !!}
+                @if($zeroWarning !== null)<p class="fa-alert fa-alert-warning fa-role-zero" role="status">{{ $zeroWarning }}</p>@endif
+            </section>
+            @if(!$creating)
+            <section class="fa-card fa-role-side">
+                <h2 class="fa-section-title">{{ $t('roles.summary') }}</h2>
+                <div class="fa-role-summary">
+                    <div><b class="fa-ltr" data-role-total>{{ $granted }}</b><span>{{ $t('roles.granted_count') }}</span></div>
+                    <div><b class="fa-ltr">{{ $users }}</b><span>{{ $t('roles.users_count') }}</span></div>
+                </div>
+                @if($note !== null)<p class="fa-role-source">{!! $infoIcon !!}<span>{{ $note }}</span></p>@endif
+            </section>
+            <section class="fa-card fa-role-side">
+                <div class="fa-role-side-head"><h2 class="fa-section-title">{{ $t('roles.holders') }}</h2><span class="fa-role-count fa-ltr">{{ $users }}</span></div>
+                @if(count($holders) > 0)
+                <ul class="fa-role-people">
+                    @foreach($holders as $person)
+                    <li><span class="fa-avatar fa-avatar-sm" aria-hidden="true">{{ mb_strtoupper(mb_substr($person['name'] !== '' ? $person['name'] : '?', 0, 1)) }}</span><span class="fa-role-person"><b>{{ $person['name'] }}</b><small class="fa-ltr">{{ $person['email'] }}</small></span></li>
+                    @endforeach
+                </ul>
+                @if($more > 0)<p class="fa-help">{{ $t('roles.more_holders', ['count' => $more]) }}</p>@endif
+                @else
+                <p class="fa-help">{{ $t('roles.no_holders') }}</p>
+                @endif
+                @if($usersUrl !== null && $users > 0)<a class="fa-role-users-link" href="{{ $usersUrl }}">{{ $t('roles.view_in_users') }}{!! $rightIcon !!}</a>@endif
+            </section>
+            @endif
+        </aside>
+    </div>
+</form>
+@if($canReset)
+<form method="post" action="{{ $resetUrl }}" id="fa-role-reset" class="fa-inline" hidden data-confirm data-confirm-title="{{ $resetTitle }}" data-confirm-text="{{ $t('roles.reset_text') }}" data-confirm-button="{{ $t('roles.reset') }}">{!! $csrf !!}</form>
+@endif
+@if($delete !== null)
+<dialog class="fa-confirm fa-role-delete" id="{{ $delete['id'] }}" aria-labelledby="{{ $delete['id'] }}-title">
+    <form method="post" action="{{ $delete['url'] }}" id="fa-record-delete">
+        {!! $csrf !!}
+        <div class="fa-role-delete-body">
+            <span class="fa-role-delete-icon" aria-hidden="true">{!! $trashIcon !!}</span>
+            <div class="fa-role-delete-text">
+                <h2 class="fa-dialog-title" id="{{ $delete['id'] }}-title">{{ $delete['title'] }}</h2>
+                @if($delete['users'] > 0 && count($delete['targets']) === 0)
+                <p class="fa-confirm-text">{{ $delete['usersText'] }} {{ $t('roles.no_targets') }}</p>
+                @elseif($delete['users'] > 0)
+                <p class="fa-confirm-text">{{ $delete['usersText'] }}</p>
+                <label class="fa-label" for="{{ $delete['id'] }}-move">{{ $t('roles.move_to') }}</label>
+                <select class="fa-input fa-select" id="{{ $delete['id'] }}-move" name="move_to" required>
+                    @foreach($delete['targets'] as $target)<option value="{{ $target['number'] }}"@if($target['selected']) selected @endif>{{ $target['label'] }}</option>@endforeach
+                </select>
+                <p class="fa-help">{{ $t('roles.move_help') }}</p>
+                @else
+                <p class="fa-confirm-text">{{ $t('roles.delete_text') }}</p>
+                @endif
+            </div>
+        </div>
+        <div class="fa-dialog-foot">
+            <button type="button" class="fa-btn" data-admin-dialog-close>{{ $t('actions.cancel') }}</button>
+            <button type="submit" class="fa-btn fa-btn-danger"@if($delete['users'] > 0 && count($delete['targets']) === 0) disabled @endif>{{ $delete['users'] > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
+        </div>
+    </form>
+</dialog>
+@endif

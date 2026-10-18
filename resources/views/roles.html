@@ -1,0 +1,90 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $t('roles.description') }}</p></div>
+    @if($canCreate)
+    <div class="fa-action-group"><a class="fa-btn fa-btn-primary" href="{{ $createUrl }}">{!! $plusIcon !!}<span>{{ $t('roles.new') }}</span></a></div>
+    @endif
+</div>
+<div class="fa-card fa-roles">
+    <div class="fa-table-wrap">
+        <table class="fa-table fa-table-list fa-roles-table">
+            <thead>
+                <tr>
+                    <th scope="col">{{ $t('roles.col.role') }}</th>
+                    <th scope="col">{{ $t('roles.col.level') }}</th>
+                    <th scope="col">{{ $t('roles.col.access') }}</th>
+                    @if($countsKnown)<th scope="col">{{ $t('roles.col.users') }}</th>@endif
+                    <th scope="col">{{ $t('roles.col.permissions') }}</th>
+                    <th scope="col">{{ $t('roles.col.source') }}</th>
+                    <th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($rows as $row)
+                <tr data-role="{{ $row['number'] }}">
+                    <td data-label="{{ $t('roles.col.role') }}">
+                        <span class="fa-role-cell">
+                            <span class="fa-role-icon" aria-hidden="true">{!! $row['icon'] !!}</span>
+                            <span class="fa-role-names">
+                                @if($row['canEdit'])<a class="fa-role-name" href="{{ $row['editUrl'] }}">{{ $row['name'] }}</a>@else<span class="fa-role-name">{{ $row['name'] }}</span>@endif
+                                <span class="fa-role-number fa-ltr">#{{ $row['number'] }}</span>
+                            </span>
+                        </span>
+                    </td>
+                    <td data-label="{{ $t('roles.col.level') }}"><span class="fa-role-level fa-ltr">{{ $row['level'] }}</span></td>
+                    <td data-label="{{ $t('roles.col.access') }}">
+                        @if($row['access'])<span class="fa-role-yes">{!! $checkIcon !!}{{ $t('roles.yes') }}</span>@else<span class="fa-muted">{{ $t('roles.no') }}</span>@endif
+                    </td>
+                    @if($countsKnown)<td data-label="{{ $t('roles.col.users') }}"><span class="fa-ltr">{{ $row['users'] }}</span></td>@endif
+                    <td data-label="{{ $t('roles.col.permissions') }}">{{ $row['permissions'] }}</td>
+                    <td data-label="{{ $t('roles.col.source') }}"><span class="fa-badge {{ $row['badge']['class'] }}">{{ $row['badge']['label'] }}</span></td>
+                    <td class="fa-actions">
+                        @if($row['locked'])
+                        <span class="fa-role-locked" title="{{ $t('roles.locked_help') }}">{!! $lockIcon !!}{{ $t('roles.locked') }}</span>
+                        @else
+                        @if($row['canEdit'])<a class="fa-btn fa-btn-sm fa-btn-ghost" href="{{ $row['editUrl'] }}">{{ $t('roles.edit') }}</a>@endif
+                        @if($row['canReset'])
+                        <form method="post" action="{{ $row['resetUrl'] }}" class="fa-inline" data-confirm data-confirm-title="{{ $row['resetTitle'] }}" data-confirm-text="{{ $t('roles.reset_text') }}" data-confirm-button="{{ $t('roles.reset') }}">
+                            {!! $csrf !!}<button type="submit" class="fa-btn fa-btn-sm fa-btn-ghost">{{ $t('roles.reset') }}</button>
+                        </form>
+                        @endif
+                        @if($row['canDelete'])<a class="fa-btn fa-btn-sm fa-btn-ghost fa-role-delete-link" href="{{ $row['deleteUrl'] }}" data-admin-drawer="{{ $row['delete']['id'] }}">{{ $t('roles.delete') }}</a>@endif
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    <p class="fa-roles-foot">{!! $infoIcon !!}<span>{{ $t('roles.list_foot') }}</span></p>
+</div>
+@foreach($rows as $row)
+@if($row['delete'] !== null)
+<dialog class="fa-confirm fa-role-delete" id="{{ $row['delete']['id'] }}" aria-labelledby="{{ $row['delete']['id'] }}-title">
+    <form method="post" action="{{ $row['delete']['url'] }}">
+        {!! $csrf !!}
+        <div class="fa-role-delete-body">
+            <span class="fa-role-delete-icon" aria-hidden="true">{!! $trashIcon !!}</span>
+            <div class="fa-role-delete-text">
+                <h2 class="fa-dialog-title" id="{{ $row['delete']['id'] }}-title">{{ $row['delete']['title'] }}</h2>
+                @if($row['delete']['users'] > 0 && count($row['delete']['targets']) === 0)
+                <p class="fa-confirm-text">{{ $row['delete']['usersText'] }} {{ $t('roles.no_targets') }}</p>
+                @elseif($row['delete']['users'] > 0)
+                <p class="fa-confirm-text">{{ $row['delete']['usersText'] }}</p>
+                <label class="fa-label" for="{{ $row['delete']['id'] }}-move">{{ $t('roles.move_to') }}</label>
+                <select class="fa-input fa-select" id="{{ $row['delete']['id'] }}-move" name="move_to" required>
+                    @foreach($row['delete']['targets'] as $target)<option value="{{ $target['number'] }}"@if($target['selected']) selected @endif>{{ $target['label'] }}</option>@endforeach
+                </select>
+                <p class="fa-help">{{ $t('roles.move_help') }}</p>
+                @else
+                <p class="fa-confirm-text">{{ $t('roles.delete_text') }}</p>
+                @endif
+            </div>
+        </div>
+        <div class="fa-dialog-foot">
+            <button type="button" class="fa-btn" data-admin-dialog-close>{{ $t('actions.cancel') }}</button>
+            <button type="submit" class="fa-btn fa-btn-danger"@if($row['delete']['users'] > 0 && count($row['delete']['targets']) === 0) disabled @endif>{{ $row['delete']['users'] > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
+        </div>
+    </form>
+</dialog>
+@endif
+@endforeach
