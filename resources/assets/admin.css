@@ -867,8 +867,11 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-repeater-handle:hover,.fa-repeater-handle:focus-visible{color:var(--fa-text-2);background:var(--fa-surface-3)}
 .fa-repeater-item.is-dragging .fa-repeater-handle{cursor:grabbing}
 .fa-repeater-num{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:var(--fa-surface-3);color:var(--fa-text-2);font-size:12px;font-weight:600}
-.fa-repeater-title{flex:1;min-width:0;font-weight:600;color:var(--fa-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fa-repeater-title small{font-weight:400;color:var(--fa-muted);margin-inline-start:8px}
+.fa-repeater-title{display:flex;align-items:baseline;gap:8px;flex:1;min-width:0;font-weight:600;color:var(--fa-text);white-space:nowrap}
+.fa-repeater-title>span,.fa-repeater-title small{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fa-repeater-title>span{flex:0 1 auto;unicode-bidi:plaintext}
+.fa-repeater-title small{flex:0 1000 auto;font-weight:400;color:var(--fa-muted)}
+.fa-repeater-title small:empty{display:none}
 .fa-repeater-tools{display:flex;align-items:center;gap:2px;flex:none}
 .fa-repeater-tool{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:0;border-radius:var(--fa-radius);background:transparent;color:var(--fa-muted);cursor:pointer}
 .fa-repeater-tool[hidden]{display:none}
@@ -933,6 +936,12 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
   .fa-repeater.is-table .fa-repeater-body > .fa-form-grid,.fa-repeater.is-key-value .fa-repeater-body > .fa-form-grid{grid-template-columns:minmax(0,1fr);gap:10px}
   .fa-repeater.is-table .fa-repeater-body .fa-field > .fa-label{position:static;width:auto;height:auto;overflow:visible;clip:auto;white-space:normal}
   .fa-repeater-row{padding:10px 8px}
+}
+/* Small phones: the title keeps its own row, the tools go under it */
+@media (max-width:480px){
+  .fa-repeater-item-head{flex-wrap:wrap;row-gap:0}
+  .fa-repeater-title{flex-basis:calc(100% - 90px)}
+  .fa-repeater-item-head > .fa-repeater-tools{margin-inline-start:auto}
 }
 /* Page-level translation (0.23): the "Editing: language" switch */
 .fa-lang-switch{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}

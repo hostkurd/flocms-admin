@@ -75,11 +75,17 @@ class KeyValue extends Repeater
     {
         $items = parent::items($value);
         if ($this->fixedKeys === null) { return $items; }
+        // Posted rows carry their place ("k0", "k1"); stored pairs are matched by their key.
         $byKey = [];
-        foreach ($items as $item) { $byKey[mb_strtolower(trim((string) $item['key']))] ??= $item; }
+        $byPlace = [];
+        foreach ($items as $item) {
+            $byKey[mb_strtolower(trim(is_string($item['key'] ?? null) ? $item['key'] : ''))] ??= $item;
+            if (preg_match('/^k(\d+)$/D', (string) $item['_key'], $place) === 1) { $byPlace[(int) $place[1]] ??= $item; }
+        }
+        $posted = is_array($value) && !array_is_list($value);
         $fixed = [];
         foreach ($this->fixedKeys as $index => $key) {
-            $found = $byKey[mb_strtolower($key)] ?? null;
+            $found = $posted ? ($byPlace[$index] ?? null) : ($byKey[mb_strtolower($key)] ?? null);
             $fixed[] = ['_key' => 'k' . $index, 'key' => $key, 'value' => $found['value'] ?? ($this->schema['value']->isTranslatable() ? [] : '')];
         }
         return $fixed;

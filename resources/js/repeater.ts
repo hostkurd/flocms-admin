@@ -57,14 +57,22 @@ function title(field: HTMLElement, item: HTMLElement, index: number): string {
 }
 
 /** The short summary of a collapsed item: its other values ("16 m² · Ground"). */
-function summary(item: HTMLElement): string {
+function summary(field: HTMLElement, item: HTMLElement): string {
+  const body = item.querySelector<HTMLElement>('.fa-repeater-body');
+  if (!body) return '';
+  // The title field is already in the head.
+  const label = field.dataset.itemLabel ? `${field.dataset.name}[${item.dataset.key || ''}][${field.dataset.itemLabel}]` : '';
   const parts: string[] = [];
-  item.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('.fa-repeater-body [name]').forEach(control => {
-    if (parts.length >= 3 || control.type === 'hidden' || control.type === 'checkbox' || control.hidden || control.closest('[hidden], .fa-lang-dialog')) return;
+  body.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[name]').forEach(control => {
+    if (parts.length >= 3 || control.type === 'hidden' || control.type === 'checkbox' || control.hidden || control.closest('.fa-lang-dialog, .fa-lang-pane:not(.is-current)')) return;
+    if (label && (control.name === label || control.name.startsWith(label + '['))) return;
+    // The body itself is hidden while collapsed; panes of other languages inside it stay skipped.
+    const hidden = control.parentElement?.closest('[hidden]');
+    if (hidden && hidden !== body && body.contains(hidden)) return;
     const value = control instanceof HTMLSelectElement ? (control.selectedOptions[0]?.value ? control.selectedOptions[0].textContent || '' : '') : control.value;
     if (value.trim() !== '') parts.push(value.trim().slice(0, 40));
   });
-  return parts.slice(1).join(' · ');
+  return parts.join(' · ');
 }
 
 /** Numbers, titles, the first/last buttons, the count and the Add button after any change. */
@@ -78,7 +86,7 @@ function refresh(field: HTMLElement): void {
     const heading = item.querySelector<HTMLElement>('[data-repeater-title]');
     if (heading) heading.textContent = name;
     const small = item.querySelector<HTMLElement>('[data-repeater-summary]');
-    if (small) small.textContent = item.classList.contains('is-collapsed') ? summary(item) : '';
+    if (small) small.textContent = item.classList.contains('is-collapsed') ? summary(field, item) : '';
     const handle = item.querySelector<HTMLElement>('[data-repeater-handle]');
     if (handle) handle.setAttribute('aria-label', text(field.dataset.dragText, { item: name }));
     const up = item.querySelector<HTMLButtonElement>('[data-repeater-action="up"]');
@@ -220,10 +228,12 @@ function drag(field: HTMLElement, item: HTMLElement, event: PointerEvent): void 
   const handle = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-repeater-handle]') : null;
   if (!handle) return;
   event.preventDefault();
-  handle.setPointerCapture(event.pointerId);
+  // Moving the item in the page drops pointer capture, so the document follows the pointer.
+  const pointer = event.pointerId;
   item.classList.add('is-dragging');
   const start = items(field).indexOf(item);
   const onMove = (move: PointerEvent) => {
+    if (move.pointerId !== pointer) return;
     const list = items(field);
     for (const other of list) {
       if (other === item) continue;
@@ -235,10 +245,11 @@ function drag(field: HTMLElement, item: HTMLElement, event: PointerEvent): void 
       if (index > mine && move.clientY > middle) { other.after(item); break; }
     }
   };
-  const onUp = () => {
-    handle.removeEventListener('pointermove', onMove);
-    handle.removeEventListener('pointerup', onUp);
-    handle.removeEventListener('pointercancel', onUp);
+  const onUp = (up: PointerEvent) => {
+    if (up.pointerId !== pointer) return;
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
     item.classList.remove('is-dragging');
     const end = items(field).indexOf(item);
     if (end !== start) {
@@ -247,9 +258,9 @@ function drag(field: HTMLElement, item: HTMLElement, event: PointerEvent): void 
     }
     handle.focus();
   };
-  handle.addEventListener('pointermove', onMove);
-  handle.addEventListener('pointerup', onUp);
-  handle.addEventListener('pointercancel', onUp);
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
 }
 
 /** The tools that need JavaScript appear; the no-JavaScript Up and Down of table rows go. */
