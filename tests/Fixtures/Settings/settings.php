@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use FloCMS\Admin\Form\Fields\{ImageUpload, Select, TextInput, Textarea, Toggle};
+use FloCMS\Admin\Form\Fields\{ImageUpload, KeyValue, Select, TextInput, Textarea, Toggle};
 use FloCMS\Admin\Form\Layout\Section;
 use FloCMS\Admin\Settings\SettingsPage;
 
@@ -16,6 +16,7 @@ return [
     ]),
     SettingsPage::make('contact')->label('Contact & locations')->icon('map-pin')->permission('settings.contact')->schema([
         Section::make('office')->schema([TextInput::make('email')->email()]),
+        KeyValue::make('links')->label('Social links')->keyLabel('Network')->valueLabel('Address')->addLabel('Add link'),
     ]),
     SettingsPage::make('seo')->label('SEO')->icon('search')->translationBadges()->schema([
         TextInput::make('meta_title')->translatable(),

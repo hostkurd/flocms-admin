@@ -199,6 +199,8 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `BelongsTo` | searchable combobox | The related key in this table's column: `->resource(CityResource::class)` or `->table('brands', 'name')`, `->titleColumn()`, `->dependsOn('country_id')` ([guide](docs/relationships.md)) |
 | `BelongsToMany` | chips with search | A pivot table: `->pivot('property_feature', 'property_id', 'feature_id')`, `->orderColumn('sort')`, `->max(20)` ([guide](docs/relationships.md)) |
 | `ColorPicker` | colour | `#rrggbb` with a swatch |
+| `Repeater` | cards or rows of items | A short list inside the record (rooms, days, opening hours): `->schema([...])`, `->itemLabel('name')`, `->maxItems(12)`, `->table()`, `->distinct('name')`; one JSON column ([guide](docs/repeaters.md)) |
+| `KeyValue` | rows of key and value | Labels and values (specs, social links): `->keyLabel()`, `->valueLabel()`, `->translatableValues()`, `->keys([...])` for fixed keys ([guide](docs/repeaters.md)) |
 | `MediaPicker` | a framed card: preview, sortable tiles, drop to upload | Items of the media library: `->images()` (default), `->videos()`, `->any()`, `->multiple()`, `->max(12)`, `->folder('Listings/Covers')`, `->aspectRatio('16:9')`; stores an id, or a JSON list of ids in order ([guide](docs/media.md)) |
 
 Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->requiredOnCreate()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`.
@@ -399,6 +401,8 @@ Admin 0.21 adds **Site → Roles** for people with `roles.manage`. The list show
 
 ## Relation managers
 
+Admin 0.24 adds **repeater and key-value fields**: `Repeater::make('rooms')->schema([...])` keeps a short list of items inside the record (a flat's rooms, a tour's days, opening hours), shown as cards or rows with Add, drag-and-drop and keyboard reordering, duplicate, fold and remove with Undo; `KeyValue::make('specs')` keeps labels and values. Each list is one JSON column, validated per item ("Rooms → item 3: Name"), translated per field inside each item, logged per item in the History and read on the website with `repeater_items()` and `key_values()`. They work in dialogs, on settings pages and without JavaScript. See [Repeaters and key-value lists](docs/repeaters.md), which also says when to use a relation manager instead.
+
 Admin 0.23 adds **page-level translation**: with `'translation_mode' => 'page'` (or `$translationMode = 'page'` on a resource) an "Editing: language" switch shows the whole form in one language, with a count of filled fields per language, **Next missing**, the default language's text under empty inputs, shared fields locked outside the default language and errors in other languages shown in the switch. The last language you saved in is remembered; `?editing=ar` opens one directly. Dialogs get the switch too, settings pages use the same switch, and `TranslationsColumn` with its **Missing in** filter shows what still needs translating. Storage is unchanged. See [Forms](docs/forms.md#page-level-translation-023).
 
 Admin 0.22 shows a record's related records on its edit page, below the form: a property's units, a country's cities. Declare them on the parent with `relations()` (`RelationManager::make(UnitResource::class, 'property_id')`); the child resource brings its table, form, permissions and rules. Two or more managers become tabs with counts. Units are added, edited and deleted in dialogs without leaving the property; the server limits every read to this property and sets the key on every save, and you need edit rights on the property and view rights on units. Without JavaScript each manager links to the units list limited to the property. `$navigation = false` keeps a child out of the sidebar, `CountColumn` counts related records in the parent's list, and the parent's History lists its children's changes. See the [Relation managers guide](docs/relation-managers.md).
@@ -429,7 +433,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.21: the Roles page (permission grid, new roles with levels, reset, activity log; flocms-core 2.4)
 - 0.22: relation managers (related records on the edit page, `CountColumn`, `$navigation`)
 - 0.23: page-level translation (the "Editing: language" switch, `TranslationsColumn`, the Missing in filter)
-- Next: repeater and key-value fields, then CSV import/export
+- 0.24: `Repeater` and `KeyValue` fields (lists inside a record, one JSON column, `repeater_items()`, `key_values()`)
+- Next: CSV import/export
 
 ## Development
 

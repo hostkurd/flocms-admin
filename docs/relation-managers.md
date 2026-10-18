@@ -4,7 +4,7 @@ A relation manager shows a record's related records on its edit page: the units 
 
 A manager reuses the child resource you already have (its table, form, permissions, `query()`, trash and activity log). It adds one rule on top: **every record in the manager belongs to this parent**, and new records get the parent's key from the server.
 
-0.22 covers **has-many** relations: the child's table holds the parent's key (`units.property_id`). To choose existing records through a pivot table, keep using the [`BelongsToMany` field](relationships.md).
+0.22 covers **has-many** relations: the child's table holds the parent's key (`units.property_id`). To choose existing records through a pivot table, keep using the [`BelongsToMany` field](relationships.md). For a short list that lives only inside the record (a flat's rooms, opening hours), a [Repeater](repeaters.md) (0.24) is simpler: no table of its own, saved with the form.
 
 ## Adding a manager
 

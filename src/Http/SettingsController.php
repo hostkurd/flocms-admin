@@ -62,7 +62,9 @@ final class SettingsController extends PanelController
                 Session::setFlash(AdminLang::get('settings.not_ready'), 'danger');
                 $this->redirect(Admin::url('settings/edit/' . $name));
             }
-            $result = $editor->submit($this->request->all(), is_array($_FILES['_uploads'] ?? null) ? $_FILES['_uploads'] : []);
+            // A list button sent without JavaScript changes the list; nothing is saved.
+            $operated = $this->request->input('_repeater') !== null ? $editor->operate($this->request->all(), $this->request->input('_repeater')) : null;
+            $result = $operated !== null ? ['saved' => false, 'state' => $operated, 'errors' => []] : $editor->submit($this->request->all(), is_array($_FILES['_uploads'] ?? null) ? $_FILES['_uploads'] : []);
             if ($result['saved']) {
                 Session::setFlash(AdminLang::get('settings.saved'), 'success');
                 $this->redirect(Admin::url('settings/edit/' . $name, ['editing' => $editing === Languages::default() ? null : $editing]));
@@ -70,7 +72,7 @@ final class SettingsController extends PanelController
             $state = $result['state'];
             $errors = $result['errors'];
             $editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($errors, $editing);
-            Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger');
+            if ($operated === null) { Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger'); }
         } else {
             $state = $editor->initialState();
         }
@@ -99,7 +101,7 @@ final class SettingsController extends PanelController
             'defaultLang' => Languages::default(),
             'defaultName' => Languages::name(Languages::default()),
             'ready' => $editor->ready(),
-            'dirty' => $errors !== [],
+            'dirty' => $errors !== [] || ($operated ?? null) !== null,
             'pagesLabel' => AdminLang::get('settings.pages'),
             'notice' => null,
         ]);
