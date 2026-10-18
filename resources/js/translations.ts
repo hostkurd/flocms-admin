@@ -251,6 +251,8 @@ export function applyEditing(scope: HTMLElement, lang: string, chosen = false): 
     if (input.hasAttribute('data-rx-bind')) input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   const isDefault = lang === scope.dataset.defaultLang;
+  // Empty inputs are marked (dashed) only while translating, not in the default language.
+  scope.classList.toggle('is-translating', !isDefault);
   scope.querySelectorAll<HTMLElement>('[data-lang-panes]').forEach(group => {
     if (scopeOf(group) !== scope) return;
     let current: HTMLElement | null = null;

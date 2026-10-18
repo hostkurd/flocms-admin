@@ -13,7 +13,7 @@ test('the language switch edits one language at a time and saves them all', asyn
   await title.fill('Acme Homes');
   await expect(form(page).locator('[data-admin-record-state]')).toHaveText('Unsaved changes');
 
-  await page.locator('[data-settings-language]').selectOption('ku');
+  await page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"ku\"]').click();
   await expect(page.locator('[name="title[en]"]')).toBeHidden();
   const kurdish = page.locator('[name="title[ku]"]');
   await expect(kurdish).toBeVisible();
@@ -25,7 +25,7 @@ test('the language switch edits one language at a time and saves them all', asyn
   await expect(page.locator('[data-settings-other]')).toContainText('You are editing');
   await expect(page.locator('[data-field="title"] .fa-label .fa-dot[data-lang="ku"]')).toHaveClass(/is-filled/);
 
-  await page.locator('[data-settings-language]').selectOption('en');
+  await page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"en\"]').click();
   await expect(title).toHaveValue('Acme Homes');
   await page.locator('#f-phone').fill('+30 210 000');
   await page.keyboard.press('ControlOrMeta+s');
@@ -38,11 +38,11 @@ test('the language switch edits one language at a time and saves them all', asyn
 test('a failed save shows the language with the error', async ({ page }) => {
   await page.goto('/en/admin/settings/edit/site');
   await page.getByLabel('Title').fill('Acme');
-  await page.locator('[data-settings-language]').selectOption('ar');
+  await page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"ar\"]').click();
   await page.locator('[name="title[ar]"]').fill('x'.repeat(70));
-  await page.locator('[data-settings-language]').selectOption('en');
+  await page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"en\"]').click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('[data-settings-language]')).toHaveValue('ar');
+  await expect(page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"ar\"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('[name="title[ar]"]')).toBeVisible();
   await expect(page.locator('[name="title[ar]"]')).toHaveAttribute('aria-invalid', 'true');
 });
@@ -57,12 +57,12 @@ test('logos are uploaded per language and others fall back to the default one', 
   await expect(preview).toBeVisible();
   expect(await preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 
-  await page.locator('[data-settings-language]').selectOption('ku');
+  await page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"ku\"]').click();
   await expect(page.locator('[data-lang="ku"] .fa-upload-fallback')).toBeVisible();
   await page.locator('[name="_uploads[logo][ku]"]').setInputFiles(photo);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Settings saved.')).toBeVisible();
-  await expect(page.locator('[data-settings-language]')).toHaveValue('ku');
+  await expect(page.locator('#fa-settings-switch .fa-seg-btn[data-lang=\"ku\"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('[data-lang="ku"] .fa-upload-fallback')).toHaveCount(0);
   const urls = await page.locator('.fa-filedrop-file .fa-filedrop-thumb img').evaluateAll(images => images.map(img => (img as HTMLImageElement).getAttribute('src')));
   expect(new Set(urls).size).toBe(2);

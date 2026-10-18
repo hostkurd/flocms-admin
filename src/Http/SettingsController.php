@@ -91,9 +91,9 @@ final class SettingsController extends PanelController
             'csrf' => \FloCMS\Core\Csrf::field(),
             'pages' => $this->navigation($name),
             'switch' => $switch,
-            // The settings page keeps its select (0.23 adds the counts and Next missing).
+            // The same switch as record pages (0.23.1): buttons for up to four languages, a select above.
             'switchHtml' => $switch ? \FloCMS\Admin\Form\LanguageSwitch::render('fa-settings-switch', Languages::all(), Languages::default(), $editing, $renderer->languageStats(),
-                style: 'select', selectAttributes: ['data-settings-language' => '']) : '',
+                selectAttributes: ['data-settings-language' => '']) : '',
             'languages' => array_map(static fn (string $code): array => ['code' => $code, 'name' => Languages::name($code), 'dir' => Languages::direction($code)], Languages::all()),
             'editing' => $editing,
             'defaultLang' => Languages::default(),

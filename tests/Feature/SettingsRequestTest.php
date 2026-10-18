@@ -40,7 +40,8 @@ final class SettingsRequestTest extends RequestTestCase
         self::assertStringContainsString('Name, tagline and logo', $body);
         self::assertStringContainsString('Contact &amp; locations', $body, 'settings.* covers every page');
         self::assertStringContainsString('Admin panel', $body);
-        self::assertStringContainsString('data-settings-language', $body);
+        self::assertStringContainsString('id="fa-settings-switch" data-lang-switch', $body, 'the same switch as record pages (0.23.1)');
+        self::assertStringContainsString('class="fa-seg-btn is-default" data-lang="en" aria-pressed="true"', $body);
         self::assertStringContainsString('name="title[ku]"', $body);
         self::assertStringContainsString('name="_uploads[logo][ar]"', $body);
         self::assertStringContainsString('data-same-all', $body);
@@ -86,7 +87,7 @@ final class SettingsRequestTest extends RequestTestCase
 
         $seo = self::request('GET', '/en/admin/settings/edit/seo', self::CONFIG + ['session' => self::ADMIN])['body'];
         self::assertStringContainsString('fa-lang-badge', $seo);
-        self::assertStringNotContainsString('data-settings-language', $seo);
+        self::assertStringNotContainsString('data-lang-switch', $seo);
         self::assertSame(404, self::request('GET', '/en/admin/settings/edit/nope', self::CONFIG + ['session' => self::ADMIN])['status']);
     }
 

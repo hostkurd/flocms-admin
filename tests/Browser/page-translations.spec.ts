@@ -170,15 +170,26 @@ test.describe('without JavaScript', () => {
   });
 });
 
-test('settings pages keep their select, now with counts and Next missing', async ({ page }) => {
+test('settings pages use the same switch, with counts and Next missing', async ({ page }) => {
   await page.goto('/en/admin/settings/edit/site');
   await page.getByLabel('Title').fill('Acme Homes');
-  const select = page.locator('[data-settings-language]');
-  await expect(select.locator('option[value="ku"]')).toHaveText(/^.+ · \d+\/\d+$/);
-  await select.selectOption('ku');
+  const kurdish = page.locator('#fa-settings-switch .fa-seg-btn[data-lang="ku"]');
+  await expect(kurdish.locator('[data-lang-count]')).toHaveText(/^\d+\/\d+$/);
+  await kurdish.click();
   const next = page.locator('form[data-admin-settings] [data-next-missing]');
   await expect(next).toBeVisible();
   await next.click();
   await expect(page.locator('[name="title[ku]"]')).toBeFocused();
   await expect(page.locator('[data-ref-line][data-ref-input="f-title-ku"]')).toContainText('Acme Homes');
+});
+
+test('empty inputs are dashed only while translating; the rich text toolbar keeps its rounded top', async ({ page }) => {
+  await page.goto('/en/admin/villas/create');
+  const title = page.locator('[name="title[en]"]');
+  expect(await title.evaluate(el => getComputedStyle(el).borderTopStyle)).toBe('solid');
+  const toolbar = page.locator('[data-field="description"] .fa-rich-toolbar');
+  await expect(toolbar).toBeVisible();
+  expect(await toolbar.evaluate(el => getComputedStyle(el).borderTopLeftRadius)).not.toBe('0px');
+  await lang(page, 'ar').click();
+  expect(await page.locator('[name="title[ar]"]').evaluate(el => getComputedStyle(el).borderTopStyle)).toBe('dashed');
 });

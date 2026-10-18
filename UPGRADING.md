@@ -1,3 +1,11 @@
+# Upgrading to Admin 0.23.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.23.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **Settings pages** show the same language switch as record pages, under the title (buttons for up to four languages). Tests that chose a language with the select `[data-settings-language]` should click `#fa-settings-switch .fa-seg-btn[data-lang="ar"]` instead; with five or more languages the select (and its `data-settings-language` attribute) stays.
+
+---
+
 # Upgrading to Admin 0.23.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.23.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
