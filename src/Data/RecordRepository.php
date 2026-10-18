@@ -36,7 +36,10 @@ final class RecordRepository
 
     public function newQuery(): Database
     {
-        return $this->resource->query($this->db->table($this->resource::getTable()));
+        $query = $this->resource->query($this->db->table($this->resource::getTable()));
+        // Inside a relation manager: only this parent's records (0.22).
+        $scope = $this->resource->parentScope();
+        return $scope !== null ? $query->where($scope->foreignKey(), '=', $scope->key()) : $query;
     }
 
     /**
@@ -264,7 +267,7 @@ final class RecordRepository
     {
         \FloCMS\Admin\Search\RecentRecords::forget($this->resource::getSlug(), $id);
         \FloCMS\Admin\Activity\Activity::record('deleted', $this->resource::getSlug(), $id, \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record),
-            meta: \FloCMS\Admin\Trash\Trash::enabledFor($this->resource, $this->db) ? ['trash' => 1] : [], db: $this->db);
+            meta: (\FloCMS\Admin\Trash\Trash::enabledFor($this->resource, $this->db) ? ['trash' => 1] : []) + \FloCMS\Admin\Activity\Activity::parents($this->resource, $record), db: $this->db);
     }
 
     /** Pivot rows of the record's many-to-many fields go with it (before the row, for foreign keys). */

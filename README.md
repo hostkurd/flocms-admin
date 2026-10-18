@@ -16,6 +16,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
 - **Media library**: images and videos uploaded once, with titles and alt text per language, in folders, picked in forms and the rich text editor, with "used in" tracking, focal points, a duplicate check and responsive `<img>` output on the website. [Media guide](docs/media.md).
 - **Ctrl+K search**: one box, from any page, that finds records of every resource, the panel's pages, settings and media you may open. [Search guide](docs/search.md).
+- **Relation managers**: a record's related records (a property's units) on its edit page, with search and New, Edit and Delete in dialogs, always limited to that parent by the server. [Relation managers guide](docs/relation-managers.md).
 - **Roles and permissions**: change what each role may do in a permission grid, add roles with their own level, and keep every change in the activity log, on top of `config/config.php`. [Roles guide](docs/roles.md).
 - **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
@@ -157,6 +158,7 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$icon` | `'list'` | `list`, `file`, `newspaper`, `book`, `folder`, `building`, `home`, `map-pin`, `users`, `user`, `tag`, `image`, `camera`, `video`, `calendar`, `mail`, `message`, `phone`, `bell`, `box`, `cart`, `credit-card`, `truck`, `briefcase`, `chart`, `grid`, `layers`, `link`, `globe`, `key`, `shield`, `heart`, `star`, `settings` |
 | `$description` | `null` | One line under the list page title: text, or a key of the site's lang files |
 | `$navigationSort` | `0` | Order in the sidebar |
+| `$navigation` | `true` | `false` keeps the resource out of the sidebar, e.g. records managed inside their parent (0.22) |
 | `$formMode` | `'page'` | How Create and Edit open: `'page'` (full page with an optional sidebar), `'modal'` (dialog) or `'slide-over'` (panel from the side). See [Forms](docs/forms.md#pages-dialogs-and-slide-overs-012) |
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
@@ -166,6 +168,7 @@ Optional methods:
 | Method | |
 | --- | --- |
 | `query(Database $query): Database` | Narrow every query, e.g. `->where('site_id', '=', 1)` |
+| `relations(): array` | Relation managers on the edit page: `[RelationManager::make(UnitResource::class, 'property_id')]` ([guide](docs/relation-managers.md)) |
 | `canCreate(): bool` | False hides New and answers 403 |
 | `canEdit(object $record): bool` | False hides Edit for that record and answers 403 |
 | `canDelete(object $record): bool` | False hides Delete and answers 403 |
@@ -215,6 +218,7 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `BadgeColumn` | a coloured badge | `->colors([...])` (gray, green, blue, yellow, red, purple), `->labels([...])` |
 | `RelationColumn` | related titles | `->resource(CityResource::class)`; many-to-many with `->pivot(...)`, `->limit(3)` ([guide](docs/relationships.md)) |
 | `MediaColumn` | thumbnails of media items | `->limit(3)`; loads the page's items in one query ([guide](docs/media.md)) |
+| `CountColumn` | how many related records | `->relation(UnitResource::class, 'property_id')`; one grouped query per page ([guide](docs/relation-managers.md#counts-in-the-parents-list)) |
 
 Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
 
@@ -378,6 +382,10 @@ Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) 
 
 Admin 0.21 adds **Site → Roles** for people with `roles.manage`. The list shows every role with its level, panel access, users and where it comes from (config, changed, or added in the panel). A role opens on a full page with a permission grid: one row per resource with View / Create / Edit / Delete, an **All content** switch (`content.*`, which also covers resources added later and the media library), the media library, each settings page, users, the panel's own pages, actions and widgets with their own permission, and **Other** for names the site's code uses. Beside it: the role's name per language, its level and panel access, and who holds it. Config roles can be changed and reset; new roles get the next free number and any level below yours. The top role is locked, nobody changes their own role or gives a permission they don't hold, and a save that would leave nobody able to manage roles is refused. Every change goes to the activity log. Needs flocms-core 2.4; run `php flo admin:install` and `php flo migrate`. See the [Roles guide](docs/roles.md).
 
+## Relation managers
+
+Admin 0.22 shows a record's related records on its edit page, below the form: a property's units, a country's cities. Declare them on the parent with `relations()` (`RelationManager::make(UnitResource::class, 'property_id')`); the child resource brings its table, form, permissions and rules. Two or more managers become tabs with counts. Units are added, edited and deleted in dialogs without leaving the property; the server limits every read to this property and sets the key on every save, and you need edit rights on the property and view rights on units. Without JavaScript each manager links to the units list limited to the property. `$navigation = false` keeps a child out of the sidebar, `CountColumn` counts related records in the parent's list, and the parent's History lists its children's changes. See the [Relation managers guide](docs/relation-managers.md).
+
 ## Rich text
 
 Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, links, quotes, code, uploaded images and videos and YouTube/Vimeo embeds, language tabs for translatable fields and right-to-left writing. The server cleans every saved value against a strict allow-list, so it can be printed on public pages. Media is uploaded through flocms-uploader to a public folder (`media` in `config/admin.php`; with the media library, into its `library/` folder as library items), from the toolbar or by pasting and dropping; videos upload in parts. Links and media links are entered in modal dialogs (Ctrl/⌘+K for links). Images, videos and embeds can be resized with grips and positioned (left, centre, right, text wrapping), images get captions and links, and paragraphs can be aligned, indented and switched to right-to-left; add `RichText::stylesheet()` to the website's layout so these show there too. See the [Rich text guide](docs/rich-text.md).
@@ -402,7 +410,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.19: the trash (Undo, restore with the same id, Site → Trash) and the activity log (History on records, Site → Activity)
 - 0.20: Ctrl+K search (records, pages, actions, settings and media; recent records)
 - 0.21: the Roles page (permission grid, new roles with levels, reset, activity log; flocms-core 2.4)
-- Next: CSV import/export
+- 0.22: relation managers (related records on the edit page, `CountColumn`, `$navigation`)
+- Next: repeater and key-value fields, then CSV import/export
 
 ## Development
 

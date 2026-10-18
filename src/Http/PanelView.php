@@ -34,7 +34,7 @@ final class PanelView
         $nav = [];
         foreach (Admin::registry()->all() as $slug => $class) {
             /** @var class-string<Resource> $class */
-            if (!Auth::can($class::permission('view'))) {
+            if (!$class::showsInNavigation() || !Auth::can($class::permission('view'))) {
                 continue;
             }
             $nav[] = [

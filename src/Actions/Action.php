@@ -89,6 +89,8 @@ class Action
     /** 'page', 'modal' or 'slide-over'. Create and Edit follow the resource's $formMode unless set here. */
     public function getMode(Resource $resource): string
     {
+        // Inside a relation manager Create and Edit open over the parent's page (0.22).
+        if ($resource->parentScope() !== null && in_array($this->kind, ['create', 'edit'], true)) { return $this->mode === 'slide-over' || ($this->mode === null && $resource::getFormMode() === 'slide-over') ? 'slide-over' : 'modal'; }
         if ($this->mode !== null) { return $this->mode; }
         return in_array($this->kind, ['create', 'edit'], true) ? $resource::getFormMode() : 'modal';
     }
@@ -135,7 +137,10 @@ class Action
     }
     public function getForm(Resource $resource): Form
     {
-        if (in_array($this->kind, ['create', 'edit'], true)) { return $resource->form(new Form()); }
+        if (in_array($this->kind, ['create', 'edit'], true)) {
+            $form = $resource->form(new Form());
+            return ($scope = $resource->parentScope()) !== null ? $scope->adjustForm($form) : $form;
+        }
         $form = $this->form !== null ? ($this->form)(new Form()) : new Form();
         foreach ($form->fields() as $field) { if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload) { throw new \LogicException('Upload fields belong to resource CRUD forms; custom and bulk actions do not own a file column lifecycle.'); } }
         return $form;

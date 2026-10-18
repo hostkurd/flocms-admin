@@ -2,6 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.22.0 - 2026-10-18
+
+**Relation managers**: a record's related records on its edit page (a property's units, a country's cities), with search, filters, sorting and pages, and New, Edit and Delete in dialogs, without leaving the page. No migration. See the [Relation managers guide](docs/relation-managers.md).
+
+- Declared on the parent: `relations()` returns `RelationManager::make(UnitResource::class, 'property_id')`. The child resource brings its table, form, permissions, `query()`, trash and activity log; has-many relations only.
+- Below the record's form, full width, in one card; tabs with counts when there are two or more. The count follows each change. The create page says the managers come after saving.
+- Every record in a manager belongs to the parent: the list, Edit, Delete, bulk and custom actions are limited to `key = parent` (a forged id of another parent is not found), and the server sets the key on every create and edit; the key field is left out of the form. The parent is in the signed state and each request checks again that you may edit it; to see a manager you need edit rights on the parent and view rights on the child.
+- Options: `->label()`, `->icon()`, `->columns([...])`, `->readOnly()`, `->canCreate(false)`, `->perPage()`, `->defaultSort()`, `->emptyText()`, `->hideFields([...])`, `->name()`.
+- Without JavaScript (or with Reactive off) a manager links to the child's list limited to the parent (`?parent=properties:5:units`); its New and Edit pages keep the parent and Back returns to it.
+- `protected static bool $navigation = false;` keeps a resource out of the sidebar (its pages, permissions, trash and search still work; Ctrl+K offers no "New …" for it, and its edit page links back to its parent).
+- `CountColumn::make('units')->relation(UnitResource::class, 'property_id')`: related counts in the parent's list, one grouped query per page.
+- The parent's History also lists its related records' changes ("Units · Flat 3 — created this record"), for people who may view them. The delete confirmation of a parent says how many related records it has.
+- `admin:doctor` checks each manager (child registered, key columns present) and reports resources without a sidebar entry.
+- For developers: `Resource::relations()`, `Resource::parentScope()`, `Field::omit()`, `Activity::parents()`.
+
 ## 0.21.0 - 2026-10-18
 
 **Roles and permissions**: change what each role may do, and add roles, on **Site → Roles** (`/admin/roles`, permission `roles.manage`). Needs flocms-core 2.4 and one migration (`admin_roles`). See the [Roles guide](docs/roles.md).

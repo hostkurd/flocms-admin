@@ -33,6 +33,11 @@ final class ResourceComponent extends Component
     #[State(writable: false)] public string $mode = '';
     #[State(writable: false)] public string $operation = '';
     #[State(maxBytes: 65536)] public string $draft = '';
+    /** A relation manager (0.22): the parent's slug and id and the manager's name, signed. */
+    #[State(writable: false)] public string $parentSlug = '';
+    #[State(writable: false)] public string $parentId = '';
+    #[State(writable: false)] public string $relation = '';
+    private ?Resource $scoped = null;
 
     public function authorize(Request $request): void
     {
@@ -50,7 +55,7 @@ final class ResourceComponent extends Component
     #[Action] public function applyFilters(): void
     {
         $this->page = 1;
-        $filters = new \FloCMS\Admin\Table\FilterSet($this->resource()->table(new Table()), $this->filters);
+        $filters = new \FloCMS\Admin\Table\FilterSet($this->table(), $this->filters);
         if ($filters->errors !== []) {
             if (!class_exists(ValidationException::class)) { class_exists(\FloCMS\Core\Validator::class); }
             throw new ValidationException(['_form' => AdminLang::get('filters.not_applied')]);
@@ -67,14 +72,19 @@ final class ResourceComponent extends Component
     #[Action] public function resetColumns(): void { $this->visibility()->reset(); $this->columns = '[]'; }
     private function visibility(): \FloCMS\Admin\Table\ColumnVisibility
     {
-        return new \FloCMS\Admin\Table\ColumnVisibility($this->resource()->table(new Table()), $this->resource()::getSlug());
+        return new \FloCMS\Admin\Table\ColumnVisibility($this->table(), $this->columnsKey());
+    }
+    /** A relation manager remembers its own column choices (0.22). */
+    private function columnsKey(): string
+    {
+        return $this->resource()->parentScope()?->columnsKey() ?? $this->resourceSlug;
     }
     #[Action] public function clearFilters(): void { $this->filters = '{}'; $this->page = 1; $this->selectedIds = '[]'; }
     #[Action] public function clearSelection(): void { $this->selectedIds = '[]'; }
     #[Action] public function clear(): void { $this->search = ''; $this->page = 1; $this->selectedIds = '[]'; }
     #[Action] public function sortBy(): void
     {
-        if ($this->resource()->table(new Table())->sortableColumn($this->selectedSort) === null) { throw new HttpException(400); }
+        if ($this->table()->sortableColumn($this->selectedSort) === null) { throw new HttpException(400); }
         $this->direction = $this->sort === $this->selectedSort && $this->direction === 'asc' ? 'desc' : 'asc';
         $this->sort = $this->selectedSort; $this->page = 1;
         $this->selectedIds = '[]';
@@ -188,8 +198,17 @@ final class ResourceComponent extends Component
     }
     private function resource(): Resource
     {
+        if ($this->scoped !== null) { return $this->scoped; }
         $class = Admin::registry()->find($this->resourceSlug) ?? throw new HttpException(404);
-        return new $class();
+        $resource = new $class();
+        if ($this->parentSlug === '') { return $resource; }
+        // Checked again on every request: the parent exists and the user may still edit it.
+        return $this->scoped = $resource->withinParent(\FloCMS\Admin\Relations\ParentScope::resolve($this->parentSlug, $this->parentId, $this->relation, $this->resourceSlug));
+    }
+    private function table(): Table
+    {
+        $resource = $this->resource(); $table = $resource->table(new Table());
+        return ($scope = $resource->parentScope()) !== null ? $scope->adjustTable($table) : $table;
     }
     private function repository(): RecordRepository
     {
@@ -211,14 +230,15 @@ final class ResourceComponent extends Component
 
     public function render(): string
     {
-        $resource = $this->resource(); $table = $resource->table(new Table());
+        $resource = $this->resource(); $table = $this->table();
+        $scope = $resource->parentScope();
         $filters = new \FloCMS\Admin\Table\FilterSet($table, $this->filters);
         foreach ($table->getFilters() as $filter) {
             if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $filter->lookupFrom(Admin::url($resource::getSlug() . '/lookup')); }
         }
         $resourceForm = $resource->form(new Form());
         foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $resourceForm->translatableNames(), true)); }
-        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $resource::getSlug());
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $this->columnsKey());
         // Sorting by a column the user hid falls back to the default sort.
         if ($this->sort !== '' && $visibility->isHidden($this->sort)) { $this->sort = ''; $this->direction = 'asc'; }
         $result = $this->repository()->paginate($table, $this->search, $this->sort ?: null, $this->direction, $this->page,
@@ -226,7 +246,7 @@ final class ResourceComponent extends Component
         $last = max(1, (int) $result['pagination']['last_page']);
         if ($this->page > $last) { $this->page = $last; return $this->render(); }
         foreach ($visibility->visibleColumns() as $column) { $column->prepareRecords($result['data']); }
-        $registry = new ActionRegistry($resource, $table);
+        $registry = new ActionRegistry($resource, $resource->table(new Table()));
         $selected = \FloCMS\Admin\Actions\BulkExecutor::ids($this->selectedIds, true);
         $bulkActions = array_filter($registry->all('bulk'), fn ($action): bool => $action->available($resource));
         $action = $this->mode !== '' ? $registry->find($this->activePlacement, $this->activeAction) : null;
@@ -248,9 +268,12 @@ final class ResourceComponent extends Component
         return $this->view(dirname(__DIR__, 2) . '/resources/views/reactive-resource.html', [
             't' => \FloCMS\Admin\Http\PageView::translator(), 'resource' => $resource, 'table' => $table, 'result' => $result,
             'visibleColumns' => $visibility->visibleColumns(), 'columnsChanged' => $visibility->changed(), 'columnsIcon' => \FloCMS\Admin\Support\Icons::svg('columns'),
-            'reorderUrl' => \FloCMS\Admin\Http\PageView::reorderUrl($resource, $table, $filters, \FloCMS\Core\Auth::can($resource::permission('update'))),
+            'reorderUrl' => $scope !== null ? null : \FloCMS\Admin\Http\PageView::reorderUrl($resource, $table, $filters, \FloCMS\Core\Auth::can($resource::permission('update'))),
             'reorderIcon' => \FloCMS\Admin\Support\Icons::svg('arrows-up-down'),
-            'trash' => \FloCMS\Admin\Http\TrashPage::toolbarLink($resource::class), 'trashIcon' => \FloCMS\Admin\Support\Icons::svg('trash'),
+            'trash' => $scope !== null ? null : \FloCMS\Admin\Http\TrashPage::toolbarLink($resource::class),
+            'embedded' => $scope !== null, 'emptyText' => $scope?->manager->getEmptyText() ?? '',
+            'managerCount' => $scope !== null ? $this->repository()->newQuery()->count() : 0,
+            'emptyIcon' => \FloCMS\Admin\Support\Icons::svg($scope?->manager->getIcon() ?? 'layers'), 'trashIcon' => \FloCMS\Admin\Support\Icons::svg('trash'),
             'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
             'search' => $this->search, 'page' => $this->page, 'last' => $last, 'prefix' => $prefix, 'mode' => $this->mode,
             'filterFields' => $filters->render($prefix), 'filters' => $this->filters, 'hasActiveFilters' => $filters->active() !== [],
@@ -260,14 +283,16 @@ final class ResourceComponent extends Component
             'prevIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'), 'nextIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-right', 'fa-icon fa-flip-rtl'),
             'bulkActions' => $bulkActions, 'selected' => $selected, 'selectedIds' => $this->selectedIds, 'selectedBulk' => $this->selectedBulk,
             'selectionLabel' => AdminLang::get('bulk.selected', ['count' => count($selected)]),
-            'fullPageUrl' => Admin::url($resource::getSlug(), ['static' => 1, 'q' => $this->search, 'sort' => $this->sort, 'dir' => $this->direction, 'page' => $this->page, 'filter' => $filters->active()]),
+            'fullPageUrl' => Admin::url($resource::getSlug(), ['static' => 1, 'parent' => $scope?->token(), 'q' => $this->search, 'sort' => $this->sort, 'dir' => $this->direction, 'page' => $this->page, 'filter' => $filters->active()]),
             'pageActions' => $renderer->render('page', prefix: $prefix, backUrl: $listUrl), 'tableActions' => $renderer->render('table', prefix: $prefix, backUrl: $listUrl),
             'rowActions' => static fn (object $row): string => $renderer->render('row', $row, prefix: $prefix, backUrl: $listUrl),
             'dialogMinHeight' => $action?->getModalMinHeight(),
             'dialogStyle' => $action !== null && $action->getMode($resource) === 'slide-over' ? 'slide-over' : 'modal',
-            'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? \FloCMS\Admin\Actions\BulkExecutor::confirmText($resource, $action, count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))) : ($action?->getDescription($resource) ?? ''),
+            'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? \FloCMS\Admin\Actions\BulkExecutor::confirmText($resource, $action, count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))) : trim(($action?->getDescription($resource) ?? '')
+                // Deleting a parent says how many related records it has (0.22).
+                . ($this->mode === 'delete' && $this->editingId !== '' ? ' ' . (\FloCMS\Admin\Relations\ManagersView::deleteCount($resource, $this->editingId) ?? '') : '')),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
-            'uploadUrl' => Admin::url($resource::getSlug() . '/upload'), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
+            'uploadUrl' => Admin::url($resource::getSlug() . '/upload', ['parent' => $scope?->token()]), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
             'formShowsFields' => array_filter($form->fields(), static fn ($field): bool => $field->isVisible() && !$field instanceof \FloCMS\Admin\Form\Fields\Hidden) !== [],
             // No body for a confirmation without fields (it only padded the dialog).

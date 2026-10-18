@@ -81,15 +81,17 @@ final class ActionRenderer
         $path = $this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : '');
         if ($name === 'create' && $kind === 'create' && $placement === 'page') { $path = $this->resource::getSlug() . '/create'; }
         if ($name === 'edit' && $kind === 'edit') { $path = $this->resource::getSlug() . '/edit/' . $id; }
+        // Inside a parent (a relation manager without JavaScript) every link keeps it (0.22).
+        $parent = $this->resource->parentScope()?->token();
         if ($backUrl !== null && (($name === 'create' && $kind === 'create' && $placement === 'page') || ($name === 'edit' && $kind === 'edit'))) {
-            return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e(Admin::url($path, ['back' => $backUrl])) . '">' . $label . '</a>';
+            return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e(Admin::url($path, ['parent' => $parent, 'back' => $backUrl])) . '">' . $label . '</a>';
         }
         if ($name === 'delete' && $kind === 'delete') {
-            return '<form method="post" class="fa-inline" data-confirm action="' . Str::e(Admin::url($this->resource::getSlug() . '/delete/' . $id)) . '">'
+            return '<form method="post" class="fa-inline" data-confirm action="' . Str::e(Admin::url($this->resource::getSlug() . '/delete/' . $id, ['parent' => $parent])) . '">'
                 . \FloCMS\Core\Csrf::field() . '<input type="hidden" name="_back" value="' . Str::e($backUrl ?? Admin::url($this->resource::getSlug())) . '">'
                 . '<button type="submit" class="' . $class . '"' . $attributes . '>' . $label . '</button></form>';
         }
-        return '<a class="' . $class . '"' . $attributes . ' href="' . Str::e(Admin::url($path)) . '">' . $label . '</a>';
+        return '<a class="' . $class . '"' . $attributes . ' href="' . Str::e(Admin::url($path, ['parent' => $parent])) . '">' . $label . '</a>';
     }
 
     /** Menu items always have an icon column so labels line up. */

@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.21.0';
+    public const VERSION = '0.22.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -158,6 +158,7 @@ final class Admin
         \FloCMS\Admin\Trash\Trash::reset();
         \FloCMS\Admin\Activity\Activity::reset();
         \FloCMS\Admin\Roles\Roles::reset();
+        \FloCMS\Admin\Relations\RelationManager::reset();
         Languages::setRtl(self::$config->rtlLanguages());
 
         return self::$config;
@@ -187,6 +188,7 @@ final class Admin
         \FloCMS\Admin\Trash\Trash::reset();
         \FloCMS\Admin\Activity\Activity::reset();
         \FloCMS\Admin\Roles\Roles::reset();
+        \FloCMS\Admin\Relations\RelationManager::reset();
         self::$problemsLogged = false;
         Languages::reset();
     }

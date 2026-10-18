@@ -122,7 +122,8 @@ final class GlobalSearch
 
         $action = AdminLang::get('search.type_action');
         foreach (Admin::registry()->all() as $slug => $class) {
-            if (!Auth::can($class::permission('create'))) { continue; }
+            // A resource kept out of the sidebar is added inside its parent (0.22).
+            if (!$class::showsInNavigation() || !Auth::can($class::permission('create'))) { continue; }
             try { if (!(new $class())->canCreate()) { continue; } } catch (\Throwable) { continue; }
             $pages[] = SearchResult::make(AdminLang::get('actions.create_label', ['label' => $class::getLabel()]), Admin::url($slug . '/create'))
                 ->icon('plus')->type($action)->detail($class::getPluralLabel());

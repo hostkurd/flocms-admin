@@ -76,9 +76,10 @@ final class Form
                 $visit($dependency);
             }
             $current = $field->resolve($effective);
-            if (!$current->isVisible() || ($current->isDisabled() && $record !== null)) { $state[$name] = $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default()); }
+            if ($current->fixedValue() !== null) { $state[$name] = $current->fixedValue(); }
+            elseif (!$current->isVisible() || ($current->isDisabled() && $record !== null)) { $state[$name] = $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default()); }
             $value = $state[$name] ?? $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default());
-            $effective[$name] = !$current->isVisible() || is_array($value) || $current->typeError((string) $value) !== null ? '' : $value;
+            $effective[$name] = (!$current->isVisible() && $current->fixedValue() === null) || is_array($value) || $current->typeError((string) $value) !== null ? '' : $value;
             $resolved[$name] = $current; unset($visiting[$name]);
         };
         foreach (array_keys($this->fields) as $name) { $visit($name); }

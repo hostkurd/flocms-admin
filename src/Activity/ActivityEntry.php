@@ -141,6 +141,17 @@ final class ActivityEntry
         };
     }
 
+    /**
+     * The parent records of a related record's entry (0.22): ["properties:5"].
+     *
+     * @return list<string>
+     */
+    public function parents(): array
+    {
+        $parents = $this->meta['parents'] ?? [];
+        return is_array($parents) ? array_values(array_filter($parents, 'is_string')) : [];
+    }
+
     /** Whether the entry has a before → after table to show. */
     public function hasChanges(): bool
     {
@@ -159,7 +170,7 @@ final class ActivityEntry
         foreach ($this->meta as $key => $value) {
             if ($key === 'trash' && $value) { $details[AdminLang::get('trash.title')] = AdminLang::get('activity.moved_to_trash'); continue; }
             if ($key === 'expired' && $value) { $details[AdminLang::get('trash.title')] = AdminLang::get('activity.purged_expired'); continue; }
-            if (in_array($key, ['count', 'action', 'titles', 'expired', 'folder', 'file', 'trash'], true)) { continue; }
+            if (in_array($key, ['count', 'action', 'titles', 'expired', 'folder', 'file', 'trash', 'parents'], true)) { continue; }
             if (is_scalar($value) && (string) $value !== '') {
                 $details[Str::headline((string) $key)] = mb_strimwidth((string) $value, 0, 300, '…');
             }

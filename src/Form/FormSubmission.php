@@ -79,8 +79,12 @@ final class FormSubmission
             $pk = $class::getPrimaryKey();
             if ($record !== null) { unset($data[$pk]); }
             unset($data['created_at'], $data['updated_at']);
+            // Inside a relation manager beforeSave() sees the parent's key too (0.22).
+            if (($scope = $class->parentScope()) !== null) { $data[$scope->foreignKey()] = $scope->key(); }
             $prepared = $data;
             $data = $class->beforeSave($data, $record);
+            // Inside a relation manager the parent's key is always the parent (0.22), whatever was sent.
+            if (($scope = $class->parentScope()) !== null) { $data[$scope->foreignKey()] = $scope->key(); }
             foreach ($form->writableFields() as $name => $field) {
                 if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && ($data[$name] ?? null) !== ($prepared[$name] ?? null)) { throw new \LogicException('beforeSave must preserve managed upload columns.'); }
             }
@@ -129,19 +133,21 @@ final class FormSubmission
         $title = \FloCMS\Admin\Trash\Trash::titleOf($class, $saved);
         $db = $this->repository->connection();
         if ($record === null) {
-            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, db: $db);
+            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, meta: \FloCMS\Admin\Activity\Activity::parents($class, $saved), db: $db);
             return;
         }
         $form = $class->form(new Form());
         $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved), $class::activityExcept(), $db);
-        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, db: $db); }
+        // Both the old and the new parent hear of a record that moved.
+        $parents = array_values(array_unique([...(\FloCMS\Admin\Activity\Activity::parents($class, $record)['parents'] ?? []), ...(\FloCMS\Admin\Activity\Activity::parents($class, $saved)['parents'] ?? [])]));
+        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, $parents === [] ? [] : ['parents' => $parents], $db); }
     }
 
     private function skip(Form $form, array $state, ?object $record): array
     {
         $skip = [];
         foreach ($form->writableFields() as $name => $field) {
-            if ($field->skipsWrite($state[$name], $record !== null)) { $skip[] = $name; }
+            if ($field->isOmitted() || $field->skipsWrite($state[$name], $record !== null)) { $skip[] = $name; }
         }
         return $skip;
     }
