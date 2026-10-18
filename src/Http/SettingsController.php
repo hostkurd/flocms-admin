@@ -69,7 +69,7 @@ final class SettingsController extends PanelController
             }
             $state = $result['state'];
             $errors = $result['errors'];
-            $editing = $this->languageWithError($errors, $editing);
+            $editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($errors, $editing);
             Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger');
         } else {
             $state = $editor->initialState();
@@ -77,7 +77,7 @@ final class SettingsController extends PanelController
 
         $switch = !$page->usesBadges() && count(Languages::all()) > 1;
         $renderer = new FormRenderer($state, $errors, Languages::all(), Languages::default(), true,
-            languageSwitch: !$page->usesBadges(),
+            languageSwitch: !$page->usesBadges(), editing: $editing,
             uploadControl: static fn (\FloCMS\Admin\Form\Fields\FileUpload $field, string $id, string $inputName, string $value, ?string $fallback, array $attributes): string
                 => SettingsUploads::control($field, $id, $inputName, $value, $fallback, $attributes));
 
@@ -87,10 +87,13 @@ final class SettingsController extends PanelController
             'title' => $title,
             'description' => $page->getDescription(),
             'action' => Admin::url('settings/edit/' . $name),
-            'fields' => $renderer->render($editor->form()),
+            'fields' => $fields = $renderer->render($editor->form()),
             'csrf' => \FloCMS\Core\Csrf::field(),
             'pages' => $this->navigation($name),
             'switch' => $switch,
+            // The settings page keeps its select (0.23 adds the counts and Next missing).
+            'switchHtml' => $switch ? \FloCMS\Admin\Form\LanguageSwitch::render('fa-settings-switch', Languages::all(), Languages::default(), $editing, $renderer->languageStats(),
+                style: 'select', selectAttributes: ['data-settings-language' => '']) : '',
             'languages' => array_map(static fn (string $code): array => ['code' => $code, 'name' => Languages::name($code), 'dir' => Languages::direction($code)], Languages::all()),
             'editing' => $editing,
             'defaultLang' => Languages::default(),
@@ -135,19 +138,5 @@ final class SettingsController extends PanelController
     {
         $lang = strtolower(trim($lang));
         return in_array($lang, Languages::all(), true) ? $lang : Languages::default();
-    }
-
-    /** After a failed save, show the language of the first error (the default one first). */
-    private function languageWithError(array $errors, string $editing): string
-    {
-        $languages = [];
-        foreach (array_keys($errors) as $key) {
-            $parts = explode('.', (string) $key, 2);
-            $languages[] = isset($parts[1]) && in_array($parts[1], Languages::all(), true) ? $parts[1] : Languages::default();
-        }
-        if ($languages === [] || in_array($editing, $languages, true)) {
-            return $editing;
-        }
-        return in_array(Languages::default(), $languages, true) ? Languages::default() : $languages[0];
     }
 }

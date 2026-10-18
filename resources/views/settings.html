@@ -1,6 +1,6 @@
-<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-record fa-settings" id="fa-record-form" novalidate data-admin-record-form data-admin-settings data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}" data-default-lang="{{ $defaultLang }}" data-editing="{{ $editing }}">
+<form method="post" enctype="multipart/form-data" action="{{ $action }}" class="fa-record fa-settings" id="fa-record-form" novalidate data-admin-record-form data-admin-settings data-admin-dirty="{{ $dirty ? 'true' : 'false' }}" data-admin-leave="{{ $t('form.leave_text') }}" data-default-lang="{{ $defaultLang }}" data-editing="{{ $editing }}"@if($switch) data-lang-scope@endif>
     {!! $csrf !!}
-    <input type="hidden" name="_editing" value="{{ $editing }}" data-settings-editing-value>
+    <input type="hidden" name="_editing" value="{{ $editing }}" data-settings-editing-value data-lang-editing-value>
     <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $t('actions.save') }}</button>
     <div class="fa-record-head">
         <div class="fa-record-heading">
@@ -8,15 +8,7 @@
             @if($description !== null)<p class="fa-page-description">{{ $description }}</p>@endif
         </div>
         <div class="fa-record-actions">
-            @if($switch)
-            <label class="fa-editing" data-settings-switch data-admin-untracked hidden>
-                <span class="fa-editing-label">{{ $t('settings.editing') }}</span>
-                <select class="fa-input fa-select fa-editing-select" data-settings-language aria-describedby="fa-editing-help">
-                    @foreach($languages as $language)<option value="{{ $language['code'] }}" lang="{{ $language['code'] }}"@if($language['code'] === $editing) selected @endif>{{ $language['name'] }}@if($language['code'] === $defaultLang) · {{ $t('translations.default_language') }}@endif</option>@endforeach
-                </select>
-                <span class="fa-sr" id="fa-editing-help">{{ $t('settings.editing_help') }}</span>
-            </label>
-            @endif
+            @if($switch){!! $switchHtml !!}@endif
             <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $dirty ? $t('form.unsaved_state') : '' }}</span>
             <button type="submit" name="_save" value="1" class="fa-btn fa-btn-primary" data-admin-save title="{{ $t('form.save_shortcut') }}"@if(!$ready) disabled @endif>{{ $t('actions.save') }}</button>
         </div>
@@ -41,7 +33,7 @@
         <div class="fa-settings-body">
             @if(!$ready)<div class="fa-alert fa-alert-warning" role="status">{{ $t('settings.not_ready') }}</div>@endif
             @if($notice !== null)<p class="fa-alert fa-alert-info" role="status">{{ $notice }}</p>@endif
-            @if($switch)<p class="fa-alert fa-alert-info fa-settings-other" data-settings-other data-template="{{ $t('settings.editing_other', ['language' => ':language', 'default' => $defaultName]) }}" hidden></p>@endif
+            @if($switch)<p class="fa-alert fa-alert-info fa-settings-other" data-settings-other data-lang-other data-template="{{ $t('settings.editing_other', ['language' => ':language', 'default' => $defaultName]) }}" hidden></p>@endif
             {!! $fields !!}
         </div>
     </div>

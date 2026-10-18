@@ -315,8 +315,7 @@ final class TrashPage
     {
         $definition = new $class();
         $table = $definition->table(new Table());
-        $translatable = $definition->form(new \FloCMS\Admin\Form\Form())->translatableNames();
-        foreach ($table->getColumns() as $name => $column) { $column->detectTranslatable(in_array($name, $translatable, true)); }
+        $table->prepare($definition->form(new \FloCMS\Admin\Form\Form()));
         $visible = (new \FloCMS\Admin\Table\ColumnVisibility($table, $class::getSlug()))->visibleColumns();
         $records = array_map(static fn (TrashEntry $entry): object => $entry->record(), $entries);
         foreach ($visible as $column) {

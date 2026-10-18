@@ -2,6 +2,23 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.23.0 - 2026-10-18
+
+**Page-level translation**: an **Editing: English · Arabic 7/9 · Kurdish 0/9** switch shows the whole form in one language, so a translator works through a record from top to bottom. Storage is unchanged (one JSON object per translatable column): no migration, the website is the same, and a resource can move between modes at any time. See [Forms](docs/forms.md#page-level-translation-023).
+
+- Two modes: `'translation_mode' => 'page'` or `'field'` in `config/admin.php`, and `protected static string $translationMode` on a resource. A missing key means `'field'`, so existing sites keep the language badges; `admin:install` writes `'page'` into a new config. A site with one language sees neither.
+- The switch sits in the record's head (a full-width row on phones): segmented buttons for up to four languages, a select for more, each with its count of filled translatable fields and a full or partial ring. **Next missing** jumps to the next empty field in the language (opening a tab or folded section on the way); counts and the labels' dots update as you type.
+- Under an empty input in another language, the default language's text in grey ("English: Sea view villa"; rich text: 200 characters and Show all), kept in step with what is typed.
+- Fields that are the same in every language stay visible but read-only outside the default language ("Same in every language. Change it in English."), with a note above the form.
+- Each language pane takes its own direction and font: Arabic right to left inside an English panel, English left to right inside an Arabic one. Rich text editors follow the switch.
+- Errors: a language with errors gets a red count in the switch; after a failed save the form opens on the first error's language; the message names it, "Please check: Title (Arabic)" (in field mode too).
+- The language you last saved in is remembered per user; `?editing=ar` opens a language and the switch keeps the address in step. A new record starts in the default language.
+- Create and Edit dialogs (relation managers too) and custom action forms show the same switch; a dialog opened from a record being translated starts in its language. Bulk forms keep the badges.
+- `TranslationsColumn::make('translations')`: EN 4/4 · AR 3/4 · KU 0/4 per record, from the same JSON columns, with a **Missing in: language** filter (`MissingTranslationFilter`, also usable on its own; `->withoutFilter()`).
+- Settings pages keep their select and get the counts, Next missing and the reference lines.
+- `admin:doctor` reports each resource's mode and checks `translation_mode` / `$translationMode` values.
+- For developers: `Resource::getTranslationMode()`, `Resource::usesLanguageSwitch()`, `AdminConfig::translationMode()`, `FormRenderer` arguments `editing`, `switchActive`, `sameNote` and `languageStats()`, `LanguageSwitch`, `EditingLanguage`, `Table::prepare()`. The Settings switch script moved into the shared `translations.ts`.
+
 ## 0.22.0 - 2026-10-18
 
 **Relation managers**: a record's related records on its edit page (a property's units, a country's cities), with search, filters, sorting and pages, and New, Edit and Delete in dialogs, without leaving the page. No migration. See the [Relation managers guide](docs/relation-managers.md).

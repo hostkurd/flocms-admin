@@ -82,6 +82,68 @@ return $form->schema([
 
 `Section::make('seo')->collapsible()` adds a fold control (open by default); `->collapsed()` starts it folded. It is a native `<details>`, so it works without JavaScript, and a section that holds a validation error always opens.
 
+## Page-level translation (0.23)
+
+On a site with more than one language, translatable fields are edited in one of two modes:
+
+| Mode | The form | Best for |
+| --- | --- | --- |
+| `'page'` | An **Editing: language** switch shows the whole form in one language | Content: posts, properties, pages |
+| `'field'` | The default-language input with a language badge; the badge opens every language | Small records with one or two translatable names: categories, cities |
+
+```php
+// config/admin.php: the panel default. Missing = 'field', so sites from before 0.23 do not change;
+// php flo admin:install writes 'page' into a new config/admin.php.
+'translation_mode' => 'page',
+
+// On a resource, when it differs from the panel default ('' follows the panel)
+protected static string $translationMode = 'field';
+```
+
+Storage is the same in both modes (one JSON object per translatable column), so there is no migration, the website is unchanged, and a resource can move between modes at any time. A site with one language sees neither: inputs are plain.
+
+### The switch
+
+The record's head shows **Editing: English 9/9 · Arabic 7/9 · Kurdish 0/9**: segmented buttons for up to four languages, a select for more. Each language shows how many translatable fields are filled, with a full (green), partial or empty ring; the default language is first. Picking a language turns every translatable field into that language's input, with its own direction and font (an Arabic pane is right to left inside an English panel, and the other way round). Rich text editors follow the switch instead of showing their own language tabs.
+
+- **Shared fields** (price, city, photo, relations) stay visible but read-only outside the default language, with "Same in every language. Change it in English." A note above the form says which version is being edited.
+- **The default language's text** shows in grey under an empty input in another language ("English: Sea view villa"); for rich text, the first 200 characters and **Show all**. It follows what is typed in the default language.
+- **Next missing** jumps to the next empty field in the language being edited (opening a form tab or a folded section on the way). The counts and the label's dot (filled, hollow when missing, red with an error) update as you type.
+- **Save** saves every language at once and comes back in the language you were editing.
+
+### Which language opens
+
+1. `?editing=ar` in the address opens a language directly; the switch keeps the address in step, so Reload and Back return to it.
+2. Otherwise an existing record opens in the language you last saved in (remembered per user in the preferences; saving in the default language forgets it). A new record starts in the default language.
+3. After a failed save the form opens on the language of the first error: the language you were editing when it has one, else the default language, else the first language with an error.
+
+### Errors
+
+Errors are never hidden behind the switch: a language with errors gets a red count in the switch, the input is marked, and the message at the top names the language: "Please check: Title (Arabic)". The count goes once the value is corrected. `required` still applies to the default language only; empty translations are allowed and fall back to the default language on the website.
+
+### Dialogs and actions
+
+Create and Edit dialogs show the same switch in their head, so a unit in a relation manager (0.22) is translated like its property: a dialog opened from a record page being translated starts in the page's language, otherwise in the language you last saved in. Custom action forms with translatable fields get the switch too, in the dialog and on the action's full page. Bulk action forms keep the badges.
+
+Settings pages keep their select, and now show the counts, **Next missing** and the reference lines.
+
+### What still needs translating
+
+```php
+use FloCMS\Admin\Table\Columns\TranslationsColumn;
+
+$table->columns([
+    TextColumn::make('title')->searchable(),
+    TranslationsColumn::make('translations'),   // EN 4/4 · AR 3/4 · KU 0/4
+]);
+```
+
+`TranslationsColumn` counts the resource's translatable form fields (or `->fields(['title', 'summary'])`) from the same JSON columns, with a full, partial or empty mark per language; it is not sortable or searchable and works in either mode. It adds a **Missing in: language** filter to the list (records where at least one counted field is empty in that language; empty rich text counts as missing) unless `->withoutFilter()`. The filter can also be declared on its own: `MissingTranslationFilter::make('todo')->label('To translate')`.
+
+### Without JavaScript
+
+The switch stays hidden and every language's input is shown with its language code, as on settings pages; shared fields stay editable. Saving works the same.
+
 ## Dependent and conditional fields
 
 `Select::optionsFor('country', Closure(string): array)` declares its parent and computes its current allowed options on the server. It receives the canonical parent value, or an empty string when unavailable/invalid. Return an empty array for missing parents. Keep callbacks read-only and scope database queries to the current user/tenant with bound values; they can run multiple times while processing a request. Existing zero-argument `options(Closure)` remains supported.

@@ -87,6 +87,11 @@ return [
     // Rows per list page (a resource can set its own with ->perPage())
     'per_page' => 25,
 
+    // How translatable fields are edited: 'page' shows the whole form in one language
+    // with an "Editing: language" switch; 'field' gives each field a language badge.
+    // A resource can choose its own: protected static string $translationMode = 'field';
+    'translation_mode' => 'page',
+
     // Content languages written right to left (inputs get dir="rtl")
     'rtl_languages' => ['ar', 'ku', 'ckb', 'fa', 'he', 'ur'],
 

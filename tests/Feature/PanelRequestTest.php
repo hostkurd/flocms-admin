@@ -171,7 +171,7 @@ final class PanelRequestTest extends RequestTestCase
 
         self::assertSame(200, $result['status']);
         $body = $result['body'];
-        self::assertStringContainsString('Please check: Title, Slug, Status, Views.', $body);
+        self::assertStringContainsString('Please check: Title (العربية), Slug, Status, Views.', $body);
         self::assertStringContainsString('Title must not exceed 20 characters.', $body);
         self::assertStringContainsString('data-open-on-load="1"', $body);
         self::assertStringContainsString('This Slug is already used.', $body);

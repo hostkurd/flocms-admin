@@ -1,3 +1,17 @@
+# Upgrading to Admin 0.23.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.23.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **Nothing changes until you choose page mode**: without `'translation_mode'` in `config/admin.php` every resource keeps the language badges.
+- **Turning it on**: add `'translation_mode' => 'page',` to `config/admin.php` for the whole panel, or `protected static string $translationMode = 'page';` to one resource (and `'field'` to keep a resource on badges). `php flo admin:doctor` lists the mode of each resource. See [Forms](docs/forms.md#page-level-translation-023).
+- **What still needs translating**: add `TranslationsColumn::make('translations')` to a table; it brings a **Missing in** filter (named `missing_in`; a filter of your own with that name keeps it).
+- **Error messages** now name the language of a translation's error in both modes: "Please check: Title (Arabic)". Tests that compare that text need the new wording.
+- **Settings pages**: the language select is the same control, now with counts in its options, Next missing and reference lines; the "All languages" note keeps its place. Code that hooked `[data-settings-language]` keeps working.
+- **Preferences**: the last language saved in is kept as the `editing_language` preference (in `admin_user_preferences`, or the session before that table exists).
+- **Templates and tests**: a page-mode form is `[data-lang-scope]` with `data-editing`, a hidden `_editing` input and a `.fa-lang-switch`; each language input sits in a `.fa-lang-pane`; shared fields have `data-same-all`. Field-mode markup is unchanged.
+
+---
+
 # Upgrading to Admin 0.22.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.22.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

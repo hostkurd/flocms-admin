@@ -131,7 +131,12 @@ final class Form
                 continue;
             }
             $tab = $tabs[$name] ?? null;
-            $places[$name] = $field->getLabel() . ($tab !== null && $tab !== '' ? ' (' . $tab . ')' : '');
+            // A translation's error names its language: "Title (Arabic)".
+            $lang = explode('.', (string) $key, 2)[1] ?? null;
+            $language = $field->isTranslatable() && $lang !== null && in_array($lang, \FloCMS\Admin\Translation\Languages::all(), true)
+                ? \FloCMS\Admin\Translation\Languages::name($lang) : null;
+            $notes = array_values(array_filter([$tab, $language], static fn (?string $part): bool => $part !== null && $part !== ''));
+            $places[$name . ($language !== null ? '.' . $lang : '')] = $field->getLabel() . ($notes !== [] ? ' (' . implode(\FloCMS\Admin\Support\AdminLang::get('form.list_separator'), $notes) . ')' : '');
         }
         return implode(\FloCMS\Admin\Support\AdminLang::get('form.list_separator'), array_values($places));
     }

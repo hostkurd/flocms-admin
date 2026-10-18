@@ -70,7 +70,9 @@ final class FormLayoutsTest extends TestCase
             ]),
         ])->aside([TextInput::make('status')]);
         $errors = ['price' => 'Price is required.', 'title.ar' => 'Too long.', 'status' => 'Pick one.', 'record' => 'This item was deleted meanwhile.'];
-        self::assertSame('Price (Details), Title, Status, This item was deleted meanwhile.', $form->errorSummary($errors));
+        self::assertSame('Price (Details), Title (العربية), Status, This item was deleted meanwhile.', $form->errorSummary($errors));
+        // 0.23: a translation's error names its language; with a tab, both.
+        self::assertSame('Title, Title (العربية)', $form->errorSummary(['title' => 'Required.', 'title.ar' => 'Too long.']));
         self::assertSame('', $form->errorSummary([]));
         $html = (new FormRenderer([], ['price' => 'Price is required.'], ['en'], 'en'))->render($form);
         self::assertMatchesRegularExpression('~data-admin-tab="[^"]*-0" class="has-error" aria-describedby="[^"]*-0-errors">Details<span class="fa-tab-error"~', $html);
