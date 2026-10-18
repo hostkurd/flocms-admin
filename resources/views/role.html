@@ -43,7 +43,7 @@
                         <tr data-role-row>
                             <th scope="row" class="fa-role-rh">{{ $row['label'] }}@if($row['sub'] !== '')<small><bdi>{{ $row['sub'] }}</bdi></small>@endif</th>
                             @foreach($row['cells'] as $cell)
-                            <td><label class="fa-role-cellbox"><input type="checkbox" class="fa-role-check{{ $cell['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $cell['name'] }}" data-role-ability="{{ $cell['ability'] }}" aria-label="{{ $cell['label'] }}"@if($cell['notHeld']) title="{{ $t('roles.not_held') }}" @endif@if($cell['checked']) checked @endif@if($cell['disabled']) disabled @endif><span class="fa-role-short" aria-hidden="true">{{ $cell['short'] }}</span></label></td>
+                            <td>@if($cell['keep'])<input type="hidden" name="perm[]" value="{{ $cell['name'] }}" data-role-keep>@endif<label class="fa-role-cellbox"><input type="checkbox" class="fa-role-check{{ $cell['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $cell['name'] }}" data-role-ability="{{ $cell['ability'] }}" aria-label="{{ $cell['label'] }}"@if($cell['fixed']) data-role-fixed @endif@if($cell['notHeld']) title="{{ $t('roles.not_held') }}" @endif@if($cell['checked']) checked @endif@if($cell['disabled']) disabled @endif><span class="fa-role-short" aria-hidden="true">{{ $cell['short'] }}</span></label></td>
                             @endforeach
                         </tr>
                         @endforeach
@@ -54,8 +54,9 @@
                 @if(count($group['items']) > 0)
                 <div class="fa-role-list">
                     @foreach($group['items'] as $item)
+                    @if($item['keep'])<input type="hidden" name="perm[]" value="{{ $item['name'] }}" data-role-keep>@endif
                     <label class="fa-role-perm"@if($item['notHeld']) title="{{ $t('roles.not_held') }}" @endif>
-                        <input type="checkbox" class="fa-role-check{{ $item['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $item['name'] }}"@if($item['checked']) checked @endif@if($item['disabled']) disabled @endif>
+                        <input type="checkbox" class="fa-role-check{{ $item['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $item['name'] }}"@if($item['fixed']) data-role-fixed @endif@if($item['checked']) checked @endif@if($item['disabled']) disabled @endif>
                         <span class="fa-role-perm-text"><b>{{ $item['title'] }}</b>@if($item['sub'] !== '')<small>{{ $item['sub'] }}</small>@endif</span>
                         <code class="fa-role-code">{{ $item['name'] }}</code>
                     </label>
@@ -130,7 +131,9 @@
             <span class="fa-role-delete-icon" aria-hidden="true">{!! $trashIcon !!}</span>
             <div class="fa-role-delete-text">
                 <h2 class="fa-dialog-title" id="{{ $delete['id'] }}-title">{{ $delete['title'] }}</h2>
-                @if($delete['users'] > 0)
+                @if($delete['users'] > 0 && count($delete['targets']) === 0)
+                <p class="fa-confirm-text">{{ $delete['usersText'] }} {{ $t('roles.no_targets') }}</p>
+                @elseif($delete['users'] > 0)
                 <p class="fa-confirm-text">{{ $delete['usersText'] }}</p>
                 <label class="fa-label" for="{{ $delete['id'] }}-move">{{ $t('roles.move_to') }}</label>
                 <select class="fa-input fa-select" id="{{ $delete['id'] }}-move" name="move_to" required>
@@ -144,7 +147,7 @@
         </div>
         <div class="fa-dialog-foot">
             <button type="button" class="fa-btn" data-admin-dialog-close>{{ $t('actions.cancel') }}</button>
-            <button type="submit" class="fa-btn fa-btn-danger">{{ $delete['users'] > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
+            <button type="submit" class="fa-btn fa-btn-danger"@if($delete['users'] > 0 && count($delete['targets']) === 0) disabled @endif>{{ $delete['users'] > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
         </div>
     </form>
 </dialog>

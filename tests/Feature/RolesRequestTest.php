@@ -264,4 +264,62 @@ final class RolesRequestTest extends RequestTestCase
         foreach ($data['groups'] as $group) { foreach ($group['items'] as $item) { $titles[] = $group['label'] . ':' . $item['title']; } }
         self::assertContains('Roles:Editor', $titles);
     }
+    public function testResetCannotGiveBackMoreThanYouHold(): void
+    {
+        // A Super Admin lowered Admin (config level 2) to level 0; an Editor who may manage roles must not reset it
+        self::storeRole(2, ['en' => 'Admin'], 0, true, ['content.posts.view']);
+        $permissions = self::PERMISSIONS;
+        $permissions[1] = ['content.*', 'roles.manage'];
+        $editor = self::as(self::EDITOR, ['permissions' => $permissions]);
+
+        $page = self::request('GET', '/en/admin/roles', $editor);
+        self::assertStringNotContainsString('/admin/roles/reset/2', $page['body']);
+        self::post('/en/admin/roles/reset/2', [], $editor);
+        self::assertNotNull(self::stored(2), 'still lowered');
+        self::assertSame(0, (int) self::stored(2)['level']);
+    }
+
+    public function testDeleteNeedsATargetBelowYourLevelAndLeavesNobodyBehind(): void
+    {
+        self::storeRole(4, ['en' => 'Author'], 1, true, ['content.posts.view']);
+        self::pdo()->exec('UPDATE users SET role = 4 WHERE id = 4');
+
+        // No target: refused, the role and its user stay
+        self::post('/en/admin/roles/delete/4', [], self::as(self::SUPER));
+        self::assertNotNull(self::stored(4));
+        // The Super Admin's own level is not a target (strictly below)
+        self::post('/en/admin/roles/delete/4', ['move_to' => '3'], self::as(self::SUPER));
+        self::assertNotNull(self::stored(4));
+        self::assertSame(4, (int) self::row('users', 4)['role']);
+
+        // The number of a deleted role is not reused while a user still holds it
+        self::pdo()->exec('UPDATE users SET role = 9 WHERE id = 4');
+        self::storeRole(8, ['en' => 'Eight'], 1, true, []);
+        self::post('/en/admin/roles/create', ['name' => ['en' => 'Next'], 'level' => '1', 'admin_access' => '1', 'perm' => []], self::as(self::SUPER));
+        self::assertNull(self::stored(9), 'users hold 9');
+        self::assertNotNull(self::stored(10));
+    }
+
+    public function testCoveredBoxesSurviveTurningTheSwitchOffWithoutJavaScript(): void
+    {
+        $form = self::request('GET', '/en/admin/roles/edit/1', self::as(self::SUPER));
+        self::assertStringContainsString('<input type="hidden" name="perm[]" value="content.posts.view" data-role-keep>', $form['body']);
+        // The browser sends the hidden copies, not the disabled boxes; the switch is unticked
+        self::post('/en/admin/roles/edit/1', ['name' => ['en' => 'Editor'], 'level' => '1', 'admin_access' => '1',
+            'perm' => ['content.posts.view', 'content.posts.create', 'content.posts.update', 'content.posts.delete', 'content.media.view']], self::as(self::SUPER));
+        self::assertEqualsCanonicalizing(['content.posts.view', 'content.posts.create', 'content.posts.update', 'content.posts.delete', 'content.media.view'], self::stored(1)['permissions']);
+    }
+
+    public function testAnUnreadableUsersTableRefusesTheSave(): void
+    {
+        self::pdo()->exec('ALTER TABLE users RENAME TO users_away');
+        try {
+            $result = self::post('/en/admin/roles/edit/1', ['name' => ['en' => 'Editor'], 'level' => '1', 'admin_access' => '1', 'perm' => ['content.posts.view']], self::as(self::SUPER));
+            self::assertFalse($result['redirected']);
+            self::assertNull(self::stored(1));
+            self::assertStringContainsString('users table could not be read', $result['body']);
+        } finally {
+            self::pdo()->exec('ALTER TABLE users_away RENAME TO users');
+        }
+    }
 }

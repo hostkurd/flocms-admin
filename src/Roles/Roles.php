@@ -122,10 +122,24 @@ final class Roles
      */
     public static function definitions(): ?array
     {
+        $config = Admin::config();
+        if (!$config->isInstalled() || !$config->roles()['enabled'] || !is_array(Config::get('permissions')) || !is_array(Config::get('admin_access_roles'))) { return null; }
         try {
-            if (!self::enabled() || self::rows() === []) { return null; }
+            $db = App::db();
+            if ($db === null) { return null; }
+            // One query per request: read the rows afresh (no probe first, no cache from an earlier request).
+            $store = new RoleStore($db, self::table());
+            try {
+                self::$rows = $store->rows();
+            } catch (\Throwable $error) {
+                self::$rows = [];
+                // No table yet (not migrated) is normal; a table that exists but can't be read is logged.
+                if ($store->exists()) { throw $error; }
+                return null;
+            }
+            if (self::$rows === []) { return null; }
             $out = ['roles' => [], 'permissions' => [], 'admin_access_roles' => [], 'levels' => []];
-            foreach (self::all() as $number => $role) {
+            foreach (self::merge(self::$rows) as $number => $role) {
                 $out['roles'][$number] = $role->label();
                 $out['permissions'][$number] = $role->permissions;
                 $out['levels'][$number] = $role->level;
@@ -187,8 +201,17 @@ final class Roles
      */
     public static function all(): array
     {
+        return self::merge(self::enabled() ? self::rows() : []);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, Role>
+     */
+    private static function merge(array $rows): array
+    {
         $roles = self::configRoles();
-        foreach (self::enabled() ? self::rows() : [] as $number => $row) {
+        foreach ($rows as $number => $row) {
             $roles[$number] = new Role($number, $row['name'] !== [] ? $row['name'] : ($roles[$number]->name ?? 'Role ' . $number),
                 $row['level'], $row['admin_access'], $row['permissions'],
                 isset($roles[$number]) ? Role::SOURCE_CHANGED : Role::SOURCE_CUSTOM);
@@ -226,10 +249,18 @@ final class Roles
         return self::topRole()?->number === $role->number;
     }
 
-    /** The next unused role number (null when all 128 are taken). */
+    /** The next role number nobody uses, as a role or in the users table (null when all 128 are taken). */
     public static function nextNumber(): ?int
     {
         $used = array_keys(self::all());
+        try {
+            $db = App::db();
+            if ($db !== null) {
+                foreach ($db->query('SELECT DISTINCT `role` FROM `' . self::usersTable() . '`')->fetchAll(\PDO::FETCH_COLUMN) as $role) { $used[] = (int) $role; }
+            }
+        } catch (\Throwable) {
+            // no users table: role numbers only
+        }
         for ($number = $used === [] ? 1 : max($used) + 1; $number <= RoleStore::MAX_NUMBER; $number++) {
             if (!in_array($number, $used, true)) { return $number; }
         }
@@ -257,9 +288,27 @@ final class Roles
         return self::canManage() && $own !== null && !self::isLocked($role) && $role->level < $own && $role->number !== Auth::role();
     }
 
+    /**
+     * Reset gives the config values back, so the current user must be allowed to
+     * set them: the config level below theirs, and every permission that changes held.
+     */
     public static function canReset(Role $role): bool
     {
-        return $role->changed() && self::canEdit($role);
+        if (!$role->changed() || !self::canEdit($role)) { return false; }
+        $config = self::configRoles()[$role->number] ?? null;
+        $own = self::ownLevel();
+        if ($config === null || $own === null || $config->level >= $own) { return false; }
+        foreach (array_merge(array_diff($role->permissions, $config->permissions), array_diff($config->permissions, $role->permissions)) as $pattern) {
+            if (!self::holds($pattern)) { return false; }
+        }
+        return true;
+    }
+
+    /** A role the users of a deleted role may move to: one you may give, below your own level. */
+    public static function canMoveUsersTo(Role $role): bool
+    {
+        $own = self::ownLevel();
+        return $own !== null && $role->level < $own && Auth::canAssignRole($role->number);
     }
 
     public static function canDelete(Role $role): bool
@@ -293,18 +342,18 @@ final class Roles
      * Users holding roles
      * ------------------------------------------------------------- */
 
-    /** @return array<int, int> role number => number of users (empty when the users table cannot be read) */
-    public static function userCounts(): array
+    /** @return array<int, int>|null role number => number of users; null when the users table cannot be read */
+    public static function userCounts(): ?array
     {
         try {
             $db = App::db();
-            if ($db === null) { return []; }
+            if ($db === null) { return null; }
             $rows = $db->query('SELECT `role`, COUNT(*) AS `n` FROM `' . self::usersTable() . '` GROUP BY `role`')->fetchAll(\PDO::FETCH_ASSOC);
             $counts = [];
             foreach ($rows as $row) { $counts[(int) $row['role']] = (int) $row['n']; }
             return $counts;
         } catch (\Throwable) {
-            return [];
+            return null;
         }
     }
 

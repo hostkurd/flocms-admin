@@ -2,7 +2,9 @@
 <div class="fa-card fa-role-delete-page">
     <form method="post" action="{{ $url }}">
         {!! $csrf !!}
-        @if($users > 0)
+        @if($users > 0 && count($targets) === 0)
+        <p>{{ $usersText }} {{ $t('roles.no_targets') }}</p>
+        @elseif($users > 0)
         <p>{{ $usersText }}</p>
         <label class="fa-label" for="fa-role-delete-move">{{ $t('roles.move_to') }}</label>
         <select class="fa-input fa-select" id="fa-role-delete-move" name="move_to" required>
@@ -14,7 +16,7 @@
         @endif
         <div class="fa-role-delete-actions">
             <a class="fa-btn" href="{{ $cancelUrl }}">{{ $t('actions.cancel') }}</a>
-            <button type="submit" class="fa-btn fa-btn-danger">{{ $users > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
+            <button type="submit" class="fa-btn fa-btn-danger"@if($users > 0 && count($targets) === 0) disabled @endif>{{ $users > 0 ? $t('roles.delete_move') : $t('roles.delete_role') }}</button>
         </div>
     </form>
 </div>

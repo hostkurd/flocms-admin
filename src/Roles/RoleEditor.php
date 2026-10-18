@@ -84,7 +84,8 @@ final class RoleEditor
         if ($errors === []) {
             $roles = Roles::all();
             $roles[$after->number] = $after;
-            if (Roles::someoneCanManage($roles) === false) { $errors['_form'] = AdminLang::get('roles.lockout'); }
+            $check = Roles::someoneCanManage($roles);
+            if ($check !== true) { $errors['_form'] = AdminLang::get($check === null ? 'roles.users_unreadable' : 'roles.lockout'); }
         }
 
         $result = ['state' => $state, 'permissions' => $permissions, 'errors' => $errors, 'role' => null];
@@ -116,7 +117,8 @@ final class RoleEditor
         $config = Roles::configRoles()[$role->number] ?? null;
         if ($config === null) { return AdminLang::get('roles.cannot_edit'); }
         $roles[$role->number] = $config;
-        if (Roles::someoneCanManage($roles) === false) { return AdminLang::get('roles.lockout'); }
+        $check = Roles::someoneCanManage($roles);
+        if ($check !== true) { return AdminLang::get($check === null ? 'roles.users_unreadable' : 'roles.lockout'); }
         Roles::store()->delete($role->number);
         self::log('role_reset', $role, $config);
         Roles::refresh();
@@ -131,25 +133,31 @@ final class RoleEditor
     public static function delete(Role $role, ?int $moveTo): ?string
     {
         if (!Roles::canDelete($role)) { return AdminLang::get('roles.cannot_delete'); }
-        $count = Roles::userCounts()[$role->number] ?? 0;
-        $target = null;
-        if ($count > 0) {
-            $target = $moveTo !== null ? Roles::find($moveTo) : null;
-            if ($target === null || $target->number === $role->number || !Auth::canAssignRole($target->number)) { return AdminLang::get('roles.move_invalid'); }
-        }
+        $counts = Roles::userCounts();
+        if ($counts === null) { return AdminLang::get('roles.users_unreadable'); }
+        $target = $moveTo !== null ? Roles::find($moveTo) : null;
+        if ($target !== null && ($target->number === $role->number || !Roles::canMoveUsersTo($target))) { return AdminLang::get('roles.move_invalid'); }
+        if (($counts[$role->number] ?? 0) > 0 && $target === null) { return AdminLang::get('roles.move_invalid'); }
         $roles = Roles::all();
         unset($roles[$role->number]);
-        if (Roles::someoneCanManage($roles, $target !== null ? [$role->number => $target->number] : []) === false) { return AdminLang::get('roles.lockout'); }
+        $check = Roles::someoneCanManage($roles, $target !== null ? [$role->number => $target->number] : []);
+        if ($check !== true) { return AdminLang::get($check === null ? 'roles.users_unreadable' : 'roles.lockout'); }
 
         $db = App::db() ?? throw new \RuntimeException('No database connection.');
         $store = Roles::store($db);
-        $db->transaction(static function () use ($db, $store, $role, $target): void {
-            if ($target !== null) {
-                $db->table(Roles::usersTable())->where('role', '=', $role->number)->update(['role' => $target->number]);
+        $users = Roles::usersTable();
+        // Counted again inside the transaction: nobody may keep the deleted number (a later role would reuse it).
+        $moved = $db->transaction(static function () use ($db, $store, $role, $target, $users): ?int {
+            $count = $db->table($users)->where('role', '=', $role->number)->count();
+            if ($count > 0) {
+                if ($target === null) { return null; }
+                $db->table($users)->where('role', '=', $role->number)->update(['role' => $target->number]);
             }
             $store->delete($role->number);
+            return $count;
         });
-        self::log('role_deleted', $role, null, $target !== null ? ['moved' => $count, 'to' => $target->label()] : []);
+        if ($moved === null) { return AdminLang::get('roles.move_invalid'); }
+        self::log('role_deleted', $role, null, $moved > 0 && $target !== null ? ['moved' => $moved, 'to' => $target->label()] : []);
         Roles::refresh();
         return null;
     }
@@ -199,8 +207,9 @@ final class RoleEditor
         }
         $final = Roles::cleanPatterns($final);
 
-        // A group switch covers its names: keep the wildcard only.
-        $wildcards = array_values(array_filter($final, static fn (string $p): bool => str_contains($p, '*')));
+        // A group switch covers its names: keep the wildcard only. Only wildcards the
+        // current user holds tidy names away, so a name survives a wildcard they can't touch.
+        $wildcards = array_values(array_filter($final, static fn (string $p): bool => str_contains($p, '*') && Roles::holds($p)));
         $final = array_values(array_filter($final, static function (string $p) use ($wildcards): bool {
             foreach ($wildcards as $wildcard) {
                 if ($wildcard !== $p && Roles::matches($wildcard, $p)) { return false; }

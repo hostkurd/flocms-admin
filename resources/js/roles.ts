@@ -17,7 +17,6 @@ function updateCount(group: Element): void {
   const template = count?.dataset.template;
   if (!count || !template) return;
   const all = boxes(group);
-  const on = group.querySelector<HTMLInputElement>('[data-role-all]')?.checked ?? false;
   const granted = all.filter(box => box.checked).length;
   count.textContent = template.replace(':count', String(granted)).replace(':total', String(all.length));
 }
@@ -36,11 +35,14 @@ function applySwitch(group: HTMLElement, on: boolean): void {
   const touched = new Set<Element>([group]);
   for (const box of form ? [...form.querySelectorAll<HTMLInputElement>('input.fa-role-check')] : boxes(group)) {
     if (!matches(wildcard, box.value)) continue;
-    // A box the person may not change stays as the server drew it.
-    if (box.dataset.roleLocked === undefined) box.dataset.roleLocked = box.disabled && !box.classList.contains('is-covered') ? '1' : '0';
-    if (box.dataset.roleLocked === '1') continue;
+    // A box the person may not change (the server marks it) stays as the server drew it.
+    if (box.hasAttribute('data-role-fixed')) continue;
     if (on) { box.checked = true; box.disabled = true; box.classList.add('is-covered'); }
-    else { box.disabled = false; box.classList.remove('is-covered'); }
+    else {
+      box.disabled = false; box.classList.remove('is-covered');
+      // The box is sent itself now: its hidden copy (kept for pages without JavaScript) goes.
+      form?.querySelectorAll<HTMLInputElement>('input[type="hidden"][data-role-keep]').forEach(copy => { if (copy.value === box.value) copy.remove(); });
+    }
     const owner = box.closest('[data-role-group]');
     if (owner) touched.add(owner);
   }

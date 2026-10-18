@@ -168,6 +168,13 @@ final class RolesUnitTest extends TestCase
         self::assertEqualsCanonicalizing(['billing.refund', 'content.posts.view'], RoleEditor::permissionsFrom($role, ['perm' => ['content.posts.view', 'users.manage_any']]));
     }
 
+    public function testWildcardsYouDontHoldKeepTheirNames(): void
+    {
+        $_SESSION['role'] = 2;
+        $role = new Role(1, 'Editor', 1, true, ['users.*', 'users.manage'], Role::SOURCE_CONFIG);
+        self::assertEqualsCanonicalizing(['users.*', 'users.manage'], RoleEditor::permissionsFrom($role, ['perm' => ['users.manage']]));
+    }
+
     public function testCatalogue(): void
     {
         $groups = PermissionCatalogue::groups();

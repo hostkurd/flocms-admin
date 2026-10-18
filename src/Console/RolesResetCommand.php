@@ -60,8 +60,10 @@ final class RolesResetCommand extends Command
         $config = Roles::configRoles();
         $counts = Roles::userCounts();
         foreach (array_keys($rows) as $number) {
-            if (!isset($config[$number]) && ($counts[$number] ?? 0) > 0) {
-                $this->warn('Role ' . $number . ' was added on the Roles page and ' . $counts[$number] . ' user(s) hold it: kept. Move them to another role first.');
+            if (!isset($config[$number]) && ($counts === null || ($counts[$number] ?? 0) > 0)) {
+                $this->warn($counts === null
+                    ? 'Role ' . $number . ' was added on the Roles page and the users table could not be read: kept.'
+                    : 'Role ' . $number . ' was added on the Roles page and ' . $counts[$number] . ' user(s) hold it: kept. Move them to another role first.');
                 continue;
             }
             $store->delete($number);

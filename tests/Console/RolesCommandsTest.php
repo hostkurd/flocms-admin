@@ -81,6 +81,12 @@ final class RolesCommandsTest extends TestCase
 
         self::assertNotSame(0, $this->runCommand(new RolesResetCommand(), ['2'])->getStatusCode(), 'role 2 has no changes');
 
+        // Without a users table nobody can tell whether role 4 is held: it is kept
+        $kept = $this->runCommand(new RolesResetCommand(), [], ['yes']);
+        self::assertStringContainsString('users table could not be read: kept', $kept->getDisplay() . $kept->getErrorOutput());
+        self::assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM admin_roles')->fetchColumn());
+
+        $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, role INTEGER, status INTEGER)');
         $all = $this->runCommand(new RolesResetCommand(), [], ['yes']);
         self::assertStringContainsString('Role 4 removed.', $all->getDisplay());
         self::assertSame(0, (int) $pdo->query('SELECT COUNT(*) FROM admin_roles')->fetchColumn());

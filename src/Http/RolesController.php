@@ -48,7 +48,7 @@ final class RolesController extends PanelController
             'trashIcon' => Icons::svg('trash'),
             'downIcon' => Icons::svg('chevron-down', 'fa-icon fa-icon-sm'),
             'csrf' => \FloCMS\Core\Csrf::field(),
-            'countsKnown' => $counts !== [],
+            'countsKnown' => $counts !== null,
         ]);
         return $this->panel(AdminLang::get('roles.title'), $html, 'roles');
     }
@@ -193,6 +193,11 @@ final class RolesController extends PanelController
                     'covered' => $has && !$exact,
                     'disabled' => !$editable || !$held || ($has && !$exact),
                     'notHeld' => $editable && !$held,
+                    // Fixed whatever a switch does (not editable, or not held): the script leaves it alone.
+                    'fixed' => !$editable || !$held,
+                    // Without JavaScript a covered box is not sent (disabled): a hidden copy keeps the
+                    // permission if its switch is turned off, so nothing is lost silently.
+                    'keep' => $has && !$exact && $editable && $held,
                 ];
             };
             $rows = [];
@@ -268,7 +273,7 @@ final class RolesController extends PanelController
     private static function deleteData(Role $role, int $users): array
     {
         // Lowest level first.
-        $candidates = array_filter(Roles::all(), static fn (Role $other): bool => $other->number !== $role->number && Auth::canAssignRole($other->number));
+        $candidates = array_filter(Roles::all(), static fn (Role $other): bool => $other->number !== $role->number && Roles::canMoveUsersTo($other));
         uasort($candidates, static fn (Role $a, Role $b): int => [$a->level, $a->number] <=> [$b->level, $b->number]);
         // Preselected: the highest level at or below the deleted role's, a config role first.
         $chosen = null;

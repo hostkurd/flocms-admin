@@ -17,8 +17,8 @@ The page needs the permission `roles.manage`. The skeleton's Super Admin has it 
 
 - **Changing a config role** saves a row in `admin_roles` for that role ("From config · changed"). **Reset to default** deletes the row and the config values apply again. Saving a role back to exactly its config values does the same.
 - **New roles** live only in the table ("Custom"). They get the next free role number (4, 5, …); the number never changes, because `users.role` stores it.
-- The package gives the result to flocms-core with `Auth::loadRolesUsing()`, once per request. So every check sees the same roles: the panel, the skeleton's login and controllers, your own controllers' `$actionPermissions`, `Auth::can()` in templates, the API.
-- Changes apply on each person's next request: a demoted editor loses access on their next click.
+- The package gives the result to flocms-core with `Auth::loadRolesUsing()`, once per request (one small query on requests that check a permission; none on pages that don't). So every check sees the same roles: the panel, the skeleton's login and controllers, your own controllers' `$actionPermissions`, `Auth::can()` in templates, the API.
+- Permission changes apply on each person's next request. Panel access (who may open `/admin` at all) follows on the next session refresh, every admin request with the skeleton's default `auth.refresh_interval` of 0.
 - When the table is missing or can't be read, or with `'roles' => false` in `config/admin.php`, the config roles apply unchanged. That is also the emergency switch when nobody can log in: edit `config/admin.php` (no shell needed), fix the roles, switch it on again.
 
 ## The list
@@ -51,7 +51,7 @@ The page has the permission grid on the left and the role's details on the right
 
 - A group switch saves its wildcard and ticks every box it covers, including resources added later. Turned off, the boxes stay ticked and can be changed one by one.
 - Ticking Create, Edit or Delete also ticks View (the list is how a record is reached); unticking View clears the row.
-- A box ticked through a wider pattern (`*`, a switch) is shown pale and changes with that pattern.
+- A box ticked through a wider pattern (`*`, a switch) is shown pale and changes with that pattern. Without JavaScript, turning a switch off keeps the permissions it covered as separate ticks.
 
 **Name your own permissions** so they get a proper row instead of appearing under Other:
 
@@ -73,13 +73,15 @@ The server enforces each rule; the page only hides what would be refused.
 2. **Only roles below your level**: you can change, create and delete roles whose level is lower than yours. Your own role is read-only for you.
 3. **No giving what you don't hold**: a box is enabled only for permissions you have; a wildcard only if you hold it or a wider one. Patterns you don't hold stay as they were when you save.
 4. **Levels stay below yours**, so nobody creates a role that outranks them.
-5. **Someone keeps the keys**: a save, reset or delete that would leave no active user with panel access and `roles.manage` is refused.
+5. **Someone keeps the keys**: a save, reset or delete that would leave no active user with panel access and `roles.manage` is refused, and so is one made while the users table can't be read (it can't be checked).
 
-Role 0 (people who signed up on the website) can be given permissions for your own site code; turning its panel access on shows a warning.
+**Reset** gives the config values back, so it is offered only when you could set them yourself: the config level below yours and every permission that changes held.
+
+Role 0 (people who signed up on the website) can be given permissions for your own site code; while its panel access is on, its page shows a warning.
 
 ## Deleting a role
 
-Only roles added in the panel can be deleted (config roles are reset). If users hold the role, the dialog asks which role they move to (the roles you may give; the closest level is preselected) and moves them in the same transaction. Without JavaScript, Delete opens a confirmation page.
+Only roles added in the panel can be deleted (config roles are reset). If users hold the role, the dialog asks which role they move to: a role below your level that you may give (with `users.assign_role`); the highest level at or below the deleted role's is preselected, a config role first. They move in the same transaction as the delete, so nobody keeps the deleted number, and a new role never gets a number users still hold. Without JavaScript, Delete opens a confirmation page.
 
 ## Activity log and search
 

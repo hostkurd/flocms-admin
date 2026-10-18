@@ -807,7 +807,7 @@ return [
     'roles.delete_users_one' => '1 user has this role. Choose the role they move to.',
     'roles.delete_users_many' => ':count users have this role. Choose the role they move to.',
     'roles.move_to' => 'Move the users to',
-    'roles.move_help' => 'Only roles you may give. The change is saved in the activity log.',
+    'roles.move_help' => 'Only roles below your level that you may give. The change is saved in the activity log.',
     'roles.delete_move' => 'Move users and delete',
     'roles.delete_role' => 'Delete role',
     'roles.reset_title' => 'Reset :role to its config values?',
@@ -893,4 +893,6 @@ return [
     'activity.badge.role_reset' => 'Role reset',
     'activity.badge.role_deleted' => 'Role deleted',
     'activity.what.role' => 'Role',
+    'roles.users_unreadable' => 'Not saved: the users table could not be read, so it can’t be checked that someone keeps access to this page.',
+    'roles.no_targets' => 'There is no role below your level you may give them, so this role can’t be deleted by you.',
 ];
