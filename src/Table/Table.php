@@ -154,4 +154,25 @@ final class Table
     {
         return $this->perPage;
     }
+
+    /**
+     * The list inside a relation manager (0.22): only $columns (null: all),
+     * never the parent's key column or a filter on it, and the manager's page
+     * size and default sort when it sets them.
+     *
+     * @internal
+     * @param list<string>|null $columns
+     * @param array{0: string, 1: string}|null $sort
+     */
+    public function forRelation(?array $columns, string $foreignKey, ?int $perPage, ?array $sort): self
+    {
+        $table = clone $this;
+        $table->columns = array_filter($this->columns, static fn (Column $column, string $name): bool =>
+            $name !== $foreignKey && ($columns === null || in_array($name, $columns, true)), ARRAY_FILTER_USE_BOTH);
+        unset($table->filters[$foreignKey]);
+        $table->filters = array_filter($table->filters, static fn (Filters\Filter $filter): bool => $filter->getColumn() !== $foreignKey);
+        if ($perPage !== null) { $table->perPage = $perPage; }
+        if ($sort !== null) { [$table->defaultSort, $table->defaultDirection] = $sort; }
+        return $table;
+    }
 }

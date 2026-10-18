@@ -23,12 +23,12 @@ final class ActivityView
     public const INLINE = 3;
 
     /** The History list (the drawer on a record's page, and its full-page fallback). */
-    public static function history(string $title, array $entries, bool $drawer): string
+    public static function history(string $title, array $entries, bool $drawer, ?string $resource = null): string
     {
         return TemplateEngine::renderFile(PageView::viewPath('history'), [
             't' => PageView::translator(),
             'title' => $title,
-            'days' => self::days($entries),
+            'days' => self::days($entries, $resource),
             'drawer' => $drawer,
             'kept' => Activity::days() > 0 ? AdminLang::get('activity.kept_days', ['days' => Activity::days()]) : AdminLang::get('activity.kept_forever'),
             'closeIcon' => Icons::svg('x'),
@@ -41,7 +41,7 @@ final class ActivityView
      * @param list<ActivityEntry> $entries
      * @return list<array{label: string, items: list<array<string, mixed>>}>
      */
-    public static function days(array $entries): array
+    public static function days(array $entries, ?string $resource = null): array
     {
         $days = [];
         $arrow = self::arrow();
@@ -56,7 +56,10 @@ final class ActivityView
             $more = max(0, count($entry->changes) - self::INLINE);
             $days[$key]['items'][] = [
                 'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => self::avatarClass($entry->userId),
-                'phrase' => $entry->phrase(), 'time' => Dates::time($entry->time()),
+                // A related record's entry in its parent's History (0.22): "Units · created Flat 3".
+                'phrase' => $resource !== null && $entry->resource !== $resource
+                    ? AdminLang::get('activity.history.related', ['type' => ($class = $entry->resourceClass()) !== null ? $class::getPluralLabel() : $entry->typeLabel(), 'phrase' => $entry->phrase(), 'title' => $entry->label()])
+                    : $entry->phrase(), 'time' => Dates::time($entry->time()),
                 'badge' => in_array($entry->action, ['created', 'deleted', 'restored', 'purged'], true) ? $entry->badge() : '',
                 'badgeColor' => $entry->badgeColor(),
                 'changes' => $inline, 'hasChanges' => $inline !== [] || $entry->details() !== [],

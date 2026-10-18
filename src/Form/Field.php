@@ -36,6 +36,14 @@ abstract class Field
     private ?array $visibleCondition = null;
     private ?array $requiredCondition = null;
     private bool $visible = true;
+    private bool $omitted = false;
+    /**
+     * Leave the field out of this form entirely (0.22): not shown, not validated
+     * and not written. A relation manager omits the parent's key and its
+     * hideFields(); the server fills the key itself. @internal
+     */
+    public function omit(): static { $this->omitted = true; $this->visible = false; $this->visibleCondition = null; $this->requiredCondition = null; return $this; }
+    public function isOmitted(): bool { return $this->omitted; }
     public function visibleWhen(string $field, string|array $values): static { $this->visibleCondition = self::condition($field, $values); return $this; }
     public function requiredWhen(string $field, string|array $values): static { $this->requiredCondition = self::condition($field, $values); return $this; }
     private static function condition(string $field, string|array $values): array
@@ -49,6 +57,7 @@ abstract class Field
     public function resolve(array $state): static
     {
         $field = clone $this;
+        if ($this->omitted) { return $field; }
         if ($this->visibleCondition !== null) { [$parent, $values] = $this->visibleCondition; $field->visible = in_array($state[$parent] ?? '', $values, true); }
         if ($this->requiredCondition !== null) { [$parent, $values] = $this->requiredCondition; $field->required(in_array($state[$parent] ?? '', $values, true)); }
         return $field;

@@ -10,6 +10,7 @@
     <button type="submit" class="fa-default-submit" tabindex="-1" aria-hidden="true">{{ $t('actions.save') }}</button>
     <div class="fa-record-head">
         <div class="fa-record-heading">
+            @if($parent !== null)<p class="fa-back-link"><a href="{{ $parent['url'] }}">{!! $backIcon !!}<span>{{ $parent['title'] }}</span></a></p>@endif
             <h1 class="fa-page-title">{{ $title }}</h1>
             @if($description !== null)<p class="fa-page-description">{{ $description }}</p>@endif
         </div>
@@ -35,6 +36,7 @@
         {!! $fields !!}
     </div>
 </form>
+{!! $managers !!}
 @if($history !== null)
 <dialog class="fa-drawer" id="fa-history-drawer" aria-labelledby="fa-history-title">
     <div class="fa-drawer-head">

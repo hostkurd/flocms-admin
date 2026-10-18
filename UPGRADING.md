@@ -1,3 +1,16 @@
+# Upgrading to Admin 0.22.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.22.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **Nothing changes until a resource declares `relations()`**: edit pages look as before.
+- **Adding managers**: return `RelationManager::make(ChildResource::class, 'parent_id')` from the parent's `relations()`. The child must be registered in `config/admin.php`; `php flo admin:doctor` checks it and its key column. See the [Relation managers guide](docs/relation-managers.md).
+- **Children in the sidebar**: a child managed only inside its parent can set `protected static bool $navigation = false;`. Its URLs keep working.
+- **Your own child resources**: in a manager, the child's `query()` still applies, and the server adds `parent_id = <parent>`. `beforeSave()` runs as usual; the key is set after it, so it can't move a record to another parent from a manager.
+- **The parent's History** now includes the related records' entries. Entries written before 0.22 have no parent note and stay only on the child.
+- **Templates and tests**: the record page has a `<section class="fa-managers">` after the form, each manager a Reactive component `rx-rel-<name>`; the delete confirmation of a parent ends with "This property has …". A resource with `$navigation = false` has no sidebar link.
+
+---
+
 # Upgrading to Admin 0.21.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.21.0" -W` (this also installs flocms-core 2.4), then:

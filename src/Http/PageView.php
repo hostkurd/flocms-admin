@@ -20,8 +20,11 @@ use FloCMS\Core\TemplateEngine;
  */
 final class PageView
 {
-    /** @param class-string<Resource> $resource */
-    public function __construct(private readonly string $resource)
+    /**
+     * @param class-string<Resource> $resource
+     * @param Resource|null $definition the resource object when it is limited to a parent (0.22)
+     */
+    public function __construct(private readonly string $resource, private readonly ?Resource $definition = null)
     {
     }
 
@@ -40,7 +43,8 @@ final class PageView
         $class = $this->resource;
         $slug = $class::getSlug();
         $pk = $class::getPrimaryKey();
-        $definition = new $class();
+        $definition = $this->definition ?? new $class();
+        $scope = $definition->parentScope();
         $actions = new \FloCMS\Admin\Actions\ActionRenderer($definition, new \FloCMS\Admin\Actions\ActionRegistry($definition, $table));
         $bulkActions = array_filter((new \FloCMS\Admin\Actions\ActionRegistry($definition, $table))->all('bulk'), fn ($action): bool => $action->available($definition));
         $pagination = $result['pagination'];
@@ -49,7 +53,7 @@ final class PageView
         foreach ($table->getFilters() as $filter) {
             if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $filter->lookupFrom(Admin::url($slug . '/lookup')); }
         }
-        $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
+        $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $scope?->token(), 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
 
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $slug);
         $visible = $visibility->visibleColumns();
@@ -85,8 +89,8 @@ final class PageView
                 'id' => $id,
                 'cells' => $cells,
                 'actions' => $actions->render('row', $record, false, backUrl: $backUrl),
-                'editUrl' => $canUpdate && $id !== '' && $canEditRecord($record) ? Admin::url($slug . '/edit/' . $id) : null,
-                'deleteUrl' => $canDelete && $id !== '' && $canDeleteRecord($record) ? Admin::url($slug . '/delete/' . $id) : null,
+                'editUrl' => $canUpdate && $id !== '' && $canEditRecord($record) ? Admin::url($slug . '/edit/' . $id, ['parent' => $scope?->token()]) : null,
+                'deleteUrl' => $canDelete && $id !== '' && $canDeleteRecord($record) ? Admin::url($slug . '/delete/' . $id, ['parent' => $scope?->token()]) : null,
             ];
         }
 
@@ -97,12 +101,14 @@ final class PageView
 
         return TemplateEngine::renderFile(self::viewPath('index'), [
             't' => self::translator(),
-            'title' => $class::getPluralLabel(),
-            'createUrl' => $canCreate ? Admin::url($slug . '/create') : null,
+            'title' => $scope !== null ? AdminLang::get('relations.list_title', ['label' => $class::getPluralLabel(), 'parent' => $scope->parentTitle()]) : $class::getPluralLabel(),
+            'parentLink' => $scope !== null ? ['url' => $scope->parentUrl(), 'label' => AdminLang::get('relations.back_to', ['title' => $scope->parentTitle()])] : null,
+            'backIcon' => Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'), 'parentToken' => $scope?->token(),
+            'createUrl' => $canCreate && ($scope === null || $scope->manager->allowsCreate()) ? Admin::url($slug . '/create', ['parent' => $scope?->token(), 'back' => $scope !== null ? Admin::url($slug, $state) : null]) : null,
             'pageActions' => $actions->render('page', reactive: false, backUrl: $backUrl),
             'tableActions' => $actions->render('table', reactive: false),
             'createLabel' => AdminLang::get('actions.create_label', ['label' => $class::getLabel()]),
-            'listUrl' => Admin::url($slug, ['static' => $state['static']]),
+            'listUrl' => Admin::url($slug, ['static' => $state['static'], 'parent' => $state['parent']]),
             'static' => $state['static'],
             'filterFields' => $filters->render('fa-list'), 'filterState' => $filters->active(),
             'hasActiveFilters' => $filters->active() !== [],
@@ -129,8 +135,8 @@ final class PageView
             'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
             'columnsChanged' => $visibility->changed(),
             'columnsIcon' => Icons::svg('columns'),
-            'reorderUrl' => self::reorderUrl($definition, $table, $filters, $canUpdate),
-            'trash' => TrashPage::toolbarLink($class),
+            'reorderUrl' => $scope !== null ? null : self::reorderUrl($definition, $table, $filters, $canUpdate),
+            'trash' => $scope !== null ? null : TrashPage::toolbarLink($class),
             'trashIcon' => Icons::svg('trash'),
             'reorderIcon' => Icons::svg('arrows-up-down'),
             'filterErrors' => $filters->errors !== [],
@@ -209,7 +215,8 @@ final class PageView
     }
 
     public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors,
-        ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false, ?array $history = null): string
+        ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false, ?array $history = null,
+        string $managers = '', ?string $relatedText = null, ?array $parent = null): string
     {
         $class = $this->resource;
         $trashed = $deleteUrl !== null && \FloCMS\Admin\Trash\Trash::enabledFor($class);
@@ -233,7 +240,10 @@ final class PageView
             'hasAside' => $hasAside,
             'description' => $class::getDescription(),
             'trashIcon' => Icons::svg('trash'),
-            'deleteText' => self::deleteText($class),
+            'deleteText' => self::deleteText($class) . ($relatedText !== null ? ' ' . $relatedText : ''),
+            'managers' => $managers,
+            'parent' => $parent,
+            'backIcon' => Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'),
             'trashed' => $trashed,
             'history' => $history,
             'historyIcon' => Icons::svg('history'),

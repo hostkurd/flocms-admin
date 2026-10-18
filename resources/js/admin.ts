@@ -12,6 +12,7 @@ import { initializeReorder } from './reorder';
 import { initializeMedia } from './media';
 import { initializeFileDrops } from './filedrop';
 import { initializeRoles } from './roles';
+import { updateManagerCounts } from './managers';
 import './popovers';
 import './dialogs';
 import './search';
@@ -63,6 +64,7 @@ function initialize(): void {
   initializeReorder(root);
   initializeMedia(root);
   initializeFileDrops(root);
+  updateManagerCounts(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;

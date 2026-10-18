@@ -12,8 +12,14 @@ final class ActionRegistry
     public function __construct(Resource $resource, ?Table $table = null)
     {
         $table ??= $resource->table(new Table());
+        $manager = $resource->parentScope()?->manager;
         foreach (['page' => $resource->headerActions(), 'table' => $table->getHeaderActions(), 'row' => $table->getActions(), 'bulk' => $table->getBulkActions()] as $placement => $definitions) {
             $this->actions[$placement] = self::index($definitions, $placement);
+            // A read-only relation manager has no actions; canCreate(false) has no Create (0.22).
+            if ($manager !== null) {
+                $this->actions[$placement] = array_filter($this->actions[$placement], static fn (Action $action): bool =>
+                    !$manager->isReadOnly() && ($action->getKind() !== 'create' || $manager->allowsCreate()));
+            }
         }
     }
     public static function index(array $definitions, string $placement): array

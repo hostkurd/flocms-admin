@@ -81,6 +81,8 @@ final class FormSubmission
             unset($data['created_at'], $data['updated_at']);
             $prepared = $data;
             $data = $class->beforeSave($data, $record);
+            // Inside a relation manager the parent's key is always the parent (0.22), whatever was sent.
+            if (($scope = $class->parentScope()) !== null) { $data[$scope->foreignKey()] = $scope->key(); }
             foreach ($form->writableFields() as $name => $field) {
                 if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && ($data[$name] ?? null) !== ($prepared[$name] ?? null)) { throw new \LogicException('beforeSave must preserve managed upload columns.'); }
             }
@@ -129,19 +131,19 @@ final class FormSubmission
         $title = \FloCMS\Admin\Trash\Trash::titleOf($class, $saved);
         $db = $this->repository->connection();
         if ($record === null) {
-            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, db: $db);
+            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, meta: \FloCMS\Admin\Activity\Activity::parents($class, $saved), db: $db);
             return;
         }
         $form = $class->form(new Form());
         $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved), $class::activityExcept(), $db);
-        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, db: $db); }
+        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, \FloCMS\Admin\Activity\Activity::parents($class, $saved), $db); }
     }
 
     private function skip(Form $form, array $state, ?object $record): array
     {
         $skip = [];
         foreach ($form->writableFields() as $name => $field) {
-            if ($field->skipsWrite($state[$name], $record !== null)) { $skip[] = $name; }
+            if ($field->isOmitted() || $field->skipsWrite($state[$name], $record !== null)) { $skip[] = $name; }
         }
         return $skip;
     }

@@ -246,6 +246,28 @@ final class CommandsTest extends TestCase
      */
     #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
     #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testDoctorChecksRelationManagers(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Managers\\EstateResource::class, \\FloCMS\\Admin\\Tests\\Fixtures\\Managers\\UnitResource::class]];");
+        $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
+        $pdo->exec('CREATE TABLE estates (id INTEGER PRIMARY KEY, title TEXT)');
+        $pdo->exec('CREATE TABLE units (id INTEGER PRIMARY KEY, name TEXT, bedrooms TEXT, archived INTEGER)');
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Relation manager "units" (units by estate_id): table "units" has no column "estate_id"', $display);
+        self::assertStringContainsString('Relation manager "enquiries" (enquiries by estate_id): FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource is not a registered resource', $display);
+        self::assertStringContainsString('Not in the sidebar ($navigation = false)', $display);
+        $pdo->exec('ALTER TABLE units ADD COLUMN estate_id INTEGER');
+        self::assertStringContainsString('✓ Relation manager "units" (units by estate_id)', $this->runCommand(new DoctorCommand())->getDisplay());
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
     public function testDoctorFlagsAForeignSettingsTableAndUndeclaredKeys(): void
     {
         file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");

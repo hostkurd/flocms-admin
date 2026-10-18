@@ -163,6 +163,8 @@ final class DoctorCommand extends Command
 
         $this->ok('Permissions: ' . $class::permission('view') . ', ' . $class::permission('create') . ', '
             . $class::permission('update') . ', ' . $class::permission('delete'));
+        if (!$class::showsInNavigation()) { $this->line('  Not in the sidebar ($navigation = false): its pages and search still work.'); }
+        $this->checkManagers($class, $resource, $db);
 
         if ($db === null) {
             return;
@@ -216,6 +218,24 @@ final class DoctorCommand extends Command
             if ($type !== null && preg_match('/json|text|longtext|mediumtext|clob/i', $type) !== 1) {
                 $this->caution('Column "' . $name . '" is translatable but its type is ' . $type . ': use JSON (or a TEXT type)');
             }
+        }
+    }
+
+    /**
+     * Relation managers (0.22): the child is registered, its table has the key
+     * column and the parent has the column it points to.
+     *
+     * @param class-string<Resource> $class
+     */
+    private function checkManagers(string $class, Resource $resource, ?Database $db): void
+    {
+        try { $managers = \FloCMS\Admin\Relations\RelationManager::of($resource); }
+        catch (Throwable $e) { $this->bad('relations() fails: ' . $e->getMessage()); return; }
+        foreach ($managers as $manager) {
+            $what = 'Relation manager "' . $manager->getName() . '" (' . $manager->getResource()::getSlug() . ' by ' . $manager->getForeignKey() . ')';
+            $problems = $manager->problems($class, $db);
+            if ($problems === []) { $this->ok($what); continue; }
+            foreach ($problems as $problem) { $this->bad($what . ': ' . $problem); }
         }
     }
 

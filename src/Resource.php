@@ -88,6 +88,16 @@ abstract class Resource
      */
     protected static bool $globallySearchable = true;
 
+    /**
+     * false keeps the resource out of the sidebar (0.22), e.g. records managed
+     * only inside their parent's page. Its pages, permissions, trash and
+     * Ctrl+K search still work.
+     */
+    protected static bool $navigation = true;
+
+    /** Set when the resource is seen from inside one parent record (a relation manager). */
+    private ?\FloCMS\Admin\Relations\ParentScope $parentScope = null;
+
     abstract public function form(Form $form): Form;
 
     abstract public function table(Table $table): Table;
@@ -96,6 +106,32 @@ abstract class Resource
     public function headerActions(): array
     {
         return [\FloCMS\Admin\Actions\CreateAction::make()];
+    }
+
+    /**
+     * Related records shown on this resource's edit page (0.22), below the form:
+     *
+     *     return [RelationManager::make(UnitResource::class, 'property_id')];
+     *
+     * @return list<\FloCMS\Admin\Relations\RelationManager>
+     */
+    public function relations(): array
+    {
+        return [];
+    }
+
+    /** This resource as seen from inside one parent record. @internal */
+    final public function withinParent(\FloCMS\Admin\Relations\ParentScope $scope): static
+    {
+        $copy = clone $this;
+        $copy->parentScope = $scope;
+        return $copy;
+    }
+
+    /** The parent record this resource is limited to, or null (its own pages). */
+    final public function parentScope(): ?\FloCMS\Admin\Relations\ParentScope
+    {
+        return $this->parentScope;
     }
 
     /** Narrow every query of this resource, e.g. $query->where('site_id', '=', 1). */
@@ -278,6 +314,11 @@ abstract class Resource
     public static function activityExcept(): array
     {
         return array_values(array_filter(static::$activityExcept, 'is_string'));
+    }
+
+    public static function showsInNavigation(): bool
+    {
+        return static::$navigation;
     }
 
     public static function isGloballySearchable(): bool

@@ -70,7 +70,7 @@ final class ActionExecutor
                     \FloCMS\Admin\Activity\Activity::record('action', $this->resource::getSlug(),
                         $record !== null ? (string) ($record->{$this->resource::getPrimaryKey()} ?? '') : null,
                         $record !== null ? \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record) : null,
-                        meta: ['action' => mb_substr(strip_tags($action->getLabel($this->resource)), 0, 120)], db: $this->repository->connection());
+                        meta: ['action' => mb_substr(strip_tags($action->getLabel($this->resource)), 0, 120)] + ($record !== null ? \FloCMS\Admin\Activity\Activity::parents($this->resource, $record) : []), db: $this->repository->connection());
                 }
                 if ($kind === 'delete') {
                     \FloCMS\Admin\Trash\Trash::notifyDeleted($this->resource, 1, [self::label($this->resource, $record)]);

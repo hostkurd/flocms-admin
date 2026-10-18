@@ -349,7 +349,7 @@ final class Trash
             }
             $db->query('DELETE FROM `' . self::table() . '` WHERE `id` = ?', [$entry->id]);
             $resource->afterRestore($restored);
-            Activity::record('restored', $class::getSlug(), $entry->recordId, $entry->title, db: $db);
+            Activity::record('restored', $class::getSlug(), $entry->recordId, $entry->title, meta: Activity::parents($resource, $restored), db: $db);
             return $restored;
         });
     }

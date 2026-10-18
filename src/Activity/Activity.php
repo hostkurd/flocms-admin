@@ -100,6 +100,18 @@ final class Activity
     }
 
     /**
+     * The parent note of a child record's entry (0.22): its parents' History
+     * lists it too ("Units · created Flat 3"). [] for a record without parents.
+     *
+     * @return array{parents?: list<string>}
+     */
+    public static function parents(Resource $resource, object $record): array
+    {
+        $parents = \FloCMS\Admin\Relations\RelationManager::parentsOf($resource, $record);
+        return $parents === [] ? [] : ['parents' => $parents];
+    }
+
+    /**
      * Write an entry (the panel's own changes).
      *
      * @param list<array<string, mixed>> $changes
@@ -146,9 +158,20 @@ final class Activity
     public static function forRecord(string $resource, string $recordId, int $limit = 100, ?Database $db = null): array
     {
         $db ??= self::connection();
-        $rows = $db->table(self::table())->where('resource', '=', $resource)->where('record_id', '=', $recordId)
-            ->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit($limit)->get();
-        return array_map(static fn (object $row): ActivityEntry => ActivityEntry::fromRow($row), $rows);
+        $class = Admin::registry()->find($resource);
+        $note = $resource . ':' . $recordId;
+        // A parent's History also lists its related records' entries (0.22), found by their parent note.
+        $children = $class !== null && \FloCMS\Admin\Relations\RelationManager::of(new $class()) !== [];
+        $query = $db->table(self::table());
+        $query = $children
+            ? $query->whereRaw("((`resource` = ? AND `record_id` = ?) OR `meta` LIKE ? ESCAPE '!')", [$resource, $recordId, '%"' . strtr($note, ['!' => '!!', '%' => '!%', '_' => '!_']) . '"%'])
+            : $query->where('resource', '=', $resource)->where('record_id', '=', $recordId);
+        $rows = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit($limit)->get();
+        $entries = array_map(static fn (object $row): ActivityEntry => ActivityEntry::fromRow($row), $rows);
+        // The LIKE only narrows: keep entries whose note really names this record.
+        return array_values(array_filter($entries, static fn (ActivityEntry $entry): bool =>
+            ($entry->resource === $resource && $entry->recordId === $recordId)
+            || (in_array($note, $entry->parents(), true) && ($child = $entry->resourceClass()) !== null && Auth::can($child::permission('view')))));
     }
 
     /**
