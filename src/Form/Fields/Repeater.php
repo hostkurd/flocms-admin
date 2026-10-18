@@ -33,8 +33,12 @@ class Repeater extends Field
 {
     /** The most items a list may hold (->maxItems() defaults to 50). */
     public const ITEMS_LIMIT = 200;
-    /** The most bytes of JSON per field, so a list fits in a dialog's 64,000-byte draft. */
-    public const MAX_BYTES = 60000;
+    /**
+     * The most bytes per list, measured as the list is carried inside a dialog's
+     * draft (its JSON text encoded once more, so quotes and slashes count twice),
+     * leaving room in the 64,000-byte draft for the form's other fields.
+     */
+    public const MAX_BYTES = 48000;
 
     /** Field types allowed inside an item. */
     private const ALLOWED = [TextInput::class, Textarea::class, Select::class, Toggle::class, Date::class, DateTime::class, ColorPicker::class, Hidden::class, MediaPicker::class];
@@ -278,7 +282,8 @@ class Repeater extends Field
     /** Too large for one field (MAX_BYTES), checked before the items. */
     public function typeError(string $value): ?array
     {
-        return strlen($value) > self::MAX_BYTES ? ['validation.repeater_size', ['max' => (string) intdiv(self::MAX_BYTES, 1000)]] : null;
+        $size = strlen((string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+        return $size > self::MAX_BYTES ? ['validation.repeater_size', ['max' => (string) intdiv(self::MAX_BYTES, 1000)]] : null;
     }
 
     /**

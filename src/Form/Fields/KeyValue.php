@@ -91,7 +91,10 @@ class KeyValue extends Repeater
         return $fixed;
     }
 
-    /** An item without a value says nothing ("Parking" with no details): dropped on save. */
+    /**
+     * With fixed keys a row without a value says nothing ("Parking" with no
+     * details): dropped on save. A free key stays even without a value ("Pool").
+     */
     public function isEmptyItem(array $item): bool
     {
         if ($this->fixedKeys !== null) {

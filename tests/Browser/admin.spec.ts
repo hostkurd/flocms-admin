@@ -85,7 +85,7 @@ test('keyboard modal containment, Escape discard and opener focus', async ({ pag
   await ready(page);
   await open(page);
   // The primary button is the last control in the dialog; Tab wraps to the close button.
-  await editor(page).locator('button[type=submit]').focus();
+  await editor(page).locator('.fa-dialog-foot button[type=submit]').focus();
   await page.keyboard.press('Tab');
   await expect(editor(page).locator('[data-rx-dialog-close]').first()).toBeFocused();
   await editor(page).locator('[name="title[en]"]').fill('Discard this');

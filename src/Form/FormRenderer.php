@@ -268,10 +268,11 @@ final class FormRenderer
         $id = $this->prefix . 'f-' . $name;
         $items = $field->items($this->stringState($field));
         $hasErrors = $this->fieldHasError($name);
-        $free = $field->hasFreeItems();
+        // A disabled list is shown as it is stored: no buttons, read-only fields.
+        $free = $field->hasFreeItems() && $field->isWritable();
         $table = $field->isTable();
-        $count = 0;
-        foreach ($items as $item) { if (!$field->isEmptyItem($item)) { $count++; } }
+        // Every item on the page counts, as the script counts them; empty ones are dropped on save.
+        $count = count($items);
         $t = static fn (string $key, array $replace = []): string => AdminLang::get('repeater.' . $key, $replace);
 
         $label = Str::e($field->getLabel());
@@ -347,6 +348,7 @@ final class FormRenderer
         unset($state['_key']);
         $fixed = $field instanceof Fields\KeyValue && $field->getFixedKeys() !== null;
         $schema = $field->fields();
+        if (!$field->isWritable()) { $schema = array_map(static fn (Field $sub): Field => (clone $sub)->disabled(), $schema); }
         if ($fixed) { $schema['key'] = Fields\Hidden::make('key'); }
         $form = (new Form())->columns($columns)->schema(array_values($schema));
         $child = new self($state, $errors, $this->languages, $this->defaultLang, $this->isEdit, false, $prefix, $this->reactive, $this->fileUrl, $this->mediaUrl, $this->editorKey,
@@ -363,7 +365,7 @@ final class FormRenderer
 
         $title = $template ? $t('item', ['number' => '__NUMBER__']) : $field->itemTitle($item, $index);
         $collapsed = !$template && $field->isCollapsed() && $errors === [] && !$field->isTable();
-        $free = $field->hasFreeItems();
+        $free = $field->hasFreeItems() && $field->isWritable();
         $bodyId = $prefix . 'body';
         $html = '<div class="fa-repeater-item' . ($errors !== [] ? ' has-error' : '') . ($collapsed ? ' is-collapsed' : '') . '" role="listitem" data-repeater-item data-key="' . Str::e($key) . '">';
         $html .= '<input type="hidden" name="' . Str::e($this->inputName($name) . '[' . $key . '][_key]') . '" value="' . Str::e($key) . '">';
@@ -376,8 +378,8 @@ final class FormRenderer
             $html .= '<div class="fa-repeater-row" data-cols="' . min(8, $columns) . '">' . $handle;
             if ($fixed) { $html .= '<span class="fa-repeater-key">' . Str::e((string) ($item['key'] ?? '')) . '</span>'; }
             $html .= '<div class="fa-repeater-body" id="' . Str::e($bodyId) . '">' . $body . '</div>';
-            $html .= '<span class="fa-repeater-tools">' . ($free ? $tool('up', 'arrow-up', $t('move_up'), $index <= 0 ? ' data-nojs-only' : ' data-nojs-only')
-                . $tool('down', 'arrow-down', $t('move_down'), ' data-nojs-only') . $tool('remove', 'trash', $t('remove')) : '') . '</span></div>';
+            $html .= '<span class="fa-repeater-tools">' . ($free ? $tool('up', 'arrow-up', $t('move_up'), ' data-nojs-only' . ($index === 0 ? ' disabled' : ''))
+                . $tool('down', 'arrow-down', $t('move_down'), ' data-nojs-only' . ($index >= $total - 1 && !$template ? ' disabled' : '')) . $tool('remove', 'trash', $t('remove')) : '') . '</span></div>';
             return $html . '</div>';
         }
         $html .= '<div class="fa-repeater-item-head">' . $handle

@@ -607,7 +607,9 @@ final class ResourceController extends PanelController
             $state = $submission->state($form, $input, $record);
             // A repeater's Add, Remove, Up or Down button without JavaScript (0.24) shows the form again, changed.
             $operation = $this->request->input('_repeater');
-            $refreshing = $this->request->input('_refresh') !== null || ($operation !== null && $form->evaluate($state, $record)->applyRepeaterOperation($state, $operation));
+            // A list button never saves, even when no list on the form takes the operation (a disabled one).
+            if ($operation !== null) { $form->evaluate($state, $record)->applyRepeaterOperation($state, $operation); }
+            $refreshing = $this->request->input('_refresh') !== null || $operation !== null;
             if ($refreshing) { $form->refreshState($state, $record); }
             $errors = $refreshing ? [] : $submission->errors($form, $state, $record);
 

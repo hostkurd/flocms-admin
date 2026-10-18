@@ -98,6 +98,9 @@ function refresh(field: HTMLElement): void {
   if (count && !field.hasAttribute('data-fixed')) count.textContent = text(field.dataset.countText, { count: String(list.length) });
   const add = field.querySelector<HTMLButtonElement>(':scope > [data-repeater-add]');
   if (add) add.disabled = max > 0 && list.length >= max;
+  // Undo can't bring an item back past the maximum.
+  const undoButton = field.querySelector<HTMLButtonElement>(':scope > [data-repeater-undo] [data-repeater-undo-button]');
+  if (undoButton) undoButton.disabled = max > 0 && list.length >= max;
 }
 
 /** A change the form must hear about (unsaved changes, the language counts). */
@@ -190,7 +193,8 @@ function remove(field: HTMLElement, item: HTMLElement): void {
 
 function undo(field: HTMLElement): void {
   const last = removed.get(field);
-  if (!last) return;
+  const max = Number(field.dataset.max || 0);
+  if (!last || (max > 0 && items(field).length >= max)) return;
   const container = field.querySelector<HTMLElement>(':scope > [data-repeater-items]')!;
   const list = items(field);
   container.insertBefore(last.node, list[last.index] ?? null);

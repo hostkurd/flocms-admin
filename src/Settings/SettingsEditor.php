@@ -71,11 +71,11 @@ final class SettingsEditor
 
     /**
      * A repeater button sent without JavaScript ("rooms:add", 0.24): the posted
-     * values with the list changed, not validated and not saved. Null when the
-     * operation is not for a list on this page. Chosen files are not kept.
+     * values with the list changed, not validated and never saved (an operation
+     * no list takes, e.g. on a disabled one, changes nothing). Chosen files are not kept.
      *
      * @param array<string, mixed> $input submitted fields
-     * @return array<string, string|array<string, string>>|null
+     * @return array<string, string|array<string, string>>
      */
     public function operate(array $input, mixed $operation): ?array
     {
@@ -84,7 +84,8 @@ final class SettingsEditor
         foreach ($this->form->fields() as $name => $field) {
             $state[$name] = $field->isWritable() && !$field instanceof FileUpload ? $field->stateFromInput($input, Languages::all()) : $field->stateFromRecord($record, Languages::default());
         }
-        return $this->form->evaluate($state, $record)->applyRepeaterOperation($state, $operation) ? $state : null;
+        $this->form->evaluate($state, $record)->applyRepeaterOperation($state, $operation);
+        return $state;
     }
 
     /**

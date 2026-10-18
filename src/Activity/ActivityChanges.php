@@ -146,14 +146,14 @@ final class ActivityChanges
                     foreach (array_values(array_unique(array_merge(array_keys($a), array_keys($b)))) as $language) {
                         $x = is_string($a[$language] ?? null) ? $a[$language] : '';
                         $y = is_string($b[$language] ?? null) ? $b[$language] : '';
-                        if ($x !== $y) { $changes[] = ['field' => $name] + array_diff_key(self::entry($sub, $subName, $subLabel, (string) $language, false, $x, $y, $was, $now, $form, $db), ['field' => true]); }
+                        if ($x !== $y) { $changes[] = ['field' => $name] + array_diff_key(self::entry($sub, $subName, $subLabel, (string) $language, $secret || $sub->isHiddenFromActivity(), $x, $y, $was, $now, $form, $db), ['field' => true]); }
                     }
                     continue;
                 }
                 $x = (string) $a;
                 $y = (string) $b;
                 if ($sub instanceof Toggle) { $x = $x === '1' ? '1' : '0'; $y = $y === '1' ? '1' : '0'; }
-                if ($x !== $y) { $changes[] = ['field' => $name] + array_diff_key(self::entry($sub, $subName, $subLabel, null, false, $x, $y, $was, $now, $form, $db), ['field' => true]); }
+                if ($x !== $y) { $changes[] = ['field' => $name] + array_diff_key(self::entry($sub, $subName, $subLabel, null, $secret || $sub->isHiddenFromActivity(), $x, $y, $was, $now, $form, $db), ['field' => true]); }
             }
         }
         // The same items in another order

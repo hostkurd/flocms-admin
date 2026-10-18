@@ -212,4 +212,16 @@ final class RepeaterUnitTest extends TestCase
         self::assertSame([], repeater_items('{"en":"x"}'));
         self::assertSame(['Parking' => '2 spaces', 'Floor' => '3rd'], key_values('[{"key":"Parking","value":{"en":"2 spaces"}},{"key":"Floor","value":"3rd"},{"key":"","value":"x"}]', 'ar'));
     }
+
+    public function testTheSizeIsCountedAsTheListTravelsInADialogDraft(): void
+    {
+        $field = \FloCMS\Admin\Form\Fields\Repeater::make('links')->schema([\FloCMS\Admin\Form\Fields\TextInput::make('url')])->maxItems(200);
+        // About 39 KB of JSON with quotes and slashes: over the limit once encoded in the draft
+        $items = [];
+        for ($i = 0; $i < 120; $i++) { $items[] = ['_key' => 'k' . $i, 'url' => str_repeat('"/', 100)]; }
+        $state = $field->encodeState($items);
+        self::assertLessThan(48000, strlen($state));
+        self::assertNotNull($field->typeError($state));
+        self::assertNull($field->typeError($field->encodeState(array_slice($items, 0, 20))));
+    }
 }

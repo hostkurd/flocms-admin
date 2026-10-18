@@ -66,7 +66,7 @@ If you later need to query items across records ("all flats with a balcony"), mo
 | `->translatableValues()` | One value per language; keys stay the same in every language |
 | `->keys(['Parking', 'Floor', 'Heating'])` | Fixed keys, one row each in this order; editors fill in the values only |
 
-Keys are required, distinct and at most 190 characters; values at most 1,000. Items with nothing filled in are dropped on save (a fixed key without a value too).
+Keys are required, distinct and at most 190 characters; values at most 1,000. A free key may be saved without a value (a feature such as "Pool"); with fixed keys, a key without a value is dropped on save. Rows with nothing filled in are always dropped.
 
 ### Fields inside an item
 
@@ -86,7 +86,7 @@ One JSON list per record, in a `TEXT` or `JSON` column (not `TINYTEXT` or `VARCH
 - Translatable fields hold one object per field, as elsewhere; empty languages are left out.
 - `_key` is a short id that keeps an item's identity while it moves, so the History can say which room changed. `KeyValue` stores only `key` and `value`.
 - A `MediaPicker` stores an id (or a list of ids with `->multiple()`); the media library knows the item is used by the record.
-- An empty list is stored as `NULL`. The JSON is limited to 60 KB per field.
+- An empty list is stored as `NULL`. A list may hold about 48 KB (counted as it travels in a dialog, where quotes and slashes take two bytes), so it fits in a dialog with the rest of the form.
 - Columns you filled yourself in this shape, with or without `_key`, open fine.
 
 Adding a field to `schema()` later needs no migration: old items show it empty. A field you remove is dropped from an item the next time the record is saved.
@@ -95,8 +95,8 @@ Adding a field to `schema()` later needs no migration: old items show it empty. 
 
 ```php
 <?php foreach (repeater_items($flat->rooms) as $room): ?>
-    <h3><?= e($room['name']) ?></h3>       <!-- in the page's language -->
-    <p><?= e($room['size']) ?> m²</p>
+    <h3><?= e($room['name'] ?? '') ?></h3>       <!-- in the page's language -->
+    <?php if (($room['size'] ?? '') !== ''): ?><p><?= e($room['size']) ?> m²</p><?php endif; ?>
 <?php endforeach; ?>
 
 <?php foreach (key_values($flat->specs) as $feature => $details): ?>
@@ -104,7 +104,7 @@ Adding a field to `schema()` later needs no migration: old items show it empty. 
 <?php endforeach; ?>
 ```
 
-`repeater_items($value, ?$lang)` returns the items in order, translatable values in the page's language (falling back to the default language) and without `_key`. `key_values($value, ?$lang)` returns `key => value`. Both accept the JSON text or a decoded array, and return `[]` for an empty column.
+`repeater_items($value, ?$lang)` returns the items in order, translatable values in the page's language (falling back to the default language) and without `_key`. Empty fields and unticked toggles are not stored, so read every field with `?? ''` (or `?? '0'`). `key_values($value, ?$lang)` returns `key => value` (a numeric key such as `2` comes back as an integer key, as in any PHP array). Both accept the JSON text or a decoded array, and return `[]` for an empty column.
 
 ## Settings pages
 

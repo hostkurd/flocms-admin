@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace FloCMS\Admin\Tests\Feature;
 
-use FloCMS\Admin\Tests\Fixtures\Repeaters\{ApartmentDialogResource, ApartmentResource};
+use FloCMS\Admin\Tests\Fixtures\Repeaters\{ApartmentDialogResource, ApartmentResource, LockedApartmentResource};
 
 /**
  * Repeater and key-value fields (0.24) through whole requests: the full page
@@ -12,7 +12,7 @@ use FloCMS\Admin\Tests\Fixtures\Repeaters\{ApartmentDialogResource, ApartmentRes
  */
 final class RepeaterRequestTest extends RequestTestCase
 {
-    private const RESOURCES = [ApartmentResource::class, ApartmentDialogResource::class];
+    private const RESOURCES = [ApartmentResource::class, ApartmentDialogResource::class, LockedApartmentResource::class];
 
     private static function options(array $extra = []): array
     {
@@ -143,5 +143,29 @@ final class RepeaterRequestTest extends RequestTestCase
         $saved = self::post('/en/flo-reactive/update', ['_snapshot' => html_entity_decode($match[1], ENT_QUOTES), '_action' => 'save', 'state' => ['draft' => $draft]], $options + ['session' => $open['session']]);
         self::assertSame(200, $saved['status'], $saved['body']);
         self::assertSame(['Kitchen', 'Balcony'], array_map(static fn (array $room): string => $room['name']['en'], json_decode((string) self::row('apartments', 1)['rooms'], true)));
+    }
+
+    public function testADisabledListIsReadOnlyAndItsButtonsNeverSave(): void
+    {
+        $page = self::request('GET', '/en/admin/locked-apartments/edit/1', self::options())['body'];
+        self::assertStringContainsString('<span data-repeater-title>Master bedroom</span>', $page);
+        self::assertStringNotContainsString('value="rooms:add"', $page);
+        self::assertStringNotContainsString('value="rooms:remove:ka1"', $page);
+        self::assertMatchesRegularExpression('~name="rooms\\[ka1\\]\\[size\\]"[^>]*disabled~', $page);
+        // A forged list button changes nothing and saves nothing, the title included
+        $before = self::row('apartments', 1);
+        $result = self::post('/en/admin/locked-apartments/edit/1', self::form([], ['_repeater' => 'rooms:remove:ka1', 'title' => ['en' => 'Changed', 'ar' => '', 'ku' => '']]), self::options());
+        self::assertFalse($result['redirected']);
+        self::assertSame($before, self::row('apartments', 1));
+        self::assertStringContainsString('<span data-repeater-title>Kitchen</span>', $result['body']);
+    }
+
+    public function testEnterInADialogSavesInsteadOfPressingAListButton(): void
+    {
+        $options = self::options(['admin_config' => ['reactive' => true]]);
+        $list = self::request('GET', '/en/admin/apartment-dialogs', $options);
+        preg_match('/data-rx-snapshot="([^"]+)"/', $list['body'], $match);
+        $open = self::post('/en/flo-reactive/update', ['_snapshot' => html_entity_decode($match[1], ENT_QUOTES), '_action' => 'edit', 'state' => ['selectedId' => '1']], $options + ['session' => $list['session']]);
+        self::assertMatchesRegularExpression('~<form data-rx-submit[^>]*>\\s*<button type="submit" class="fa-default-submit"~', $open['body']);
     }
 }

@@ -6,6 +6,8 @@ Update with `composer require "hostkurd/flocms-admin:^0.24.0" -W`, run `php flo 
 - **On the website** read a list with `repeater_items($flat->rooms)` or `key_values($flat->specs)`; both return `[]` for an empty column.
 - **Choosing between a Repeater and a relation manager**: the guide has a table; in short, a Repeater for a few small items that only live inside the record, a relation manager for records of their own.
 - **Dialog drafts**: the browser now keeps nested input names (`rooms[k1][name][en]`) as nested values in the draft. Flat names and `title[en]` arrive exactly as before. Inputs of your own named with two to four `[…]` parts (`extra[a][b]`), which the draft used to skip, are now sent as nested arrays; names ending in `[]` are still skipped.
+- **Enter in dialogs and action pages** now always saves: their forms start with a hidden `.fa-default-submit` button (as record and settings pages already did), so Enter never presses a list's Add or Up button. A test that clicked `dialog button[type=submit]` should use `.fa-dialog-foot button[type=submit]` or the button's name.
+- **A disabled `Repeater`** is shown read-only, without its buttons.
 - **Translations**: the Arabic and Kurdish words for the new buttons and messages need a read by a native speaker; override any of them in your `lang` files as usual.
 - **Templates and tests**: a list is `[data-repeater]` with `data-name`; each item is `[data-repeater-item]` with `data-key`, its inputs are named `rooms[<key>][<field>]` (and `[<lang>]`) with ids `rooms-<key>-f-<field>`; the buttons are `[data-repeater-add]` and `[data-repeater-action="up|down|duplicate|remove|toggle"]`, and without JavaScript they post `_repeater=rooms:add` (or `rooms:up:<key>`).
 

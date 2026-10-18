@@ -191,6 +191,7 @@ document.addEventListener('submit', event => {
       const match = /^([A-Za-z_][A-Za-z0-9_]*)((?:\[[A-Za-z0-9_-]+\]){0,4})$/.exec(name);
       if (!match) continue;
       const path = [match[1], ...[...match[2].matchAll(/\[([A-Za-z0-9_-]+)\]/g)].map(part => part[1])];
+      if (path.some(part => part === '__proto__' || part === 'constructor' || part === 'prototype')) continue;
       let node: Draft = values;
       path.slice(0, -1).forEach(part => {
         if (typeof node[part] !== 'object') node[part] = {};

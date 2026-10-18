@@ -162,7 +162,7 @@ test('the Activity page filters by action and opens the changes', async ({ page 
 test('Arabic: the toast and the drawer read right to left', async ({ page }) => {
   await page.goto('/ar/admin/posts');
   await deleteRow(page, 8);
-  await editor(page).locator('button[type=submit]').click();
+  await editor(page).locator('.fa-dialog-foot button[type=submit]').click();
   const toast = toasts(page).filter({ hasText: 'تم حذف' });
   await expect(toast).toBeVisible();
   await expect(toast.getByRole('button', { name: 'تراجع' })).toBeVisible();

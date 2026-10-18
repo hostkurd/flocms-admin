@@ -164,7 +164,9 @@ if (!function_exists('key_values')) {
      *         <dt>{{ $label }}</dt><dd>{{ $value }}</dd>
      *     @endforeach
      *
-     * @return array<string, string>
+     * A numeric key ("2") becomes an integer key, as everywhere in PHP.
+     *
+     * @return array<int|string, string>
      */
     function key_values(mixed $value, ?string $lang = null): array
     {

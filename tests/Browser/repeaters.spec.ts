@@ -68,6 +68,26 @@ test('duplicate and collapse an item', async ({ page }) => {
   await expect(items(page).nth(2)).toHaveClass(/has-error/);
 });
 
+test('Undo cannot bring an item back past the maximum; Enter saves instead of pressing a list button', async ({ page }) => {
+  await page.goto('/en/admin/apartments/edit/1');
+  const add = rooms(page).locator('[data-repeater-add]');
+  for (let i = 0; i < 3; i++) await add.click();
+  await expect(add).toBeDisabled();
+  await items(page).first().locator('[data-repeater-action="remove"]').click();
+  await expect(add).toBeEnabled();
+  await add.click();
+  await expect(rooms(page).locator('[data-repeater-undo-button]')).toBeDisabled();
+  await expect(items(page)).toHaveCount(6);
+  // Dialogs: Enter in a field saves
+  await page.goto('/en/admin/apartment-dialogs');
+  await page.locator('#fa-admin-resource-edit-1').click();
+  const dialog = page.locator('dialog.fa-editor');
+  await dialog.locator('[data-field="title"] input').first().fill('Harbour flat');
+  await dialog.locator('[data-field="title"] input').first().press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Harbour flat')).toBeVisible();
+});
+
 test('drag an item by its handle', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1600 });
   await page.goto('/en/admin/apartments/edit/1');
