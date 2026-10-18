@@ -46,7 +46,7 @@ final class ActivityEntry
             $clean[] = [
                 'field' => (string) ($change['field'] ?? ''), 'label' => (string) ($change['label'] ?? ($change['field'] ?? '')),
                 'lang' => isset($change['lang']) && is_string($change['lang']) ? $change['lang'] : null,
-                'type' => in_array($change['type'] ?? '', ['value', 'text', 'hidden', 'file'], true) ? (string) $change['type'] : 'value',
+                'type' => in_array($change['type'] ?? '', ['value', 'text', 'hidden', 'file', 'item', 'order'], true) ? (string) $change['type'] : 'value',
                 'before' => is_scalar($change['before'] ?? '') ? (string) ($change['before'] ?? '') : '',
                 'after' => is_scalar($change['after'] ?? '') ? (string) ($change['after'] ?? '') : '',
             ];

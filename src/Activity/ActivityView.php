@@ -116,6 +116,17 @@ final class ActivityView
                 $inlineOld = '';
                 $inlineNew = $note;
                 break;
+            case 'item':
+                // A repeater's item (0.24): "Added: Kitchen" or "Removed: Bathroom"
+                $note = AdminLang::get($before === '' ? 'activity.item_added' : 'activity.item_removed', ['item' => $before === '' ? $after : $before]);
+                $inlineOld = '';
+                $inlineNew = $note;
+                break;
+            case 'order':
+                $note = AdminLang::get('activity.order_changed');
+                $inlineOld = '';
+                $inlineNew = $note;
+                break;
             case 'file':
                 $key = $before === '' ? 'activity.file_added' : ($after === '' ? 'activity.file_removed' : 'activity.file_replaced');
                 $note = AdminLang::get($key);

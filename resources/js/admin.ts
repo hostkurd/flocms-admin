@@ -13,6 +13,7 @@ import { initializeMedia } from './media';
 import { initializeFileDrops } from './filedrop';
 import { initializeRoles } from './roles';
 import { updateManagerCounts } from './managers';
+import { initialize as initializeRepeaters } from './repeater';
 import './popovers';
 import './dialogs';
 import './search';
@@ -55,6 +56,7 @@ function initialize(): void {
   if (!root) return;
   initializeForms(root);
   initializeTranslations(root);
+  initializeRepeaters(root);
   initializeEditors(root);
   initializeSelection(root);
   initializeRecord(root);
@@ -181,15 +183,20 @@ document.addEventListener('submit', event => {
       if (remove.checked) value.value = '@remove'; else if (value.value === '@remove') value.value = '';
     });
     if (navigating || busy()) { event.preventDefault(); event.stopImmediatePropagation(); return; }
-    const values: Record<string, string | Record<string, string>> = {};
+    // Names become nested values: title[ar], and rooms[k1][name][ar] inside a repeater (0.24).
+    type Draft = { [key: string]: string | Draft };
+    const values: Draft = {};
     for (const [name, value] of new FormData(form)) {
       if (typeof value !== 'string' || name.startsWith('_upload_control[') || name.startsWith('_remove_upload[')) continue;
-      const translated = /^([A-Za-z_][A-Za-z0-9_]*)\[([a-z0-9-]+)\]$/.exec(name);
-      if (translated) {
-        const current = values[translated[1]];
-        const languages = typeof current === 'object' ? current : {};
-        languages[translated[2]] = value; values[translated[1]] = languages;
-      } else if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) values[name] = value;
+      const match = /^([A-Za-z_][A-Za-z0-9_]*)((?:\[[A-Za-z0-9_-]+\]){0,4})$/.exec(name);
+      if (!match) continue;
+      const path = [match[1], ...[...match[2].matchAll(/\[([A-Za-z0-9_-]+)\]/g)].map(part => part[1])];
+      let node: Draft = values;
+      path.slice(0, -1).forEach(part => {
+        if (typeof node[part] !== 'object') node[part] = {};
+        node = node[part] as Draft;
+      });
+      node[path[path.length - 1]] = value;
     }
     const input = form.querySelector<HTMLInputElement>('[data-rx-bind="draft"]')!;
     input.value = JSON.stringify(values);
@@ -320,7 +327,7 @@ document.addEventListener('flo-admin:url-replaced', () => { displayedUrl = locat
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) { initializeForms(root); initializeTranslations(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
+  if (root) { initializeForms(root); initializeTranslations(root); initializeRepeaters(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

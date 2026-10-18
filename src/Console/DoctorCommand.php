@@ -233,6 +233,16 @@ final class DoctorCommand extends Command
                 $this->caution('Column "' . $name . '" is translatable but its type is ' . $type . ': use JSON (or a TEXT type)');
             }
         }
+        // Repeater and key-value lists (0.24): one JSON list per column.
+        foreach ($form->fields() as $name => $field) {
+            if (!$field instanceof \FloCMS\Admin\Form\Fields\Repeater) { continue; }
+            $type = $columns[strtolower($name)] ?? null;
+            if ($type !== null && preg_match('/json|text|longtext|mediumtext|clob/i', $type) !== 1) {
+                $this->caution('Column "' . $name . '" holds a list of items but its type is ' . $type . ': use JSON (or a TEXT type)');
+            } elseif ($type !== null && preg_match('/^(tiny)?text$/i', trim($type)) === 1 && str_starts_with(strtolower(trim($type)), 'tiny')) {
+                $this->caution('Column "' . $name . '" is TINYTEXT: too small for a list, use TEXT or JSON');
+            }
+        }
     }
 
     /**

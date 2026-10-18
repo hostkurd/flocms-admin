@@ -66,8 +66,10 @@ final class EditingLanguage
         $languages = [];
         foreach (array_keys($errors) as $key) {
             if (str_starts_with((string) $key, '_')) { continue; }
-            $parts = explode('.', (string) $key, 2);
-            $languages[] = isset($parts[1]) && in_array($parts[1], Languages::all(), true) ? $parts[1] : Languages::default();
+            // "title.ar", or "rooms.2.name.ar" inside a repeater (0.24): the last part names the language.
+            $parts = explode('.', (string) $key);
+            $last = count($parts) > 1 ? end($parts) : null;
+            $languages[] = $last !== null && in_array($last, Languages::all(), true) ? $last : Languages::default();
         }
         if ($languages === [] || in_array($editing, $languages, true)) {
             return $editing;

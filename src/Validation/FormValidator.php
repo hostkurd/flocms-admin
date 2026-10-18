@@ -58,33 +58,52 @@ final class FormValidator
 
             $value = $state[$name] ?? '';
 
-            if ($field->isTranslatable()) {
-                $values = is_array($value) ? $value : [];
-                foreach ($this->languages as $lang) {
-                    $item = $values[$lang] ?? '';
-                    $isDefault = $lang === $this->defaultLang;
-                    if (!$isDefault && $item === '') {
-                        continue;
-                    }
-                    $message = $this->check($field, $item, !$isDefault, $lang);
-                    if ($message !== null) {
-                        $errors[$isDefault ? $name : $name . '.' . $lang] = $message;
-                    }
-                }
+            // A list of items (0.24): every item's fields, plus the list's own limits.
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater) {
+                $errors += $field->validateItems(is_string($value) ? $value : '', fn (Field $item, string|array $itemValue, string $key): array => $this->fieldErrors($item, $itemValue, $key, false));
                 continue;
             }
 
-            $message = $this->check($field, is_array($value) ? '' : $value, false);
-            if ($message !== null) {
-                $errors[$name] = $message;
-            }
+            $errors += $this->fieldErrors($field, $value, $name);
         }
 
         return $errors;
     }
 
+    /**
+     * Errors of one field's value under $key: "title", or "title.ar" for another language.
+     *
+     * @param string|array<string, string> $value
+     * @return array<string, string>
+     */
+    private function fieldErrors(Field $field, string|array $value, string $key, bool $unique = true): array
+    {
+        $errors = [];
+        if ($field->isTranslatable()) {
+            $values = is_array($value) ? $value : [];
+            foreach ($this->languages as $lang) {
+                $item = $values[$lang] ?? '';
+                $item = is_string($item) ? $item : '';
+                $isDefault = $lang === $this->defaultLang;
+                if (!$isDefault && $item === '') {
+                    continue;
+                }
+                $message = $this->check($field, $item, !$isDefault, $lang, $unique);
+                if ($message !== null) {
+                    $errors[$isDefault ? $key : $key . '.' . $lang] = $message;
+                }
+            }
+            return $errors;
+        }
+        $message = $this->check($field, is_array($value) ? '' : $value, false, null, $unique);
+        if ($message !== null) {
+            $errors[$key] = $message;
+        }
+        return $errors;
+    }
+
     /** First failing check of one value, as a message, or null. */
-    private function check(Field $field, string $value, bool $skipRequired, ?string $language = null): ?string
+    private function check(Field $field, string $value, bool $skipRequired, ?string $language = null, bool $unique = true): ?string
     {
         if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload && $value === '@remove') { $value = ''; }
         $rules = $field->rulesFor($this->isEdit);
@@ -129,7 +148,7 @@ final class FormValidator
             return AdminLang::get($typeError[0], ['attribute' => $label] + $typeError[1]);
         }
 
-        if ($value !== '' && $field->isUnique() && $this->isTaken !== null && ($this->isTaken)($field, $value, $language)) {
+        if ($unique && $value !== '' && $field->isUnique() && $this->isTaken !== null && ($this->isTaken)($field, $value, $language)) {
             return AdminLang::get('validation.unique', ['attribute' => $label]);
         }
 
