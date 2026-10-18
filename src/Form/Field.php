@@ -37,13 +37,16 @@ abstract class Field
     private ?array $requiredCondition = null;
     private bool $visible = true;
     private bool $omitted = false;
+    private ?string $fixed = null;
     /**
      * Leave the field out of this form entirely (0.22): not shown, not validated
      * and not written. A relation manager omits the parent's key and its
      * hideFields(); the server fills the key itself. @internal
      */
-    public function omit(): static { $this->omitted = true; $this->visible = false; $this->visibleCondition = null; $this->requiredCondition = null; return $this; }
+    public function omit(?string $value = null): static { $this->omitted = true; $this->fixed = $value; $this->visible = false; $this->visibleCondition = null; $this->requiredCondition = null; return $this; }
     public function isOmitted(): bool { return $this->omitted; }
+    /** The value an omitted field holds anyway (a relation manager's parent key), so other fields and rules see it. */
+    public function fixedValue(): ?string { return $this->fixed; }
     public function visibleWhen(string $field, string|array $values): static { $this->visibleCondition = self::condition($field, $values); return $this; }
     public function requiredWhen(string $field, string|array $values): static { $this->requiredCondition = self::condition($field, $values); return $this; }
     private static function condition(string $field, string|array $values): array

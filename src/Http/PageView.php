@@ -55,7 +55,7 @@ final class PageView
         }
         $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $scope?->token(), 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
 
-        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $slug);
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $scope?->columnsKey() ?? $slug);
         $visible = $visibility->visibleColumns();
         foreach ($visible as $column) { $column->prepareRecords($result['data']); }
         $columns = [];

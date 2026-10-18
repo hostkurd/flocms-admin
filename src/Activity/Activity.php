@@ -158,20 +158,23 @@ final class Activity
     public static function forRecord(string $resource, string $recordId, int $limit = 100, ?Database $db = null): array
     {
         $db ??= self::connection();
+        $own = static fn (): Database => $db->table(self::table())->where('resource', '=', $resource)->where('record_id', '=', $recordId);
+        $entries = array_map(static fn (object $row): ActivityEntry => ActivityEntry::fromRow($row), $own()->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit($limit)->get());
         $class = Admin::registry()->find($resource);
+        if ($class === null || \FloCMS\Admin\Relations\RelationManager::of(new $class()) === []) { return $entries; }
+        // A parent's History also lists its related records' entries (0.22), found by their parent note:
+        // asked for apart, so the parent's own entries are never pushed out by its children's.
         $note = $resource . ':' . $recordId;
-        // A parent's History also lists its related records' entries (0.22), found by their parent note.
-        $children = $class !== null && \FloCMS\Admin\Relations\RelationManager::of(new $class()) !== [];
-        $query = $db->table(self::table());
-        $query = $children
-            ? $query->whereRaw("((`resource` = ? AND `record_id` = ?) OR `meta` LIKE ? ESCAPE '!')", [$resource, $recordId, '%"' . strtr($note, ['!' => '!!', '%' => '!%', '_' => '!_']) . '"%'])
-            : $query->where('resource', '=', $resource)->where('record_id', '=', $recordId);
-        $rows = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit($limit)->get();
-        $entries = array_map(static fn (object $row): ActivityEntry => ActivityEntry::fromRow($row), $rows);
-        // The LIKE only narrows: keep entries whose note really names this record.
-        return array_values(array_filter($entries, static fn (ActivityEntry $entry): bool =>
-            ($entry->resource === $resource && $entry->recordId === $recordId)
-            || (in_array($note, $entry->parents(), true) && ($child = $entry->resourceClass()) !== null && Auth::can($child::permission('view')))));
+        $rows = $db->table(self::table())->where('resource', '!=', $resource)
+            ->whereRaw("`meta` LIKE ? ESCAPE '!'", ['%"' . strtr($note, ['!' => '!!', '%' => '!%', '_' => '!_']) . '"%'])
+            ->orderBy('created_at', 'desc')->orderBy('id', 'desc')->limit($limit)->get();
+        foreach ($rows as $row) {
+            $entry = ActivityEntry::fromRow($row);
+            // The LIKE only narrows: keep entries whose note really names this record, for people who may view them.
+            if (in_array($note, $entry->parents(), true) && ($child = $entry->resourceClass()) !== null && Auth::can($child::permission('view'))) { $entries[] = $entry; }
+        }
+        usort($entries, static fn (ActivityEntry $a, ActivityEntry $b): int => [$b->createdAt, $b->id] <=> [$a->createdAt, $a->id]);
+        return array_slice($entries, 0, $limit);
     }
 
     /**

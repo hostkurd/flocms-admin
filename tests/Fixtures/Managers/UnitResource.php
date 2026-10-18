@@ -29,6 +29,7 @@ final class UnitResource extends Resource
         return $form->schema([
             TextInput::make('name')->required(),
             TextInput::make('bedrooms')->rules('integer'),
+            TextInput::make('floor')->visibleWhen('estate_id', ['1']),
             BelongsTo::make('estate_id')->resource(EstateResource::class)->required(),
         ]);
     }

@@ -47,9 +47,12 @@ final class ManagersView
         $items = [];
         foreach ($managers as $manager) {
             $child = $manager->getResource();
-            $scope = ParentScope::resolve($slug, $parentId, $manager->getName(), $child::getSlug());
+            // A manager this page can't open (a parent without its key, a stricter parent rule) is left out, never the page.
+            try {
+                $scope = ParentScope::resolve($slug, $parentId, $manager->getName(), $child::getSlug());
+                $count = (new RecordRepository((new $child())->withinParent($scope), App::db() ?? throw new \RuntimeException('Database required.'), Translations::store()))->newQuery()->count();
+            } catch (\FloCMS\Core\HttpException) { continue; }
             $key = 'rel-' . $manager->getName();
-            $count = (new RecordRepository((new $child())->withinParent($scope), App::db() ?? throw new \RuntimeException('Database required.'), Translations::store()))->newQuery()->count();
             $body = $reactive
                 ? \FloCMS\Reactive\Reactive::mount('flo-admin-resource', $key, [
                     'resourceSlug' => $child::getSlug(), 'instanceKey' => $key,
@@ -59,6 +62,7 @@ final class ManagersView
             $items[] = ['id' => 'fa-manager-' . $manager->getName(), 'label' => $manager->getLabel(), 'icon' => Icons::svg($manager->getIcon() ?? 'layers'), 'count' => $count, 'body' => $body];
         }
 
+        if ($items === []) { return ''; }
         $title = Str::e(AdminLang::get('relations.managers'));
         $html = '<section class="fa-managers" aria-labelledby="fa-managers-title"><h2 class="fa-sr" id="fa-managers-title">' . $title . '</h2>';
         if (count($items) === 1) {
@@ -102,7 +106,8 @@ final class ManagersView
     {
         if ($parent->parentScope() !== null) { return null; }
         $parts = [];
-        foreach (RelationManager::of($parent) as $manager) {
+        // Only counts of records the person may view.
+        foreach (self::visible($parent) as $manager) {
             $child = $manager->getResource();
             try {
                 $scope = ParentScope::resolve($parent::getSlug(), $parentId, $manager->getName(), $child::getSlug());

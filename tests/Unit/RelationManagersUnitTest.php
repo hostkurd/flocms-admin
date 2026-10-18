@@ -85,6 +85,8 @@ final class RelationManagersUnitTest extends TestCase
         $pdo->exec('CREATE TABLE units (id INTEGER PRIMARY KEY, name TEXT, estate_id INTEGER, archived INTEGER NOT NULL DEFAULT 0)');
         $pdo->exec("INSERT INTO units (name, estate_id, archived) VALUES ('a', 1, 0), ('b', 1, 0), ('c', 1, 1), ('d', 2, 0)");
         App::$db = new Database($pdo);
+        \FloCMS\Core\Config::set('permissions', [1 => ['content.units.view'], 2 => []]);
+        $_SESSION = ['role' => 1, 'isloggedin' => true];
         try {
             $column = CountColumn::make('units')->relation(UnitResource::class, 'estate_id');
             $records = [(object) ['id' => 1], (object) ['id' => 2], (object) ['id' => 3]];
@@ -93,10 +95,14 @@ final class RelationManagersUnitTest extends TestCase
             self::assertStringContainsString('is-zero', $column->render($records[2]));
             self::assertFalse($column->isDatabaseColumn());
             self::assertFalse($column->isSortable());
+            $_SESSION['role'] = 2;
+            $column->prepareRecords($records);
+            self::assertStringContainsString('&ndash;', $column->render($records[0]), 'no counts without the units view permission');
             $this->expectException(\LogicException::class);
             $column->sortable();
         } finally {
             App::$db = $previous;
+            $_SESSION = [];
         }
     }
 }

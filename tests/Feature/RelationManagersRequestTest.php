@@ -29,7 +29,7 @@ final class RelationManagersRequestTest extends RequestTestCase
         $pdo = self::pdo();
         foreach (['units', 'enquiries', 'estates'] as $table) { $pdo->exec('DROP TABLE IF EXISTS ' . $table); }
         self::createTable($pdo, 'CREATE TABLE estates (id INTEGER PRIMARY KEY AUTOINCREMENT, title VARCHAR(100) NOT NULL DEFAULT "")');
-        self::createTable($pdo, 'CREATE TABLE units (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "", bedrooms VARCHAR(10) NULL, estate_id INTEGER NULL, archived INTEGER NOT NULL DEFAULT 0)');
+        self::createTable($pdo, 'CREATE TABLE units (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "", bedrooms VARCHAR(10) NULL, floor VARCHAR(20) NULL, estate_id INTEGER NULL, archived INTEGER NOT NULL DEFAULT 0)');
         self::createTable($pdo, 'CREATE TABLE enquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "", email VARCHAR(100) NOT NULL DEFAULT "", estate_id INTEGER NULL)');
         $pdo->exec("INSERT INTO estates (title) VALUES ('Sea view villa'), ('Harbour flats'), ('Locked house')");
         $pdo->exec("INSERT INTO units (name, bedrooms, estate_id, archived) VALUES ('Flat 1', '2', 1, 0), ('Flat 2', '1', 1, 0), ('Penthouse', '4', 1, 0), ('Harbour A', '2', 2, 0), ('Old wing', '3', 1, 1), ('Locked unit', '1', 3, 0)");
@@ -117,6 +117,7 @@ final class RelationManagersRequestTest extends RequestTestCase
         self::assertStringContainsString('data-rx-open="true"', $open['body']);
         self::assertStringNotContainsString('name="estate_id"', $open['body'], 'the key is not a field here');
         self::assertStringNotContainsString('data-field="estate_id"', $open['body']);
+        self::assertStringContainsString('data-field="floor"', $open['body'], 'fields that depend on the key see the parent');
         // The key is the parent's, whatever the draft says
         $saved = self::update($open, 'save', self::draft(['name' => 'Garden flat', 'bedrooms' => '2', 'estate_id' => '2']));
         self::assertSame(200, $saved['status'], $saved['body']);
@@ -186,6 +187,9 @@ final class RelationManagersRequestTest extends RequestTestCase
         self::assertStringContainsString('admin/units/create?parent=estates%3A1%3Aunits', $list['body']);
         self::assertStringContainsString('admin/units/edit/1?parent=estates%3A1%3Aunits', $list['body']);
         self::assertStringContainsString('<input type="hidden" name="parent" value="estates:1:units">', $list['body'], 'the search form keeps it');
+        self::assertStringNotContainsString('data-label="Estate"', $list['body'], 'no key column');
+        self::assertStringNotContainsString('name="filter[estate_id]"', $list['body'], 'no key filter');
+        self::assertStringContainsString('action="https://example.test/en/admin/units/delete/1?parent=estates%3A1%3Aunits"', self::request('GET', '/en/admin/units/edit/1?' . $token, self::reactive())['body'], 'delete keeps the parent');
 
         $create = self::request('GET', '/en/admin/units/create?' . $token, self::reactive());
         self::assertSame(200, $create['status']);
@@ -248,6 +252,11 @@ final class RelationManagersRequestTest extends RequestTestCase
             self::assertStringNotContainsString('Garden flat', self::request('GET', '/en/admin/estates/history/1', self::reactive(['permissions' => $permissions]))['body'], 'only with the child\'s view permission');
             // Restored from the trash under the same parent
             self::assertSame(1, (int) $pdo->query("SELECT COUNT(*) FROM admin_trash WHERE resource = 'units' AND record_id = '2'")->fetchColumn());
+            // A unit moved to another estate on its own page: both estates' History tell it
+            $moved = self::post('/en/admin/units/edit/3', ['name' => 'Penthouse', 'bedrooms' => '4', 'estate_id' => '2', '_close' => '1'], self::reactive());
+            self::assertTrue($moved['redirected'], $moved['body']);
+            self::assertStringContainsString('Units · Penthouse', self::request('GET', '/en/admin/estates/history/1', self::reactive())['body']);
+            self::assertStringContainsString('Units · Penthouse', self::request('GET', '/en/admin/estates/history/2', self::reactive())['body']);
         } finally {
             $pdo->exec('DROP TABLE IF EXISTS admin_trash');
             $pdo->exec('DROP TABLE IF EXISTS admin_activity');

@@ -90,7 +90,7 @@ final class ResourceController extends PanelController
         $perPage = $table->getPerPage() ?? Admin::config()->perPage();
 
         // The Columns button: save the user's choice, then show the list without its parameters.
-        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $class::getSlug());
+        $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $this->scope?->columnsKey() ?? $class::getSlug());
         if ($this->isPost()) {
             if (($this->request->input('_columns') ?? '') !== 'apply') { throw new HttpException(400); }
             if (($this->request->input('_columns_reset') ?? '') === '1') {
@@ -101,7 +101,7 @@ final class ResourceController extends PanelController
             }
             // Back to the same list (search, filters, sort, page); only this resource's own list URL.
             $back = (string) ($this->request->input('_back') ?? '');
-            $list = Admin::url($class::getSlug());
+            $list = $this->scope !== null ? $this->listUrl() : Admin::url($class::getSlug());
             $this->redirect($back === $list || str_starts_with($back, $list . '?') ? $back : $list);
         }
         // Sorting by a column the user hid falls back to the default sort.
@@ -239,13 +239,13 @@ final class ResourceController extends PanelController
             $token = $this->request->input('_operation');
             if (!is_string($token)) { throw new HttpException(400); }
             $executor->authorize($action, $ids, $token, $this->request->input('_cancel') === null);
-            if ($this->request->input('_cancel') !== null) { \FloCMS\Admin\Actions\OperationStore::consume($token); $this->redirect($this->listUrl()); }
+            if ($this->request->input('_cancel') !== null) { \FloCMS\Admin\Actions\OperationStore::consume($token); $this->redirect($this->listUrl(true)); }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
             try {
                 if ($this->request->input('_refresh') !== null) {
                     $executor->preview($action, $ids, $token);
                     $state = \FloCMS\Admin\Actions\ActionForm::state($action, $form, $this->request->all(), null); $form->refreshState($state);
-                } else { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect($this->listUrl()); }
+                } else { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect($this->listUrl(true)); }
             }
             catch (\FloCMS\Core\ValidationException $error) { foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); } }
         } else {
@@ -453,6 +453,7 @@ final class ResourceController extends PanelController
     public function admin_upload(): \FloCMS\Core\Http\Response
     {
         if (!$this->isPost()) { throw new HttpException(405); }
+        $this->enterParent();
         $placement = $this->request->input('_placement'); $name = $this->request->input('_name');
         $id = $this->request->input('_id'); $operation = $this->request->input('_operation');
         $fieldName = $this->request->input('_field'); $draft = $this->request->input('_draft');
@@ -471,7 +472,7 @@ final class ResourceController extends PanelController
         $form = $action->getForm($this->resource);
         $state = (new \FloCMS\Admin\Form\FormSubmission($this->resource, $this->repository()))->state($form, $input, $record);
         $field = $form->evaluate($state, $record)->field($fieldName);
-        if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || !$field->isWritable()) { throw new HttpException(403); }
+        if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || !$field->isWritable() || $field->isOmitted()) { throw new HttpException(403); }
         try {
             $value = \FloCMS\Admin\Uploads\Uploads::stage(is_array($_FILES['file'] ?? null) ? $_FILES['file'] : [], $field, \FloCMS\Admin\Uploads\Uploads::scope($this->resource, $record, $fieldName));
         } catch (\FloCMS\Core\HttpException|\FloCMS\Uploader\Exceptions\UploadException) {
@@ -635,7 +636,7 @@ final class ResourceController extends PanelController
             : AdminLang::get('form.create_title', ['label' => $class::getLabel()]);
 
         $deleteUrl = $isEdit && $this->can('delete') && $this->resource->canDelete($record)
-            ? Admin::url($class::getSlug() . '/delete/' . $this->recordId())
+            ? Admin::url($class::getSlug() . '/delete/' . $this->recordId(), ['parent' => $this->scope?->token()])
             : null;
 
         $back = $this->backUrl();
@@ -652,7 +653,7 @@ final class ResourceController extends PanelController
         }
         // Related records (0.22): below the form once the record exists; the create page says they come after saving.
         $managers = $this->scope !== null ? '' : ($isEdit ? \FloCMS\Admin\Relations\ManagersView::render($this->resource, $this->recordId()) : \FloCMS\Admin\Relations\ManagersView::pending($this->resource));
-        $deleteText = $isEdit ? \FloCMS\Admin\Relations\ManagersView::deleteCount($this->resource, $this->recordId()) : null;
+        $deleteText = $deleteUrl !== null ? \FloCMS\Admin\Relations\ManagersView::deleteCount($this->resource, $this->recordId()) : null;
         $html = $view->form($title, $action, $renderer->render($form), $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
             !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== [], $history, $managers, $deleteText,
             $this->scope !== null ? ['url' => $this->scope->parentUrl(), 'title' => $this->scope->parentTitle()]
@@ -668,6 +669,8 @@ final class ResourceController extends PanelController
     private function table(): Table
     {
         $table = $this->resource->table(new Table());
+        // Inside a parent: the manager's columns, page size and sort, never the key column or its filter.
+        if ($this->scope !== null) { $table = $this->scope->adjustTable($table); }
         $translatable = $this->form()->translatableNames();
         foreach ($table->getColumns() as $name => $column) {
             $column->detectTranslatable(in_array($name, $translatable, true));
@@ -749,12 +752,11 @@ final class ResourceController extends PanelController
     }
 
     /** The list after an action: the static list limited to the parent inside one. */
-    private function listUrl(): string
+    private function listUrl(bool $static = false): string
     {
-        $static = Admin::config()->reactiveEnabled() ? 1 : null;
         return $this->scope !== null
-            ? Admin::url($this->resourceClass::getSlug(), ['static' => $static, 'parent' => $this->scope->token()])
-            : Admin::url($this->resourceClass::getSlug(), ['static' => $static]);
+            ? Admin::url($this->resourceClass::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $this->scope->token()])
+            : Admin::url($this->resourceClass::getSlug(), ['static' => $static ? 1 : null]);
     }
 
     /** The sidebar entry to mark: the parent's inside one, nothing for a resource without its own entry. */

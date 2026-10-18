@@ -77,7 +77,7 @@ final class ResourceComponent extends Component
     /** A relation manager remembers its own column choices (0.22). */
     private function columnsKey(): string
     {
-        return $this->parentSlug === '' ? $this->resourceSlug : 'relation.' . $this->parentSlug . '.' . $this->relation;
+        return $this->resource()->parentScope()?->columnsKey() ?? $this->resourceSlug;
     }
     #[Action] public function clearFilters(): void { $this->filters = '{}'; $this->page = 1; $this->selectedIds = '[]'; }
     #[Action] public function clearSelection(): void { $this->selectedIds = '[]'; }
@@ -292,7 +292,7 @@ final class ResourceComponent extends Component
                 // Deleting a parent says how many related records it has (0.22).
                 . ($this->mode === 'delete' && $this->editingId !== '' ? ' ' . (\FloCMS\Admin\Relations\ManagersView::deleteCount($resource, $this->editingId) ?? '') : '')),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
-            'uploadUrl' => Admin::url($resource::getSlug() . '/upload'), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
+            'uploadUrl' => Admin::url($resource::getSlug() . '/upload', ['parent' => $scope?->token()]), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
             'formShowsFields' => array_filter($form->fields(), static fn ($field): bool => $field->isVisible() && !$field instanceof \FloCMS\Admin\Form\Fields\Hidden) !== [],
             // No body for a confirmation without fields (it only padded the dialog).

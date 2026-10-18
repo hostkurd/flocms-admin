@@ -118,9 +118,9 @@ if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='homes'")-
 $seedManagers = static function (PDO $pdo): void {
     foreach (['units', 'enquiries', 'estates'] as $table) { $pdo->exec('DROP TABLE IF EXISTS ' . $table); }
     $pdo->exec('CREATE TABLE estates (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT "")');
-    $pdo->exec('CREATE TABLE units (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL DEFAULT "", bedrooms TEXT NULL, estate_id INTEGER NULL, archived INTEGER NOT NULL DEFAULT 0)');
+    $pdo->exec('CREATE TABLE units (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL DEFAULT "", bedrooms TEXT NULL, floor TEXT NULL, estate_id INTEGER NULL, archived INTEGER NOT NULL DEFAULT 0)');
     $pdo->exec('CREATE TABLE enquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL DEFAULT "", email TEXT NOT NULL DEFAULT "", estate_id INTEGER NULL)');
-    $pdo->exec("INSERT INTO estates (title) VALUES ('Sea view villa'), ('Harbour flats'), ('Old town house')");
+    $pdo->exec("INSERT INTO estates (title) VALUES ('Bay view villa'), ('Harbour flats'), ('Old town house')");
     $pdo->exec("INSERT INTO units (name, bedrooms, estate_id) VALUES ('Flat 1', '2', 1), ('Flat 2', '1', 1), ('Flat 3', '3', 1), ('Flat 4', '2', 1), ('Penthouse', '4', 1), ('Harbour A', '2', 2)");
     $pdo->exec("INSERT INTO enquiries (name, email, estate_id) VALUES ('Omar Haddad', 'omar@example.com', 2)");
 };

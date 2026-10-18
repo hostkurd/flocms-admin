@@ -77,6 +77,9 @@ final class ParentScope
         return (string) $value;
     }
 
+    /** Where the manager keeps its Columns choices (apart from the child's own list). */
+    public function columnsKey(): string { return 'relation.' . $this->parentSlug() . '.' . $this->manager->getName(); }
+
     public function parentSlug(): string { return $this->parentClass::getSlug(); }
 
     public function parentUrl(): string { return Admin::url($this->parentSlug() . '/edit/' . $this->parentId); }
@@ -90,8 +93,10 @@ final class ParentScope
     /** The child's form here: the parent's key and hideFields() are left out. */
     public function adjustForm(Form $form): Form
     {
-        foreach ([$this->foreignKey(), ...$this->manager->getHiddenFields()] as $name) {
-            $form->field($name)?->omit();
+        // The key keeps the parent's value, so dependent fields and the resource's own rules see it.
+        $form->field($this->foreignKey())?->omit($this->key());
+        foreach ($this->manager->getHiddenFields() as $name) {
+            if ($name !== $this->foreignKey()) { $form->field($name)?->omit(); }
         }
         return $form;
     }

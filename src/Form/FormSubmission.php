@@ -79,6 +79,8 @@ final class FormSubmission
             $pk = $class::getPrimaryKey();
             if ($record !== null) { unset($data[$pk]); }
             unset($data['created_at'], $data['updated_at']);
+            // Inside a relation manager beforeSave() sees the parent's key too (0.22).
+            if (($scope = $class->parentScope()) !== null) { $data[$scope->foreignKey()] = $scope->key(); }
             $prepared = $data;
             $data = $class->beforeSave($data, $record);
             // Inside a relation manager the parent's key is always the parent (0.22), whatever was sent.
@@ -136,7 +138,9 @@ final class FormSubmission
         }
         $form = $class->form(new Form());
         $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved), $class::activityExcept(), $db);
-        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, \FloCMS\Admin\Activity\Activity::parents($class, $saved), $db); }
+        // Both the old and the new parent hear of a record that moved.
+        $parents = array_values(array_unique([...(\FloCMS\Admin\Activity\Activity::parents($class, $record)['parents'] ?? []), ...(\FloCMS\Admin\Activity\Activity::parents($class, $saved)['parents'] ?? [])]));
+        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, $parents === [] ? [] : ['parents' => $parents], $db); }
     }
 
     private function skip(Form $form, array $state, ?object $record): array

@@ -25,6 +25,7 @@ final class CountColumn extends Column
     /** @var array<string, int> owner key => count */
     private array $counts = [];
     private bool $prepared = false;
+    private bool $allowed = true;
 
     /**
      * @param class-string<Resource> $resource the related resource (UnitResource::class)
@@ -71,7 +72,9 @@ final class CountColumn extends Column
         $this->prepared = true;
         $this->counts = [];
         $db = App::db();
-        if ($db === null || $this->child === null) { return; }
+        // Counts only for people who may view the related records.
+        $this->allowed = $this->child !== null && \FloCMS\Core\Auth::can($this->child::permission('view'));
+        if ($db === null || !$this->allowed) { return; }
         $owners = array_values(array_unique(array_filter(array_map(fn (object $r): string => is_scalar($r->{$this->ownerKey} ?? null) ? (string) $r->{$this->ownerKey} : '', $records), static fn (string $id): bool => $id !== '')));
         if ($owners === []) { return; }
         $child = $this->child;
@@ -93,6 +96,7 @@ final class CountColumn extends Column
     public function render(object $record): string
     {
         $count = (int) $this->value($record);
+        if (!$this->allowed) { return '<span class="fa-muted">&ndash;</span>'; }
         return '<span class="fa-count-cell' . ($count === 0 ? ' is-zero' : '') . '">' . Str::e((string) $count) . '</span>';
     }
 
