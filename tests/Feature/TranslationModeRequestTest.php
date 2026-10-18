@@ -165,7 +165,7 @@ final class TranslationModeRequestTest extends RequestTestCase
         self::assertMatchesRegularExpression('~<dialog class="fa-editor is-switching"[^>]*data-lang-scope data-default-lang="en" data-editing="en"~', $body);
         self::assertMatchesRegularExpression('~<div class="fa-lang-switch" id="fa-rel-rooms-switch" data-lang-switch[^>]*data-total="1"[^>]*>~', $body);
         self::assertDoesNotMatchRegularExpression('~id="fa-rel-rooms-switch"[^>]* hidden>~', $body, 'shown by the server: the dialog only exists with JavaScript');
-        self::assertStringContainsString('data-rx-bind="editing" value="en" data-lang-editing-value', $body);
+        self::assertStringContainsString('data-rx-bind="editing" data-rx-model="defer" value="en" data-lang-editing-value', $body);
 
         // Switched to Arabic: shared fields render locked, the empty reference shows
         $arabic = self::update($open, 'refreshForm', ['editing' => 'ar', 'draft' => json_encode(['name' => ['en' => 'Penthouse', 'ar' => ''], 'size' => '160'])], $options)['body'];
@@ -182,6 +182,46 @@ final class TranslationModeRequestTest extends RequestTestCase
         self::assertSame(['en' => 'Penthouse', 'ar' => 'البنتهاوس الكبير'], json_decode((string) self::row('rooms', 1)['name'], true));
         $again = self::update($saved, 'edit', ['selectedId' => '1'], $options);
         self::assertStringContainsString('data-editing="ar"', $again['body']);
+    }
+
+    public function testFormsWithoutTranslatableFieldsShowNoSwitch(): void
+    {
+        // Tags have no translatable field: even in page mode and asked for Arabic, the form stays plain and editable
+        $options = self::options(['admin_config' => ['translation_mode' => 'page', 'resources' => array_merge(self::RESOURCES, [\FloCMS\Admin\Tests\Fixtures\Resources\TagResource::class])], 'session' => self::SUPER]);
+        $body = self::request('GET', '/en/admin/post-tags/edit/1?editing=ar', $options)['body'];
+        self::assertStringNotContainsString('data-lang-switch', $body);
+        self::assertStringNotContainsString('data-lang-scope', $body);
+        self::assertStringNotContainsString('data-same-all', $body);
+    }
+
+    public function testTheActionPageShowsTheSwitchAndSaveAndNewStartsInTheDefaultLanguage(): void
+    {
+        $page = self::request('GET', '/en/admin/villas/action/row/edit/1?editing=ar', self::options());
+        self::assertSame(200, $page['status'], substr($page['body'], 0, 2000));
+        self::assertMatchesRegularExpression('~<form[^>]*class="fa-card fa-form"[^>]*data-lang-scope data-default-lang="en" data-editing="ar"~', $page['body']);
+        self::assertStringContainsString('id="fa-action-switch"', $page['body']);
+        self::assertStringContainsString('name="_editing" value="ar"', $page['body']);
+
+        $another = self::post('/en/admin/villas/create', ['_editing' => 'ar', '_another' => '1', 'title' => ['en' => 'New villa', 'ar' => 'فيلا جديدة'], 'status' => 'draft'], self::options());
+        self::assertTrue($another['redirected']);
+        self::assertStringContainsString('data-editing="en"', self::request('GET', '/en/admin/villas/create', self::options(['session' => $another['session']]))['body']);
+    }
+
+    public function testEmptyRichTextIsSavedAsNothing(): void
+    {
+        self::post('/en/admin/villas/edit/1', ['_editing' => 'en', 'title' => ['en' => 'Cliff top villa'], 'description' => ['en' => '<p>A bright villa.</p>', 'ar' => '<p>&nbsp;</p>', 'ku' => '<p></p><p> </p>'], 'status' => 'published'], self::options());
+        self::assertSame(['en' => '<p>A bright villa.</p>'], json_decode((string) self::row('villas', 1)['description'], true));
+    }
+
+    public function testADialogKeepsItsLanguageThroughOtherUpdates(): void
+    {
+        $options = self::options(['admin_config' => ['reactive' => true]]);
+        $open = self::update(self::request('GET', '/en/admin/villas/edit/1', $options), 'edit', ['selectedId' => '1'], $options);
+        self::assertStringContainsString('data-rx-bind="editing" data-rx-model="defer"', $open['body']);
+        // The language travels with any later request (here a list refresh), not only with a submit
+        $later = self::update($open, 'paginate', ['editing' => 'ku'], $options)['body'];
+        self::assertStringContainsString('data-editing="ku"', $later);
+        self::assertStringContainsString('data-rx-open="true"', $later);
     }
 
     /** The snapshot of one component on a page (the page may hold several). */

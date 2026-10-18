@@ -192,8 +192,7 @@ final class ResourceComponent extends Component
     /** Whether the open dialog shows the language switch: a page-mode resource and a form with translatable fields (not bulk forms). */
     private function switches(?Definition $action): bool
     {
-        return $action !== null && $this->mode !== 'bulk' && $this->mode !== 'delete' && $this->resource()::usesLanguageSwitch()
-            && $action->getForm($this->resource())->translatableNames() !== [];
+        return $action !== null && $this->mode !== 'bulk' && $this->mode !== 'delete' && $this->resource()::usesLanguageSwitchFor($action->getForm($this->resource()));
     }
     private function editingLanguage(): string
     {

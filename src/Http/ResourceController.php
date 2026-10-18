@@ -318,7 +318,7 @@ final class ResourceController extends PanelController
         }
         $title = $action->getTitle($this->resource);
         // Page-level translation (0.23): the same switch as the dialog this page stands in for.
-        $switch = $action->getKind() !== 'delete' && $this->resourceClass::usesLanguageSwitch() && $form->translatableNames() !== [];
+        $switch = $action->getKind() !== 'delete' && $this->resourceClass::usesLanguageSwitchFor($form);
         $editing = $switch ? \FloCMS\Admin\Translation\EditingLanguage::resolve($this->isPost() ? $this->request->input('_editing') : $this->request->queryValue('editing'), $record !== null) : Languages::default();
         if ($switch && $errors !== []) { $editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($errors, $editing); }
         $renderer = new FormRenderer($safe, $errors, Languages::all(), Languages::default(), $action->getKind() === 'edit', fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record),
@@ -597,7 +597,7 @@ final class ResourceController extends PanelController
         $isEdit = $record !== null;
         $errors = [];
         // Page-level translation (0.23): the language the form shows first.
-        $switch = $class::usesLanguageSwitch();
+        $switch = $class::usesLanguageSwitchFor($form);
         $editing = $switch ? \FloCMS\Admin\Translation\EditingLanguage::resolve($this->isPost() ? $this->request->input('_editing') : $this->request->queryValue('editing'), $isEdit) : $default;
 
         if ($this->isPost()) {
@@ -627,7 +627,7 @@ final class ResourceController extends PanelController
                 $returnTo = $back !== Admin::url($class::getSlug()) ? $back : null;
                 $parent = $this->scope?->token();
                 if ($this->request->input('_another') !== null && $this->can('create') && $this->resource->canCreate()) {
-                    $this->redirect(Admin::url($class::getSlug() . '/create', ['parent' => $parent, 'back' => $returnTo, 'editing' => $editingQuery]));
+                    $this->redirect(Admin::url($class::getSlug() . '/create', ['parent' => $parent, 'back' => $returnTo]));
                 }
                 $saved = $id !== '' ? $this->repository()->find($id) : null;
                 $stay = $this->request->input('_close') === null && $this->can('update') && $saved !== null && $this->resource->canEdit($saved);

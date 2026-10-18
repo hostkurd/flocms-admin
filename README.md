@@ -250,7 +250,7 @@ Translatable fields are edited in one of two ways, chosen in `config/admin.php` 
 protected static string $translationMode = 'field';
 ```
 
-Both modes store the same JSON, so a resource can move between them at any time. Arabic, Kurdish and the other right-to-left languages get `dir="rtl"` in either panel language. Everything is a real form field, so the page also works without JavaScript (page mode then shows every language with its code). `TranslationsColumn` shows on the list how far each record is translated, with a **Missing in** filter. See [Forms](docs/forms.md#page-level-translation-023).
+Forms without translatable fields show no switch. Both modes store the same JSON, so a resource can move between them at any time. Arabic, Kurdish and the other right-to-left languages get `dir="rtl"` in either panel language. Everything is a real form field, so the page also works without JavaScript (page mode then shows every language with its code). `TranslationsColumn` shows on the list how far each record is translated, with a **Missing in** filter. See [Forms](docs/forms.md#page-level-translation-023).
 
 `required` applies to the default language only. The other languages are optional, and every other rule (`max:190`, …) applies to them when they are filled.
 

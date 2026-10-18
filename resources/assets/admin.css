@@ -882,7 +882,7 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-dialog-body > .fa-lang-other{margin-block-end:14px}
 .fa-editor .fa-dialog-head.has-switch{flex-wrap:wrap;row-gap:12px}
 .fa-editor .fa-dialog-head.has-switch .fa-dialog-title{flex:1}
-.fa-dialog-switch{flex-basis:100%}
+.fa-dialog-switch{flex-basis:100%;order:3}
 .fa-form > .fa-lang-switch{margin-block-end:12px}
 /* One language at a time: the current language's dot, filled, empty or invalid */
 .is-switching[data-lang-scope] .fa-label-dots .fa-dot:not(.is-current){display:none}

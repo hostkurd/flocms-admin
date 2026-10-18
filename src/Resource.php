@@ -390,6 +390,12 @@ abstract class Resource
         return static::getTranslationMode() === 'page' && count(\FloCMS\Admin\Translation\Languages::all()) > 1;
     }
 
+    /** Whether this form shows the switch: page mode, several languages and at least one translatable field. */
+    public static function usesLanguageSwitchFor(Form $form): bool
+    {
+        return static::usesLanguageSwitch() && $form->translatableNames() !== [];
+    }
+
     public static function getNavigationSort(): int
     {
         return static::$navigationSort;

@@ -131,6 +131,8 @@ const parts = (field: HTMLElement) => [...field.querySelectorAll<HTMLElement>('[
 const controlOf = (part: HTMLElement) => document.getElementById(part.dataset.input || '') as LangControl | null;
 
 function plainText(html: string): string {
+  // Like RichText::plain(): a space after each block, so paragraphs don't run together.
+  html = html.replace(/<(br|\/p|\/h[2-4]|\/li|\/blockquote|\/pre)\b[^>]*>/gi, '$& ');
   const doc = new DOMParser().parseFromString(html, 'text/html');
   return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
 }
@@ -210,9 +212,10 @@ function refreshReferences(scope: HTMLElement): void {
     const span = line.querySelector<HTMLElement>('[data-ref-text]');
     const more = line.querySelector<HTMLButtonElement>('[data-ref-more]');
     const limit = Number(line.dataset.refLimit || 0);
-    const long = limit > 0 && text.length > limit;
+    const chars = Array.from(text);
+    const long = limit > 0 && chars.length > limit;
     const expanded = line.dataset.expanded === 'true';
-    if (span) span.textContent = long && !expanded ? text.slice(0, limit).trimEnd() + '…' : text;
+    if (span) span.textContent = long && !expanded ? chars.slice(0, limit).join('').trimEnd() + '…' : text;
     if (more) {
       more.hidden = !long;
       more.textContent = (expanded ? more.dataset.less : more.dataset.more) || more.textContent;
@@ -241,7 +244,12 @@ export function applyEditing(scope: HTMLElement, lang: string, chosen = false): 
   if (!languages.includes(lang)) lang = scope.dataset.defaultLang || languages[0] || lang;
   if (scope.dataset.editing !== lang) lastJump.delete(scope);
   scope.dataset.editing = lang;
-  scope.querySelectorAll<HTMLInputElement>('[data-lang-editing-value]').forEach(input => { if (scopeOf(input) === scope) input.value = lang; });
+  scope.querySelectorAll<HTMLInputElement>('[data-lang-editing-value]').forEach(input => {
+    if (scopeOf(input) !== scope || input.value === lang) return;
+    input.value = lang;
+    // A Reactive dialog keeps the language in its state, so any later update renders it.
+    if (input.hasAttribute('data-rx-bind')) input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   const isDefault = lang === scope.dataset.defaultLang;
   scope.querySelectorAll<HTMLElement>('[data-lang-panes]').forEach(group => {
     if (scopeOf(group) !== scope) return;
@@ -284,7 +292,10 @@ export function applyEditing(scope: HTMLElement, lang: string, chosen = false): 
   if (chosen && scope.hasAttribute('data-lang-url')) {
     const url = new URL(location.href);
     if (isDefault) url.searchParams.delete('editing'); else url.searchParams.set('editing', lang);
-    if (url.href !== location.href) history.replaceState(history.state, '', url);
+    if (url.href !== location.href) {
+      history.replaceState(history.state, '', url);
+      document.dispatchEvent(new CustomEvent('flo-admin:url-replaced'));
+    }
   }
 }
 

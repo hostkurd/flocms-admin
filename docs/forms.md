@@ -104,7 +104,7 @@ Storage is the same in both modes (one JSON object per translatable column), so 
 
 ### The switch
 
-The record's head shows **Editing: English 9/9 · Arabic 7/9 · Kurdish 0/9**: segmented buttons for up to four languages, a select for more. Each language shows how many translatable fields are filled, with a full (green), partial or empty ring; the default language is first. Picking a language turns every translatable field into that language's input, with its own direction and font (an Arabic pane is right to left inside an English panel, and the other way round). Rich text editors follow the switch instead of showing their own language tabs.
+The record's head shows **Editing: English 9/9 · Arabic 7/9 · Kurdish 0/9**: segmented buttons for up to four languages, a select for more. Each language shows how many translatable fields are filled, with a full (green), partial or empty ring; the default language is first. Picking a language turns every translatable field into that language's input, with its own direction (an Arabic pane is right to left inside an English panel, and the other way round). Rich text editors follow the switch instead of showing their own language tabs.
 
 - **Shared fields** (price, city, photo, relations) stay visible but read-only outside the default language, with "Same in every language. Change it in English." A note above the form says which version is being edited.
 - **The default language's text** shows in grey under an empty input in another language ("English: Sea view villa"); for rich text, the first 200 characters and **Show all**. It follows what is typed in the default language.
@@ -119,11 +119,11 @@ The record's head shows **Editing: English 9/9 · Arabic 7/9 · Kurdish 0/9**: s
 
 ### Errors
 
-Errors are never hidden behind the switch: a language with errors gets a red count in the switch, the input is marked, and the message at the top names the language: "Please check: Title (Arabic)". The count goes once the value is corrected. `required` still applies to the default language only; empty translations are allowed and fall back to the default language on the website.
+Errors are never hidden behind the switch: a language with errors gets a red count in the switch, the input is marked, and the message at the top names the language: "Please check: Title (Arabic)" (the language's name comes from the site's `lng.<code>` key, else its own name: العربية). The count goes once the value is corrected. `required` still applies to the default language only; empty translations are allowed and fall back to the default language on the website.
 
 ### Dialogs and actions
 
-Create and Edit dialogs show the same switch in their head, so a unit in a relation manager (0.22) is translated like its property: a dialog opened from a record page being translated starts in the page's language, otherwise in the language you last saved in. Custom action forms with translatable fields get the switch too, in the dialog and on the action's full page. Bulk action forms keep the badges.
+A form without translatable fields shows no switch. Create and Edit dialogs show the same switch in their head, so a unit in a relation manager (0.22) is translated like its property: a dialog opened from a record page being translated starts in the page's language, otherwise in the language you last saved in. Custom action forms with translatable fields get the switch too, in the dialog and on the action's full page. Bulk action forms keep the badges.
 
 Settings pages keep their select, and now show the counts, **Next missing** and the reference lines.
 
@@ -138,7 +138,7 @@ $table->columns([
 ]);
 ```
 
-`TranslationsColumn` counts the resource's translatable form fields (or `->fields(['title', 'summary'])`) from the same JSON columns, with a full, partial or empty mark per language; it is not sortable or searchable and works in either mode. It adds a **Missing in: language** filter to the list (records where at least one counted field is empty in that language; empty rich text counts as missing) unless `->withoutFilter()`. The filter can also be declared on its own: `MissingTranslationFilter::make('todo')->label('To translate')`.
+`TranslationsColumn` counts the resource's translatable form fields (or `->fields(['title', 'summary'])`) from the same JSON columns, with a full, partial or empty mark per language; it is not sortable or searchable and works in either mode. It adds a **Missing in: language** filter to the list (records where at least one counted field is empty in that language; empty rich text counts as missing) unless `->withoutFilter()`. The filter can also be declared on its own: `MissingTranslationFilter::make('todo')->label('To translate')`. The counted fields must be columns of the table (`admin:doctor` checks them).
 
 ### Without JavaScript
 

@@ -10,12 +10,13 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 - The switch sits in the record's head (a full-width row on phones): segmented buttons for up to four languages, a select for more, each with its count of filled translatable fields and a full or partial ring. **Next missing** jumps to the next empty field in the language (opening a tab or folded section on the way); counts and the labels' dots update as you type.
 - Under an empty input in another language, the default language's text in grey ("English: Sea view villa"; rich text: 200 characters and Show all), kept in step with what is typed.
 - Fields that are the same in every language stay visible but read-only outside the default language ("Same in every language. Change it in English."), with a note above the form.
-- Each language pane takes its own direction and font: Arabic right to left inside an English panel, English left to right inside an Arabic one. Rich text editors follow the switch.
-- Errors: a language with errors gets a red count in the switch; after a failed save the form opens on the first error's language; the message names it, "Please check: Title (Arabic)" (in field mode too).
+- Each language pane takes its own direction: Arabic right to left inside an English panel, English left to right inside an Arabic one. Rich text editors follow the switch.
+- Errors: a language with errors gets a red count in the switch; after a failed save the form opens on the first error's language; the message names it, "Please check: Title (العربية)" (in field mode too; the language's name comes from the site's `lng.<code>` key, else its own name).
 - The language you last saved in is remembered per user; `?editing=ar` opens a language and the switch keeps the address in step. A new record starts in the default language.
 - Create and Edit dialogs (relation managers too) and custom action forms show the same switch; a dialog opened from a record being translated starts in its language. Bulk forms keep the badges.
 - `TranslationsColumn::make('translations')`: EN 4/4 · AR 3/4 · KU 0/4 per record, from the same JSON columns, with a **Missing in: language** filter (`MissingTranslationFilter`, also usable on its own; `->withoutFilter()`).
-- Settings pages keep their select and get the counts, Next missing and the reference lines.
+- Settings pages keep their select and get the counts, Next missing and the reference lines; a label's dots now show only the language being edited.
+- An empty rich text editor (`<p></p>`) is saved as nothing, like other empty fields.
 - `admin:doctor` reports each resource's mode and checks `translation_mode` / `$translationMode` values.
 - For developers: `Resource::getTranslationMode()`, `Resource::usesLanguageSwitch()`, `AdminConfig::translationMode()`, `FormRenderer` arguments `editing`, `switchActive`, `sameNote` and `languageStats()`, `LanguageSwitch`, `EditingLanguage`, `Table::prepare()`. The Settings switch script moved into the shared `translations.ts`.
 
