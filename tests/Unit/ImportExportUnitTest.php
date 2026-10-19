@@ -129,4 +129,17 @@ final class ImportExportUnitTest extends TestCase
         self::assertFalse(Schema::importable(TextInput::make('secret')->password()));
         self::assertFalse(Schema::importable(TextInput::make('code')->notImportable()));
     }
+
+    public function testRichTextCells(): void
+    {
+        $values = new Values(new \FloCMS\Core\Database(new \PDO('sqlite::memory:')));
+        self::assertSame('<p>One<br>two</p><p>Three &amp; four</p>', $values->richText("One\r\ntwo\r\n\r\nThree & four"));
+        self::assertSame('', $values->richText('   '));
+        self::assertSame('<p>Kept</p><img src="/uploads/a.jpg">', $values->richText('<p>Kept</p><img src="/uploads/a.jpg">'));
+        self::assertSame(0, $values->droppedMedia());
+        self::assertSame('<p>x</p>', $values->richText('<p>x</p><img src="https://other.example/b.png"><video src="//cdn.example/v.mp4"></video>'));
+        self::assertSame(2, $values->droppedMedia());
+        self::assertSame(0, $values->droppedMedia(), 'the count resets');
+        self::assertTrue(Schema::importable(\FloCMS\Admin\Form\Fields\RichEditor::make('body')));
+    }
 }

@@ -144,6 +144,7 @@
     @if($run->mode !== 'create')<div class="fa-card fa-import-tile is-info"><span class="fa-import-number fa-ltr">{{ number_format($update) }}</span><span class="fa-import-tile-text">{{ $t('import.found_existing', ['key' => $keyLabel]) }}</span></div>@endif
 </div>
 @if($emptied > 0)<p class="fa-alert fa-alert-warning">{{ $t('import.emptied', ['count' => number_format($emptied)]) }}</p>@endif
+@if($mediaDropped > 0)<p class="fa-alert fa-alert-warning">{{ $t('import.media_dropped', ['count' => number_format($mediaDropped)]) }}</p>@endif
 @if($errorsCount > 0)
 <div class="fa-card fa-import-problems">
     <div class="fa-import-card-head">

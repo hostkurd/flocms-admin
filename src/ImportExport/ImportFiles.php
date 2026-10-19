@@ -20,7 +20,10 @@ use FloCMS\Uploader\UploadResult;
 final class ImportFiles
 {
     public const CHUNK_BYTES = 2097152;
-    private const TYPES = ['text/csv', 'text/plain', 'application/csv', 'text/tab-separated-values', 'application/vnd.ms-excel', 'text/x-csv'];
+    // A CSV whose cells hold HTML (rich text) or JSON (repeaters) is sniffed as those types. The file
+    // is never served back and must still read as CSV text, so they are accepted too (0.25.1).
+    private const TYPES = ['text/csv', 'text/plain', 'application/csv', 'text/tab-separated-values', 'application/vnd.ms-excel', 'text/x-csv',
+        'text/html', 'text/xml', 'application/xml', 'application/json'];
 
     public static function uploader(): Uploader
     {

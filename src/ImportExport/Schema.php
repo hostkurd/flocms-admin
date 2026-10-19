@@ -195,7 +195,7 @@ final class Schema
     {
         if (!$field->isWritable() || $field->isNotImportable() || $field->isOmitted()) { return false; }
         if ($field instanceof Fields\TextInput && $field->isPassword()) { return false; }
-        foreach ([Fields\Placeholder::class, Fields\Hidden::class, Fields\FileUpload::class, Fields\MediaPicker::class, Fields\RichEditor::class] as $class) {
+        foreach ([Fields\Placeholder::class, Fields\Hidden::class, Fields\FileUpload::class, Fields\MediaPicker::class] as $class) {
             if ($field instanceof $class) { return false; }
         }
         return true;
