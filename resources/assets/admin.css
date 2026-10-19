@@ -937,7 +937,7 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
   .fa-repeater-tool,.fa-repeater-handle{width:40px;height:40px}
   .fa-repeater-tool[data-repeater-action="duplicate"]{display:none}
   .fa-repeater.is-table .fa-repeater-cols{display:none}
-  .fa-repeater.is-table .fa-repeater-items{border-radius:var(--fa-radius-lg)}
+  .fa-repeater.is-table .fa-repeater-items,.fa-repeater.is-table .fa-repeater-cols + .fa-repeater-items{border-radius:var(--fa-radius-lg) var(--fa-radius-lg) 0 0}
   .fa-repeater.is-table .fa-repeater-body > .fa-form-grid,.fa-repeater.is-key-value .fa-repeater-body > .fa-form-grid{grid-template-columns:minmax(0,1fr);gap:10px}
   .fa-repeater.is-table .fa-repeater-body .fa-field > .fa-label{position:static;width:auto;height:auto;overflow:visible;clip:auto;white-space:normal}
   .fa-repeater-row{padding:10px 8px}

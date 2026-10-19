@@ -8,6 +8,7 @@ Polish for row lists (`->table()` and `KeyValue`).
 
 - The first row sits square under the column heads, without rounded top corners.
 - A list without rows shows only its dashed Add button, like card lists, instead of column heads with the button stuck under them; the heads come back with the first row. Undo sits above Add while the list is empty.
+- On phones (no column heads) the rows keep their rounded top and join the Add row below without a gap in the corners.
 
 ## 0.24.0 - 2026-10-18
 
