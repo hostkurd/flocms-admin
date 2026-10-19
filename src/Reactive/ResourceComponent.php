@@ -313,6 +313,7 @@ final class ResourceComponent extends Component
             'fullPageUrl' => Admin::url($resource::getSlug(), ['static' => 1, 'parent' => $scope?->token(), 'q' => $this->search, 'sort' => $this->sort, 'dir' => $this->direction, 'page' => $this->page, 'filter' => $filters->active()]),
             'pageActions' => $renderer->render('page', prefix: $prefix, backUrl: $listUrl), 'tableActions' => $renderer->render('table', prefix: $prefix, backUrl: $listUrl),
             'rowActions' => static fn (object $row): string => $renderer->render('row', $row, prefix: $prefix, backUrl: $listUrl),
+            'rowLink' => static fn (object $row, string $html): string => \FloCMS\Admin\Http\PageView::rowLink($resource, $row, $html, ['parent' => $scope?->token()]),
             'dialogMinHeight' => $action?->getModalMinHeight(),
             'dialogStyle' => $action !== null && $action->getMode($resource) === 'slide-over' ? 'slide-over' : 'modal',
             'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? \FloCMS\Admin\Actions\BulkExecutor::confirmText($resource, $action, count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))) : trim(($action?->getDescription($resource) ?? '')

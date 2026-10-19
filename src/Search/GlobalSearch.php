@@ -155,14 +155,13 @@ final class GlobalSearch
             return null;
         }
         $more = count($rows) > $this->limit();
-        $mayEdit = Auth::can($class::permission('update'));
         $items = [];
         $primary = $table->primaryColumn();
         foreach (array_slice($rows, 0, $this->limit()) as $row) {
             $id = (string) ($row->{$class::getPrimaryKey()} ?? '');
             $title = self::title($row, $primary, $id);
-            $url = $resource->searchUrl($row)
-                ?? ($mayEdit && $id !== '' && $resource->canEdit($row) ? Admin::url($slug . '/edit/' . rawurlencode($id)) : Admin::url($slug, ['q' => $query]));
+            // Edit or the view page, as the list's row link (0.27).
+            $url = $resource->searchUrl($row) ?? ($id !== '' ? $resource->recordUrl($row) : null) ?? Admin::url($slug, ['q' => $query]);
             $items[] = SearchResult::make($title, $url)->detail($resource->searchDetails($row) ?? self::details($table, $row))
                 ->icon($class::getIcon())->type($class::getLabel());
         }

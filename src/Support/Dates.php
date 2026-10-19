@@ -47,6 +47,12 @@ final class Dates
         return self::format($time, $sameYear ? 'd MMM' : 'd MMM y', $sameYear ? 'j M' : 'j M Y');
     }
 
+    /** "17 Oct 2026" (0.27, the view page's dates). */
+    public static function date(int $time): string
+    {
+        return self::format($time, 'd MMM y', 'j M Y');
+    }
+
     /** "17 Oct 2026, 14:32". */
     public static function full(int $time): string
     {

@@ -52,6 +52,7 @@ final class ResourceController extends PanelController
             'admin_index' => $class::permission('view'),
             'admin_create' => $class::permission('create'),
             'admin_edit' => $class::permission('update'),
+            'admin_view' => $class::permission('view'),
             'admin_delete' => $class::permission('delete'),
             'admin_action' => $class::permission('view'),
             'admin_bulk' => $class::permission('view'),
@@ -61,7 +62,8 @@ final class ResourceController extends PanelController
             'admin_lookup' => $class::permission('view'),
             'admin_reorder' => $class::permission('update'),
             'admin_trash' => $class::permission('view'),
-            'admin_history' => $class::permission('update'),
+            // Who may read a record's History is checked in the action (editors, or activity.view).
+            'admin_history' => $class::permission('view'),
             'admin_export' => $class::permission('view'),
             'admin_import' => $class::permission('view'),
         ];
@@ -162,6 +164,82 @@ final class ResourceController extends PanelController
         return $this->handleForm($record);
     }
 
+    /**
+     * GET /admin/<slug>/view/<id> (0.27): the record read-only, its fields as
+     * values, for anyone with the view permission. ?showing=<lang> shows another
+     * language of the translatable fields.
+     */
+    public function admin_view(): string|\FloCMS\Core\Http\Response
+    {
+        $class = $this->resourceClass;
+        if (!$class::hasViewPage()) { throw new HttpException(404); }
+        if (!$this->request->isMethod('GET', 'HEAD')) { throw new HttpException(405); }
+        $record = $this->findRecordOr404();
+        if (!$this->resource->canView($record)) { throw new HttpException(403); }
+        $id = $this->recordId();
+        \FloCMS\Admin\Search\RecentRecords::remember($class::getSlug(), $id, \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record));
+
+        $languages = Languages::all();
+        $default = Languages::default();
+        $asked = $this->query('showing', '');
+        $ui = \FloCMS\Admin\Support\AdminLang::language();
+        $lang = in_array($asked, $languages, true) ? $asked : (in_array($ui, $languages, true) ? $ui : $default);
+
+        $view = new \FloCMS\Admin\View\RecordView($this->resource, $this->resource->view(new Form()), $record, $lang, $default, $languages, $this->table()->getColumns());
+        $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
+        $canEdit = $this->can('update') && $this->resource->canEdit($record);
+        $history = null;
+        if (\FloCMS\Admin\Activity\Activity::enabled() && ($canEdit || Auth::can(\FloCMS\Admin\Activity\Activity::PERMISSION))) {
+            $history = [
+                'url' => Admin::url($class::getSlug() . '/history/' . $id),
+                'html' => \FloCMS\Admin\Activity\ActivityView::history($label, \FloCMS\Admin\Activity\Activity::forRecord($class::getSlug(), $id), true, $class::getSlug()),
+                'title' => $label,
+            ];
+        }
+        $switch = null;
+        if (count($languages) > 1 && $view->hasTranslatableFields()) {
+            $missing = $view->missingLanguages();
+            $switch = array_map(static fn (string $code): array => [
+                'code' => $code, 'label' => strtoupper($code), 'name' => Languages::name($code), 'current' => $code === $lang,
+                'missing' => in_array($code, $missing, true),
+                'url' => Admin::url($class::getSlug() . '/view/' . $id, ['showing' => $code === $default ? null : $code]),
+            ], $languages);
+        }
+        $actions = new \FloCMS\Admin\Actions\ActionRenderer($this->resource, new \FloCMS\Admin\Actions\ActionRegistry($this->resource, $this->table()));
+        $html = \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('view'), [
+            't' => PageView::translator(), 'title' => $label, 'state' => $this->viewState($record),
+            'listUrl' => Admin::url($class::getSlug()), 'listLabel' => $class::getPluralLabel(),
+            'parent' => !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null,
+            'editUrl' => $canEdit ? Admin::url($class::getSlug() . '/edit/' . $id) : null,
+            'history' => $history, 'menu' => $actions->menu($record, Admin::url($class::getSlug())),
+            'switch' => $switch, 'fields' => $view->render(),
+            'managers' => \FloCMS\Admin\Relations\ManagersView::render($this->resource, $id, readOnly: true),
+            'editIcon' => \FloCMS\Admin\Support\Icons::svg('pencil'), 'historyIcon' => \FloCMS\Admin\Support\Icons::svg('history'),
+            'moreIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-down'), 'printIcon' => \FloCMS\Admin\Support\Icons::svg('printer'),
+            'closeIcon' => \FloCMS\Admin\Support\Icons::svg('x'), 'backIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'),
+            'richCss' => \FloCMS\Admin\Assets::richTextUrl(),
+            'printLine' => \FloCMS\Admin\Support\AdminLang::get('view.printed', ['date' => \FloCMS\Admin\Support\Dates::full(time()), 'name' => \FloCMS\Admin\Support\Actor::name() ?? '']),
+        ]);
+        return $this->panel($label, $html, $this->activeSlug());
+    }
+
+    /** "Updated 2 hours ago by Sara" from the activity log, or the record's updated_at. */
+    private function viewState(object $record): string
+    {
+        if (\FloCMS\Admin\Activity\Activity::enabled()) {
+            $entries = \FloCMS\Admin\Activity\Activity::forRecord($this->resourceClass::getSlug(), $this->recordId(), 1);
+            $latest = $entries[0] ?? null;
+            if ($latest instanceof \FloCMS\Admin\Activity\ActivityEntry && ($time = strtotime($latest->createdAt)) !== false) {
+                return \FloCMS\Admin\Support\AdminLang::get('view.updated_by', ['when' => \FloCMS\Admin\Support\Dates::relative($time), 'name' => $latest->who()]);
+            }
+        }
+        $updated = $record->updated_at ?? null;
+        if (is_string($updated) && ($time = strtotime($updated)) !== false) {
+            return \FloCMS\Admin\Support\AdminLang::get('view.updated', ['when' => \FloCMS\Admin\Support\Dates::relative($time)]);
+        }
+        return '';
+    }
+
     public function admin_delete(): string
     {
         if (!$this->isPost()) {
@@ -219,7 +297,9 @@ final class ResourceController extends PanelController
     {
         if (!\FloCMS\Admin\Activity\Activity::enabled() || count($this->params) !== 1) { throw new HttpException(404); }
         $record = $this->findRecordOr404();
-        if (!$this->resource->canEdit($record)) { throw new HttpException(403); }
+        // Editors, and on the view page (0.27) people who may read the activity log
+        $mayRead = ($this->can('update') && $this->resource->canEdit($record)) || (Auth::can(\FloCMS\Admin\Activity\Activity::PERMISSION) && $this->resource->canView($record));
+        if (!$mayRead) { throw new HttpException(403); }
         $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
         $html = \FloCMS\Admin\Activity\ActivityView::history($label, \FloCMS\Admin\Activity\Activity::forRecord($this->resourceClass::getSlug(), $this->recordId()), false, $this->resourceClass::getSlug());
         return $this->panel(AdminLang::get('activity.history_of', ['title' => $label]), $html, $this->resourceClass::getSlug());
@@ -639,12 +719,14 @@ final class ResourceController extends PanelController
         }
         $record = $id !== '' ? $this->repository()->find($id) : null;
         if ($id !== '' && $record === null) { throw new HttpException(404); }
-        Auth::authorize($this->resource::permission($record === null ? 'create' : 'update'));
-        if ($record === null ? !$this->resource->canCreate() : !$this->resource->canEdit($record)) { throw new HttpException(403); }
-        $form = $this->form(); $state = [];
+        // Editors; and for a stored file, people who may open the record's view page (0.27)
+        $editor = Auth::can($this->resource::permission($record === null ? 'create' : 'update')) && ($record === null ? $this->resource->canCreate() : $this->resource->canEdit($record));
+        $viewer = !$editor && !$pending && $record !== null && $this->resourceClass::hasViewPage() && $this->resource->canView($record);
+        if (!$editor && !$viewer) { throw new HttpException(403); }
+        $form = $viewer ? $this->resource->view(new Form()) : $this->form(); $state = [];
         foreach ($form->fields() as $n => $f) { $state[$n] = $f->stateFromRecord($record, Languages::default()); }
         $field = $form->evaluate($state, $record)->field($name);
-        if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || (!$pending && !$field->isVisible())) { throw new HttpException(404); }
+        if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || (!$pending && !$field->isVisible()) || ($viewer && $field->isHiddenOnView())) { throw new HttpException(404); }
         $path = $pending ? $entry['path'] : (string) ($record->{$name} ?? '');
         if (!$pending && !\FloCMS\Admin\Uploads\Uploads::managed($path, $this->resource, $field)) { throw new HttpException(404); }
         $absolute = \FloCMS\Admin\Uploads\Uploads::storage()->path($path);

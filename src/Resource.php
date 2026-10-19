@@ -109,6 +109,19 @@ abstract class Resource
      * Each also needs its permission (content.<slug>.export / .import) and the
      * panel's 'export' / 'import' setting; false turns one off for this resource.
      */
+    /**
+     * The view page (0.27): /admin/<slug>/view/<id>, read-only, for anyone with
+     * the view permission. false: no view page for this resource.
+     */
+    protected static bool $viewPage = true;
+
+    /**
+     * What a click on a list row's title opens for someone who may edit the
+     * record: 'edit' (the default) or 'view' (records mostly read, such as
+     * enquiries). Without the right to edit, it always opens the view page.
+     */
+    protected static string $rowOpens = 'edit';
+
     protected static bool $exportable = true;
     protected static bool $importable = true;
 
@@ -311,6 +324,60 @@ abstract class Resource
     public function canEdit(object $record): bool
     {
         return true;
+    }
+
+    /** Return false to hide a record's view page (the page answers 403). The view permission is always needed as well. */
+    public function canView(object $record): bool
+    {
+        return true;
+    }
+
+    /**
+     * The fields of the view page (0.27). By default the form's own fields,
+     * sections, tabs and aside, shown as values; return another form to show
+     * a different set.
+     */
+    public function view(\FloCMS\Admin\Form\Form $form): \FloCMS\Admin\Form\Form
+    {
+        return $this->form($form);
+    }
+
+    public static function hasViewPage(): bool
+    {
+        return static::$viewPage;
+    }
+
+    /** 'edit' or 'view' (any other value reads as 'edit'). */
+    public static function rowOpens(): string
+    {
+        return static::$rowOpens === 'view' ? 'view' : 'edit';
+    }
+
+    /**
+     * Where a link to this record goes for the signed-in person (0.27): the
+     * edit page when they may edit it (or the view page first with $rowOpens
+     * 'view'), else the view page when they may view it, else null.
+     *
+     * @param array<string, string|null> $query extra query values (parent, back)
+     */
+    public function recordUrl(object $record, array $query = []): ?string
+    {
+        $id = (string) ($record->{static::getPrimaryKey()} ?? '');
+        if ($id === '') { return null; }
+        $canView = static::$viewPage && \FloCMS\Core\Auth::can(static::permission('view')) && $this->canView($record);
+        $canEdit = \FloCMS\Core\Auth::can(static::permission('update')) && $this->canEdit($record);
+        if ($canEdit && !($canView && static::rowOpens() === 'view')) {
+            return \FloCMS\Admin\Admin::url(static::getSlug() . '/edit/' . rawurlencode($id), $query);
+        }
+        return $canView ? \FloCMS\Admin\Admin::url(static::getSlug() . '/view/' . rawurlencode($id), $query) : null;
+    }
+
+    /** The view page of a record, when the signed-in person may open it. */
+    public function viewUrl(object $record, array $query = []): ?string
+    {
+        $id = (string) ($record->{static::getPrimaryKey()} ?? '');
+        if ($id === '' || !static::$viewPage || !\FloCMS\Core\Auth::can(static::permission('view')) || !$this->canView($record)) { return null; }
+        return \FloCMS\Admin\Admin::url(static::getSlug() . '/view/' . rawurlencode($id), $query);
     }
 
     /** Return false to refuse deleting a record (the delete button is hidden). */

@@ -39,7 +39,7 @@ final class RecentRecords
     /**
      * The remembered records the person may still open, newest first: read again
      * through each resource's query() (one query per resource), so a record now
-     * outside it, deleted or no longer editable is left out, with today's title.
+     * outside it, deleted or no longer open to them is left out, with today's title.
      *
      * @return list<SearchResult>
      */
@@ -51,7 +51,7 @@ final class RecentRecords
         $fresh = [];
         foreach (array_unique(array_column($stored, 'r')) as $slug) {
             $class = Admin::registry()->find($slug);
-            if ($class === null || !Auth::can($class::permission('update'))) { continue; }
+            if ($class === null || (!Auth::can($class::permission('update')) && !($class::hasViewPage() && Auth::can($class::permission('view'))))) { continue; }
             $ids = array_values(array_map(static fn (array $item): string => $item['id'], array_filter($stored, static fn (array $item): bool => $item['r'] === $slug)));
             try {
                 /** @var \FloCMS\Admin\Resource $resource */
@@ -60,8 +60,10 @@ final class RecentRecords
                 $repository = new \FloCMS\Admin\Data\RecordRepository($resource, $db, \FloCMS\Admin\Translation\Translations::store());
                 foreach ($repository->newQuery()->whereIn($class::getPrimaryKey(), $ids)->get() as $row) {
                     $id = (string) ($row->{$class::getPrimaryKey()} ?? '');
-                    if ($id === '' || !$resource->canEdit($row)) { continue; }
-                    $fresh[$slug . "\0" . $id] = SearchResult::make(GlobalSearch::title($row, $primary, $id), Admin::url($slug . '/edit/' . rawurlencode($id)))
+                    // Edit or the view page, as the list's row link (0.27).
+                    $url = $id === '' ? null : $resource->recordUrl($row);
+                    if ($url === null) { continue; }
+                    $fresh[$slug . "\0" . $id] = SearchResult::make(GlobalSearch::title($row, $primary, $id), $url)
                         ->type($class::getLabel())->icon($class::getIcon());
                 }
             } catch (\Throwable $error) {

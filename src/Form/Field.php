@@ -212,6 +212,20 @@ abstract class Field
 
     /** Leave this field out of CSV exports (passwords are never exported). */
     public function hiddenFromExport(bool $hidden = true): static { $this->hiddenFromExport = $hidden; return $this; }
+
+    private bool $hiddenOnView = false;
+    private ?\Closure $viewFormatter = null;
+
+    /** Not shown on the view page (0.27). */
+    public function hiddenOnView(bool $hidden = true): static { $this->hiddenOnView = $hidden; return $this; }
+    public function isHiddenOnView(): bool { return $this->hiddenOnView; }
+
+    /**
+     * The value's text on the view page (0.27): fn (mixed $value, ?object $record): string.
+     * The text is escaped; return '' for an empty value.
+     */
+    public function formatOnView(\Closure $formatter): static { $this->viewFormatter = $formatter; return $this; }
+    public function getViewFormatter(): ?\Closure { return $this->viewFormatter; }
     public function isHiddenFromExport(): bool { return $this->hiddenFromExport; }
 
     /** Never fill this field from an imported file. */

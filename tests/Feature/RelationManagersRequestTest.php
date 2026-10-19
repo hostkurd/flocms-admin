@@ -226,6 +226,37 @@ final class RelationManagersRequestTest extends RequestTestCase
         self::assertStringContainsString('This estate has 1 unit and 1 enquiry.', $two);
     }
 
+    public function testTheViewPageShowsTheManagersReadOnlyToViewers(): void
+    {
+        // An editor: the same managers as on the edit page
+        $edit = self::request('GET', '/en/admin/estates/view/1', self::reactive())['body'];
+        self::assertStringContainsString('data-admin-tab="fa-manager-units"', $edit);
+        self::assertStringContainsString('data-rx-component', $edit, 'the live list, with its actions');
+
+        // A viewer: a plain table, titles linked to the units' view pages, no actions
+        $permissions = self::PERMISSIONS;
+        $permissions[1] = ['content.estates.view', 'content.units.view'];
+        $page = self::request('GET', '/en/admin/estates/view/1', self::reactive(['permissions' => $permissions]));
+        self::assertSame(200, $page['status'], $page['body']);
+        $view = $page['body'];
+        self::assertStringContainsString('class="fa-table-wrap fa-view-related"', $view);
+        self::assertStringContainsString('Flat 1', $view);
+        self::assertStringNotContainsString('Old wing', $view, 'the child query() still applies');
+        self::assertStringNotContainsString('Harbour A', $view, 'only this estate\'s units');
+        self::assertStringContainsString('<a class="fa-row-link" href="https://example.test/en/admin/units/view/1">', $view);
+        self::assertStringNotContainsString('data-rx-component', $view);
+        self::assertStringNotContainsString('parent=estates', $view, 'no scope token for a viewer');
+        self::assertStringNotContainsString('/units/create', $view);
+        // The child's own list inside the parent stays closed to them
+        self::assertSame(403, self::request('GET', '/en/admin/units?parent=estates:1:units', self::options(['permissions' => $permissions]))['status']);
+
+        // Estate 3 is locked (canEdit false): an editor sees its units read-only too
+        $locked = self::request('GET', '/en/admin/estates/view/3', self::reactive())['body'];
+        self::assertStringContainsString('Locked unit', $locked);
+        self::assertStringContainsString('fa-view-related', $locked);
+        self::assertStringNotContainsString('/en/admin/estates/edit/3', $locked, 'no Edit');
+    }
+
     public function testTheParentsHistoryListsItsRelatedRecords(): void
     {
         $pdo = self::pdo();

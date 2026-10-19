@@ -26,6 +26,7 @@ final class AssetResource extends Resource
     public function table(Table $table): Table { return $table->columns([TextColumn::make('title')->searchable()])->bulkActions([\FloCMS\Admin\Actions\DeleteBulkAction::make()]); }
     public function afterSave(object $record): void { if ($record->title === 'After rollback') { throw new \RuntimeException('Fixture rollback'); } }
     public function canEdit(object $record): bool { return $record->title !== 'Denied'; }
+    public function canView(object $record): bool { return $record->title !== 'Hidden'; }
     public function beforeSave(array $data, ?object $record): array
     {
         if (($data['title'] ?? '') === 'Force rollback') { throw new \RuntimeException('Fixture rollback'); }

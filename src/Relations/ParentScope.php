@@ -30,6 +30,7 @@ final class ParentScope
         public readonly string $parentId,
         public readonly RelationManager $manager,
         public readonly object $parent,
+        public readonly bool $readOnly = false,
     ) {
     }
 
@@ -52,9 +53,31 @@ final class ParentScope
         return new self($class, $parentId, $manager, $record);
     }
 
+    /**
+     * A scope for reading only (0.27): the related records shown on the view
+     * page of a parent the user may view but not edit. It is never put in a
+     * link or a ?parent= token (those always go through resolve()), so it
+     * opens no child page and allows no change.
+     */
+    public static function forViewing(string $parentSlug, string $parentId, string $relation, string $childSlug): self
+    {
+        $class = Admin::registry()->find($parentSlug) ?? throw new HttpException(404);
+        if (preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $parentId) !== 1) { throw new HttpException(404); }
+        $parent = new $class();
+        $manager = RelationManager::of($parent)[$relation] ?? throw new HttpException(404);
+        if (Admin::registry()->find($childSlug) !== $manager->getResource()) { throw new HttpException(404); }
+        if (!$class::hasViewPage()) { throw new HttpException(404); }
+        Auth::authorize($class::permission('view'));
+        $db = App::db() ?? throw new HttpException(503);
+        $record = (new RecordRepository($parent, $db, Translations::store()))->find($parentId) ?? throw new HttpException(404);
+        if (!$parent->canView($record)) { throw new HttpException(403); }
+        return new self($class, $parentId, $manager, $record, true);
+    }
+
     /** "properties:5:units", the ?parent= of the child's own pages without JavaScript. */
     public function token(): string
     {
+        if ($this->readOnly) { throw new \LogicException('A read-only scope has no token.'); }
         return $this->parentClass::getSlug() . ':' . $this->parentId . ':' . $this->manager->getName();
     }
 

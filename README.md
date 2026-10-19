@@ -297,12 +297,13 @@ Each action needs a permission, checked by FloCMS through `Controller::$actionPe
 | --- | --- |
 | List | `content.<slug>.view` |
 | Create | `content.<slug>.create` |
+| View page | `content.<slug>.view` |
 | Edit | `content.<slug>.update` |
 | Delete | `content.<slug>.delete` |
 
 With the skeleton's default roles, Editors (`content.*`), Admins and Super Admins can use every resource. Change the `content` prefix in `config/admin.php`, or per resource with `$permissionPrefix` / `$permissions`. Sites without a `permissions` map fall back to FloCMS's `admin_access` check. The sidebar and the Edit / Delete buttons follow the same permissions.
 
-Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for confirmation first. Since 0.19 a deleted record goes to the trash: restoring it needs `create`, deleting it for good needs `delete`. The Activity page needs `activity.view` (History on a record needs `update`).
+Deleting is a POST with a CSRF token (FloCMS rejects it otherwise) and asks for confirmation first. Since 0.19 a deleted record goes to the trash: restoring it needs `create`, deleting it for good needs `delete`. The Activity page needs `activity.view` (History on a record needs `update`, or `activity.view` since 0.27).
 
 Since 0.21 the roles and their permissions can be changed on **Site → Roles** (permission `roles.manage`): the panel stores the changes in a table and gives them to flocms-core 2.4+ (`Auth::loadRolesUsing()`), so every check of the site sees them. See the [Roles guide](docs/roles.md).
 
@@ -407,6 +408,10 @@ Admin 0.19 makes deleting safe and every change traceable. A deleted record goes
 
 Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) or `/` on any page, type, and pick a result with the arrow keys and Enter. It finds records of every resource by the columns their list already searches (`->searchable()`, every language), the panel's pages, "New …" actions, settings pages and media items, grouped and limited to what the person may open; before typing it shows the last 8 records opened. `#42` finds record 42. Nothing to install. See the [Search guide](docs/search.md).
 
+## The view page
+
+Admin 0.27 adds a page that shows a record without editing it: `/admin/<slug>/view/<id>`, built from the form you already have. Each field is shown as its value (badges, links with copy buttons, thumbnails, files with Download, repeaters as tables), in the form's sections and sidebar, with **History**, **Edit** and **More** (actions, Print, Delete) in the header, a **Showing: EN · AR · KU** switch that marks what is not translated, and a print layout. The row title in every list is now a link: to Edit for people who may edit, else to the view page, so people with View permission can open records. `->hiddenOnView()`, `->formatOnView()`, `view()`, `canView()`, `$viewPage` and `$rowOpens` adjust it. See [The view page](docs/view-page.md).
+
 ## Forgot password
 
 Admin 0.26 adds **Forgot password?** to the panel's login page. A person types the address they sign in with and gets a one-time link by email (valid 60 minutes); the answer is the same whether the address has an account or not, and requests are limited per address and per IP. The link opens a page to choose a new password; saving it signs the account out everywhere else, sends a short "your password was changed" note and goes to the activity log. Emails are sent with PHP `mail()` or SMTP from `.env` (`MAIL_*`), without a third-party package; `php flo admin:mail-test` checks them. Needs flocms-core 2.5; add `'password_reset' => true` to an existing `config/admin.php`, then run `php flo admin:install` and `php flo migrate`. See the [Forgot password guide](docs/password-reset.md).
@@ -453,6 +458,8 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.23: page-level translation (the "Editing: language" switch, `TranslationsColumn`, the Missing in filter)
 - 0.24: `Repeater` and `KeyValue` fields (lists inside a record, one JSON column, `repeater_items()`, `key_values()`)
 - 0.25: CSV import and export (Export menu, the four-step Import with preview and Undo, Site → Imports, `admin:export`, `admin:import`)
+- 0.26: forgot password (one-time links by email, `mail()`/SMTP without a package, other sessions end; flocms-core 2.5)
+- 0.27: the view page (records shown as values, the row title as a link, `hiddenOnView()`, `formatOnView()`, print layout)
 
 ## Development
 

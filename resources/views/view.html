@@ -1,0 +1,51 @@
+<link rel="stylesheet" href="{{ $richCss }}" data-admin-rich-css>
+<article class="fa-view" aria-labelledby="fa-view-title">
+    <p class="fa-view-print-line" aria-hidden="true">{{ $printLine }}</p>
+    <div class="fa-record-head fa-view-head">
+        <div class="fa-record-heading">
+            @if($parent !== null)<p class="fa-back-link"><a href="{{ $parent['url'] }}">{!! $backIcon !!}<span>{{ $parent['title'] }}</span></a></p>@endif
+            <h1 class="fa-page-title" id="fa-view-title">{{ $title }}</h1>
+            @if($state !== '')<p class="fa-view-state">{{ $state }}</p>@endif
+        </div>
+        <div class="fa-record-actions fa-view-actions">
+            @if($history !== null)
+            <a class="fa-btn" href="{{ $history['url'] }}" data-admin-drawer="fa-history-drawer" aria-haspopup="dialog">{!! $historyIcon !!}<span>{{ $t('activity.history') }}</span></a>
+            @endif
+            @if($editUrl !== null)
+            <a class="fa-btn fa-btn-primary" href="{{ $editUrl }}" data-admin-action="edit">{!! $editIcon !!}<span>{{ $t('view.edit') }}</span></a>
+            @endif
+            <details class="fa-menu fa-view-more" data-admin-popover>
+                <summary class="fa-btn"><span>{{ $t('view.more') }}</span>{!! $moreIcon !!}</summary>
+                <div class="fa-menu-panel">
+                    {!! $menu['items'] !!}
+                    <button type="button" class="fa-menu-item" data-admin-print hidden>{!! $printIcon !!}<span>{{ $t('view.print') }}</span></button>
+                    @if($menu['danger'] !== '')<hr class="fa-menu-divider">{!! $menu['danger'] !!}@endif
+                </div>
+            </details>
+        </div>
+    </div>
+    @if($switch !== null)
+    <nav class="fa-view-switch" aria-label="{{ $t('view.showing') }}">
+        <span class="fa-view-switch-label">{{ $t('view.showing') }}</span>
+        <span class="fa-segmented">
+            @foreach($switch as $item)
+            <a href="{{ $item['url'] }}" lang="{{ $item['code'] }}" title="{{ $item['name'] }}{{ $item['missing'] ? ' · ' . $t('view.something_missing') : '' }}" class="{{ $item['current'] ? 'is-current' : '' }}"@if($item['current']) aria-current="true"@endif>{{ $item['label'] }}@if($item['missing'])<span class="fa-view-dot" aria-hidden="true"></span><span class="fa-sr">{{ $t('view.something_missing') }}</span>@endif</a>
+            @endforeach
+        </span>
+    </nav>
+    @endif
+    {!! $fields !!}
+</article>
+{!! $managers !!}
+@if($history !== null)
+<dialog class="fa-drawer" id="fa-history-drawer" aria-labelledby="fa-history-title">
+    <div class="fa-drawer-head">
+        <div class="fa-drawer-heading">
+            <h2 class="fa-dialog-title" id="fa-history-title">{{ $t('activity.history') }}</h2>
+            <p class="fa-drawer-sub">{{ $history['title'] }}</p>
+        </div>
+        <button type="button" class="fa-icon-btn fa-dialog-close" data-admin-dialog-close aria-label="{{ $t('actions.close') }}">{!! $closeIcon !!}</button>
+    </div>
+    <div class="fa-drawer-body">{!! $history['html'] !!}</div>
+</dialog>
+@endif

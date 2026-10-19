@@ -105,7 +105,7 @@
             @foreach($result['data'] as $record)
             <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}"@if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) class="is-selected"@endif>
                 @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" data-admin-select value="{{ $record->{$resource::getPrimaryKey()} }}" aria-label="{{ $t('bulk.select_record', ['id' => $record->{$resource::getPrimaryKey()}]) }}" @if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) checked @endif></td>@endif
-                @foreach($visibleColumns as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">{!! $column->render($record) !!}</td>@endforeach
+                @foreach($visibleColumns as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">@if($name === $table->primaryColumn()){!! $rowLink($record, $column->render($record)) !!}@else{!! $column->render($record) !!}@endif</td>@endforeach
                 <td class="fa-actions">{!! $rowActions($record) !!}</td>
             </tr>
             @endforeach
