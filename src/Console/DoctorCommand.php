@@ -726,6 +726,10 @@ final class DoctorCommand extends Command
         } elseif ($env === 'production' && stripos($url, 'https://') !== 0) {
             $this->caution('APP_URL is not https: reset links would travel unencrypted.');
         }
+        $key = \FloCMS\Core\Env::get('APP_KEY');
+        if (!is_string($key) || strlen($key) < 32) {
+            $this->caution('APP_KEY is empty or short: the stored hashes of addresses and IP addresses use a fixed key. Set a long random APP_KEY in .env.');
+        }
         $this->line('  Links work once, for ' . $reset['expires'] . ' minutes; ' . $reset['per_email'] . ' requests an hour per address, ' . $reset['per_ip'] . ' per IP address.');
     }
 

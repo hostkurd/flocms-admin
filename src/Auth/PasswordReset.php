@@ -80,17 +80,17 @@ final class PasswordReset
         $settings = Admin::config()->passwordReset();
         $email = mb_strtolower(trim($email));
         $emailHash = self::hash('email', $email);
-        $ipHash = self::hash('ip', $ip);
+        $ipHash = self::hash('ip', self::ipBucket($ip));
         $now = time();
         self::purge($db, $now);
 
-        $hourAgo = date('Y-m-d H:i:s', $now - 3600);
+        $hourAgo = gmdate('Y-m-d H:i:s', $now - 3600);
         $byEmail = $db->table(self::table())->where('kind', '=', 'request')->where('email_hash', '=', $emailHash)->where('created_at', '>', $hourAgo)->count();
         $byIp = $db->table(self::table())->where('kind', '=', 'request')->where('ip_hash', '=', $ipHash)->where('created_at', '>', $hourAgo)->count();
         $user = filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? self::userByEmail($db, $email) : null;
-        $active = $user !== null && (int) ($user->status ?? 0) === UsersResource::ACTIVE;
+        $active = $user !== null && self::isActive($user);
         $row = ['kind' => 'request', 'user_id' => $user !== null ? (int) $user->id : null, 'email_hash' => $emailHash, 'ip_hash' => $ipHash,
-            'token_hash' => null, 'created_at' => date('Y-m-d H:i:s', $now), 'expires_at' => null, 'used_at' => null];
+            'token_hash' => null, 'created_at' => gmdate('Y-m-d H:i:s', $now), 'expires_at' => null, 'used_at' => null];
 
         if ($byEmail >= $settings['per_email'] || $byIp >= $settings['per_ip']) {
             $db->table(self::table())->insert($row);
@@ -111,9 +111,9 @@ final class PasswordReset
         $db->transaction(static function (Database $db) use ($row, $token, $user, $now, $settings): void {
             // A newer link replaces older ones
             $db->table(self::table())->where('user_id', '=', (int) $user->id)->where('kind', '=', 'request')
-                ->whereNotNull('token_hash')->whereNull('used_at')->where('expires_at', '>', date('Y-m-d H:i:s', $now))
-                ->update(['expires_at' => date('Y-m-d H:i:s', $now)]);
-            $db->table(self::table())->insert(['token_hash' => hash('sha256', $token), 'expires_at' => date('Y-m-d H:i:s', $now + $settings['expires'] * 60)] + $row);
+                ->whereNotNull('token_hash')->whereNull('used_at')->where('expires_at', '>', gmdate('Y-m-d H:i:s', $now))
+                ->update(['expires_at' => gmdate('Y-m-d H:i:s', $now)]);
+            $db->table(self::table())->insert(['token_hash' => hash('sha256', $token), 'expires_at' => gmdate('Y-m-d H:i:s', $now + $settings['expires'] * 60)] + $row);
         });
         self::log('password_reset_requested', $user, [], $db);
 
@@ -128,16 +128,16 @@ final class PasswordReset
     {
         $db ??= App::db();
         if ($db === null || !self::available($db)) { return null; }
-        $ipHash = self::hash('ip', $ip);
+        $ipHash = self::hash('ip', self::ipBucket($ip));
         $now = time();
         $attempts = $db->table(self::table())->where('kind', '=', 'attempt')->where('ip_hash', '=', $ipHash)
-            ->where('created_at', '>', date('Y-m-d H:i:s', $now - 3600))->count();
+            ->where('created_at', '>', gmdate('Y-m-d H:i:s', $now - 3600))->count();
         if ($attempts >= Admin::config()->passwordReset()['per_ip']) { return null; }
 
         $user = self::userForToken($db, $token, $now);
         if ($user === null) {
             $db->table(self::table())->insert(['kind' => 'attempt', 'user_id' => null, 'email_hash' => null, 'ip_hash' => $ipHash,
-                'token_hash' => null, 'created_at' => date('Y-m-d H:i:s', $now), 'expires_at' => null, 'used_at' => null]);
+                'token_hash' => null, 'created_at' => gmdate('Y-m-d H:i:s', $now), 'expires_at' => null, 'used_at' => null]);
         }
         return $user;
     }
@@ -154,7 +154,7 @@ final class PasswordReset
         $user = $db->transaction(static function (Database $db) use ($token, $password, $now): ?object {
             $user = self::userForToken($db, $token, $now);
             if ($user === null) { return null; }
-            $stamp = date('Y-m-d H:i:s', $now);
+            $stamp = gmdate('Y-m-d H:i:s', $now);
             // Used up here, unless a request at the same moment used it first
             $claimed = $db->query('UPDATE `' . self::table() . '` SET `used_at` = ? WHERE `token_hash` = ? AND `used_at` IS NULL', [$stamp, hash('sha256', $token)])->rowCount();
             if ($claimed !== 1) { return null; }
@@ -172,8 +172,13 @@ final class PasswordReset
     /** The reset link sent by email (absolute: APP_URL must be a full address). */
     public static function link(string $token): string
     {
-        $url = Admin::url('password/reset/' . $token);
-        // A site whose SITE_URI is a path: start the link with APP_URL
+        return self::absolute('password/reset/' . $token);
+    }
+
+    /** A panel URL for an email: SITE_URI, or APP_URL when SITE_URI is a path. */
+    public static function absolute(string $path): string
+    {
+        $url = Admin::url($path);
         $app = (string) Env::get('APP_URL', '');
         if (preg_match('#^https?://#i', $url) !== 1 && preg_match('#^(https?://[^/]+)#i', $app, $origin) === 1) {
             $url = $origin[1] . '/' . ltrim($url, '/');
@@ -194,7 +199,7 @@ final class PasswordReset
     /** Email the "your password was changed" note. */
     public static function sendChanged(object $user): void
     {
-        Mailer::send(self::message($user, 'changed', Admin::url('users/login'), []));
+        Mailer::send(self::message($user, 'changed', self::absolute('users/login'), []));
     }
 
     /**
@@ -205,13 +210,37 @@ final class PasswordReset
     public static function later(callable $send): void
     {
         register_shutdown_function(static function () use ($send): void {
-            if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
+            self::finishResponse();
             try {
                 $send();
             } catch (\Throwable $error) {
                 error_log('flocms-admin: could not send a password email: ' . $error->getMessage());
             }
         });
+    }
+
+    /**
+     * Answer the visitor before the email goes out: save the session first (it
+     * stays locked until then, which would hold up the next page and show how
+     * long sending took), then end the response.
+     */
+    private static function finishResponse(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+        ignore_user_abort(true);
+        if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); return; }
+        if (function_exists('litespeed_finish_request')) { @litespeed_finish_request(); return; }
+        if (PHP_SAPI === 'cli') { return; }
+        // Apache mod_php and others: tell the browser the answer is complete
+        $body = '';
+        while (ob_get_level() > 0) { $body = (string) ob_get_clean() . $body; }
+        if (!headers_sent()) {
+            header('Connection: close');
+            header('Content-Encoding: none');
+            header('Content-Length: ' . strlen($body));
+        }
+        echo $body;
+        @flush();
     }
 
     /** @param array<string, int|string> $replace */
@@ -239,6 +268,12 @@ final class PasswordReset
         return new Message((string) $user->email, $text('subject'), implode("\n", $lines), $html, toName: $name !== (string) $user->email ? $name : null);
     }
 
+    /** Active as FloCMS's session refresh sees it (Config 'auth.active_status', default 1). */
+    private static function isActive(object $user): bool
+    {
+        return (string) ($user->status ?? '') === (string) \FloCMS\Core\Config::get('auth.active_status', UsersResource::ACTIVE);
+    }
+
     private static function userByEmail(Database $db, string $email): ?object
     {
         return $db->table(self::USERS_TABLE)->whereRaw('LOWER(`email`) = ?', [$email])->orderBy('id')->limit(1)->first();
@@ -248,17 +283,17 @@ final class PasswordReset
     {
         if (preg_match('/^[A-Za-z0-9_-]{43}$/D', $token) !== 1) { return null; }
         $row = $db->table(self::table())->where('kind', '=', 'request')->where('token_hash', '=', hash('sha256', $token))
-            ->whereNull('used_at')->where('expires_at', '>', date('Y-m-d H:i:s', $now))->first();
+            ->whereNull('used_at')->where('expires_at', '>', gmdate('Y-m-d H:i:s', $now))->first();
         if ($row === null || $row->user_id === null) { return null; }
         $user = $db->table(self::USERS_TABLE)->where('id', '=', (int) $row->user_id)->first();
-        return $user !== null && (int) ($user->status ?? 0) === UsersResource::ACTIVE ? $user : null;
+        return $user !== null && self::isActive($user) ? $user : null;
     }
 
     /** Rows older than a day are no longer needed for the limits. */
     private static function purge(Database $db, int $now): void
     {
         try {
-            $db->table(self::table())->where('created_at', '<', date('Y-m-d H:i:s', $now - 86400))->delete();
+            $db->table(self::table())->where('created_at', '<', gmdate('Y-m-d H:i:s', $now - 86400))->delete();
         } catch (\Throwable $error) {
             error_log('flocms-admin: could not clean up password reset requests: ' . $error->getMessage());
         }
@@ -270,6 +305,13 @@ final class PasswordReset
         $id = $user !== null ? (int) $user->id : null;
         $name = $user !== null ? (trim((string) ($user->full_name ?? '')) ?: (string) ($user->email ?? '')) : null;
         Actor::as($id, $name, static fn () => Activity::record($action, $user !== null ? 'accounts' : null, $id !== null ? (string) $id : null, $name, meta: $meta, db: $db));
+    }
+
+    /** IPv6 addresses count per /64 (one household or server), IPv4 per address. */
+    private static function ipBucket(string $ip): string
+    {
+        $binary = @inet_pton($ip);
+        return $binary !== false && strlen($binary) === 16 ? inet_ntop(substr($binary, 0, 8) . str_repeat("\0", 8)) . '/64' : $ip;
     }
 
     /** A keyed hash, so the stored values can't be matched against a list of addresses or IPs. */

@@ -37,7 +37,9 @@ final class Message
     {
         $name = trim((string) $name);
         if ($name === '') { return $address; }
-        $encoded = preg_match('/^[A-Za-z0-9 !#$%&\'*+\/=?^_`{|}~.-]*$/', $name) === 1
+        // Always a quoted string (or encoded words), so a name with commas,
+        // brackets or "@" can never add an address
+        $encoded = preg_match('/^[\x20-\x7E]*$/', $name) === 1
             ? '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $name) . '"'
             : self::encodeHeader($name);
         return $encoded . ' <' . $address . '>';

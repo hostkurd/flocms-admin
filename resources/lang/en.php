@@ -1181,7 +1181,7 @@ return [
     'activity.badge.password_reset_limited' => 'Reset limit',
     'activity.badge.password_reset' => 'Password reset',
     'activity.what.password_reset_requested' => 'Asked for a password reset link',
-    'activity.what.password_reset_unknown' => 'A password reset was asked for an address with no account',
+    'activity.what.password_reset_unknown' => 'A password reset was requested for an address with no account',
     'activity.what.password_reset_inactive' => 'Asked for a password reset link (account not active, no email sent)',
     'activity.what.password_reset_limited' => 'Too many password reset requests; no more emails for an hour',
     'activity.what.password_reset' => 'Changed their password with a reset link',

@@ -26,7 +26,7 @@ final class CommandsTest extends TestCase
 
     protected function tearDown(): void
     {
-        unset($_ENV['PRIMARY_EMAIL'], $_ENV['APP_URL'], $_ENV['MAIL_TRANSPORT'], $_ENV['APP_ENV']);
+        unset($_ENV['PRIMARY_EMAIL'], $_ENV['APP_URL'], $_ENV['APP_KEY'], $_ENV['MAIL_TRANSPORT'], $_ENV['APP_ENV']);
         exec('rm -rf ' . escapeshellarg($this->root));
     }
 
@@ -182,6 +182,7 @@ final class CommandsTest extends TestCase
         (require $resets[0])->up(new \FloCMS\Core\Database($pdo));
         $_ENV['PRIMARY_EMAIL'] = 'info@example.test';
         $_ENV['APP_URL'] = 'https://example.test';
+        $_ENV['APP_KEY'] = str_repeat('k', 40);
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");

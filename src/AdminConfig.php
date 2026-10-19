@@ -347,8 +347,9 @@ final class AdminConfig
     }
 
     /**
-     * Forgot password (0.26): on unless 'password_reset' => false. Existing
-     * configurations without the key are off until they add it (UPGRADING.md).
+     * Forgot password (0.26): on when config/admin.php has 'password_reset'
+     * => true (or an array of options); off without the key, so existing
+     * configurations opt in (UPGRADING.md). New configurations have it.
      *
      * @return array{enabled: bool, table: string, expires: int, per_email: int, per_ip: int}
      */

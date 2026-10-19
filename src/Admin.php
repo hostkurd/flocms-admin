@@ -40,7 +40,7 @@ final class Admin
         // Forgot password (0.26, flocms-core 2.5+): its two pages open without signing in,
         // and a new password ends the account's other sessions.
         if (method_exists(App::class, 'allowGuestAdminActions')) {
-            App::allowGuestAdminActions('password', ['admin_forgot', 'admin_reset']);
+            App::allowGuestAdminActions('password', ['admin_forgot', 'admin_reset'], \FloCMS\Admin\Http\PasswordController::class);
         }
         \FloCMS\Admin\Auth\PasswordStamp::boot();
         if (Config::get('auth.login_view') === null) { Config::set('auth.login_view', static fn (): ?string => \FloCMS\Admin\Auth\LoginView::render()); }

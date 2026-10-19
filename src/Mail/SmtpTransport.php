@@ -23,6 +23,9 @@ final class SmtpTransport
     /** @param array{headers: list<string>, body: string} $mime */
     public function send(Message $message, string $from, array $mime): void
     {
+        if ($this->settings['username'] !== '' && $this->settings['encryption'] === 'none' && !in_array($this->settings['host'], ['localhost', '127.0.0.1', '::1'], true)) {
+            throw new MailException('Refusing to send the SMTP password without encryption: set MAIL_ENCRYPTION=tls or ssl.');
+        }
         try {
             $this->connect();
             $this->expect(220);
@@ -121,7 +124,7 @@ final class SmtpTransport
     {
         $reply = '';
         while (true) {
-            $line = fgets($this->socket, 1024);
+            $line = fgets($this->socket);
             if ($line === false) {
                 $meta = stream_get_meta_data($this->socket);
                 throw new MailException($meta['timed_out'] ? 'The SMTP server did not answer in time.' : 'The SMTP connection was closed.');
@@ -131,7 +134,8 @@ final class SmtpTransport
         }
         $code = (int) substr($reply, 0, 3);
         if (!in_array($code, (array) $expected, true)) {
-            throw new MailException('The SMTP server answered: ' . trim(mb_substr($reply, 0, 300)));
+            // Without the addresses a reply may repeat, as the message ends up in the error log
+            throw new MailException('The SMTP server answered: ' . trim((string) preg_replace('/[^\s<>]+@[^\s<>]+/', '[address]', mb_substr($reply, 0, 300))));
         }
         return $reply;
     }

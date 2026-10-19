@@ -42,7 +42,7 @@ final class PasswordController extends Controller
 
         $sent = Session::get(self::SENT_KEY);
         if (($this->params[0] ?? null) === 'sent' && is_string($sent) && $sent !== '') {
-            return $this->page('sent', ['title' => AdminLang::get('password.sent_title'), 'email' => $sent]);
+            return $this->page('sent', ['title' => AdminLang::get('password.sent_title'), 'email' => $sent, 'path' => 'password/forgot/sent']);
         }
 
         $email = '';
@@ -70,7 +70,7 @@ final class PasswordController extends Controller
     public function admin_reset(): Response
     {
         if (!PasswordReset::available()) {
-            return $this->page('unavailable', ['title' => AdminLang::get('password.unavailable_title'), 'description' => AdminLang::get('password.unavailable_description')]);
+            return $this->page('unavailable', ['title' => AdminLang::get('password.unavailable_title'), 'description' => AdminLang::get('password.unavailable_description'), 'path' => 'password/reset/' . (is_string($this->params[0] ?? null) ? mb_substr((string) $this->params[0], 0, 64) : '')]);
         }
         $token = is_string($this->params[0] ?? null) ? (string) $this->params[0] : '';
         $user = PasswordReset::find($token, ClientIp::get());
@@ -100,14 +100,16 @@ final class PasswordController extends Controller
         }
 
         return $this->page('reset', [
-            'title' => AdminLang::get('password.reset_title'), 'email' => (string) ($user->email ?? ''),
+            'title' => AdminLang::get('password.reset_title'), 'email' => (string) ($user->email ?? ''), 'path' => 'password/reset/' . $token,
             'action' => Admin::url('password/reset/' . $token), 'passwordError' => $passwordError, 'confirmError' => $confirmError,
         ], $passwordError !== '' || $confirmError !== '' ? 422 : 200);
     }
 
     private function invalid(): Response
     {
+        $token = is_string($this->params[0] ?? null) ? (string) $this->params[0] : '';
         return $this->page('invalid', [
+            'path' => 'password/reset/' . mb_substr($token, 0, 64),
             'title' => AdminLang::get('password.invalid_title'),
             'description' => AdminLang::get('password.invalid_description', ['minutes' => Admin::config()->passwordReset()['expires']]),
         ]);
@@ -118,11 +120,11 @@ final class PasswordController extends Controller
     {
         $lang = AdminLang::language();
         $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
-        $path = trim((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH), '/');
-        $rest = preg_replace('#^(?:[a-z]{2,3}(?:-[A-Za-z0-9]+)?/)?admin/#', '', $path) ?? 'password/forgot';
+        // The same page in another language
+        $rest = '/admin/' . implode('/', array_map('rawurlencode', explode('/', (string) ($values['path'] ?? 'password/forgot'))));
         $languages = [];
         foreach (Languages::all() as $code) {
-            $languages[] = ['name' => Languages::name($code), 'code' => $code, 'url' => $base . '/' . rawurlencode($code) . '/admin/' . $rest];
+            $languages[] = ['name' => Languages::name($code), 'code' => $code, 'url' => $base . '/' . rawurlencode($code) . $rest];
         }
         $html = TemplateEngine::renderFile(PageView::viewPath('password'), $values + [
             't' => PageView::translator(), 'screen' => $screen, 'lang' => $lang, 'dir' => PanelView::direction($lang),

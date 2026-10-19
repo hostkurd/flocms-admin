@@ -76,6 +76,9 @@ final class PasswordResetUnitTest extends TestCase
         self::assertStringStartsWith('=?UTF-8?B?', Message::encodeHeader('إعادة'));
         self::assertSame('Plain subject', Message::encodeHeader('Plain subject'));
         self::assertSame('"Sara J." <s@example.test>', Message::mailbox('s@example.test', 'Sara J.'));
+        // A name can never add an address
+        self::assertSame('"evil@attacker.test, Bob" <v@example.test>', Message::mailbox('v@example.test', 'evil@attacker.test, Bob'));
+        self::assertSame('"Doe, \\"J\\" <x>" <v@example.test>', Message::mailbox('v@example.test', 'Doe, "J" <x>'));
     }
 
     public function testTheLogTransportAndTheSendHook(): void
@@ -146,6 +149,27 @@ final class PasswordResetUnitTest extends TestCase
         } catch (MailException $error) {
             self::assertStringContainsString('refused the login', $error->getMessage());
             self::assertStringNotContainsString('secret-p4ss', $error->getMessage());
+        } finally {
+            proc_close($server);
+            @unlink($log);
+        }
+    }
+
+    public function testTheSmtpPasswordIsNeverSentUnencryptedToAnotherHost(): void
+    {
+        $transport = new SmtpTransport(['host' => '192.0.2.1', 'port' => 25, 'encryption' => 'none', 'username' => 'user', 'password' => 'p', 'timeout' => 3]);
+        $message = new Message('sara@example.test', 'Reset', 'Hello');
+        try {
+            $transport->send($message, 'panel@example.test', $message->mime('panel@example.test', 'Panel', 'example.test'));
+            self::fail('sent');
+        } catch (MailException $error) {
+            self::assertStringContainsString('without encryption', $error->getMessage(), 'refused before connecting');
+        }
+        [$server, $port, $log] = self::fakeSmtpServer();
+        try {
+            $remote = new SmtpTransport(['host' => '127.0.0.1', 'port' => $port, 'encryption' => 'none', 'username' => 'user', 'password' => 'p', 'timeout' => 5]);
+            $remote->send($message, 'panel@example.test', $message->mime('panel@example.test', 'Panel', 'example.test'));
+            self::assertStringContainsString('AUTH PLAIN', (string) file_get_contents($log), 'a local relay may take the login without TLS');
         } finally {
             proc_close($server);
             @unlink($log);
