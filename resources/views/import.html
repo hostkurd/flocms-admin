@@ -16,7 +16,7 @@
     <span>{{ $t('import.unfinished', ['name' => $unfinished['name']]) }}</span>
     <span class="fa-import-unfinished-actions">
         <a class="fa-btn fa-btn-sm" href="{{ $unfinished['url'] }}">{{ $t('import.continue') }}</a>
-        <form method="post" action="{{ $unfinished['cancelUrl'] }}">{!! $csrf !!}<button class="fa-btn fa-btn-sm fa-btn-ghost" type="submit">{{ $t('import.discard') }}</button></form>
+        @if($unfinished['cancelUrl'] !== null)<form method="post" action="{{ $unfinished['cancelUrl'] }}">{!! $csrf !!}<button class="fa-btn fa-btn-sm fa-btn-ghost" type="submit">{{ $t('import.discard') }}</button></form>@endif
     </span>
 </div>
 @endif
@@ -205,6 +205,7 @@
         <div><b class="fa-ltr">{{ number_format($run->count('updated')) }}</b><span>{{ $t('import.updated') }}</span></div>
         <div><b class="fa-ltr">{{ number_format($run->count('errors') + $run->count('skipped')) }}</b><span>{{ $t('import.skipped_errors') }}</span></div>
     </div>
+    @if($run->status === 'undone' && $run->count('kept') > 0)<p class="fa-alert fa-alert-warning">{{ $t('import.undone_kept', ['count' => number_format($run->count('kept'))]) }}</p>@endif
     @if($run->status === 'undone')<p class="fa-alert fa-alert-info">{{ $t('import.undone_text' . ($deleted ? '_deleted' : ''), ['removed' => number_format($run->count('removed')), 'restored' => number_format($run->count('restored'))]) }}</p>@endif
     <div class="fa-import-actions is-start">
         <a class="fa-btn fa-btn-primary" href="{{ $listUrl }}">{{ $t('import.view_list', ['label' => $resourceLabel]) }}</a>

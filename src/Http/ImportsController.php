@@ -34,13 +34,13 @@ final class ImportsController extends PanelController
             return [
                 'file' => $run->fileName,
                 'detail' => in_array($run->status, ['checking', 'importing', 'undoing'], true)
-                    ? AdminLang::get('imports.progress', ['done' => number_format($run->position), 'total' => number_format($run->rowsTotal)])
+                    ? AdminLang::get('imports.progress', ['done' => number_format($run->position), 'total' => number_format($run->status === 'undoing' ? $run->count('created') + $run->count('updated') : $run->rowsTotal)])
                     : AdminLang::get('imports.counts', ['created' => number_format($run->count('created')), 'updated' => number_format($run->count('updated')), 'skipped' => number_format($run->count('errors') + $run->count('skipped'))]),
                 'into' => $class::getPluralLabel(), 'by' => $run->userName, 'when' => date('Y-m-d H:i', strtotime($run->createdAt) ?: time()),
                 'rows' => number_format($run->rowsTotal), 'status' => $status,
                 'tone' => match ($status) { 'finished' => 'green', 'paused', 'checked', 'uploaded' => 'yellow', 'failed', 'undone' => 'red', 'importing', 'checking', 'undoing' => 'blue', default => 'gray' },
-                'url' => $mine || in_array($run->status, ['finished', 'cancelled', 'failed', 'undone'], true) ? $base : null,
-                'action' => $mine && in_array($status, ['paused', 'uploaded', 'checked'], true) ? 'continue' : ($run->canUndo() ? 'undo' : null),
+                'url' => $mine || in_array($run->status, ['finished', 'cancelled', 'failed', 'undoing', 'undone'], true) ? $base : null,
+                'action' => $mine && in_array($status, ['paused', 'uploaded', 'checked'], true) ? 'continue' : ($run->canUndo() && $class::canUndoImport($run->count('created'), $run->count('updated')) ? 'undo' : null),
             ];
         }, $result['data']);
         $html = TemplateEngine::renderFile(PageView::viewPath('imports'), [

@@ -23,7 +23,7 @@ Grant the permissions to the roles that should have them, in `config/config.php`
 | Permission | Allows |
 | --- | --- |
 | `content.<slug>.export` | The Export menu and **Export selected** |
-| `content.<slug>.import` | The Import button; it also needs `create`, and `update` to change existing records |
+| `content.<slug>.import` | The Import button; it also needs `create`, `update` to change existing records, and `delete` to undo an import that created records |
 
 `content.*` (Editors in the skeleton) and `*` include both. Ticking Export or Import on the Roles page ticks View too.
 
@@ -61,7 +61,7 @@ A file holds at most 50,000 rows (`'export' => ['limit' => …]`); narrow the li
 
 ### 1. Upload
 
-Drop a `.csv`, `.tsv` or `.txt` file (up to 10 MB and 10,000 rows by default) or choose one. Large files are sent in parts with a progress bar. The panel finds:
+Drop a `.csv`, `.tsv` or `.txt` file (lines may end in CRLF, LF or, from old Mac Excel, CR) (up to 10 MB and 10,000 rows by default) or choose one. Large files are sent in parts with a progress bar. The panel finds:
 
 - **the separator**: comma, semicolon, tab or `|`;
 - **the encoding**: UTF-8 (with or without BOM), UTF-16 (Excel's "Unicode text"), and Windows-1256 for Arabic files saved by older Excel versions (Windows-1252 on sites without Arabic-script languages). If the letters look wrong on the next screen, **Letters look wrong?** reads the file again in another encoding.
@@ -76,7 +76,7 @@ Then choose what happens to rows whose record **already exists**:
 
 - **Create new ones only**: such rows are reported, not imported.
 - **Create new and update existing** (the default when the file has the key column): matched columns of existing records change; columns that are not in the file keep their values.
-- **Update existing only**: rows without a match are skipped.
+- **Update existing only**: rows without a match are reported as errors, not imported.
 
 Existing records are found by **id**, or by the resource's import key (see below). Dates such as `05/10/2026` are read day first (5 October) or month first (May 10), as you choose.
 
@@ -99,7 +99,7 @@ The result shows what was created, updated and skipped, with **Download skipped 
 - records the import created go to the **trash** (deleted for good when the trash is off);
 - records it updated get their values from before the import back, many-to-many links included.
 
-Undo is possible for 7 days (`'import' => ['undo_days' => …]`, `0` for no Undo). It is refused when a record was edited after the import, because Undo would lose that edit; the message names the records.
+Undo is possible for 7 days (`'import' => ['undo_days' => …]`, `0` for no Undo). It is refused when a record was edited after the import, because Undo would lose that edit; the message names the records. Undoing an import that created records needs the `delete` permission too, and each record's `canDelete()`; a record that can't go back (edited meanwhile, still used by other records, not yours to delete) is kept as it is and counted on the result page. The records it removes form one trash batch, restorable together.
 
 ### Values the import understands
 
@@ -109,7 +109,7 @@ Undo is possible for 7 days (`'import' => ['undo_days' => …]`, `0` for no Undo
 | `Toggle` | `1`/`0`, `yes`/`no`, `true`/`false`, `✓`, `نعم`/`لا`, `بەڵێ`/`نەخێر` and more |
 | `Date`, `DateTime` | `2026-10-19`, `19/10/2026`, `19.10.2026`, `19/10/2026 14:30`, an Excel day number |
 | `Select` | the key or the label, any case |
-| `BelongsTo` | the related id, or its title in any language (`Erbil` or `أربيل`); an unknown or doubtful title is an error |
+| `BelongsTo` | the related key (an id, or a text key such as a slug), or its title in any language (`Erbil` or `أربيل`); an unknown or doubtful title is an error |
 | `BelongsToMany` | ids or titles separated by `\|`, `;` or `,` |
 | `ColorPicker` | `#0b6e91` or `0b6e91` |
 | `KeyValue` | `Parking: 2 \| Pool: yes`, or the JSON of an export |
@@ -183,7 +183,7 @@ In `config/admin.php`:
 ],
 ```
 
-Uploaded files live in `storage/admin-imports/`, outside the website's public folder, readable only by the person who uploaded them. They are removed when an import ends or after `keep_hours`; the rows' Undo data after `undo_days`; imports from the list after 30 days. Panel pages do this at most once an hour, and `php flo admin:import-purge` does it from cron.
+Uploaded files live in `storage/admin-imports/`, outside the website's public folder, readable only by the person who uploaded them. They are removed `keep_hours` after the import's last change (an import paused longer than that stops, and what it saved can still be undone); the rows' Undo data after `undo_days`; imports from the list after 30 days. Panel pages do this at most once an hour, and `php flo admin:import-purge` does it from cron.
 
 ## Commands
 

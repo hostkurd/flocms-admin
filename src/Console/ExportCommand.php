@@ -34,6 +34,7 @@ final class ExportCommand extends Command
     {
         $this->bootPanel();
         $resource = $this->resourceFor($this->argument('resource'));
+        if (!$resource::isExportable()) { $this->fail('Exports of ' . $resource::getSlug() . ' are off (\'export\' => false, or $exportable = false).'); }
         $db = \FloCMS\Core\App::db() ?? $this->fail('No database.');
         $table = $resource->table(new \FloCMS\Admin\Table\Table())->prepare($resource->form(new \FloCMS\Admin\Form\Form()));
         $filters = [];

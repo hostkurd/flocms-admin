@@ -194,8 +194,9 @@ final class Values
     {
         /** @var Fields\BelongsTo|Fields\BelongsToMany $field */
         $relation = $field->relation();
-        // Only whole numbers are tried as keys: MySQL would read "12 Main St" as 12.
-        $existing = array_flip($relation->existing($this->db, array_values(array_filter($values, static fn (string $v): bool => preg_match('/^\d{1,18}$/D', $v) === 1))));
+        // Any value may be a key (ids, slugs, UUIDs), but only an exact match counts:
+        // MySQL compares "12 Main St" with a number column as 12.
+        $existing = array_flip(array_values(array_intersect($values, $relation->existing($this->db, $values))));
         $ids = [];
         foreach ($values as $value) {
             if (isset($existing[$value])) { $ids[] = $value; continue; }

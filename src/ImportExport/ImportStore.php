@@ -13,6 +13,12 @@ use FloCMS\Core\Database;
  */
 final class ImportStore
 {
+    /** @var array<int, string> run id => the lock this request holds */
+    private array $claims = [];
+
+    /** @var array<string, string> status() for this request */
+    private static array $status = [];
+
     public function __construct(private readonly Database $db)
     {
     }
@@ -36,11 +42,15 @@ final class ImportStore
         if (!Admin::config()->import()['enabled']) { return 'off'; }
         $db ??= App::db();
         if ($db === null) { return 'missing'; }
+        // Asked once per resource on every panel page: remembered for the request.
+        $key = spl_object_id($db) . ':' . self::table();
+        if (isset(self::$status[$key])) { return self::$status[$key]; }
         try {
             $db->query('SELECT `id`, `status`, `csv_separator` FROM `' . self::table() . '` WHERE 1 = 0');
             $db->query('SELECT `id`, `before_values` FROM `' . self::rowsTable() . '` WHERE 1 = 0');
-            return 'ready';
+            return self::$status[$key] = 'ready';
         } catch (\Throwable) {
+            // Not remembered: admin:install and migrate may run in this process (tests).
             return 'missing';
         }
     }
@@ -87,14 +97,21 @@ final class ImportStore
     public function claim(ImportRun $run, int $seconds = 60): bool
     {
         $now = date('Y-m-d H:i:s');
+        $until = date('Y-m-d H:i:s', time() + $seconds);
         $statement = $this->db->pdo()->prepare('UPDATE `' . self::table() . '` SET `locked_until` = ? WHERE `id` = ? AND (`locked_until` IS NULL OR `locked_until` < ?)');
-        $statement->execute([date('Y-m-d H:i:s', time() + $seconds), $run->id, $now]);
-        return $statement->rowCount() === 1;
+        $statement->execute([$until, $run->id, $now]);
+        if ($statement->rowCount() !== 1) { return false; }
+        $this->claims[$run->id] = $until;
+        return true;
     }
 
+    /** Give the lock back, only if it is still this request's (a slow request may have lost it). */
     public function release(ImportRun $run): void
     {
-        $this->db->table(self::table())->where('id', '=', $run->id)->update(['locked_until' => null]);
+        $until = $this->claims[$run->id] ?? null;
+        unset($this->claims[$run->id]);
+        if ($until === null) { return; }
+        $this->db->table(self::table())->where('id', '=', $run->id)->where('locked_until', '=', $until)->update(['locked_until' => null]);
     }
 
     /** Another run of the same resource that is checking or importing right now. */
@@ -126,7 +143,7 @@ final class ImportStore
     /** The unfinished run of this user and resource (to continue), if any. */
     public function unfinished(string $resource, ?int $userId): ?ImportRun
     {
-        $row = $this->db->table(self::table())->where('resource', '=', $resource)->whereIn('status', ['uploaded', 'checking', 'checked', 'importing', 'undoing'])
+        $row = $this->db->table(self::table())->where('resource', '=', $resource)->whereIn('status', ['uploaded', 'checking', 'checked', 'importing'])
             ->where('user_id', '=', $userId ?? 0)->orderBy('id', 'desc')->first();
         return $row === null ? null : ImportRun::fromRow((array) $row);
     }
@@ -176,6 +193,12 @@ final class ImportStore
         return $this->db->table(self::rowsTable())->where('import_id', '=', $run->id)->whereIn('status', $statuses)->count();
     }
 
+    /** Rows from this line on (a check batch that is run again). */
+    public function deleteRowsFrom(ImportRun $run, int $line): void
+    {
+        $this->db->table(self::rowsTable())->where('import_id', '=', $run->id)->where('line', '>=', $line)->delete();
+    }
+
     public function deleteRows(ImportRun $run): void
     {
         $this->db->table(self::rowsTable())->where('import_id', '=', $run->id)->delete();
@@ -219,6 +242,9 @@ final class ImportStore
             if (in_array($run->status, ['uploaded', 'checking', 'checked'], true)) {
                 $this->update($run, ['status' => 'cancelled', 'message' => 'expired']);
                 $this->deleteRows($run);
+            } elseif ($run->status === 'importing') {
+                // Paused longer than its file is kept: it ends here, and what it saved can still be undone.
+                $this->update($run, ['status' => 'failed', 'finished_at' => date('Y-m-d H:i:s'), 'message' => \FloCMS\Admin\Support\AdminLang::get('import.file_gone')]);
             }
         }
         $undoBefore = date('Y-m-d H:i:s', time() - max(1, $config['undo_days']) * 86400);

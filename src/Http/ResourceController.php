@@ -274,8 +274,17 @@ final class ResourceController extends PanelController
             return $response;
         }
         @set_time_limit(300);
+        // A long download must not hold the session: the person's other tabs would wait for it.
+        if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
         foreach ($headers as $name => $value) { header($name . ': ' . $value); }
-        $write(new \FloCMS\Admin\ImportExport\CsvWriter());
+        $writer = new \FloCMS\Admin\ImportExport\CsvWriter();
+        try {
+            $write($writer);
+        } catch (\Throwable $error) {
+            // The file has started: end it with a line that says it is incomplete, not an error page.
+            error_log('flocms-admin: export of ' . $this->resourceClass::getSlug() . ' stopped: ' . $error->getMessage());
+            $writer->row([AdminLang::get('export.stopped')]);
+        }
         $response = \FloCMS\Core\Http\Response::make('');
         foreach ($headers as $name => $value) { $response = $response->header($name, $value); }
         return $response;

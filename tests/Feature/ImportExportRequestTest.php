@@ -195,4 +195,127 @@ final class ImportExportRequestTest extends RequestTestCase
         self::assertStringNotContainsString('/admin/posts/import', $list['body']);
         self::assertStringContainsString('/admin/posts/export', $list['body'], 'export needs no table');
     }
+
+    /** An import of posts 1 (updated) and "brand-new" (created), finished. */
+    private function finishedImport(): int
+    {
+        $csv = "id,title.en,slug,status\r\n1,Changed title,sea-view-villa,published\r\n,Brand new,brand-new,draft\r\n";
+        self::request('POST', '/en/admin/posts/import', ['post' => ['_token' => 'tok'], 'files' => self::upload($csv)]);
+        $id = (int) self::lastRun()['id'];
+        self::post('/en/admin/posts/import/' . $id . '/match', ['columns' => ['id', 'title.en', 'slug', 'status'], 'mode' => 'both', 'key' => 'id', 'date_order' => 'dmy']);
+        self::step($id);
+        self::post('/en/admin/posts/import/' . $id . '/start', []);
+        self::assertSame('finished', self::step($id)['status']);
+        return $id;
+    }
+
+    private static function brandNewExists(): bool
+    {
+        return (bool) self::pdo()->query("SELECT 1 FROM posts WHERE slug = 'brand-new'")->fetchColumn();
+    }
+
+    public function testSomeoneElseUndoesAndFollowsTheProgress(): void
+    {
+        $id = $this->finishedImport();
+        // Ali (Admin) undoes Sara's import: he lands on its progress and may drive it.
+        self::assertTrue(self::post('/en/admin/posts/import/' . $id . '/undo', [], ['session' => self::ADMIN])['redirected']);
+        self::assertSame(200, self::request('GET', '/en/admin/posts/import/' . $id . '/progress', ['session' => self::ADMIN])['status']);
+        self::assertSame('undone', self::step($id, ['session' => self::ADMIN])['status']);
+        self::assertFalse(self::brandNewExists());
+
+        // Without delete, an Undo that would delete created records is refused.
+        $id = $this->finishedImport();
+        $noDelete = [1 => ['content.posts.view', 'content.posts.create', 'content.posts.update', 'content.posts.import']];
+        self::assertSame(403, self::post('/en/admin/posts/import/' . $id . '/undo', [], ['permissions' => $noDelete])['status']);
+        self::assertStringNotContainsString('/import/' . $id . '/undo', self::request('GET', '/en/admin/posts/import/' . $id . '/result', ['permissions' => $noDelete])['body']);
+        self::assertSame('finished', self::lastRun()['status']);
+    }
+
+    public function testAnUndoCannotBeDiscardedHalfway(): void
+    {
+        $id = $this->finishedImport();
+        self::post('/en/admin/posts/import/' . $id . '/undo', []);
+        self::assertSame('undoing', self::lastRun()['status']);
+        self::assertStringNotContainsString('/import/' . $id . '/cancel', self::request('GET', '/en/admin/posts/import')['body'], 'no Discard for an Undo');
+        $cancel = self::post('/en/admin/posts/import/' . $id . '/cancel', []);
+        self::assertSame('This import is being undone. Let the Undo finish first.', $cancel['session']['__flash']['message']);
+        self::assertSame('undoing', self::lastRun()['status']);
+        self::assertSame('undone', self::step($id)['status']);
+        self::assertSame('Sea view villa', json_decode((string) self::row('posts', 1)['title'], true)['en']);
+        self::assertFalse(self::brandNewExists());
+    }
+
+    public function testARecordThatCannotGoBackIsKeptAndTheUndoFinishes(): void
+    {
+        $id = $this->finishedImport();
+        // A snapshot with a column the table doesn't have (a query() with a join): only real columns go back.
+        $snapshot = json_encode(['row' => ['id' => 1, 'title' => '{"en":"Sea view villa"}', 'joined_name' => 'x'], 'links' => []]);
+        self::pdo()->prepare("UPDATE admin_import_rows SET before_values = ? WHERE import_id = ? AND status = 'updated'")->execute([$snapshot, $id]);
+        // The created record was edited during the Undo: it is kept.
+        self::post('/en/admin/posts/import/' . $id . '/undo', []);
+        self::pdo()->exec("UPDATE posts SET views = 5 WHERE slug = 'brand-new'");
+        $done = self::step($id);
+        self::assertSame('undone', $done['status']);
+        self::assertSame(['removed' => 0, 'restored' => 1, 'kept' => 1], array_intersect_key($done['counts'], ['removed' => 1, 'restored' => 1, 'kept' => 1]));
+        self::assertSame('Sea view villa', json_decode((string) self::row('posts', 1)['title'], true)['en']);
+        self::assertTrue(self::brandNewExists());
+        self::assertStringContainsString('Records kept as they are (1)', self::request('GET', '/en/admin/posts/import/' . $id . '/result')['body']);
+    }
+
+    public function testACheckBatchRunAgainDoesNotFindItsOwnRows(): void
+    {
+        $csv = "id,title.en,slug,status\r\n1,Changed title,sea-view-villa,published\r\n";
+        self::request('POST', '/en/admin/posts/import', ['post' => ['_token' => 'tok'], 'files' => self::upload($csv)]);
+        $id = (int) self::lastRun()['id'];
+        self::post('/en/admin/posts/import/' . $id . '/match', ['columns' => ['id', 'title.en', 'slug', 'status'], 'mode' => 'both', 'key' => 'id', 'date_order' => 'dmy']);
+        self::step($id);
+        // As if the request died after writing its rows, before saving where it was.
+        self::pdo()->exec("UPDATE admin_imports SET status = 'checking', position = 0, next_byte = data_start, counts = '{}' WHERE id = " . $id);
+        $again = self::step($id);
+        self::assertSame(['update' => 1, 'emptied' => 0], $again['counts']);
+        self::assertSame(1, (int) self::pdo()->query('SELECT COUNT(*) FROM admin_import_rows WHERE import_id = ' . $id)->fetchColumn());
+    }
+
+    public function testAnImportWhoseFileWasRemovedStopsWithAMessage(): void
+    {
+        $csv = "id,title.en,slug,status\r\n,Brand new,brand-new,draft\r\n";
+        self::request('POST', '/en/admin/posts/import', ['post' => ['_token' => 'tok'], 'files' => self::upload($csv)]);
+        $run = self::lastRun();
+        $id = (int) $run['id'];
+        self::post('/en/admin/posts/import/' . $id . '/match', ['columns' => ['id', 'title.en', 'slug', 'status'], 'mode' => 'create', 'key' => 'id', 'date_order' => 'dmy']);
+        self::step($id);
+        self::post('/en/admin/posts/import/' . $id . '/start', []);
+        foreach (glob(self::$root . '/storage/admin-imports/' . $run['file_path'] . '*') ?: [] as $file) { unlink($file); }
+        $stopped = self::step($id);
+        self::assertSame('failed', $stopped['status']);
+        self::assertStringContainsString('The uploaded file was removed', self::request('GET', '/en/admin/posts/import/' . $id . '/result')['body']);
+    }
+
+    public function testKeysMatchExactlyAndUploadStepsArePostOnly(): void
+    {
+        // "1abc" is not record 1 (MySQL would compare it as 1); "01" is record 1.
+        $csv = "id,title.en,slug,status\r\n1abc,Wrong,sea-view-villa,published\r\n01,Right,sea-view-villa,published\r\n";
+        self::request('POST', '/en/admin/posts/import', ['post' => ['_token' => 'tok'], 'files' => self::upload($csv)]);
+        $id = (int) self::lastRun()['id'];
+        self::post('/en/admin/posts/import/' . $id . '/match', ['columns' => ['id', 'title.en', 'slug', 'status'], 'mode' => 'update', 'key' => 'id', 'date_order' => 'dmy']);
+        $checked = self::step($id);
+        self::assertSame(1, $checked['counts']['update']);
+        self::assertSame(1, $checked['counts']['errors']);
+        self::assertSame('1', (string) self::pdo()->query("SELECT key_value FROM admin_import_rows WHERE import_id = $id AND status = 'update'")->fetchColumn());
+
+        self::assertSame(405, self::request('GET', '/en/admin/posts/import/upload/start?name=a.csv&bytes=10')['status']);
+    }
+
+    public function testOldMacLineEndsAndLateWindowsLetters(): void
+    {
+        self::request('POST', '/en/admin/posts/import', ['post' => ['_token' => 'tok'], 'files' => self::upload("title.en,slug,status\r,Mac one,mac-one,draft\r,Mac two,mac-two,draft\r")]);
+        self::assertSame(2, (int) self::lastRun()['rows_total'], 'lines that end in CR alone');
+
+        // Plain ASCII for more than 64 KB, then a Windows-1252 "é".
+        $csv = "title.en,slug,status\r\n" . str_repeat("Plain,plain,draft\r\n", 4000) . "Caf\xE9,cafe,draft\r\n";
+        self::request('POST', '/en/admin/posts/import', ['post' => ['_token' => 'tok'], 'files' => self::upload($csv)]);
+        $run = self::lastRun();
+        self::assertSame(4001, (int) $run['rows_total']);
+        self::assertSame('windows-1256', $run['encoding'], 'the fallback of a site with Arabic; 0xE9 is é there too');
+    }
 }

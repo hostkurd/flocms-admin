@@ -74,6 +74,8 @@ final class CsvReader
                 return false;
         }
         if ($bytes === null || !mb_check_encoding($bytes, 'UTF-8') || str_contains($bytes, "\0")) { return false; }
+        // "CSV (Macintosh)" ends lines with a lone \r, which the CSV parser does not see as a line end.
+        if (str_contains($bytes, "\r") && !str_contains($bytes, "\n")) { $bytes = str_replace("\r", "\n", $bytes); }
         return @file_put_contents($target, $bytes) !== false;
     }
 

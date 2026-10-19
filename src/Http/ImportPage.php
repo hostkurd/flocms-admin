@@ -45,7 +45,11 @@ final class ImportPage
     /** @param list<string> $params @param array<string, mixed> $input */
     public function handle(array $params, bool $post, array $input, bool $json): string|Response
     {
-        if (($params[0] ?? '') === 'upload') { return $this->chunk((string) ($params[1] ?? ''), $input); }
+        if (($params[0] ?? '') === 'upload') {
+            // Every upload step changes something: POST only (and so CSRF-checked).
+            if (!$post) { throw new HttpException(405); }
+            return $this->chunk((string) ($params[1] ?? ''), $input);
+        }
         if ($params === []) { return $post ? $this->receive() : $this->upload(); }
         if (preg_match('/^\d{1,10}$/D', (string) $params[0]) !== 1 || count($params) > 2) { throw new HttpException(404); }
         $run = $this->store->find((int) $params[0]);
@@ -55,7 +59,9 @@ final class ImportPage
 
         $owner = $run->userId !== null && (string) $run->userId === (string) Session::get('user_id', '');
         $ownerOnly = ['match', 'preview', 'start', 'progress', 'step', 'cancel', 'problems'];
-        if (in_array($step, $ownerOnly, true) && !$owner && !($step === 'step' && $run->status === 'undoing')) { throw new HttpException(403); }
+        // Anyone may undo (result page), so anyone may follow and drive a running Undo.
+        $othersUndo = in_array($step, ['step', 'progress'], true) && $run->status === 'undoing';
+        if (in_array($step, $ownerOnly, true) && !$owner && !$othersUndo) { throw new HttpException(403); }
         if ($post && !in_array($step, ['match', 'start', 'step', 'cancel', 'undo'], true)) { throw new HttpException(405); }
         if (!$post && in_array($step, ['start', 'step', 'cancel', 'undo'], true)) { throw new HttpException(405); }
 
@@ -100,7 +106,7 @@ final class ImportPage
             'templateName' => preg_replace('/[^a-z0-9-]+/', '-', $this->resource::getSlug()) . '-template.csv',
             'limits' => AdminLang::get('import.limits', ['size' => self::megabytes($config['max_bytes']), 'rows' => number_format($config['max_rows'])]),
             'maxBytes' => $config['max_bytes'], 'chunkBytes' => ImportFiles::CHUNK_BYTES,
-            'unfinished' => $unfinished === null ? null : ['url' => $this->pageOf($unfinished), 'name' => $unfinished->fileName, 'cancelUrl' => $this->url($unfinished, 'cancel')],
+            'unfinished' => $unfinished === null ? null : ['url' => $this->pageOf($unfinished), 'name' => $unfinished->fileName, 'cancelUrl' => $unfinished->status === 'importing' ? null : $this->url($unfinished, 'cancel')],
         ]);
     }
 
@@ -269,7 +275,7 @@ final class ImportPage
     {
         if (in_array($run->status, ['uploaded', 'checking', 'checked', 'importing'], true)) { return self::redirect($this->pageOf($run)); }
         if ($run->status === 'undoing') { return $this->progress($run); }
-        $canUndo = $run->canUndo() && ($owner || ListTools::canImport($this->resource)) && ($run->count('updated') === 0 || $this->resource::canImportUpdates());
+        $canUndo = $run->canUndo() && ListTools::canImport($this->resource) && $this->resource::canUndoImport($run->count('created'), $run->count('updated'));
         return $this->view('result', [
             'run' => $run, 'owner' => $owner, 'canUndo' => $canUndo, 'undoUrl' => $this->url($run, 'undo'),
             'listUrl' => Admin::url($this->resource::getSlug()), 'againUrl' => $this->base(),
@@ -305,7 +311,7 @@ final class ImportPage
 
     private function undo(ImportRun $run): Response
     {
-        if (!ListTools::canImport($this->resource) || ($run->count('updated') > 0 && !$this->resource::canImportUpdates())) { throw new HttpException(403); }
+        if (!ListTools::canImport($this->resource) || !$this->resource::canUndoImport($run->count('created'), $run->count('updated'))) { throw new HttpException(403); }
         $run = $this->importer->undo($run);
         return self::redirect($this->url($run, 'progress'));
     }

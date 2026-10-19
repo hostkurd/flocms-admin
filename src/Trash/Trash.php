@@ -86,6 +86,12 @@ final class Trash
         return self::$batch ??= bin2hex(random_bytes(16));
     }
 
+    /** Join a delete operation that spans several requests (an import's Undo, 0.25). */
+    public static function useBatch(?string $batch): void
+    {
+        self::$batch = $batch !== null && preg_match('/^[a-f0-9]{32}$/D', $batch) === 1 ? $batch : null;
+    }
+
     /** Start a new delete operation (commands and tests). */
     public static function newBatch(): void
     {

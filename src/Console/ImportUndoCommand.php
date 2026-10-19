@@ -43,6 +43,7 @@ final class ImportUndoCommand extends Command
             $this->fail($error->getMessage());
         }
         $this->success($run->count('removed') . ' records moved to the trash, ' . $run->count('restored') . ' records restored.');
+        if ($run->count('kept') > 0) { $this->warn($run->count('kept') . ' records kept as they are: edited during the Undo, still used by other records, or not allowed to be deleted.'); }
         return self::SUCCESS;
     }
 }

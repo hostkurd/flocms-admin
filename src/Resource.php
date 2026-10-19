@@ -152,6 +152,12 @@ abstract class Resource
     }
 
     /** Whether the current user may import into this resource (creating records). */
+    /** Undo an import that created records: they are deleted (to the trash), so it needs delete too. */
+    public static function canUndoImport(int $created, int $updated): bool
+    {
+        return ($created === 0 || \FloCMS\Core\Auth::can(static::permission('delete'))) && ($updated === 0 || static::canImportUpdates());
+    }
+
     public static function canImport(): bool
     {
         return static::isImportable() && \FloCMS\Core\Auth::can(static::permission('view')) && \FloCMS\Core\Auth::can(static::permission('import'))

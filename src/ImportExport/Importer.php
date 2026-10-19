@@ -11,6 +11,7 @@ use FloCMS\Admin\Form\Fields;
 use FloCMS\Admin\Form\Form;
 use FloCMS\Admin\Form\FormSubmission;
 use FloCMS\Admin\Resource;
+use FloCMS\Core\Database;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Translation\Languages;
 use FloCMS\Admin\Translation\Translations;
@@ -90,7 +91,13 @@ final class Importer
         $original = ImportStore::folder() . '/' . basename($storedName);
         $fallback = array_intersect(['ar', 'ku', 'fa', 'ckb'], Languages::all()) !== [] ? 'windows-1256' : 'windows-1252';
         $encoding = CsvReader::detectEncoding($original, $fallback);
-        $facts = $this->read($original, $original . '.utf8', $encoding);
+        try {
+            $facts = $this->read($original, $original . '.utf8', $encoding);
+        } catch (ImportException $error) {
+            // UTF-8 in the first 64 KB, another encoding further on (an "é" late in a Windows file).
+            if ($encoding !== 'utf-8' || $error->getMessage() !== AdminLang::get('import.not_text')) { throw $error; }
+            $facts = $this->read($original, $original . '.utf8', $encoding = $fallback);
+        }
         return $this->store->create([
             'resource' => $this->resource::getSlug(), 'user_id' => $userId, 'user_name' => mb_substr($userName, 0, 190),
             'file_name' => mb_substr($originalName, 0, 190), 'file_path' => basename($storedName), 'file_size' => $size,
@@ -210,6 +217,12 @@ final class Importer
         if (!$this->store->claim($run)) { return $run; }
         $size ??= Admin::config()->import()['batch_size'];
         try {
+            // The file was removed (housekeeping after keep_hours): stop, keeping what was saved.
+            if ($run->status !== 'undoing' && !is_file(ImportStore::path($run))) {
+                $stopped = $this->store->update($run, ['status' => 'failed', 'finished_at' => date('Y-m-d H:i:s'), 'message' => AdminLang::get('import.file_gone')]);
+                if ($run->status === 'importing') { $this->log($stopped); } else { $this->store->deleteRows($stopped); }
+                return $stopped;
+            }
             return match ($run->status) {
                 'checking' => $this->checkBatch($run, $size),
                 'importing' => $this->importBatch($run, $size),
@@ -225,21 +238,27 @@ final class Importer
         $reader = new CsvReader(ImportStore::path($run), $run->separator);
         $batch = $reader->rows($run->nextByte, $run->position + 2, $size);
         $values = new Values($this->store->db(), $run->dateOrder, $run->decimalComma());
-        $counts = $run->counts;
-        $rows = [];
-        foreach ($batch['rows'] as $line => $cells) {
-            $result = $this->evaluate($run, $line, $cells, $values, true);
-            $counts[$result['status'] === 'error' ? 'errors' : $result['status']] = ($counts[$result['status'] === 'error' ? 'errors' : $result['status']] ?? 0) + 1;
-            $counts['emptied'] = ($counts['emptied'] ?? 0) + $result['emptied'];
-            $this->store->insertRows([[
-                'import_id' => $run->id, 'line' => $line, 'status' => $result['status'], 'record_id' => $result['record'] !== null ? (string) $result['record']->{$this->resource::getPrimaryKey()} : null,
-                'key_value' => $result['key'] !== '' ? mb_substr($result['key'], 0, 191) : null,
-                'errors' => $result['errors'] === [] ? null : json_encode($result['errors'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
-            ]]);
-        }
-        $position = $run->position + count($batch['rows']);
-        return $this->store->update($run, ['position' => $position, 'next_byte' => $batch['next'], 'counts' => $counts]
-            + ($batch['end'] || $batch['rows'] === [] ? ['status' => 'checked', 'position' => $position, 'next_byte' => $run->dataStart] : []));
+        // One transaction: a batch cut short (a timeout) leaves nothing, and is checked again whole.
+        return $this->store->db()->transaction(function () use ($run, $batch, $values): ImportRun {
+            $this->store->deleteRowsFrom($run, $run->position + 2);
+            $counts = $run->counts;
+            foreach ($batch['rows'] as $line => $cells) {
+                $result = $this->evaluate($run, $line, $cells, $values, true);
+                $name = $result['status'] === 'error' ? 'errors' : $result['status'];
+                $counts[$name] = ($counts[$name] ?? 0) + 1;
+                $counts['emptied'] = ($counts['emptied'] ?? 0) + $result['emptied'];
+                $this->store->insertRows([[
+                    'import_id' => $run->id, 'line' => $line, 'status' => $result['status'],
+                    'record_id' => $result['record'] !== null ? (string) $result['record']->{$this->resource::getPrimaryKey()} : null,
+                    'key_value' => $result['key'] !== '' ? mb_substr($result['key'], 0, 191) : null,
+                    // At most 20 problems per row are kept.
+                    'errors' => $result['errors'] === [] ? null : json_encode(array_slice($result['errors'], 0, 20), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                ]]);
+            }
+            $position = $run->position + count($batch['rows']);
+            return $this->store->update($run, ['position' => $position, 'next_byte' => $batch['next'], 'counts' => $counts]
+                + ($batch['end'] || $batch['rows'] === [] ? ['status' => 'checked', 'next_byte' => $run->dataStart] : []));
+        });
     }
 
     /** Start importing the rows that passed. */
@@ -274,7 +293,7 @@ final class Importer
                         $result = $this->evaluate($run, $line, $cells, $values, false);
                         if ($result['status'] === 'error') {
                             $counts['skipped'] = ($counts['skipped'] ?? 0) + 1;
-                            $this->store->updateRow((int) $row->id, ['status' => 'failed', 'errors' => json_encode($result['errors'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
+                            $this->store->updateRow((int) $row->id, ['status' => 'failed', 'errors' => json_encode(array_slice($result['errors'], 0, 20), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
                             continue;
                         }
                         $record = $result['record'];
@@ -301,6 +320,8 @@ final class Importer
         $uploads->commit();
         $position = $run->position + count($batch['rows']);
         $run = $this->store->update($run, ['position' => $position, 'next_byte' => $batch['next'], 'counts' => $counts]);
+        // Cancelled while this batch ran: the cancel stands.
+        if ($run->status !== 'importing') { return $run; }
         if ($batch['end'] || $batch['rows'] === []) {
             $run = $this->store->update($run, ['status' => 'finished', 'finished_at' => date('Y-m-d H:i:s')]);
             $this->log($run);
@@ -313,6 +334,8 @@ final class Importer
     public function cancel(ImportRun $run): ImportRun
     {
         if (in_array($run->status, ['finished', 'cancelled', 'failed', 'undone'], true)) { return $run; }
+        // An Undo is finished, not dropped halfway: its rows are what makes it possible.
+        if ($run->status === 'undoing') { throw new ImportException(AdminLang::get('import.undo_running')); }
         $importing = $run->status === 'importing';
         $run = $this->store->update($run, ['status' => 'cancelled', 'finished_at' => date('Y-m-d H:i:s')]);
         if ($importing) { $this->log($run); } else { ImportStore::deleteFiles($run); $this->store->deleteRows($run); }
@@ -382,8 +405,13 @@ final class Importer
             $shown = array_slice($changed, 0, 5);
             throw new ImportException(AdminLang::get('import.undo_changed', ['count' => (string) count($changed), 'titles' => implode(AdminLang::get('form.list_separator'), $shown) . (count($changed) > 5 ? '…' : '')]));
         }
-        \FloCMS\Admin\Trash\Trash::newBatch();
-        return $this->store->update($run, ['status' => 'undoing', 'position' => 0, 'next_byte' => 0, 'counts' => $run->counts + ['removed' => 0, 'restored' => 0]]);
+        return $this->store->update($run, ['status' => 'undoing', 'position' => 0, 'next_byte' => 0, 'counts' => $run->counts + ['removed' => 0, 'restored' => 0, 'kept' => 0]]);
+    }
+
+    /** One trash batch for the whole Undo, though it runs over several requests. */
+    private static function trashBatch(ImportRun $run): string
+    {
+        return substr(hash('sha256', 'flo-admin-import-undo:' . $run->id . ':' . $run->createdAt), 0, 32);
     }
 
     private function undoBatch(ImportRun $run, int $size): ImportRun
@@ -391,41 +419,79 @@ final class Importer
         $rows = $this->store->rowsWithStatus($run, ['created', 'updated'], $size, $run->nextByte);
         $counts = $run->counts;
         $db = $this->store->db();
-        Activity::quietly(function () use ($rows, &$counts, $db): void {
-            $this->repository->transaction(function () use ($rows, &$counts, $db): void {
+        $pk = $this->resource::getPrimaryKey();
+        \FloCMS\Admin\Trash\Trash::useBatch(self::trashBatch($run));
+        try {
+            Activity::quietly(function () use ($rows, &$counts, $db, $pk): void {
                 foreach ($rows as $row) {
-                    $id = (string) $row->record_id;
-                    if ($row->status === 'created') {
-                        if ($this->repository->find($id) !== null) { $this->repository->delete($id); }
-                        $counts['removed'] = ($counts['removed'] ?? 0) + 1;
-                    } else {
-                        $before = json_decode((string) $row->before_values, true);
-                        if (is_array($before) && is_array($before['row'] ?? null)) {
-                            $data = $before['row'];
-                            unset($data[$this->resource::getPrimaryKey()]);
-                            $this->repository->update($id, $data);
-                            foreach ($this->form->fields() as $name => $field) {
-                                if ($field instanceof Fields\BelongsToMany && ($pivot = $field->getPivot()) !== null && isset($before['links'][$name])) {
-                                    $owner = (string) ($before['row'][$pivot->parentKey] ?? '');
-                                    if ($owner !== '') { $pivot->sync($db, $owner, array_map('strval', (array) $before['links'][$name])); }
-                                }
-                            }
-                            if (($saved = $this->repository->find($id)) !== null) { \FloCMS\Admin\Media\MediaUsage::record($this->resource, $this->form, $saved); }
-                        }
-                        $counts['restored'] = ($counts['restored'] ?? 0) + 1;
+                    // Each row on its own: a record that can't go back is kept and counted, the rest carry on.
+                    try {
+                        $kept = $this->repository->transaction(fn (): ?string => $this->undoRow($row, $db, $pk));
+                    } catch (\Throwable $error) {
+                        error_log('flocms-admin: undo of import row ' . $row->id . ' failed: ' . $error->getMessage());
+                        $kept = $error instanceof \FloCMS\Core\ValidationException ? implode(' ', array_map(static fn ($m): string => implode(' ', (array) $m), $error->getErrors())) : AdminLang::get('import.undo_row_failed');
                     }
-                    $this->store->updateRow((int) $row->id, ['status' => 'undone']);
+                    if ($kept === null) {
+                        $counts[$row->status === 'created' ? 'removed' : 'restored'] = ($counts[$row->status === 'created' ? 'removed' : 'restored'] ?? 0) + 1;
+                        $this->store->updateRow((int) $row->id, ['status' => 'undone']);
+                    } else {
+                        $counts['kept'] = ($counts['kept'] ?? 0) + 1;
+                        $this->store->updateRow((int) $row->id, ['status' => 'kept', 'errors' => json_encode([['field' => '', 'value' => '', 'message' => mb_substr($kept, 0, 300)]], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
+                    }
                 }
             });
-        });
+        } finally {
+            \FloCMS\Admin\Trash\Trash::useBatch(null);
+        }
         $run = $this->store->update($run, ['next_byte' => $rows === [] ? $run->nextByte : (int) end($rows)->id, 'position' => $run->position + count($rows), 'counts' => $counts]);
         if (count($rows) < $size) {
             $run = $this->store->update($run, ['status' => 'undone', 'undone_at' => date('Y-m-d H:i:s')]);
             Activity::record('import_undone', $this->resource::getSlug(), null, $run->fileName, [], [
-                'import' => $run->id, 'removed' => $run->count('removed'), 'restored' => $run->count('restored'),
+                'import' => $run->id, 'removed' => $run->count('removed'), 'restored' => $run->count('restored'), 'kept' => $run->count('kept'),
             ], $db);
         }
         return $run;
+    }
+
+    /** Whether a stored key is the key from the file (numbers as numbers, text in any case). */
+    private static function sameKey(string $stored, string $key): bool
+    {
+        if ($stored === $key) { return true; }
+        if (preg_match('/^\d+$/D', $stored) === 1 && preg_match('/^\d+$/D', $key) === 1) { return ltrim($stored, '0') === ltrim($key, '0'); }
+        return mb_strtolower($stored) === mb_strtolower($key);
+    }
+
+    /** Put one row back; null when done, else why it was kept. */
+    private function undoRow(object $row, Database $db, string $pk): ?string
+    {
+        $id = (string) $row->record_id;
+        $current = $id === '' ? null : $this->repository->find($id);
+        // Changed while the Undo runs (changedSince() checked before it started): keep that edit.
+        if ($current !== null && $row->after_hash !== null && RecordRepository::fingerprint($current) !== $row->after_hash) {
+            return AdminLang::get('import.undo_row_changed');
+        }
+        if ($row->status === 'created') {
+            if ($current === null) { return null; }
+            if (!$this->resource->canDelete($current)) { return AdminLang::get('import.undo_row_denied'); }
+            $this->repository->delete($id);
+            return null;
+        }
+        $before = json_decode((string) $row->before_values, true);
+        if (!is_array($before) || !is_array($before['row'] ?? null)) { return AdminLang::get('import.undo_row_failed'); }
+        if ($current === null) { return AdminLang::get('import.undo_row_changed'); }
+        // Only the table's own columns: a query() with joins or computed columns adds others.
+        $stored = $db->table($this->resource::getTable())->where($pk, '=', $id)->first();
+        $data = array_intersect_key($before['row'], $stored === null ? [] : (array) $stored);
+        unset($data[$pk]);
+        if ($data !== []) { $this->repository->update($id, $data); }
+        foreach ($this->form->fields() as $name => $field) {
+            if ($field instanceof Fields\BelongsToMany && ($pivot = $field->getPivot()) !== null && isset($before['links'][$name])) {
+                $owner = (string) ($before['row'][$pivot->parentKey] ?? '');
+                if ($owner !== '') { $pivot->sync($db, $owner, array_map('strval', (array) $before['links'][$name])); }
+            }
+        }
+        if (($saved = $this->repository->find($id)) !== null) { \FloCMS\Admin\Media\MediaUsage::record($this->resource, $this->form, $saved); }
+        return null;
     }
 
     /* ---------------------------------------------------------------
@@ -445,7 +511,8 @@ final class Importer
             $errors[] = ['field' => $field, 'value' => mb_substr($value, 0, 200), 'message' => $message];
         };
         $byTarget = [];
-        foreach ($run->mapping as $index => $target) { $byTarget[$target] = CsvReader::clean($cells[$index] ?? ''); }
+        // The reader has already cleaned the cells (trimmed, formula guard taken off).
+        foreach ($run->mapping as $index => $target) { $byTarget[$target] = (string) ($cells[$index] ?? ''); }
 
         // The file's values per field (a translatable field: language => text), cleaned by beforeRow()
         $fields = [];
@@ -465,9 +532,13 @@ final class Importer
         $pk = $this->resource::getPrimaryKey();
         $keyValue = $keyColumn === $pk ? ($byTarget[$pk] ?? '') : ($fields[$keyColumn] ?? ($byTarget[$keyColumn] ?? ''));
         $key = trim(is_scalar($keyValue) ? (string) $keyValue : '');
+        // 007 and 7 are the same number: one form, so duplicates are found.
+        if (preg_match('/^\d{1,18}$/D', $key) === 1) { $key = ltrim($key, '0') === '' ? '0' : ltrim($key, '0'); }
         $record = null;
         if ($key !== '') {
-            $record = $keyColumn === $pk ? $this->repository->find($key) : $this->repository->newQuery()->where($keyColumn, '=', $key)->first();
+            $found = $this->repository->newQuery()->where($keyColumn, '=', $key)->first();
+            // MySQL compares "12abc" with a number column as 12: only the same value counts.
+            $record = $found !== null && self::sameKey((string) ($found->{$keyColumn} ?? ''), $key) ? $found : null;
             if ($checking && ($first = $this->store->lineWithKey($run, $key)) !== null) {
                 $error($this->targets[$keyColumn]['label'] ?? $keyColumn, $key, AdminLang::get('import.duplicate_key', ['line' => (string) $first]));
             }
