@@ -52,9 +52,45 @@ final class Values
             $field instanceof Fields\BelongsToMany => $this->belongsToMany($field, $cell),
             $field instanceof Fields\KeyValue => [self::keyValue($field, $cell), null],
             $field instanceof Fields\Repeater => [$cell, null],
+            $field instanceof Fields\RichEditor => [self::richText($cell), null],
             in_array('numeric', $field->getRules(), true) || in_array('integer', $field->getRules(), true) => [self::number($cell, $this->decimalComma), null],
             default => [$cell, null],
         };
+    }
+
+    /** Tags that make a cell HTML even without a closing tag. */
+    private const VOID_TAGS = ['br', 'img', 'hr', 'video', 'iframe', 'source'];
+
+    /**
+     * A rich text cell (0.25.1). HTML is passed on as it is: the editor's own
+     * allow-list cleans it when the row is saved, exactly as when it is typed,
+     * images and videos included. Plain text becomes paragraphs: a blank line
+     * starts a new one, a line break stays a line break.
+     */
+    public static function richText(string $cell): string
+    {
+        $cell = trim(str_replace(["\r\n", "\r"], "\n", $cell));
+        if ($cell === '' || self::isHtml($cell)) { return $cell; }
+        $paragraphs = preg_split('/\n\s*\n/', $cell) ?: [$cell];
+        return implode('', array_map(static function (string $text): string {
+            // "Tom &amp; Jerry" typed as text means "Tom & Jerry", not "&amp;amp;".
+            $escaped = htmlspecialchars(html_entity_decode(trim($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            return '<p>' . (preg_replace('/\s*\n\s*/', '<br>', $escaped) ?? $escaped) . '</p>';
+        }, $paragraphs));
+    }
+
+    /**
+     * Whether a cell is HTML: a tag that is opened and closed (<p>…</p>,
+     * <del>…</del>), or a void tag (<br>, <img>). "Use <b> for bold" or
+     * "a < b" is text. Linear: tag names are collected, never backtracked.
+     */
+    public static function isHtml(string $cell): bool
+    {
+        if (preg_match_all('~<([a-z][a-z0-9]*)\b[^<>]*>~i', $cell, $open) === 0) { return false; }
+        $opened = array_map('strtolower', $open[1]);
+        if (array_intersect($opened, self::VOID_TAGS) !== []) { return true; }
+        preg_match_all('~</([a-z][a-z0-9]*)\s*>~i', $cell, $close);
+        return array_intersect($opened, array_map('strtolower', $close[1])) !== [];
     }
 
     /** "1 250 000,50", "1,250,000.50", "€ 1.250.000" → "1250000.50"; anything else as it is. */

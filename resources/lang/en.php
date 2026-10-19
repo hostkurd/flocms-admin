@@ -992,7 +992,7 @@ return [
     'import.tip_nothing_saved' => 'Nothing is saved until the last step. You can check every row first.',
     'import.tip_headings' => 'Headings such as “title.en” or “title.ar” match fields by themselves; labels work too.',
     'import.tip_round_trip' => 'A file exported from this list imports back as it is.',
-    'import.tip_media' => 'Images, files and rich text are not imported yet.',
+    'import.tip_media' => 'Rich text is imported and cleaned as in the editor; image and file fields are not imported.',
     'import.too_large' => 'The file is too large: at most :size.',
     'import.not_csv' => 'This is not a CSV file this import can read (.csv, .tsv or .txt, at most :size).',
     'import.upload_failed' => 'The file could not be stored. Try again, or ask the site’s administrator.',

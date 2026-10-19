@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.25.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.25.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **Rich text is imported now.** The Match step offers `RichEditor` fields (one column per language). If a resource must not take rich text from a file, mark the field `->notImportable()`.
+- **Templates**: the empty template and exported files of resources with rich text already had those columns; the import now reads them instead of skipping them.
+- **Translations**: `import.tip_media` changed; the Arabic and Kurdish words need a native read.
+
+---
+
 # Upgrading to Admin 0.25.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.25.0" -W`, run `php flo view:clear` and reload open Admin pages.

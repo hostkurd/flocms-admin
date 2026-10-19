@@ -48,7 +48,7 @@ What the file holds:
 | `Select` | the stored key (its label with readable headings) |
 | `MediaPicker` | the files' URLs (`\|` between several), to read; not imported |
 | `FileUpload`, `ImageUpload` | the stored path; not imported |
-| `RichEditor` | the HTML (one column per language when translatable); not imported |
+| `RichEditor` | the HTML (one column per language when translatable) |
 | `KeyValue` | `Parking: 2 \| Pool: yes` |
 | `Repeater` | the list's JSON |
 | Passwords | never exported |
@@ -114,8 +114,9 @@ Undo is possible for 7 days (`'import' => ['undo_days' => …]`, `0` for no Undo
 | `ColorPicker` | `#0b6e91` or `0b6e91` |
 | `KeyValue` | `Parking: 2 \| Pool: yes`, or the JSON of an export |
 | `Repeater` | the JSON of an export |
+| `RichEditor` | HTML (an export's, or written by hand), cleaned with the editor's own allow-list when it is saved, exactly as if it were typed: scripts and unknown tags never get in, and images and videos follow the editor's rules. A cell is HTML when it has a tag that opens and closes (`<p>…</p>`) or `<br>`/`<img>`; otherwise it is text and becomes paragraphs (a blank line starts a new one, a line break stays a line break; `Use <b> for bold` stays text). `<p></p>` counts as empty |
 
-Not imported: uploads, media fields, rich text, passwords, hidden and disabled fields. A translatable field without a column for a language keeps that language's text.
+Not imported: uploads, media fields, passwords, hidden and disabled fields. A translatable field without a column for a language keeps that language's text.
 
 ## Shaping it per resource
 

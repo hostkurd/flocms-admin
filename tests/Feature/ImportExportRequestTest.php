@@ -318,4 +318,41 @@ final class ImportExportRequestTest extends RequestTestCase
         self::assertSame(4001, (int) $run['rows_total']);
         self::assertSame('windows-1256', $run['encoding'], 'the fallback of a site with Arabic; 0xE9 is é there too');
     }
+
+    public function testRichTextIsImportedAndCleanedLikeTheEditor(): void
+    {
+        $articles = ['admin_config' => ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class]]];
+        $csv = "\u{FEFF}title.en,body.en,body.ar,note\r\n"
+            . "Guide,\"<p>Hi <strong>there</strong></p><script>alert(1)</script><img src=\"\"/uploads/editor/a.jpg\"\" alt=\"\"A\"\"><img src=\"\"https://elsewhere.example/b.jpg\"\">\",\"سطر أول\nسطر ثانٍ\n\nفقرة\",Plain <note> & more\r\n";
+        $uploaded = self::request('POST', '/en/admin/articles/import', $articles + ['post' => ['_token' => 'tok'], 'files' => self::upload($csv, 'articles.csv')]);
+        self::assertNotSame([], self::lastRun(), $uploaded['status'] . ' ' . strip_tags($uploaded['body']));
+        $id = (int) self::lastRun()['id'];
+        $match = self::request('GET', '/en/admin/articles/import/' . $id . '/match', $articles);
+        self::assertMatchesRegularExpression('/name="columns\[1\]"[^>]*>.*?<option value="body\.en"\s*selected/s', $match['body'], 'rich text has a column now');
+
+        self::assertTrue(self::post('/en/admin/articles/import/' . $id . '/match', ['columns' => ['title.en', 'body.en', 'body.ar', 'note'], 'mode' => 'create', 'key' => 'id', 'date_order' => 'dmy'], $articles)['redirected']);
+        $checked = self::post('/en/admin/articles/import/' . $id . '/step', [], $articles + ['headers' => ['Accept' => 'application/json']]);
+        $counts = json_decode($checked['body'], true)['counts'];
+        self::assertSame(1, $counts['new'], $checked['body']);
+
+        self::post('/en/admin/articles/import/' . $id . '/start', [], $articles);
+        self::post('/en/admin/articles/import/' . $id . '/step', [], $articles + ['headers' => ['Accept' => 'application/json']]);
+        $row = self::pdo()->query("SELECT * FROM articles WHERE title LIKE '%Guide%'")->fetch(\PDO::FETCH_ASSOC);
+        self::assertIsArray($row);
+        $body = json_decode((string) $row['body'], true);
+        self::assertStringContainsString('<p>Hi <strong>there</strong></p>', $body['en']);
+        self::assertStringContainsString('src="/uploads/editor/a.jpg"', $body['en']);
+        self::assertStringNotContainsString('script', $body['en']);
+        self::assertStringContainsString('src="https://elsewhere.example/b.jpg"', $body['en'], 'outside images stay, as the editor allows them');
+        self::assertSame('<p>سطر أول<br>سطر ثانٍ</p><p>فقرة</p>', $body['ar'], 'plain text becomes paragraphs');
+        self::assertSame('<p>Plain &lt;note&gt; &amp; more</p>', $row['note'], 'not HTML: escaped');
+
+        // Updating with an empty paragraph counts as emptying the note (the preview warns).
+        $csv = "id,title.en,note\r\n" . $row['id'] . ",Guide,<p>&nbsp;</p>\r\n";
+        self::request('POST', '/en/admin/articles/import', $articles + ['post' => ['_token' => 'tok'], 'files' => self::upload($csv, 'empty.csv')]);
+        $id = (int) self::lastRun()['id'];
+        self::post('/en/admin/articles/import/' . $id . '/match', ['columns' => ['id', 'title.en', 'note'], 'mode' => 'update', 'key' => 'id', 'date_order' => 'dmy'], $articles);
+        $checked = json_decode(self::post('/en/admin/articles/import/' . $id . '/step', [], $articles + ['headers' => ['Accept' => 'application/json']])['body'], true);
+        self::assertSame(1, $checked['counts']['emptied'] ?? 0, json_encode($checked));
+    }
 }

@@ -453,6 +453,12 @@ final class Importer
         return $run;
     }
 
+    /** Empty for that field: rich text like <p></p> or <p>&nbsp;</p> counts as empty, as in the editor. */
+    private static function blank(Field $field, string $value): bool
+    {
+        return $field instanceof Fields\RichEditor ? \FloCMS\Admin\Support\RichText::isEmpty(trim($value)) : trim($value) === '';
+    }
+
     /** Whether a stored key is the key from the file (numbers as numbers, text in any case). */
     private static function sameKey(string $stored, string $key): bool
     {
@@ -580,14 +586,15 @@ final class Importer
                 $merged = is_array($current) ? $current : [];
                 foreach (is_array($value) ? $value : [$default => (string) $value] as $lang => $text) {
                     if (!in_array($lang, Languages::all(), true)) { continue; }
-                    if ($record !== null && trim((string) $text) === '' && trim((string) ($merged[$lang] ?? '')) !== '') { $emptied++; }
-                    $merged[$lang] = (string) $text;
+                    $text = $field instanceof Fields\RichEditor ? Values::richText((string) $text) : (string) $text;
+                    if ($record !== null && self::blank($field, $text) && !self::blank($field, (string) ($merged[$lang] ?? ''))) { $emptied++; }
+                    $merged[$lang] = $text;
                 }
                 $input[$name] = $merged;
                 continue;
             }
             $text = is_array($value) ? (string) ($value[$default] ?? '') : (string) $value;
-            if ($record !== null && trim($text) === '' && (is_array($current) ? $current !== [] : trim($current) !== '' && !($field instanceof Fields\Toggle && $current === '0'))) { $emptied++; }
+            if ($record !== null && self::blank($field, $text) && (is_array($current) ? $current !== [] : !self::blank($field, (string) $current) && !($field instanceof Fields\Toggle && $current === '0'))) { $emptied++; }
             [$converted, $message] = $values->read($field, $text);
             if ($message !== null) { $error(strip_tags($field->getLabel()), $text, $message); $unread[$name] = true; }
             if ($field instanceof Fields\BelongsToMany) {

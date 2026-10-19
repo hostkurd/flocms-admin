@@ -129,4 +129,20 @@ final class ImportExportUnitTest extends TestCase
         self::assertFalse(Schema::importable(TextInput::make('secret')->password()));
         self::assertFalse(Schema::importable(TextInput::make('code')->notImportable()));
     }
+
+    public function testRichTextCells(): void
+    {
+        self::assertSame('<p>One<br>two</p><p>Three &amp; four</p>', Values::richText("One\r\ntwo\r\n\r\nThree & four"));
+        self::assertSame('<p>Tom &amp; Jerry</p>', Values::richText('Tom &amp; Jerry'), 'entities in text are not escaped twice');
+        self::assertSame('<p>Use &lt;b&gt; for bold, a &lt; b</p>', Values::richText('Use <b> for bold, a < b'), 'a lone tag is text');
+        self::assertSame('', Values::richText('   '));
+        // HTML is passed on whole; the editor's cleaner decides on save, media included (as when typed).
+        foreach (['<p>Kept</p><img src="https://cdn.example/b.png">', '<del>x</del> and <sup>2</sup>', 'Line<br>next',
+            '<video controls><source src="https://other.example/a.mp4"></video><p>After</p><p>More</p>'] as $html) {
+            self::assertTrue(Values::isHtml($html), $html);
+            self::assertSame($html, Values::richText($html));
+        }
+        self::assertFalse(Values::isHtml('Size <large> & <small'));
+        self::assertTrue(Schema::importable(\FloCMS\Admin\Form\Fields\RichEditor::make('body')));
+    }
 }
