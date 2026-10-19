@@ -117,12 +117,14 @@ final class ManagersView
             return ['<p class="fa-view-related-empty">' . Str::e($manager->getEmptyText()) . '</p>', $total];
         }
         $primary = $table->primaryColumn();
+        // The columns the manager shows (none hidden by default, the person's own choice kept)
+        $columns = (new \FloCMS\Admin\Table\ColumnVisibility($table, $scope->columnsKey()))->visibleColumns();
         $head = '';
-        foreach ($table->getColumns() as $column) { $head .= '<th scope="col" class="' . Str::e($column->cellClass()) . '">' . Str::e($column->getLabel()) . '</th>'; }
+        foreach ($columns as $column) { $head .= '<th scope="col" class="' . Str::e($column->cellClass()) . '">' . Str::e($column->getLabel()) . '</th>'; }
         $rows = '';
         foreach ($result['data'] as $record) {
             $rows .= '<tr>';
-            foreach ($table->getColumns() as $name => $column) {
+            foreach ($columns as $name => $column) {
                 $html = $column->render($record);
                 if ($name === $primary) { $html = \FloCMS\Admin\Http\PageView::rowLink($plain, $record, $html); }
                 $rows .= '<td class="' . Str::e($column->cellClass() . ($name === $primary ? ' fa-cell-primary' : '')) . '" data-label="' . Str::e($column->getLabel()) . '">' . $html . '</td>';

@@ -105,11 +105,6 @@ abstract class Resource
     protected static bool $navigation = true;
 
     /**
-     * CSV export and import (0.25): the list's Export menu and Import button.
-     * Each also needs its permission (content.<slug>.export / .import) and the
-     * panel's 'export' / 'import' setting; false turns one off for this resource.
-     */
-    /**
      * The view page (0.27): /admin/<slug>/view/<id>, read-only, for anyone with
      * the view permission. false: no view page for this resource.
      */
@@ -122,11 +117,19 @@ abstract class Resource
      */
     protected static string $rowOpens = 'edit';
 
+    /**
+     * CSV export and import (0.25): the list's Export menu and Import button.
+     * Each also needs its permission (content.<slug>.export / .import) and the
+     * panel's 'export' / 'import' setting; false turns one off for this resource.
+     */
     protected static bool $exportable = true;
     protected static bool $importable = true;
 
     /** Set when the resource is seen from inside one parent record (a relation manager). */
     private ?\FloCMS\Admin\Relations\ParentScope $parentScope = null;
+
+    /** The list's Edit row action, looked up once (false: there is none). */
+    private \FloCMS\Admin\Actions\Action|false|null $editAction = null;
 
     /**
      * Shape the CSV export (0.25): fields left out, extra columns, a row limit.
@@ -204,6 +207,7 @@ abstract class Resource
     {
         $copy = clone $this;
         $copy->parentScope = $scope;
+        $copy->editAction = null;
         return $copy;
     }
 
@@ -365,11 +369,40 @@ abstract class Resource
         $id = (string) ($record->{static::getPrimaryKey()} ?? '');
         if ($id === '') { return null; }
         $canView = static::$viewPage && \FloCMS\Core\Auth::can(static::permission('view')) && $this->canView($record);
-        $canEdit = \FloCMS\Core\Auth::can(static::permission('update')) && $this->canEdit($record);
+        $canEdit = $this->mayEdit($record);
         if ($canEdit && !($canView && static::rowOpens() === 'view')) {
             return \FloCMS\Admin\Admin::url(static::getSlug() . '/edit/' . rawurlencode($id), $query);
         }
         return $canView ? \FloCMS\Admin\Admin::url(static::getSlug() . '/view/' . rawurlencode($id), $query) : null;
+    }
+
+    /**
+     * Whether the signed-in person may open this record's edit page: the same
+     * check as the page itself (the list's Edit action with its permission,
+     * canEdit(), visible() and authorize(); none inside a read-only manager).
+     */
+    public function mayEdit(object $record): bool
+    {
+        $action = $this->editAction();
+        return $action !== null && $action->allowed($this, $record);
+    }
+
+    /** Whether the signed-in person may edit records of this resource at all (no record at hand). */
+    public function mayEditSome(): bool
+    {
+        $action = $this->editAction();
+        return $action !== null && \FloCMS\Core\Auth::can($action->permissionName($this));
+    }
+
+    private function editAction(): ?\FloCMS\Admin\Actions\Action
+    {
+        if ($this->editAction === null) {
+            try {
+                $action = (new \FloCMS\Admin\Actions\ActionRegistry($this))->find('row', 'edit');
+                $this->editAction = $action->getKind() === 'edit' ? $action : false;
+            } catch (\FloCMS\Core\HttpException) { $this->editAction = false; }
+        }
+        return $this->editAction === false ? null : $this->editAction;
     }
 
     /** The view page of a record, when the signed-in person may open it. */

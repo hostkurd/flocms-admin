@@ -187,7 +187,8 @@ final class ResourceController extends PanelController
 
         $view = new \FloCMS\Admin\View\RecordView($this->resource, $this->resource->view(new Form()), $record, $lang, $default, $languages, $this->table()->getColumns());
         $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
-        $canEdit = $this->can('update') && $this->resource->canEdit($record);
+        // The same check as the edit page (the Edit action's permission, canEdit(), visible(), authorize())
+        $canEdit = $this->resource->mayEdit($record);
         $history = null;
         if (\FloCMS\Admin\Activity\Activity::enabled() && ($canEdit || Auth::can(\FloCMS\Admin\Activity\Activity::PERMISSION))) {
             $history = [
@@ -199,10 +200,12 @@ final class ResourceController extends PanelController
         $switch = null;
         if (count($languages) > 1 && $view->hasTranslatableFields()) {
             $missing = $view->missingLanguages();
+            $parentToken = $this->scope?->token();
             $switch = array_map(static fn (string $code): array => [
                 'code' => $code, 'label' => strtoupper($code), 'name' => Languages::name($code), 'current' => $code === $lang,
                 'missing' => in_array($code, $missing, true),
-                'url' => Admin::url($class::getSlug() . '/view/' . $id, ['showing' => $code === $default ? null : $code]),
+                // Always named: without it the page opens in the panel's language.
+                'url' => Admin::url($class::getSlug() . '/view/' . $id, ['showing' => $code, 'parent' => $parentToken]),
             ], $languages);
         }
         $actions = new \FloCMS\Admin\Actions\ActionRenderer($this->resource, new \FloCMS\Admin\Actions\ActionRegistry($this->resource, $this->table()));
@@ -218,7 +221,7 @@ final class ResourceController extends PanelController
             'moreIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-down'), 'printIcon' => \FloCMS\Admin\Support\Icons::svg('printer'),
             'closeIcon' => \FloCMS\Admin\Support\Icons::svg('x'), 'backIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'),
             'richCss' => \FloCMS\Admin\Assets::richTextUrl(),
-            'printLine' => \FloCMS\Admin\Support\AdminLang::get('view.printed', ['date' => \FloCMS\Admin\Support\Dates::full(time()), 'name' => \FloCMS\Admin\Support\Actor::name() ?? '']),
+            'printLine' => \FloCMS\Admin\Support\AdminLang::get('view.printed', ['date' => \FloCMS\Admin\Support\Dates::date(time()), 'name' => \FloCMS\Admin\Support\Actor::name() ?? '']),
         ]);
         return $this->panel($label, $html, $this->activeSlug());
     }
@@ -298,7 +301,8 @@ final class ResourceController extends PanelController
         if (!\FloCMS\Admin\Activity\Activity::enabled() || count($this->params) !== 1) { throw new HttpException(404); }
         $record = $this->findRecordOr404();
         // Editors, and on the view page (0.27) people who may read the activity log
-        $mayRead = ($this->can('update') && $this->resource->canEdit($record)) || (Auth::can(\FloCMS\Admin\Activity\Activity::PERMISSION) && $this->resource->canView($record));
+        $mayRead = $this->resource->mayEdit($record)
+            || (Auth::can(\FloCMS\Admin\Activity\Activity::PERMISSION) && $this->resourceClass::hasViewPage() && $this->resource->canView($record));
         if (!$mayRead) { throw new HttpException(403); }
         $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
         $html = \FloCMS\Admin\Activity\ActivityView::history($label, \FloCMS\Admin\Activity\Activity::forRecord($this->resourceClass::getSlug(), $this->recordId()), false, $this->resourceClass::getSlug());

@@ -5,6 +5,7 @@ namespace FloCMS\Admin\Tests\Feature;
 
 use FloCMS\Admin\Tests\Fixtures\Resources\PostResource;
 use FloCMS\Admin\Tests\Fixtures\Resources\TagResource;
+use FloCMS\Admin\Tests\Fixtures\View\NoEditPostResource;
 use FloCMS\Admin\Tests\Fixtures\View\NoViewPostResource;
 use FloCMS\Admin\Tests\Fixtures\View\ViewPostResource;
 
@@ -14,7 +15,7 @@ use FloCMS\Admin\Tests\Fixtures\View\ViewPostResource;
  */
 final class ViewPageRequestTest extends RequestTestCase
 {
-    private const RESOURCES = [PostResource::class, TagResource::class, ViewPostResource::class, NoViewPostResource::class];
+    private const RESOURCES = [PostResource::class, TagResource::class, ViewPostResource::class, NoViewPostResource::class, NoEditPostResource::class];
 
     /** Viewers: may view posts, notes and drafts, may not edit them. */
     private const VIEWER = [1 => ['content.posts.view', 'content.notes.view', 'content.drafts.view']];
@@ -112,8 +113,11 @@ final class ViewPageRequestTest extends RequestTestCase
 
         // An unknown language falls back to the default
         self::assertStringContainsString('Mountain cabin', self::request('GET', '/en/admin/posts/view/2?showing=xx', self::viewer())['body']);
-        // The panel in Arabic shows Arabic first
-        self::assertStringContainsString('<span class="fa-view-missing">', self::request('GET', '/ar/admin/posts/view/2', self::viewer())['body']);
+        // The panel in Arabic shows Arabic first, and the switch still reaches English
+        $panelAr = self::request('GET', '/ar/admin/posts/view/2', self::viewer())['body'];
+        self::assertStringContainsString('<span class="fa-view-missing">', $panelAr);
+        self::assertMatchesRegularExpression('~href="[^"]*posts/view/2\?showing=en"~', $panelAr);
+        self::assertStringContainsString('Mountain cabin', self::request('GET', '/ar/admin/posts/view/2?showing=en', self::viewer())['body']);
     }
 
     public function testSearchRecentRecordsAndActivityLinkToTheViewPageForViewers(): void
@@ -158,5 +162,16 @@ final class ViewPageRequestTest extends RequestTestCase
             $pdo->exec('DROP TABLE IF EXISTS admin_trash');
             $pdo->exec('DROP TABLE IF EXISTS admin_activity');
         }
+    }
+
+    public function testEditLinksFollowTheListsEditAction(): void
+    {
+        // No Edit action in the list: editors open records on the view page, without an Edit button
+        $list = self::request('GET', '/en/admin/entries', self::options())['body'];
+        self::assertStringContainsString('<a class="fa-row-link" href="https://example.test/en/admin/entries/view/1">', $list);
+        self::assertStringNotContainsString('/entries/edit/', $list);
+        $view = self::request('GET', '/en/admin/entries/view/1', self::options())['body'];
+        self::assertStringNotContainsString('/entries/edit/1', $view);
+        self::assertSame(404, self::request('GET', '/en/admin/entries/edit/1', self::options())['status']);
     }
 }

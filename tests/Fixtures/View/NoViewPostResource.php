@@ -21,3 +21,4 @@ final class NoViewPostResource extends Resource
     public function form(Form $form): Form { return $form->schema([TextInput::make('title')->translatable()]); }
     public function table(Table $table): Table { return $table->columns([TextColumn::make('title')->searchable()]); }
 }
+

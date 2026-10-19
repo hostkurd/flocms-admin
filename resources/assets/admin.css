@@ -2096,7 +2096,9 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-view-main,.fa-view-aside{display:grid;gap:20px;min-width:0}
 .fa-view-card{background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow);padding:20px 24px;min-width:0}
 .fa-view-card-title{margin:0 0 16px;font-size:16px;font-weight:650}
-.fa-view-description{margin:-10px 0 16px;font-size:13px;color:var(--fa-muted)}
+.fa-view .fa-view-card-title{margin:0 0 16px}
+.fa-view .fa-view-card-title:has(+ .fa-view-description){margin-block-end:4px}
+.fa-view .fa-view-description{margin:0 0 18px;font-size:13px;color:var(--fa-muted)}
 .fa-view-grid{display:grid;gap:18px 32px;margin:0}
 .fa-view-group+.fa-view-group,.fa-view-grid+.fa-view-group{margin-block-start:22px;padding-block-start:18px;border-block-start:1px solid var(--fa-border)}
 .fa-view-group-title{margin:0 0 14px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fa-muted)}

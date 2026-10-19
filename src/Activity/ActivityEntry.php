@@ -279,7 +279,7 @@ final class ActivityEntry
         }
         $class = $this->resourceClass();
         if ($class === null || in_array($this->action, ['deleted', 'purged'], true)) { return null; }
-        $mayEdit = \FloCMS\Core\Auth::can($class::permission('update'));
+        $mayEdit = (new $class())->mayEditSome();
         $mayView = $class::hasViewPage() && \FloCMS\Core\Auth::can($class::permission('view'));
         if ($mayEdit && !($mayView && $class::rowOpens() === 'view')) { return Admin::url($class::getSlug() . '/edit/' . rawurlencode($this->recordId)); }
         return $mayView ? Admin::url($class::getSlug() . '/view/' . rawurlencode($this->recordId)) : null;

@@ -267,7 +267,7 @@ final class PageView
      */
     public static function rowLink(\FloCMS\Admin\Resource $resource, object $record, string $html, array $query = []): string
     {
-        if ($html === '' || stripos($html, '<a ') !== false || stripos($html, '<button') !== false) { return $html; }
+        if ($html === '' || preg_match('/<(a|button)\b/i', $html) === 1) { return $html; }
         $url = $resource->recordUrl($record, $query);
         return $url === null ? $html : '<a class="fa-row-link" href="' . Str::e($url) . '">' . $html . '</a>';
     }

@@ -103,7 +103,7 @@ final class ValueRenderer
     private function toggle(string $value): string
     {
         $on = in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
-        return '<span class="fa-view-bool' . ($on ? ' is-on' : '') . '">' . Icons::svg($on ? 'check' : 'minus') . '<span>' . Str::e(AdminLang::get($on ? 'view.yes' : 'view.no')) . '</span></span>';
+        return '<span class="fa-view-bool' . ($on ? ' is-on' : '') . '">' . Icons::svg($on ? 'check' : 'x') . '<span>' . Str::e(AdminLang::get($on ? 'view.yes' : 'view.no')) . '</span></span>';
     }
 
     private function select(Fields\Select $field, string $value): string
@@ -202,7 +202,9 @@ final class ValueRenderer
     {
         $items = $field->items($state);
         if ($items === []) { return self::empty(); }
-        $schema = array_filter($field->fields(), static fn (Field $f): bool => !$f instanceof Fields\Hidden && !$f->isHiddenOnView());
+        // The same fields as the page leaves out: hidden ones, hiddenOnView(), passwords
+        $schema = array_filter($field->fields(), static fn (Field $f): bool => !$f instanceof Fields\Hidden && !$f->isHiddenOnView()
+            && !($f instanceof Fields\TextInput && $f->isPassword()));
         $inner = new self($this->resource, null, $this->lang, $this->defaultLang);
         if ($field->isTable()) {
             $head = '<th scope="col">#</th>';

@@ -6,7 +6,7 @@ People who may view a resource but not edit it (`content.<slug>.view` without `u
 
 ## What it shows
 
-- **The header**: the record's title, who changed it last and when ("Updated 19 Oct 2026, 19:40 by Sara", from the activity log, else `updated_at`), and the buttons **History**, **Edit** and **More**. More holds the record's own actions (the row actions of the list), **Print** and **Delete**. Each button follows the person's permissions and `canEdit()` / `canDelete()`.
+- **The header**: the record's title, who changed it last and when ("Updated 2 hours ago by Sara", from the activity log, else `updated_at`), and the buttons **History**, **Edit** and **More**. More holds the record's own actions (the row actions of the list), **Print** and **Delete**. Each button follows the person's permissions and `canEdit()` / `canDelete()`.
 - **The language switch**, when the form has translatable fields: **Showing: EN · AR · KU**. It starts in the panel's language when the site has it. A field without text in the shown language says **Not translated**; it never shows another language's text instead. A dot on a language means something is not translated there. `?showing=ar` opens a language directly.
 - **The fields**, as cards: each section is a card, tabs follow one another with their names as headings (so everything prints), collapsed sections are open, and fields outside a section share a card. Long fields (rich text, text areas, repeaters, galleries) take the whole row; on a phone everything is one column.
 - **Related records** (relation managers) below, as on the edit page. Someone who may view the parent but not edit it sees each manager as a plain table of its first rows, with no buttons.
