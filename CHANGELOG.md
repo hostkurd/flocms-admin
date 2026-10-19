@@ -2,6 +2,23 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.26.0 - 2026-10-19
+
+**Forgot password.** Needs flocms-core 2.5. New installations have it on; an existing site adds `'password_reset' => true` to `config/admin.php`, then runs `php flo admin:install` and `php flo migrate`. See [Forgot password](docs/password-reset.md).
+
+- **Forgot password?** on the panel's login page (with `login_theme`) opens `/admin/password/forgot`. The answer is the same for every address ("If an account exists for … we've sent it a link"), and the email goes out after the page has been answered, so the form doesn't tell who has an account.
+- A **one-time link** to `/admin/password/reset/<token>`, valid 60 minutes (`expires`); a newer link replaces older ones, and only the token's hash is stored. The page asks for the new password twice (at least 8 characters, with show/hide) and sends the person to the login page with "Your password has been changed".
+- **Limits**: 3 requests per address and 10 per IP address an hour (`per_email`, `per_ip`; IPv6 per /64), and wrong links per IP address. The session is saved and the answer sent before the email goes out, so a known address doesn't answer more slowly than an unknown one. Addresses and IP addresses are stored only as keyed hashes and deleted after a day. Only active accounts get an email.
+- **Other sessions end** when a password changes: by a reset link, on the profile page or by an admin on Users. The person who changed their own password stays signed in. Uses `Auth::checkSessionsUsing()` (core 2.5).
+- **Email** without a third-party package: PHP `mail()` (default), SMTP with STARTTLS or TLS and AUTH PLAIN/LOGIN (never without TLS except to `localhost`), or `log` for a computer without mail, set with `MAIL_*` in `.env`. Two emails, in the page's language and the panel's colours, with a plain-text part: the link, and a "your password was changed" note. `'mail' => ['send' => callable]` in `config/admin.php` replaces sending (PHPMailer, an API).
+- The pages are whole documents like the login page, in every panel language and right-to-left, fit phones, work without JavaScript, and are sent with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` and `X-Frame-Options: DENY`.
+- Activity log: `password_reset_requested`, `password_reset_limited` and `password_reset`, credited to the account.
+- `php flo admin:mail-test you@example.com`; `admin:install` writes the migration of `admin_password_resets`; `admin:doctor` checks the table, core 2.5, the email settings, `APP_URL`, and warns about `MAIL_TRANSPORT=log` in production.
+- The slug `password` is reserved for the panel's pages.
+- More reliable focus: after a failed save the invalid rich text editor takes focus again once the update has settled (the browser test `editor.spec.ts` "survives validation errors" failed now and then on CI).
+- New words in the panel's `en`, `ar` and `ku` files: `login.forgot`, `password.*`, `mail.*`, `activity.badge.password_*`, `activity.what.password_*`.
+- For developers: `FloCMS\Admin\Mail\{Mailer, Message, MailException}`; `Actor::as()` credits work to someone who is not signed in.
+
 ## 0.25.1 - 2026-10-19
 
 Rich text can be imported.

@@ -26,6 +26,7 @@ final class CommandsTest extends TestCase
 
     protected function tearDown(): void
     {
+        unset($_ENV['PRIMARY_EMAIL'], $_ENV['APP_URL'], $_ENV['APP_KEY'], $_ENV['MAIL_TRANSPORT'], $_ENV['APP_ENV']);
         exec('rm -rf ' . escapeshellarg($this->root));
     }
 
@@ -171,6 +172,17 @@ final class CommandsTest extends TestCase
         $imports = glob($this->root . '/database/migrations/*_create_admin_imports_and_admin_import_rows_tables.php');
         self::assertCount(1, $imports);
         (require $imports[0])->up(new \FloCMS\Core\Database($pdo));
+        // Forgot password (0.26): the resets table, a sender address and the site's full address
+        $resets = glob($this->root . '/database/migrations/*_create_admin_password_resets_table.php');
+        self::assertCount(1, $resets);
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Table "admin_password_resets" not found', $display);
+        self::assertStringContainsString('no sender address: set MAIL_FROM (or PRIMARY_EMAIL)', $display);
+        self::assertStringContainsString('APP_URL in .env must be the full address', $display);
+        (require $resets[0])->up(new \FloCMS\Core\Database($pdo));
+        $_ENV['PRIMARY_EMAIL'] = 'info@example.test';
+        $_ENV['APP_URL'] = 'https://example.test';
+        $_ENV['APP_KEY'] = str_repeat('k', 40);
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");
@@ -496,5 +508,31 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('Table "admin_trash" (trash)', $doctor);
         self::assertStringContainsString('Table "admin_activity" (activity log)', $doctor);
         self::assertStringContainsString('records are kept 7 days', $doctor);
+    }
+
+    /**
+     * The command boots the project, once per process.
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testMailTestSendsWithTheMailSettings(): void
+    {
+        $this->runCommand(new InstallCommand());
+        $_ENV['MAIL_TRANSPORT'] = 'log';
+        $_ENV['PRIMARY_EMAIL'] = 'info@example.test';
+        $tester = $this->runCommand(new \FloCMS\Admin\Console\MailTestCommand(), ['address' => 'me@example.test']);
+
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        self::assertStringContainsString('Sending with the log', $tester->getDisplay());
+        self::assertStringContainsString('To: me@example.test', (string) file_get_contents($this->root . '/storage/logs/admin-mail.log'));
+
+        $_ENV['APP_ENV'] = 'production';
+        self::assertStringContainsString('MAIL_TRANSPORT=log on a production site', $this->runCommand(new DoctorCommand())->getDisplay());
+
+        $bad = $this->runCommand(new \FloCMS\Admin\Console\MailTestCommand(), ['address' => 'not-an-address']);
+        self::assertSame(1, $bad->getStatusCode());
     }
 }

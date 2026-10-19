@@ -67,7 +67,7 @@ Review always opens a confirmation/form, even if `requiresConfirmation(false)` i
 
 FloCMS still owns authentication, CSRF, throttling, session refresh and logout. Admin supplies only the presentation, including localized EN/AR/KU labels, feedback, native credential fields and an accessible password toggle. It does not load Reactive on the login page. Sites may use their own `auth.login_view` callable instead.
 
-New Admin configurations enable `'login_theme' => true`; existing configurations opt in by adding that setting to `config/admin.php`. The skeleton must include its optional `auth.login_view` rendering hook (introduced for skeleton 1.8.3). Composer updates do not replace application views. See [UPGRADING.md](../UPGRADING.md) for the exact existing-site patch. Setting `login_theme` to false restores the original view. Removing Admin or its config likewise falls back; standalone FloCMS requires no Admin or Reactive dependency.
+New Admin configurations enable `'login_theme' => true`; existing configurations opt in by adding that setting to `config/admin.php`. The skeleton must include its optional `auth.login_view` rendering hook (introduced for skeleton 1.8.3). Composer updates do not replace application views. See [UPGRADING.md](../UPGRADING.md) for the exact existing-site patch. Setting `login_theme` to false restores the original view. Since 0.26 the styled login page also shows **Forgot password?** when password reset is on; see [Forgot password](password-reset.md). Removing Admin or its config likewise falls back; standalone FloCMS requires no Admin or Reactive dependency.
 
 ## Run the example
 

@@ -239,9 +239,31 @@ class RichField {
     // A failed save marked the source invalid and focused it: carry both over (see above).
     panels.forEach(panel => {
       const source = panel.querySelector<HTMLTextAreaElement>('[data-rich-source]')!;
-      if (focused === source || (lost && firstInvalid === source)) { this.selectTab(panel.dataset.lang ?? ''); this.editorFor(panel)?.commands.focus('end'); }
+      if (focused === source || (lost && firstInvalid === source)) this.takeFocus(panel);
     });
     this.refreshToolbar();
+  }
+
+  /**
+   * Focus the editor of an invalid field after a failed save, and once more when
+   * the update has settled: the request library can restore focus to the button
+   * that sent the form after the editor took it (seen on slow machines). Focus
+   * the person moved to another field meanwhile is left alone.
+   */
+  private takeFocus(panel: HTMLElement): void {
+    const focus = (): void => { this.selectTab(panel.dataset.lang ?? ''); this.editorFor(panel)?.commands.focus('end'); };
+    focus();
+    let done = false;
+    const again = (): void => {
+      if (done || !this.root.isConnected) return;
+      done = true;
+      const active = document.activeElement;
+      const typing = active instanceof HTMLElement && active !== document.body && !this.root.contains(active)
+        && (active.isContentEditable || active.matches('input:not([type=button]):not([type=submit]):not([type=reset]):not([type=hidden]), select, textarea'));
+      if (!typing && !this.root.contains(active)) focus();
+    };
+    document.addEventListener('htmx:afterSettle', again, { once: true, signal: this.listeners.signal });
+    window.setTimeout(again, 120);
   }
 
   private key(panel: HTMLElement): string { return panel.dataset.lang ?? ''; }

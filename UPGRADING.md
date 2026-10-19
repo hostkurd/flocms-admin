@@ -1,3 +1,21 @@
+# Upgrading to Admin 0.26.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.26.0" -W` (this also brings **flocms-core 2.5**), run `php flo view:clear` and reload open Admin pages.
+
+- **Forgot password is off on existing sites** until you add it to `config/admin.php`:
+
+  ```php
+  'password_reset' => true,
+  ```
+
+  Then **run `php flo admin:install`, then `php flo migrate`** for the `admin_password_resets` table. The login page shows **Forgot password?** once the table exists (with `'login_theme' => true`).
+- **Email settings** in `.env`: on most cPanel hosts PHP `mail()` works with nothing more than `PRIMARY_EMAIL` (the sender). For SMTP add `MAIL_TRANSPORT=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`, `MAIL_PASSWORD` and optionally `MAIL_FROM` / `MAIL_FROM_NAME`. `APP_URL` must be the site's full address (`https://…`). Check with `php flo admin:doctor` and `php flo admin:mail-test you@example.com`.
+- **Other sessions now end when a password changes**, also on the profile page and when an admin changes a user's password on Users. Each session gets its fingerprint on its next admin request, so nobody is signed out by the upgrade itself.
+- **Your own `PasswordController`** (if the site has one) keeps the URL `/admin/password`; the panel's pages are then not shown. A resource with the slug `password` is refused (`admin:doctor` says so).
+- **Translations**: the Arabic and Kurdish words of the new pages and emails need a read by a native speaker; override any of them in your `lang` files as usual.
+
+---
+
 # Upgrading to Admin 0.25.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.25.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

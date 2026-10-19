@@ -29,6 +29,16 @@ return [
     // (the skeleton's users table). false switches both off.
     'users' => true,
 
+    // "Forgot password?" on the login page (needs login_theme and the
+    // password resets table: php flo migrate). Emails are sent with the
+    // MAIL_* settings in .env (php flo admin:mail-test you@example.com).
+    // false switches it off; or set any of these:
+    'password_reset' => [
+        'expires' => 60,     // minutes a reset link works
+        'per_email' => 3,    // requests per address per hour
+        'per_ip' => 10,      // requests per IP address per hour
+    ],
+
     // Colour theme: 'light', 'dark', or 'auto' (follows the operating system)
     'theme' => 'light',
 

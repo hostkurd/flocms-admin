@@ -211,6 +211,10 @@ final class ProfileController extends PanelController
         }
 
         $db->table('users')->where('id', '=', $id)->update($data);
+        if (isset($data['password'])) {
+            // Other sessions of this account end; this one stays signed in (0.26)
+            \FloCMS\Admin\Auth\PasswordStamp::restamp($data['password']);
+        }
 
         // The top bar and later requests show the new values at once
         Session::set('fullname', $data['full_name']);

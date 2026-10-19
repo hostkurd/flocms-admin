@@ -165,6 +165,8 @@ if (is_string($query)) {
     parse_str($query, $_GET);
 }
 $_ENV['DEFAULT_LANG'] = 'en';
+$_SERVER['REMOTE_ADDR'] = $options['ip'] ?? '203.0.113.7';
+foreach (($options['env'] ?? []) as $name => $value) { $_ENV[$name] = $value; putenv($name . '=' . $value); }
 
 Config::set('routes', ['default' => '', 'admin' => 'admin_']);
 Config::set('default_route', 'default');
@@ -190,6 +192,11 @@ App::$db = new Database(new PDO($dsn, $mysql ? (getenv('FLO_ADMIN_TEST_DB_USER')
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]));
+
+// The skeleton's session refresh (config/config.php): reload the user on admin requests
+if ($options['user_loader'] ?? false) {
+    Config::set('auth.user_loader', static fn (int $id) => App::$db->table('users')->where('id', '=', $id)->first());
+}
 
 // Router::redirect() exits, so the result is written on shutdown
 $status = 200;

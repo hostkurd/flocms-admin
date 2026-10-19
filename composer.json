@@ -27,7 +27,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "ext-pdo": "*",
-        "hostkurd/flocms-core": "^2.4.0",
+        "hostkurd/flocms-core": "^2.5.0",
         "hostkurd/flocms-reactive": "^0.5.1",
         "hostkurd/flocms-uploader": "^1.2.1"
     },
@@ -69,11 +69,12 @@
                 "FloCMS\\Admin\\Console\\ImportCommand",
                 "FloCMS\\Admin\\Console\\ImportsCommand",
                 "FloCMS\\Admin\\Console\\ImportUndoCommand",
-                "FloCMS\\Admin\\Console\\ImportPurgeCommand"
+                "FloCMS\\Admin\\Console\\ImportPurgeCommand",
+                "FloCMS\\Admin\\Console\\MailTestCommand"
             ]
         },
         "branch-alias": {
-            "dev-main": "0.25-dev"
+            "dev-main": "0.26-dev"
         }
     },
     "scripts": {

@@ -464,6 +464,29 @@ body:has(> .fa-login){margin:0}
 .fa-login-languages a,.fa-login-back{color:var(--fa-muted);text-decoration:none}
 .fa-login-languages [aria-current=page]{color:var(--fa-primary-text);font-weight:600}
 .fa-login-back{font-size:13px}
+.fa-login-label-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-block-end:8px}
+.fa-login-form .fa-login-label-row label{margin:0}
+.fa-login-forgot{font-size:13px;font-weight:600;color:var(--fa-primary-text);text-decoration:none}
+.fa-login-forgot:hover{text-decoration:underline}
+.fa-login-alert.is-success{background:var(--fa-success-soft);border-color:var(--fa-success-border);color:var(--fa-success)}
+.fa-login-alert.is-success{display:flex;gap:10px;align-items:flex-start}
+.fa-login-alert.is-success svg{flex:none;margin-block-start:2px}
+.fa-login-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:999px;margin-block-end:16px;background:var(--fa-primary-soft);color:var(--fa-primary-text)}
+.fa-login-icon.is-warning{background:var(--fa-warning-soft);color:var(--fa-warning)}
+.fa-login-text{font-size:14px;line-height:1.6;color:var(--fa-text-2);margin:0 0 12px}
+.fa-login-text strong{color:var(--fa-text);unicode-bidi:isolate}
+.fa-login-note{font-size:13.5px;line-height:1.6;color:var(--fa-muted);margin:0 0 24px}
+.fa-login-actions{display:grid;gap:12px}
+.fa-login-secondary{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius);background:var(--fa-surface);color:var(--fa-text-2);font-size:14px;font-weight:500;text-decoration:none}
+.fa-login-secondary:hover{background:var(--fa-surface-2);color:var(--fa-text)}
+.fa-login-return{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;margin-block-start:12px;color:var(--fa-muted);font-size:13.5px;font-weight:600;text-decoration:none}
+.fa-login-return:hover{color:var(--fa-text)}
+[dir=rtl] .fa-login-return svg{transform:scaleX(-1)}
+.fa-login-help{margin:6px 0 0;font-size:12.5px;color:var(--fa-muted)}
+.fa-login-error{display:flex;gap:6px;align-items:center;margin:6px 0 0;font-size:12.5px;font-weight:500;color:var(--fa-danger)}
+.fa-login-form input[aria-invalid=true]{border-color:var(--fa-danger)}
+.fa-login-form input[aria-invalid=true]:focus{border-color:var(--fa-danger);box-shadow:0 0 0 1px var(--fa-danger),0 0 0 4px var(--fa-danger-soft)}
+[dir=rtl] .fa-login-form input[dir=ltr]{text-align:right}
 @media(max-width:640px){.fa-login{padding:24px 14px}.fa-login-card{padding:24px}.fa-filters .fa-filter{max-width:none;flex-basis:100%}}
 
 /* ---- Form layouts retain flat field state. Tabs are enhanced only with JavaScript. */

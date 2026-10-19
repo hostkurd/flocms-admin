@@ -19,7 +19,8 @@ final class LoginView
         $email = $_POST['email'] ?? '';
         return TemplateEngine::renderFile(PageView::viewPath('login'), [
             't' => PageView::translator(), 'brand' => \FloCMS\Admin\Support\Appearance::brand(), 'lang' => $lang, 'dir' => PanelView::direction($lang),
-            'languages' => $languages, 'message' => $message, 'csrf' => Csrf::field(), 'email' => is_string($email) ? mb_substr($email, 0, 254) : '',
+            'languages' => $languages, 'message' => $message, 'messageType' => $flash !== null && ($flash['type'] ?? '') === 'success' ? 'success' : 'error',
+            'forgotUrl' => PasswordReset::available() ? Admin::url('password/forgot') : null, 'csrf' => Csrf::field(), 'email' => is_string($email) ? mb_substr($email, 0, 254) : '',
             'assets' => Assets::loginTags(), 'action' => Admin::url('users/login'), 'siteUrl' => $base . '/' . rawurlencode($lang) . '/',
             'signedIn' => (bool) Session::get('isloggedin'), 'logoutUrl' => Admin::url('users/logout'), 'theme' => \FloCMS\Admin\Support\Appearance::theme(), 'logo' => \FloCMS\Admin\Support\Appearance::logo(), 'brandInitial' => mb_strtoupper(mb_substr(trim(\FloCMS\Admin\Support\Appearance::brand()), 0, 1)),
         ]);
