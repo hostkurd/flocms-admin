@@ -1,7 +1,7 @@
 @if(!$embedded)
 <div class="fa-page-head" id="{{ $prefix }}-head">
     <div><h1 class="fa-page-title">{{ $resource::getPluralLabel() }}</h1>@if($resource::getDescription() !== null)<p class="fa-page-description">{{ $resource::getDescription() }}</p>@endif</div>
-    <div class="fa-action-group">{!! $pageActions !!}</div>
+    <div class="fa-action-group">@if($importUrl !== null)<a class="fa-btn" href="{{ $importUrl }}">{!! $importIcon !!}<span>{{ $t('import.button') }}</span></a>@endif{!! $pageActions !!}</div>
 </div>
 <noscript><p><a href="{{ $fullPageUrl }}">{{ $t('reactive.full_page') }}</a></p></noscript>
 @else
@@ -21,11 +21,12 @@
         <span class="fa-bulk-actions" role="group" aria-label="{{ $t('bulk.action') }}">
             @foreach($bulkActions as $bulk)<button type="button" class="fa-btn fa-btn-sm{{ $bulk->getColor() === 'danger' ? ' fa-btn-danger-outline' : '' }}" id="{{ $prefix }}-bulk-{{ $bulk->getName() }}" data-admin-bulk-action="{{ $bulk->getName() }}" data-rx-set="selectedBulk" data-rx-value="{{ $bulk->getName() }}" data-rx-action="openBulk" data-rx-dialog-trigger="editor" @if(count($selected) === 0) disabled @endif>{{ $bulk->getLabel($resource) }}</button>@endforeach
         </span>
+        @if($export !== null)<button type="button" class="fa-btn fa-btn-sm" data-admin-export-selected data-url="{{ $export['url'] }}" data-parent="{{ $export['parent'] }}"@if(count($selected) === 0) disabled @endif>{{ $t('export.selected') }}</button>@endif
         <span class="fa-toolbar-spacer"></span>
         <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
     </form>
     @endif
-    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || ($embedded && $pageActions !== ''))
+    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || $export !== null || ($embedded && $pageActions !== ''))
     <div class="fa-list-toolbar">
         @if(count($table->searchableColumns()) > 0)
         <form class="fa-search" data-rx-submit="refresh" role="search">
@@ -65,6 +66,18 @@
                     @if($hasActiveFilters)<button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearFilters">{{ $t('filters.clear') }}</button>@endif
                     <button class="fa-btn fa-btn-primary fa-btn-sm" type="submit">{{ $t('filters.apply') }}</button>
                 </div>
+            </form>
+        </details>
+        @endif
+        @if($export !== null)
+        <details class="fa-popover fa-export" id="{{ $prefix }}-export-menu" data-admin-popover>
+            <summary class="fa-btn">{!! $export['icon'] !!}<span>{{ $t('export.button') }}</span></summary>
+            <form class="fa-popover-panel fa-export-panel" method="get" action="{{ $export['url'] }}" data-admin-local data-admin-export aria-label="{{ $t('export.button') }}">
+                @foreach($export['params'] as $param)<input type="hidden" name="{{ $param[0] }}" value="{{ $param[1] }}">@endforeach
+                <button type="submit" class="fa-export-item fa-export-main"@if($export['disabled']) disabled @endif>{!! $export['fileIcon'] !!}<span><b>{{ $export['label'] }}</b><small>{{ $export['scope'] }}</small></span></button>
+                <label class="fa-export-check"><input type="checkbox" name="headings" value="readable"><span><b>{{ $t('export.readable') }}</b><small>{{ $t('export.readable_help') }}</small></span></label>
+                @if($export['templateUrl'] !== null)<hr class="fa-menu-divider"><a class="fa-export-item" href="{{ $export['templateUrl'] }}" download>{!! $export['listIcon'] !!}<span><b>{{ $t('export.template') }}</b><small>{{ $t('export.template_help') }}</small></span></a>@endif
+                <p class="fa-export-note">{{ $t('export.note') }}</p>
             </form>
         </details>
         @endif

@@ -125,6 +125,7 @@ final class DoctorCommand extends Command
         $this->checkLibrary($config, $db, $project);
         $this->checkHistory($config, $db, $project, $resources);
         $this->checkRoles($config, $db, $project);
+        $this->checkImports($config, $db, $project);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -167,6 +168,11 @@ final class DoctorCommand extends Command
         $this->ok('Permissions: ' . $class::permission('view') . ', ' . $class::permission('create') . ', '
             . $class::permission('update') . ', ' . $class::permission('delete'));
         if (!$class::showsInNavigation()) { $this->line('  Not in the sidebar ($navigation = false): its pages and search still work.'); }
+        // CSV export and import (0.25)
+        $csv = [];
+        if ($class::isExportable()) { $csv[] = 'export (' . $class::permission('export') . ')'; }
+        if ($class::isImportable()) { $csv[] = 'import (' . $class::permission('import') . ' + create)'; }
+        $this->line('  CSV: ' . ($csv === [] ? 'off' : implode(', ', $csv)));
         if ($class::configuredTranslationMode() !== '' && !in_array($class::configuredTranslationMode(), \FloCMS\Admin\AdminConfig::TRANSLATION_MODES, true)) {
             $this->caution('translationMode "' . $class::configuredTranslationMode() . "\" is not valid: use 'page' or 'field'; using the panel's ('" . Admin::config()->translationMode() . "').");
         }
@@ -211,6 +217,23 @@ final class DoctorCommand extends Command
         foreach ($needed as $name => $why) {
             if (!array_key_exists(strtolower($name), $columns)) {
                 $this->bad('Column "' . $name . '" (' . $why . ') is missing');
+            }
+        }
+
+        // The import's key() column (0.25) finds existing records: it must exist and be unique.
+        try { $importKey = $resource->import(new \FloCMS\Admin\ImportExport\Import())->getKey(); } catch (Throwable) { $importKey = null; }
+        if ($importKey !== null && $class::isImportable()) {
+            if (!array_key_exists(strtolower($importKey), $columns)) {
+                $this->bad('Column "' . $importKey . '" (import key) is missing');
+            } else {
+                try {
+                    $duplicate = $db->query('SELECT `' . $importKey . '` FROM `' . $class::getTable() . '` WHERE `' . $importKey . '` IS NOT NULL AND `' . $importKey . "` <> '' GROUP BY `" . $importKey . '` HAVING COUNT(*) > 1 LIMIT 1')->fetchColumn();
+                    if ($duplicate !== false) {
+                        $this->bad('Column "' . $importKey . '" (import key) is not unique: "' . $duplicate . '" is in more than one row, so an import can\'t tell which to update');
+                    } else {
+                        $this->ok('Import key "' . $importKey . '" is unique');
+                    }
+                } catch (Throwable) { /* not checked */ }
             }
         }
 
@@ -611,6 +634,48 @@ final class DoctorCommand extends Command
             $this->bad('Library images need the GD or Imagick PHP extension to make their web and thumb versions.');
         }
         $this->line('  Permissions: ' . \FloCMS\Admin\Media\MediaLibrary::permission('view') . ', …create, …update, …delete');
+    }
+
+    /** CSV imports (0.25): their tables, the upload folder and PHP's upload limits. */
+    private function checkImports(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        $import = $config->import();
+        $export = $config->export();
+        $this->section('CSV import and export  (/admin/<slug>/import, /admin/imports)');
+        $this->line('  Export: ' . ($export['enabled'] ? 'on, up to ' . number_format($export['limit']) . ' rows a file' : 'off (\'export\' => false)'));
+        if (!$import['enabled']) { $this->line('  Import: off (\'import\' => false)'); return; }
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the import tables were not checked.'); return; }
+        }
+        $tables = [
+            $import['table'] => ['id', 'resource', 'user_id', 'file_name', 'file_path', 'encoding', 'csv_separator', 'mapping', 'mode', 'status', 'position', 'next_byte', 'counts', 'locked_until', 'created_at', 'updated_at'],
+            $import['rows_table'] => ['id', 'import_id', 'line', 'status', 'record_id', 'key_value', 'errors', 'before_values', 'after_hash'],
+        ];
+        foreach ($tables as $table => $columns) {
+            $found = $this->columns($db, $table);
+            if ($found === null) {
+                $this->bad('Table "' . $table . '" not found: run php flo admin:install, then php flo migrate. Until then the Import button is not shown.');
+                return;
+            }
+            $missing = array_values(array_diff($columns, array_keys($found)));
+            if ($missing !== []) {
+                $this->bad('Table "' . $table . '" exists but is not the import table (missing ' . implode(', ', $missing) . '). Name them in config/admin.php: \'import\' => [\'table\' => …, \'rows_table\' => …], then run php flo admin:install and php flo migrate.');
+                return;
+            }
+            $this->ok('Table "' . $table . '"');
+        }
+        $folder = $config->root() . '/storage/admin-imports';
+        if (is_dir($folder) && !is_writable($folder)) {
+            $this->bad('storage/admin-imports/ is not writable: uploaded files can\'t be kept.');
+        } elseif (!is_dir($folder) && !is_writable($config->root() . '/storage') && is_dir($config->root() . '/storage')) {
+            $this->bad('storage/ is not writable: storage/admin-imports/ can\'t be created.');
+        }
+        $this->line('  Import: up to ' . number_format($import['max_rows']) . ' rows and ' . round($import['max_bytes'] / 1048576, 1) . ' MB a file, ' . $import['batch_size'] . ' rows a request, Undo for ' . $import['undo_days'] . ' days.');
+        $this->line('  The browser sends files in parts of 2 MB, so PHP\'s upload_max_filesize (' . (ini_get('upload_max_filesize') ?: '?') . ') only limits pages without JavaScript.');
+        $this->line('  php flo admin:import-purge removes old upload files (panel pages do it hourly).');
+        if (Admin::registry()->find('imports') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('imports'))) {
+            $this->caution('The URL /admin/imports belongs to your site, so the panel\'s Imports page is not shown. Rename that resource or controller to use it.');
+        }
     }
 
     /** The Roles page (0.21): flocms-core 2.4, the config maps it builds on, its table and the stored roles. */

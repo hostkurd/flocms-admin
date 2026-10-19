@@ -21,6 +21,8 @@ use FloCMS\Admin\Support\AdminLang;
 final class PermissionCatalogue
 {
     public const ABILITIES = ['view', 'create', 'update', 'delete'];
+    /** A resource's row: the four abilities, then CSV export and import (0.25). */
+    public const CONTENT_ABILITIES = ['view', 'create', 'update', 'delete', 'export', 'import'];
 
     /**
      * @return list<array{key: string, title: string, help: string, wildcard: ?string, wildcardLabel: string, wildcardHelp: string, columns: list<string>,
@@ -38,11 +40,11 @@ final class PermissionCatalogue
             /** @var class-string<Resource> $class */
             $rows[] = [
                 'label' => $class::getPluralLabel(),
-                'sub' => self::common(array_map(static fn (string $ability): string => $class::permission($ability), self::ABILITIES)),
+                'sub' => self::common(array_map(static fn (string $ability): string => $class::permission($ability), self::CONTENT_ABILITIES)),
                 'cells' => array_map(static fn (string $ability): array => [
                     'name' => $class::permission($ability), 'ability' => $ability,
                     'label' => AdminLang::get('roles.ability.' . $ability),
-                ], self::ABILITIES),
+                ], self::CONTENT_ABILITIES),
             ];
         }
         if ($rows !== []) {
@@ -172,7 +174,7 @@ final class PermissionCatalogue
     /** @return list<string> */
     private static function abilityLabels(): array
     {
-        return array_map(static fn (string $ability): string => AdminLang::get('roles.ability.' . $ability), self::ABILITIES);
+        return array_map(static fn (string $ability): string => AdminLang::get('roles.ability.' . $ability), self::CONTENT_ABILITIES);
     }
 
     /** "content.posts.*" when the names share a prefix, else ''. */

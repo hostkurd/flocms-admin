@@ -64,11 +64,16 @@
                 "FloCMS\\Admin\\Console\\TrashPurgeCommand",
                 "FloCMS\\Admin\\Console\\ActivityPurgeCommand",
                 "FloCMS\\Admin\\Console\\RolesCommand",
-                "FloCMS\\Admin\\Console\\RolesResetCommand"
+                "FloCMS\\Admin\\Console\\RolesResetCommand",
+                "FloCMS\\Admin\\Console\\ExportCommand",
+                "FloCMS\\Admin\\Console\\ImportCommand",
+                "FloCMS\\Admin\\Console\\ImportsCommand",
+                "FloCMS\\Admin\\Console\\ImportUndoCommand",
+                "FloCMS\\Admin\\Console\\ImportPurgeCommand"
             ]
         },
         "branch-alias": {
-            "dev-main": "0.24-dev"
+            "dev-main": "0.25-dev"
         }
     },
     "scripts": {

@@ -18,6 +18,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Ctrl+K search**: one box, from any page, that finds records of every resource, the panel's pages, settings and media you may open. [Search guide](docs/search.md).
 - **Relation managers**: a record's related records (a property's units) on its edit page, with search and New, Edit and Delete in dialogs, always limited to that parent by the server. [Relation managers guide](docs/relation-managers.md).
 - **Roles and permissions**: change what each role may do in a permission grid, add roles with their own level, and keep every change in the activity log, on top of `config/config.php`. [Roles guide](docs/roles.md).
+- **CSV import and export**: download any list (with its search and filters, or the ticked rows) as a UTF-8 CSV that Excel opens with Arabic intact; import rows in four steps (upload, match columns, preview every row checked by the form's rules, import) with Undo. [Import and export guide](docs/import-export.md).
 - **Panel settings and personal preferences**: name, logo, colour, theme and density from the browser; each user's own theme, panel language, density and visible columns.
 - Optional and removable: no file of the site is edited.
 
@@ -163,6 +164,7 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$formMode` | `'page'` | How Create and Edit open: `'page'` (full page with an optional sidebar), `'modal'` (dialog) or `'slide-over'` (panel from the side). See [Forms](docs/forms.md#pages-dialogs-and-slide-overs-012) |
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
+| `$exportable`, `$importable` | `true` | `false` hides the Export menu or the Import button for this resource (0.25) |
 
 Optional methods:
 
@@ -177,6 +179,8 @@ Optional methods:
 | `afterReorder(array $ids): void` | Runs inside the transaction after Reorder changed positions (keys in their new order) |
 | `validate(array $state, ?object $record): array` | Checks after the field rules; return `field => message` |
 | `normalizeState(array $state, ?object $record): array` | Normalize editable state before field/custom validation and password hashing |
+| `export(Export $export): Export` | Shape the CSV export: `->except([...])`, `->column('agent', fn ($row) => …)`, `->limit(5000)` ([guide](docs/import-export.md#shaping-it-per-resource)) |
+| `import(Import $import): Import` | Shape the CSV import: `->key('reference')`, `->defaults([...])`, `->beforeRow(fn (array $row) => …)`, `->afterImport(fn (ImportRun $run) => …)` |
 | `beforeSave(array $data, ?object $record): array` | Change dehydrated data inside the save transaction |
 | `afterSave(object $record): void` | Runs after the write, inside the transaction and before commit |
 
@@ -203,7 +207,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `KeyValue` | rows of key and value | Labels and values (specs, social links): `->keyLabel()`, `->valueLabel()`, `->translatableValues()`, `->keys([...])` for fixed keys ([guide](docs/repeaters.md)) |
 | `MediaPicker` | a framed card: preview, sortable tiles, drop to upload | Items of the media library: `->images()` (default), `->videos()`, `->any()`, `->multiple()`, `->max(12)`, `->folder('Listings/Covers')`, `->aspectRatio('16:9')`; stores an id, or a JSON list of ids in order ([guide](docs/media.md)) |
 
-Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->requiredOnCreate()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`.
+Every field: `->label()`, `->rules('required|max:190')`, `->required()`, `->requiredOnCreate()`, `->default()`, `->help()`, `->placeholder()`, `->disabled()` (shown, never written), `->nullable()`, `->unique()`, `->columnSpan(2)`; for CSV files `->hiddenFromExport()`, `->notImportable()` and `->importAliases(['Preis'])` (0.25).
 
 Passwords are hashed with `password_hash()` (use `->password(false)` to store them as typed), are never sent back to the browser, and an empty password on the edit page keeps the stored one.
 
@@ -328,6 +332,8 @@ Since 0.21 the roles and their permissions can be changed on **Site → Roles** 
 | `users` | `true` | Users management (`/admin/accounts`) and the profile page |
 | `trash` | `true` | Deleted records wait in the trash (`/admin/trash`); `['days' => 30, 'table' => 'admin_trash']`, `0` days keeps them until emptied; `false` deletes at once ([guide](docs/trash-and-activity.md)) |
 | `activity` | `true` | The activity log (`/admin/activity`, History on records); `['days' => 365, 'logins' => false, 'table' => 'admin_activity']`; `false` switches it off |
+| `export` | `true` | The Export menu of lists; `['limit' => 50000]` rows per file; `false` switches it off ([guide](docs/import-export.md)) |
+| `import` | `true` | The Import button and Site → Imports; `['max_bytes' => …, 'max_rows' => 10000, 'batch_size' => 100, 'keep_hours' => 24, 'undo_days' => 7, 'table' => 'admin_imports', 'rows_table' => 'admin_import_rows']`; `false` switches it off ([guide](docs/import-export.md)) |
 | `roles` | `true` | The Roles page (`/admin/roles`); `['table' => 'admin_roles', 'permissions' => ['reports.export' => 'Export reports']]` names the site's own permissions; `false` switches it off and the roles of `config/config.php` apply again ([guide](docs/roles.md)) |
 | `rtl_languages` | `ar, ku, ckb, fa, he, ur` | Content languages written right to left |
 | `permission_prefix` | `'content'` | Prefix of the permission names |
@@ -352,16 +358,21 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 
 | Command | |
 | --- | --- |
-| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash, activity log and roles migrations (never overwrites; run again after an upgrade to add what is missing) |
+| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash, activity log, roles and imports migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration; `--reorderable` adds a `sort` column and the Reorder button |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys) and the roles table |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys), the roles table and the import tables, folder and keys |
 | `php flo admin:media-import [--dry-run]` | Add the images and videos already in the media folder to the media library (and fingerprints to items from before 0.18), then rebuild where they are used |
 | `php flo admin:media-usage` | Rebuild where media library items are used (after changing records outside the panel) |
 | `php flo admin:trash-purge [--all]` | Delete for good the records older than the trash's days (`--all`: empty the whole trash) |
 | `php flo admin:activity-purge` | Remove activity log entries older than its days |
+| `php flo admin:export <slug> [--output=file.csv] [--readable] [--search=…] [--filter=name:value]` | Write a resource's records as CSV |
+| `php flo admin:import <slug> <file.csv> [--update\|--update-only] [--key=…] [--dates=mdy] [--dry-run]` | Import a CSV file with the same checks as the Import page (as System) |
+| `php flo admin:imports` | List the imports of the last 30 days |
+| `php flo admin:import-undo <id>` | Undo an import |
+| `php flo admin:import-purge` | Remove old import files and Undo data |
 | `php flo admin:roles` | List the roles in force: level, panel access, source and permissions |
 | `php flo admin:roles-reset [role]` | Undo the Roles page for one role, or all (config roles get their config values back; added roles without users are removed) |
 
@@ -401,6 +412,8 @@ Admin 0.21 adds **Site → Roles** for people with `roles.manage`. The list show
 
 ## Relation managers
 
+Admin 0.25 adds **CSV import and export**. Every list gets an **Export** menu (the whole list with its search and filters, readable headings, an empty template) and **Export selected** in the bulk bar; files are UTF-8 with a BOM, one column per language, related ids with their titles, and a guard against spreadsheet formulas. **Import** takes a file through four steps: upload (comma, semicolon, tab or `|`; UTF-8, UTF-16 or Windows-1256), match columns by name or label, preview every row checked by the form's rules (download the rows with errors), then import in batches with a progress bar, create or update by id or a key column, and **Undo** for 7 days. **Site → Imports** lists them, and `admin:export` / `admin:import` do the same from the command line. See [CSV import and export](docs/import-export.md).
+
 Admin 0.24 adds **repeater and key-value fields**: `Repeater::make('rooms')->schema([...])` keeps a short list of items inside the record (a flat's rooms, a tour's days, opening hours), shown as cards or rows with Add, drag-and-drop and keyboard reordering, duplicate, fold and remove with Undo; `KeyValue::make('specs')` keeps labels and values. Each list is one JSON column, validated per item ("Rooms → item 3: Name"), translated per field inside each item, logged per item in the History and read on the website with `repeater_items()` and `key_values()`. They work in dialogs, on settings pages and without JavaScript. See [Repeaters and key-value lists](docs/repeaters.md), which also says when to use a relation manager instead.
 
 Admin 0.23 adds **page-level translation**: with `'translation_mode' => 'page'` (or `$translationMode = 'page'` on a resource) an "Editing: language" switch shows the whole form in one language, with a count of filled fields per language, **Next missing**, the default language's text under empty inputs, shared fields locked outside the default language and errors in other languages shown in the switch. The last language you saved in is remembered; `?editing=ar` opens one directly. Dialogs get the switch too, settings pages use the same switch, and `TranslationsColumn` with its **Missing in** filter shows what still needs translating. Storage is unchanged. See [Forms](docs/forms.md#page-level-translation-023).
@@ -434,7 +447,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.22: relation managers (related records on the edit page, `CountColumn`, `$navigation`)
 - 0.23: page-level translation (the "Editing: language" switch, `TranslationsColumn`, the Missing in filter)
 - 0.24: `Repeater` and `KeyValue` fields (lists inside a record, one JSON column, `repeater_items()`, `key_values()`)
-- Next: CSV import/export
+- 0.25: CSV import and export (Export menu, the four-step Import with preview and Undo, Site → Imports, `admin:export`, `admin:import`)
 
 ## Development
 

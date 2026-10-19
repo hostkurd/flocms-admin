@@ -1,0 +1,223 @@
+<div class="fa-page-head fa-import-head">
+    <div>
+        <p class="fa-back-link"><a href="{{ $resourceUrl }}">{{ $resourceLabel }}</a></p>
+        <h1 class="fa-page-title">{{ $title }}</h1>
+    </div>
+    <ol class="fa-steps" aria-label="{{ $t('import.steps') }}">
+        @foreach($stepNames as $number => $name)
+        <li class="fa-step{{ $number < $current ? ' is-done' : ($number === $current ? ' is-current' : '') }}"@if($number === $current) aria-current="step"@endif><span class="fa-step-dot fa-ltr" aria-hidden="true">@if($number < $current){!! $icons['check'] !!}@else{{ $number }}@endif</span><span class="fa-step-name">{{ $name }}</span></li>
+        @endforeach
+    </ol>
+</div>
+
+@if($screen === 'upload')
+@if($unfinished !== null)
+<div class="fa-alert fa-alert-info fa-import-unfinished" role="status">
+    <span>{{ $t('import.unfinished', ['name' => $unfinished['name']]) }}</span>
+    <span class="fa-import-unfinished-actions">
+        <a class="fa-btn fa-btn-sm" href="{{ $unfinished['url'] }}">{{ $t('import.continue') }}</a>
+        @if($unfinished['cancelUrl'] !== null)<form method="post" action="{{ $unfinished['cancelUrl'] }}">{!! $csrf !!}<button class="fa-btn fa-btn-sm fa-btn-ghost" type="submit">{{ $t('import.discard') }}</button></form>@endif
+    </span>
+</div>
+@endif
+<div class="fa-import-grid">
+    <form class="fa-card fa-import-upload" method="post" action="{{ $action }}" enctype="multipart/form-data" data-admin-local data-import-upload data-upload-url="{{ $uploadUrl }}" data-csrf="{{ $csrfToken }}" data-max-bytes="{{ $maxBytes }}" data-too-large="{{ $t('import.too_large', ['size' => $limits]) }}" data-failed="{{ $t('import.upload_failed') }}" data-sending="{{ $t('import.sending') }}">
+        {!! $csrf !!}
+        <p class="fa-alert fa-alert-danger" role="alert" data-import-error @if($error === null) hidden @endif>{{ $error ?? '' }}</p>
+        <div class="fa-import-drop" data-import-drop>
+            <span class="fa-import-drop-icon" aria-hidden="true">{!! $icons['upload'] !!}</span>
+            <b class="fa-import-drop-title">{{ $t('import.drop') }}</b>
+            <span class="fa-muted">{{ $t('import.or') }}</span>
+            <label class="fa-btn" for="fa-import-file">{{ $t('import.choose') }}</label>
+            <input id="fa-import-file" class="fa-import-input" type="file" name="file" accept=".csv,.tsv,.txt,text/csv,text/plain" data-import-file>
+            <span class="fa-muted fa-import-limits">{{ $limits }}</span>
+            <span class="fa-import-chosen" data-import-chosen hidden></span>
+            <progress class="fa-import-bar" data-import-bar max="100" value="0" hidden></progress>
+        </div>
+        <div class="fa-import-foot">
+            <a class="fa-import-link" href="{{ $templateUrl }}" download>{!! $icons['download'] !!}<span>{{ $t('import.template', ['name' => $templateName]) }}</span></a>
+            <button class="fa-btn fa-btn-primary" type="submit" data-import-submit>{{ $t('import.next_match') }}</button>
+        </div>
+    </form>
+    <aside class="fa-card fa-import-tips">
+        <h2 class="fa-import-side-title">{{ $t('import.tips_title') }}</h2>
+        <ul>
+            <li>{{ $t('import.tip_nothing_saved') }}</li>
+            <li>{{ $t('import.tip_headings') }}</li>
+            <li>{{ $t('import.tip_round_trip') }}</li>
+            <li>{{ $t('import.tip_media') }}</li>
+        </ul>
+    </aside>
+</div>
+@endif
+
+@if($screen === 'match')
+<form method="post" action="{{ $action }}" class="fa-import-match" novalidate>
+    {!! $csrf !!}
+    <div class="fa-import-grid">
+        <div class="fa-card">
+            <div class="fa-import-file">
+                <span class="fa-import-file-icon" aria-hidden="true">{!! $icons['file'] !!}</span>
+                <b><bdi>{{ $run->fileName }}</bdi></b>
+                <span class="fa-pill fa-ltr">{{ $t('import.rows', ['count' => number_format($run->rowsTotal)]) }}</span>
+                <span class="fa-pill">{{ $t('import.separator', ['separator' => $separator]) }}</span>
+                <span class="fa-pill">{{ $t('import.encoding_' . str_replace('-', '_', $run->encoding)) }}</span>
+                <span class="fa-toolbar-spacer"></span>
+                <a class="fa-btn fa-btn-sm" href="{{ $backUrl }}">{{ $t('import.change_file') }}</a>
+            </div>
+            @if(isset($errors['columns']))<p class="fa-alert fa-alert-danger fa-import-alert" role="alert">{{ $errors['columns'] }}</p>@endif
+            <div class="fa-table-wrap">
+                <table class="fa-table fa-import-columns">
+                    <thead><tr><th scope="col">{{ $t('import.column') }}</th><th scope="col">{{ $t('import.first_values') }}</th><th scope="col">{{ $t('import.into') }}</th><th scope="col"><span class="fa-sr">{{ $t('import.state') }}</span></th></tr></thead>
+                    <tbody>
+                        @foreach($rows as $row)
+                        <tr>
+                            <th scope="row" class="fa-import-heading"><bdi>{{ $row['heading'] }}</bdi></th>
+                            <td class="fa-import-samples" data-label="{{ $t('import.first_values') }}"><bdi>{{ $row['samples'] }}</bdi></td>
+                            <td data-label="{{ $t('import.into') }}">
+                                <select class="fa-input fa-select" name="columns[{{ $row['index'] }}]" aria-label="{{ $t('import.into_for', ['column' => $row['heading']]) }}" data-import-target data-auto="{{ $row['state'] === 'matched' ? $row['chosen'] : '' }}"@if($row['error'] !== null) aria-invalid="true"@endif>
+                                    <option value="">{{ $t('import.skip') }}</option>
+                                    @foreach($targets as $target)<option value="{{ $target['value'] }}"@if($target['value'] === $row['chosen']) selected @endif>{{ $target['label'] }}</option>@endforeach
+                                </select>
+                                @if($row['error'] !== null)<p class="fa-error">{{ $row['error'] }}</p>@endif
+                            </td>
+                            <td><span class="fa-import-state is-{{ $row['state'] }}" data-import-state data-matched="{{ $t('import.state_matched') }}" data-chosen="{{ $t('import.state_chosen') }}" data-skipped="{{ $t('import.state_skipped') }}">{{ $t('import.state_' . $row['state']) }}</span></td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="fa-import-side">
+            <div class="fa-card fa-import-panel">
+                <h2 class="fa-import-side-title">{{ $t('import.existing_title', ['label' => $resourceLabel]) }}</h2>
+                @if($canUpdate)
+                <fieldset class="fa-import-modes">
+                    <legend class="fa-sr">{{ $t('import.existing_title', ['label' => $resourceLabel]) }}</legend>
+                    @foreach(['create', 'both', 'update'] as $mode)
+                    <label class="fa-import-mode{{ $run->mode === $mode ? ' is-on' : '' }}"><input type="radio" name="mode" value="{{ $mode }}"@if($run->mode === $mode) checked @endif><span><b>{{ $t('import.mode_' . $mode) }}</b><small>{{ $t('import.mode_' . $mode . '_help') }}</small></span></label>
+                    @endforeach
+                </fieldset>
+                <label class="fa-label" for="fa-import-key">{{ $t('import.key') }}</label>
+                <select class="fa-input fa-select" id="fa-import-key" name="key"@if(isset($errors['key'])) aria-invalid="true" aria-describedby="fa-import-key-error"@endif>
+                    @foreach($keys as $key)<option value="{{ $key['value'] }}"@if($key['value'] === $run->keyColumn) selected @endif>{{ $key['label'] }}</option>@endforeach
+                </select>
+                @if(isset($errors['key']))<p class="fa-error" id="fa-import-key-error">{{ $errors['key'] }}</p>@endif
+                @else
+                <p class="fa-muted fa-import-only-create">{{ $t('import.create_only') }}</p>
+                <input type="hidden" name="mode" value="create"><input type="hidden" name="key" value="{{ $run->keyColumn ?? '' }}">
+                @endif
+                @if($hasDates)
+                <label class="fa-label" for="fa-import-dates">{{ $t('import.date_order') }}</label>
+                <select class="fa-input fa-select" id="fa-import-dates" name="date_order">
+                    <option value="dmy"@if($run->dateOrder === 'dmy') selected @endif>{{ $t('import.date_dmy') }}</option>
+                    <option value="mdy"@if($run->dateOrder === 'mdy') selected @endif>{{ $t('import.date_mdy') }}</option>
+                </select>
+                @else<input type="hidden" name="date_order" value="{{ $run->dateOrder }}">@endif
+                <details class="fa-import-encoding">
+                    <summary>{{ $t('import.wrong_letters') }}</summary>
+                    <label class="fa-label" for="fa-import-encoding">{{ $t('import.encoding') }}</label>
+                    <span class="fa-import-reread">
+                        <select class="fa-input fa-select" id="fa-import-encoding" name="encoding">
+                            @foreach($encodings as $encoding)<option value="{{ $encoding['value'] }}"@if($encoding['value'] === $run->encoding) selected @endif>{{ $encoding['label'] }}</option>@endforeach
+                        </select>
+                        <button class="fa-btn fa-btn-sm" type="submit" name="_reread" value="1">{{ $t('import.read_again') }}</button>
+                    </span>
+                </details>
+            </div>
+            @if(isset($errors['required']))<p class="fa-alert fa-alert-danger" role="alert">{{ $errors['required'] }}</p>
+            @elseif($missing === '')<p class="fa-import-ok">{!! $icons['check'] !!}<span>{{ $t('import.required_ok') }}</span></p>
+            @else<p class="fa-alert fa-alert-warning">{{ $t('import.required_unmatched', ['fields' => $missing]) }}</p>@endif
+            <div class="fa-import-actions">
+                <a class="fa-btn" href="{{ $backUrl }}">{{ $t('import.back') }}</a>
+                <button class="fa-btn fa-btn-primary" type="submit">{{ $t('import.next_check') }}</button>
+            </div>
+        </div>
+    </div>
+</form>
+@endif
+
+@if($screen === 'preview')
+<div class="fa-import-tiles">
+    <div class="fa-card fa-import-tile is-ok"><span class="fa-import-number fa-ltr">{{ number_format($ready) }}</span><span class="fa-import-tile-text">{{ $update > 0 ? $t('import.ready_both', ['new' => number_format($new), 'update' => number_format($update)]) : $t('import.ready_new') }}</span></div>
+    <div class="fa-card fa-import-tile{{ $errorsCount > 0 ? ' is-error' : '' }}"><span class="fa-import-number fa-ltr">{{ number_format($errorsCount) }}</span><span class="fa-import-tile-text">{{ $t('import.with_errors') }}</span></div>
+    @if($run->mode !== 'create')<div class="fa-card fa-import-tile is-info"><span class="fa-import-number fa-ltr">{{ number_format($update) }}</span><span class="fa-import-tile-text">{{ $t('import.found_existing', ['key' => $keyLabel]) }}</span></div>@endif
+</div>
+@if($emptied > 0)<p class="fa-alert fa-alert-warning">{{ $t('import.emptied', ['count' => number_format($emptied)]) }}</p>@endif
+@if($errorsCount > 0)
+<div class="fa-card fa-import-problems">
+    <div class="fa-import-card-head">
+        <h2 class="fa-import-side-title">{{ $t('import.problems_title') }}</h2>
+        <span class="fa-toolbar-spacer"></span>
+        <a class="fa-btn fa-btn-sm" href="{{ $problemsUrl }}" download>{!! $icons['download'] !!}<span>{{ $t('import.download_problems', ['count' => number_format($errorsCount)]) }}</span></a>
+    </div>
+    <div class="fa-table-wrap">
+        <table class="fa-table fa-import-errors">
+            <thead><tr><th scope="col">{{ $t('import.row') }}</th><th scope="col">{{ $t('import.field') }}</th><th scope="col">{{ $t('import.value') }}</th><th scope="col">{{ $t('import.problem') }}</th></tr></thead>
+            <tbody>
+                @foreach($problems as $problem)
+                @foreach($problem['errors'] as $error)
+                <tr><td class="fa-import-line"><span class="fa-ltr">{{ $problem['line'] }}</span></td><td>{{ $error['field'] ?? '' }}</td><td class="fa-import-value"><bdi>{{ $error['value'] ?? '' }}</bdi></td><td class="fa-import-message">{{ $error['message'] ?? '' }}</td></tr>
+                @endforeach
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @if($errorsCount > count($problems))<p class="fa-import-more">{{ $t('import.more_problems', ['shown' => count($problems), 'count' => number_format($errorsCount)]) }}</p>@endif
+</div>
+@endif
+<form class="fa-import-actions is-wide" method="post" action="{{ $startUrl }}">
+    {!! $csrf !!}
+    <a class="fa-btn" href="{{ $backUrl }}">{{ $t('import.back') }}</a>
+    @if($ready > 0)<button class="fa-btn fa-btn-primary" type="submit">{{ $t('import.import_rows', ['count' => number_format($ready)]) }}</button>
+    @else<span class="fa-muted">{{ $t('import.nothing_ready') }}</span>@endif
+</form>
+@endif
+
+@if($screen === 'working')
+<div class="fa-card fa-import-run" data-import-run data-step-url="{{ $stepUrl }}" data-csrf="{{ $csrfToken }}" role="status" aria-live="polite">
+    <h2 class="fa-import-run-title">{{ $t('import.working_' . $phase, ['name' => $run->fileName]) }}</h2>
+    <progress class="fa-import-bar" max="{{ max(1, $total) }}" value="{{ $done }}" data-import-progress></progress>
+    <p class="fa-import-run-count" data-import-count>{{ $t('import.progress', ['done' => number_format($done), 'total' => number_format($total)]) }}</p>
+    @if($phase === 'importing')
+    <div class="fa-import-facts">
+        <div><b class="fa-ltr" data-import-counter="created">{{ number_format($run->count('created')) }}</b><span>{{ $t('import.created') }}</span></div>
+        <div><b class="fa-ltr" data-import-counter="updated">{{ number_format($run->count('updated')) }}</b><span>{{ $t('import.updated') }}</span></div>
+        <div><b class="fa-ltr" data-import-counter="skipped">{{ number_format($run->count('skipped')) }}</b><span>{{ $t('import.skipped') }}</span></div>
+    </div>
+    @endif
+    <p class="fa-muted fa-import-hint">{{ $paused ? $t('import.paused') : $t('import.leave_hint') }}</p>
+    <div class="fa-import-run-actions">
+        <form method="post" action="{{ $stepUrl }}" data-import-continue>{!! $csrf !!}<button class="fa-btn fa-btn-primary" type="submit">{{ $t('import.continue') }}</button></form>
+        @if($cancelUrl !== null)<form method="post" action="{{ $cancelUrl }}">{!! $csrf !!}<button class="fa-btn" type="submit">{{ $t($phase === 'checking' ? 'import.cancel_check' : 'import.cancel') }}</button></form>@endif
+    </div>
+</div>
+@endif
+
+@if($screen === 'result')
+<div class="fa-card fa-import-result">
+    <span class="fa-import-result-icon{{ $run->status === 'finished' ? ' is-ok' : ($run->status === 'undone' ? ' is-neutral' : ' is-warning') }}" aria-hidden="true">{!! $run->status === 'finished' || $run->status === 'undone' ? $icons['check'] : $icons['info'] !!}</span>
+    <h2 class="fa-import-result-title">{{ $t('import.result_' . $run->status, ['count' => number_format($run->count('created') + $run->count('updated')), 'label' => $run->count('created') + $run->count('updated') === 1 ? $resourceSingular : $resourceLabel]) }}</h2>
+    <p class="fa-import-summary">{{ $t('import.summary', ['name' => $run->fileName, 'user' => $run->userName, 'when' => $when]) }}</p>
+    @if($run->message !== null && $run->status === 'failed')<p class="fa-alert fa-alert-danger">{{ $run->message }}</p>@endif
+    <div class="fa-import-facts">
+        <div><b class="fa-ltr">{{ number_format($run->count('created')) }}</b><span>{{ $t('import.created') }}</span></div>
+        <div><b class="fa-ltr">{{ number_format($run->count('updated')) }}</b><span>{{ $t('import.updated') }}</span></div>
+        <div><b class="fa-ltr">{{ number_format($run->count('errors') + $run->count('skipped')) }}</b><span>{{ $t('import.skipped_errors') }}</span></div>
+    </div>
+    @if($run->status === 'undone' && $run->count('kept') > 0)<p class="fa-alert fa-alert-warning">{{ $t('import.undone_kept', ['count' => number_format($run->count('kept'))]) }}</p>@endif
+    @if($run->status === 'undone')<p class="fa-alert fa-alert-info">{{ $t('import.undone_text' . ($deleted ? '_deleted' : ''), ['removed' => number_format($run->count('removed')), 'restored' => number_format($run->count('restored'))]) }}</p>@endif
+    <div class="fa-import-actions is-start">
+        <a class="fa-btn fa-btn-primary" href="{{ $listUrl }}">{{ $t('import.view_list', ['label' => $resourceLabel]) }}</a>
+        @if($problemsUrl !== null)<a class="fa-btn" href="{{ $problemsUrl }}" download>{{ $t('import.download_skipped', ['count' => number_format($run->count('errors') + $run->count('skipped'))]) }}</a>@endif
+        <a class="fa-btn" href="{{ $againUrl }}">{{ $t('import.another') }}</a>
+    </div>
+    @if($canUndo)
+    <form class="fa-import-undo" method="post" action="{{ $undoUrl }}" data-confirm data-confirm-title="{{ $t('import.undo_confirm_title') }}" data-confirm-text="{{ $t('import.undo_confirm' . ($deleted ? '_deleted' : '')) }}" data-confirm-button="{{ $t('import.undo') }}">
+        {!! $csrf !!}
+        <p><b>{{ $t('import.undo_title') }}</b> {{ $t('import.undo_text' . ($deleted ? '_deleted' : ''), ['created' => number_format($run->count('created')), 'updated' => number_format($run->count('updated')), 'days' => $undoDays]) }}</p>
+        <button class="fa-btn fa-btn-danger-outline" type="submit">{{ $t('import.undo') }}</button>
+    </form>
+    @endif
+</div>
+@endif

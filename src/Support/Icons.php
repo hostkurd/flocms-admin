@@ -23,6 +23,7 @@ final class Icons
         'undo' => 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
         'redo' => 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
         'upload' => 'M12 16V4M7 9l5-5 5 5M4 16v4h16v-4',
+        'download' => 'M12 4v12M7 11l5 5 5-5M4 16v4h16v-4',
         'file' => 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6',
         'building' => 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
         'home' => 'M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10',

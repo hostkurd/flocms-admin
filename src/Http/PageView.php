@@ -138,6 +138,9 @@ final class PageView
             'reorderUrl' => $scope !== null ? null : self::reorderUrl($definition, $table, $filters, $canUpdate),
             'trash' => $scope !== null ? null : TrashPage::toolbarLink($class),
             'trashIcon' => Icons::svg('trash'),
+            // CSV export and import (0.25)
+            'export' => \FloCMS\Admin\ImportExport\ListTools::export($definition, $filters, $search, $result['sort'], $result['dir'], $total),
+            'importUrl' => \FloCMS\Admin\ImportExport\ListTools::importUrl($definition), 'importIcon' => Icons::svg('upload'),
             'reorderIcon' => Icons::svg('arrows-up-down'),
             'filterErrors' => $filters->errors !== [],
             'filterCount' => count($filters->active()),

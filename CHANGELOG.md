@@ -2,6 +2,26 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.25.0 - 2026-10-19
+
+**CSV import and export.** Run `php flo admin:install` and `php flo migrate` for the import tables (export works without them). See [CSV import and export](docs/import-export.md).
+
+- **Export** menu in every list's toolbar: the records the list shows (search, filters and sort, all pages), with **Readable headings** (labels, option names, Yes/No) or field names that import back as they are, and an **Empty template for import**. **Export selected** in the bulk bar. UTF-8 with a BOM and CRLF so Excel opens Arabic and Kurdish correctly; one column per language (`title.en`, `title.ar`); `BelongsTo` as the id plus `city_id.name`, `BelongsToMany` as `1|4` plus `features.names`; media as URLs; passwords never. Cells that start with `=`, `+`, `-`, `@` or a tab get an apostrophe so spreadsheets never run them as formulas (plain negative numbers stay numbers); the import takes it off. Streamed 500 rows at a time, at most 50,000 rows (`'export' => ['limit' => …]`). Noted in the activity log.
+- **Import** button beside New: four steps.
+  1. **Upload**: drag and drop, sent in parts with a progress bar; comma, semicolon, tab or `|`; CRLF, LF or CR line ends; UTF-8, UTF-16 and Windows-1256 (Windows-1252, also when non-UTF-8 bytes only appear late in the file), with **Letters look wrong?** to read it again. Up to 10 MB and 10,000 rows by default.
+  2. **Match columns** by field name (`title.ar`, `title[ar]`), label in any panel language or `->importAliases()`, with Matched/Chosen/Skipped badges; **Create new ones only**, **Create new and update existing** or **Update existing only**, found by id or `Import::key()`; day-first or month-first dates; a check that every required field has a column.
+  3. **Preview**: every row checked with the form's own rules, nothing saved; ready, new, updated and error counts, the errors by row, field, value and problem, **Download rows to fix** (the lines plus an Errors column), and a warning when empty cells would clear values of existing records.
+  4. **Import** in batches of 100 (one transaction each) with a progress bar; leave and **Continue** later, or **Cancel**. The result counts created, updated and skipped rows, with **Download skipped rows**.
+- **Undo import** for 7 days (`undo_days`): created records go to the trash as one batch (deleted when the trash is off), updated ones get their earlier values and many-to-many links back; refused, with the records named, when one was edited since. Undoing created records needs `delete` and `canDelete()`; a record that can't go back is kept and counted.
+- Values the import reads: numbers with thousands separators, decimal commas in semicolon files and currency signs; yes/no in English, Arabic and Kurdish; ISO, `d/m/Y`, `m/d/Y`, `d.m.Y` dates and Excel day numbers; options by key or label; relations by key (ids, slugs) or title in any language; `KeyValue` as `Parking: 2 | Pool: yes`. Uploads, media fields, rich text, passwords, hidden and disabled fields are not imported.
+- **Site → Imports** (`/admin/imports`): the imports of the last 30 days of the resources you may import into, with status, counts, Continue and Undo. Also found by Ctrl+K.
+- Per resource: `$exportable`, `$importable`, `export(Export $export)` (`->except()`, `->column()`, `->limit()`) and `import(Import $import)` (`->key()`, `->defaults()`, `->beforeRow()`, `->afterImport()`). Per field: `->hiddenFromExport()`, `->notImportable()`, `->importAliases([...])`.
+- Permissions `content.<slug>.export` and `content.<slug>.import` (import also needs create, and update to change existing records); the Roles grid gets Export and Import columns, and ticking them ticks View.
+- Commands: `admin:export`, `admin:import` (with `--dry-run`), `admin:imports`, `admin:import-undo` and `admin:import-purge`. Uploaded files are kept in `storage/admin-imports/` and removed after `keep_hours`; panel pages purge at most once an hour.
+- `admin:install` writes the migration of `admin_imports` and `admin_import_rows`; `admin:doctor` checks them, the folder, and that each resource's import key is unique.
+- Activity log entries `exported`, `imported` and `import_undone`; the rows an import saves are not logged one by one (`Activity::quietly()`).
+- New words in the panel's `en`, `ar` and `ku` files (`export.*`, `import.*`, `imports.*`, `nav.imports`, `roles.ability.export`, `roles.ability.import`, `activity.*`).
+
 ## 0.24.1 - 2026-10-19
 
 Polish for row lists (`->table()` and `KeyValue`) and the tables' row menus.

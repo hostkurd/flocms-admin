@@ -88,6 +88,9 @@ final class PanelView
             'trashUrl' => $urls['trash'],
             'trashActive' => $activeSlug === 'trash',
             'trashIcon' => Icons::svg('trash'),
+            'importsUrl' => $urls['imports'],
+            'importsActive' => $activeSlug === 'imports',
+            'importsIcon' => Icons::svg('upload'),
             'profileUrl' => $urls['profile'],
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
@@ -192,7 +195,7 @@ final class PanelView
      * The panel's own pages the current person may open (null when not): the sidebar
      * and Ctrl+K search (0.20) show the same set.
      *
-     * @return array{media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, profile: ?string}
+     * @return array{media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, profile: ?string}
      */
     public static function pageUrls(): array
     {
@@ -204,6 +207,7 @@ final class PanelView
             'settings' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('settings')) && \FloCMS\Admin\Http\SettingsController::allowedPages() !== [] ? Admin::url('settings') : null,
             'activity' => self::activityUrl(),
             'trash' => self::trashUrl(),
+            'imports' => self::importsUrl(),
             'profile' => $usersEnabled ? Admin::url('profile') : null,
         ];
     }
@@ -232,6 +236,13 @@ final class PanelView
     {
         if (Admin::registry()->find('trash') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('trash'))) { return null; }
         try { return \FloCMS\Admin\Trash\Trash::enabled() && TrashPage::allowedResources() !== [] ? Admin::url('trash') : null; } catch (\Throwable) { return null; }
+    }
+
+    /** Site → Imports (0.25), for people who may import into at least one resource. */
+    public static function importsUrl(): ?string
+    {
+        if (Admin::registry()->find('imports') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('imports'))) { return null; }
+        try { return ImportsController::allowedResources() !== [] ? Admin::url('imports') : null; } catch (\Throwable) { return null; }
     }
 
     /** Uppercase first letter for the logo mark and avatar; empty when there is no text. */
@@ -279,8 +290,8 @@ final class PanelView
             if ($title !== $section) { $items[] = ['label' => $title, 'url' => null]; }
             return $items;
         }
-        if (in_array($activeSlug, ['trash', 'activity'], true) && Admin::registry()->find($activeSlug) === null) {
-            $section = AdminLang::get($activeSlug === 'trash' ? 'trash.title' : 'activity.title');
+        if (in_array($activeSlug, ['trash', 'activity', 'imports'], true) && Admin::registry()->find($activeSlug) === null) {
+            $section = AdminLang::get(match ($activeSlug) { 'trash' => 'trash.title', 'imports' => 'imports.title', default => 'activity.title' });
             $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $section, 'url' => $title === $section ? null : Admin::url($activeSlug)]];
             if ($title !== $section) { $items[] = ['label' => $title, 'url' => null]; }
             return $items;

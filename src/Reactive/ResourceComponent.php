@@ -295,6 +295,9 @@ final class ResourceComponent extends Component
             'reorderUrl' => $scope !== null ? null : \FloCMS\Admin\Http\PageView::reorderUrl($resource, $table, $filters, \FloCMS\Core\Auth::can($resource::permission('update'))),
             'reorderIcon' => \FloCMS\Admin\Support\Icons::svg('arrows-up-down'),
             'trash' => $scope !== null ? null : \FloCMS\Admin\Http\TrashPage::toolbarLink($resource::class),
+            // CSV export and import (0.25)
+            'export' => \FloCMS\Admin\ImportExport\ListTools::export($resource, $filters, $this->search, $result['sort'], $result['dir'], (int) $result['pagination']['items_count']),
+            'importUrl' => \FloCMS\Admin\ImportExport\ListTools::importUrl($resource), 'importIcon' => \FloCMS\Admin\Support\Icons::svg('upload'),
             'embedded' => $scope !== null, 'emptyText' => $scope?->manager->getEmptyText() ?? '',
             'managerCount' => $scope !== null ? $this->repository()->newQuery()->count() : 0,
             'emptyIcon' => \FloCMS\Admin\Support\Icons::svg($scope?->manager->getIcon() ?? 'layers'), 'trashIcon' => \FloCMS\Admin\Support\Icons::svg('trash'),

@@ -167,6 +167,10 @@ final class CommandsTest extends TestCase
         $history = glob($this->root . '/database/migrations/*_create_admin_trash_and_admin_activity_tables.php');
         self::assertCount(1, $history);
         (require $history[0])->up(new \FloCMS\Core\Database($pdo));
+        // CSV imports (0.25): one migration for the runs and their rows
+        $imports = glob($this->root . '/database/migrations/*_create_admin_imports_and_admin_import_rows_tables.php');
+        self::assertCount(1, $imports);
+        (require $imports[0])->up(new \FloCMS\Core\Database($pdo));
         // Skeleton 1.8+: the /admin page follows the admin.home setting
         mkdir($this->root . '/controllers');
         file_put_contents($this->root . '/controllers/PagesController.php', "<?php // reads Config::get('admin.home')\n");

@@ -1,0 +1,82 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * CSV imports (flocms-admin 0.25).
+ *
+ * "{{ imports_table }}": one row per import: who, which file, how its columns
+ * were matched, how far it got and what it created, updated and skipped. The
+ * uploaded file itself is kept in storage/admin-imports/ while it is needed.
+ *
+ * "{{ rows_table }}": one row per line of the file once it is checked: whether it
+ * creates or updates a record (or why it can't), and after the import the record
+ * and its values before the import, so the import can be undone.
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $text = $db->driver() === 'sqlite' ? 'TEXT' : 'LONGTEXT';
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ imports_table }}` (
+            ' . $this->id($db) . ',
+            `resource` VARCHAR(64) NOT NULL,
+            `user_id` INTEGER NULL,
+            `user_name` VARCHAR(190) NULL,
+            `file_name` VARCHAR(190) NOT NULL,
+            `file_path` VARCHAR(255) NOT NULL,
+            `file_size` INTEGER NOT NULL DEFAULT 0,
+            `encoding` VARCHAR(20) NOT NULL,
+            `csv_separator` VARCHAR(4) NOT NULL,
+            `headings` ' . $text . ' NULL,
+            `samples` ' . $text . ' NULL,
+            `rows_total` INTEGER NOT NULL DEFAULT 0,
+            `data_start` INTEGER NOT NULL DEFAULT 0,
+            `mapping` ' . $text . ' NULL,
+            `mode` VARCHAR(10) NOT NULL DEFAULT \'create\',
+            `key_column` VARCHAR(64) NULL,
+            `date_order` VARCHAR(3) NOT NULL DEFAULT \'dmy\',
+            `status` VARCHAR(20) NOT NULL,
+            `position` INTEGER NOT NULL DEFAULT 0,
+            `next_byte` INTEGER NOT NULL DEFAULT 0,
+            `counts` TEXT NULL,
+            `message` TEXT NULL,
+            `locked_until` DATETIME NULL,
+            `created_at` DATETIME NOT NULL,
+            `updated_at` DATETIME NOT NULL,
+            `finished_at` DATETIME NULL,
+            `undone_at` DATETIME NULL
+        )' . $this->tableOptions($db));
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ rows_table }}` (
+            ' . $this->id($db) . ',
+            `import_id` INTEGER NOT NULL,
+            `line` INTEGER NOT NULL,
+            `status` VARCHAR(10) NOT NULL,
+            `record_id` VARCHAR(191) NULL,
+            `key_value` VARCHAR(191) NULL,
+            `errors` ' . $text . ' NULL,
+            `before_values` ' . $text . ' NULL,
+            `after_hash` CHAR(64) NULL
+        )' . $this->tableOptions($db));
+
+        foreach ([
+            '{{ imports_table }}_resource_index' => '`{{ imports_table }}` (`resource`, `created_at`)',
+            '{{ imports_table }}_status_index' => '`{{ imports_table }}` (`status`)',
+            '{{ rows_table }}_line_index' => '`{{ rows_table }}` (`import_id`, `line`)',
+            '{{ rows_table }}_status_index' => '`{{ rows_table }}` (`import_id`, `status`)',
+            '{{ rows_table }}_key_index' => '`{{ rows_table }}` (`import_id`, `key_value`)',
+        ] as $index => $on) {
+            try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }
+        }
+    }
+
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ rows_table }}`');
+        $db->query('DROP TABLE IF EXISTS `{{ imports_table }}`');
+    }
+};

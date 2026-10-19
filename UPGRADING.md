@@ -1,3 +1,17 @@
+# Upgrading to Admin 0.25.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.25.0" -W`, run `php flo view:clear` and reload open Admin pages.
+
+- **Run `php flo admin:install`, then `php flo migrate`**: this adds the `admin_imports` and `admin_import_rows` tables. Until then lists show the Export menu but no Import button. `php flo admin:doctor` checks the tables and the folder `storage/admin-imports/` (keep it out of the public folder, as `storage/` already is).
+- **New permissions** `content.<slug>.export` and `content.<slug>.import`. Roles with `content.*` or `*` (Editors and Super Admin in the skeleton) get both at once; to keep import for some roles only, list their permissions per resource, or untick the new **Export** and **Import** columns on Site → Roles. Import also needs `create`, `update` to change existing records, and `delete` to undo an import that created records.
+- **Turning it off**: `'export' => false` / `'import' => false` in `config/admin.php` for the whole panel, or `protected static bool $exportable = false;` / `$importable = false;` on a resource. Use `->hiddenFromExport()` on fields with private data (phone numbers, internal notes): every field of the form except passwords is exported by default.
+- **Lists with bulk actions** show **Export selected** in the bulk bar. Lists' toolbars gain the Export button; tests that count the toolbar's buttons may need a look.
+- **Cron** (optional): `php flo admin:import-purge` once a day removes old upload files and Undo data; panel pages do the same at most once an hour.
+- **Activity log**: an import is one `imported` entry, not one entry per row. Exports are logged as `exported`.
+- **Translations**: the Arabic and Kurdish words of the import and export pages need a read by a native speaker; override any of them in your `lang` files as usual.
+
+---
+
 # Upgrading to Admin 0.24.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.24.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration, no code changes: row lists (`->table()` and `KeyValue`) look tidier, and a table's row menu opens without a scrollbar flash.

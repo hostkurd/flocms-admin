@@ -1,7 +1,7 @@
 @if($parentLink !== null)<p class="fa-back-link"><a href="{{ $parentLink['url'] }}">{!! $backIcon !!}<span>{{ $parentLink['label'] }}</span></a></p>@endif
 <div class="fa-page-head">
     <div><h1 class="fa-page-title">{{ $title }}</h1>@if($resource::getDescription() !== null)<p class="fa-page-description">{{ $resource::getDescription() }}</p>@endif</div>
-    <div class="fa-action-group">{!! $pageActions !!}</div>
+    <div class="fa-action-group">@if($importUrl !== null)<a class="fa-btn" href="{{ $importUrl }}">{!! $importIcon !!}<span>{{ $t('import.button') }}</span></a>@endif{!! $pageActions !!}</div>
 </div>
 <div class="fa-card">
     @if(count($bulkActions) > 0)
@@ -10,10 +10,11 @@
         <span class="fa-bulk-count" data-admin-selection-count role="status">{{ $t('bulk.selected', ['count' => 0]) }}</span>
         <span class="fa-bulk-actions" role="group" aria-label="{{ $t('bulk.action') }}">
             @foreach($bulkActions as $bulk)<button class="fa-btn fa-btn-sm{{ $bulk->getColor() === 'danger' ? ' fa-btn-danger-outline' : '' }}" type="submit" name="action" value="{{ $bulk->getName() }}" data-admin-bulk-action="{{ $bulk->getName() }}">{{ $bulk->getLabel($resource) }}</button>@endforeach
+            @if($export !== null)<button class="fa-btn fa-btn-sm" type="submit" formaction="{{ $export['url'] }}" name="selected" value="1" data-admin-download>{{ $t('export.selected') }}</button>@endif
         </span>
     </form>
     @endif
-    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null)
+    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || $export !== null)
     <div class="fa-list-toolbar">
         @if($hasSearch)
         <form class="fa-search" method="get" action="{{ $listUrl }}" role="search">
@@ -64,6 +65,18 @@
                     @if($hasActiveFilters)<a class="fa-btn fa-btn-ghost fa-btn-sm" href="{{ $listUrl }}">{{ $t('filters.clear') }}</a>@endif
                     <button class="fa-btn fa-btn-primary fa-btn-sm" type="submit">{{ $t('filters.apply') }}</button>
                 </div>
+            </form>
+        </details>
+        @endif
+        @if($export !== null)
+        <details class="fa-popover fa-export" id="fa-list-export-menu" data-admin-popover>
+            <summary class="fa-btn">{!! $export['icon'] !!}<span>{{ $t('export.button') }}</span></summary>
+            <form class="fa-popover-panel fa-export-panel" method="get" action="{{ $export['url'] }}" data-admin-local data-admin-export aria-label="{{ $t('export.button') }}">
+                @foreach($export['params'] as $param)<input type="hidden" name="{{ $param[0] }}" value="{{ $param[1] }}">@endforeach
+                <button type="submit" class="fa-export-item fa-export-main"@if($export['disabled']) disabled @endif>{!! $export['fileIcon'] !!}<span><b>{{ $export['label'] }}</b><small>{{ $export['scope'] }}</small></span></button>
+                <label class="fa-export-check"><input type="checkbox" name="headings" value="readable"><span><b>{{ $t('export.readable') }}</b><small>{{ $t('export.readable_help') }}</small></span></label>
+                @if($export['templateUrl'] !== null)<hr class="fa-menu-divider"><a class="fa-export-item" href="{{ $export['templateUrl'] }}" download>{!! $export['listIcon'] !!}<span><b>{{ $t('export.template') }}</b><small>{{ $t('export.template_help') }}</small></span></a>@endif
+                <p class="fa-export-note">{{ $t('export.note') }}</p>
             </form>
         </details>
         @endif

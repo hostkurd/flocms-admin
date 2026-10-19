@@ -157,6 +157,8 @@ $_SERVER['REQUEST_URI'] = $uri;
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 foreach (($options['headers'] ?? []) as $name => $value) { $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value; }
 $_POST = $options['post'];
+// Uploaded files: the uploader copies a file that did not come through PHP's upload.
+$_FILES = $options['files'] ?? [];
 $query = parse_url($uri, PHP_URL_QUERY);
 $_GET = [];
 if (is_string($query)) {

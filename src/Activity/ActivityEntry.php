@@ -93,6 +93,8 @@ final class ActivityEntry
             'updated', 'settings_saved', 'media_updated', 'profile_updated', 'role_updated', 'role_reset' => 'blue',
             'deleted', 'purged', 'media_deleted', 'role_deleted' => 'red',
             'restored' => 'purple',
+            'imported' => 'teal',
+            'import_undone' => 'red',
             'media_replaced', 'media_moved' => 'teal',
             'login' => 'yellow',
             default => '',
@@ -170,7 +172,7 @@ final class ActivityEntry
         foreach ($this->meta as $key => $value) {
             if ($key === 'trash' && $value) { $details[AdminLang::get('trash.title')] = AdminLang::get('activity.moved_to_trash'); continue; }
             if ($key === 'expired' && $value) { $details[AdminLang::get('trash.title')] = AdminLang::get('activity.purged_expired'); continue; }
-            if (in_array($key, ['count', 'action', 'titles', 'expired', 'folder', 'file', 'trash', 'parents'], true)) { continue; }
+            if (in_array($key, ['count', 'action', 'titles', 'expired', 'folder', 'file', 'trash', 'parents', 'import', 'status', 'selected'], true)) { continue; }
             if (is_scalar($value) && (string) $value !== '') {
                 $details[Str::headline((string) $key)] = mb_strimwidth((string) $value, 0, 300, '…');
             }
@@ -215,6 +217,10 @@ final class ActivityEntry
             'login' => ['verb' => AdminLang::get('activity.what.login'), 'target' => '', 'url' => null],
             'profile_updated' => ['verb' => AdminLang::get('activity.what.profile_updated'), 'target' => '', 'url' => null],
             'settings_saved' => ['verb' => AdminLang::get('settings.title'), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            // CSV import and export (0.25)
+            'imported' => ['verb' => AdminLang::get('activity.what.imported', ['created' => (int) ($this->meta['created'] ?? 0), 'updated' => (int) ($this->meta['updated'] ?? 0), 'label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],
+            'import_undone' => ['verb' => AdminLang::get('activity.what.import_undone', ['label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],
+            'exported' => ['verb' => AdminLang::get('activity.what.exported', ['count' => (int) ($this->meta['rows'] ?? 0)]), 'target' => $plural, 'url' => $this->listUrl()],
             default => ['verb' => $this->typeLabel(), 'target' => $this->label(), 'url' => $this->recordUrl()],
         };
     }
@@ -231,6 +237,15 @@ final class ActivityEntry
             'bulk_action' => AdminLang::get('activity.history.bulk_action', ['action' => $action]),
             default => AdminLang::get('activity.history.other', ['action' => mb_strtolower($this->badge())]),
         };
+    }
+
+    /** The result page of the import an entry is about (0.25), when the user may import into it. */
+    private function importUrl(): ?string
+    {
+        $class = $this->resourceClass();
+        $id = (int) ($this->meta['import'] ?? 0);
+        if ($class === null || $id <= 0 || !$class::canImport()) { return null; }
+        return Admin::url($class::getSlug() . '/import/' . $id . '/result');
     }
 
     /** Where the record can be opened, if it still exists and the user may edit it. */
