@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.24.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.24.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration, no code changes: only the look of row lists (`->table()` and `KeyValue`) changes.
+
+---
+
 # Upgrading to Admin 0.24.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.24.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

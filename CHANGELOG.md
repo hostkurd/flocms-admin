@@ -2,6 +2,13 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.24.1 - 2026-10-19
+
+Polish for row lists (`->table()` and `KeyValue`).
+
+- The first row sits square under the column heads, without rounded top corners.
+- A list without rows shows only its dashed Add button, like card lists, instead of column heads with the button stuck under them; the heads come back with the first row. Undo sits above Add while the list is empty.
+
 ## 0.24.0 - 2026-10-18
 
 **Repeater and key-value fields**: a short list inside a record (a flat's rooms, a tour's days, opening hours, a property's specs), stored as JSON in one column. No migration; add a `TEXT` or `JSON` column for each list you declare. See [Repeaters and key-value lists](docs/repeaters.md).
