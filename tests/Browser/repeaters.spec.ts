@@ -88,6 +88,24 @@ test('Undo cannot bring an item back past the maximum; Enter saves instead of pr
   await expect(page.getByText('Harbour flat')).toBeVisible();
 });
 
+test('rows hang square under the column heads; an empty table shows only its Add button', async ({ page }) => {
+  await page.goto('/en/admin/apartments/edit/1');
+  const hours = page.locator('[data-field="hours"]');
+  await expect(hours.locator('.fa-repeater-items')).toHaveCSS('border-top-left-radius', '0px');
+  await hours.locator('[data-repeater-action="remove"]').click();
+  await expect(hours.locator('.fa-repeater-cols')).toBeHidden();
+  await expect(hours.locator('[data-repeater-add]')).toHaveCSS('border-top-style', 'dashed');
+  const undo = await hours.locator('[data-repeater-undo]').boundingBox();
+  const add = await hours.locator('[data-repeater-add]').boundingBox();
+  expect(undo!.y).toBeLessThan(add!.y);
+  await hours.locator('[data-repeater-undo-button]').click();
+  await expect(hours.locator('.fa-repeater-cols')).toBeVisible();
+  await expect(hours.locator('[data-repeater-add]')).toHaveCSS('border-top-style', 'none');
+  // Phones hide the heads: the rows keep their own rounded top
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(hours.locator('.fa-repeater-items')).not.toHaveCSS('border-top-left-radius', '0px');
+});
+
 test('drag an item by its handle', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1600 });
   await page.goto('/en/admin/apartments/edit/1');

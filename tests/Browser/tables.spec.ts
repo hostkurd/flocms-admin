@@ -189,3 +189,28 @@ test('row menu opens, closes with Escape or an outside click, and keeps focus on
   // Destructive actions come last in the menu.
   await expect(menu.locator('.fa-menu-item').last()).toHaveAttribute('data-admin-action', 'delete');
 });
+
+test('opening a row menu never lets the table scroll box overflow, even for one frame', async ({ page }) => {
+  await ready(page);
+  // Watch every frame: the panel must be pinned before it is first painted.
+  await page.evaluate(() => {
+    const w = window as unknown as { overflowFrames: number };
+    w.overflowFrames = 0;
+    const tick = () => {
+      document.querySelectorAll<HTMLElement>('.fa-table-wrap').forEach(box => { if (box.scrollHeight > box.clientHeight + 1) w.overflowFrames++; });
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  const menus = page.locator('details.fa-menu[data-admin-popover] > summary');
+  await menus.last().click();
+  await expect(page.locator('details.fa-menu[open] .fa-menu-panel')).toBeVisible();
+  await menus.last().press('Escape');
+  await menus.last().press('Enter');
+  await expect(page.locator('details.fa-menu[open] .fa-menu-panel')).toBeVisible();
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => (window as unknown as { overflowFrames: number }).overflowFrames)).toBe(0);
+  // A second click on the button still closes it
+  await menus.last().click();
+  await expect(page.locator('details.fa-menu[open]')).toHaveCount(0);
+});
