@@ -132,14 +132,17 @@ final class ImportExportUnitTest extends TestCase
 
     public function testRichTextCells(): void
     {
-        $values = new Values(new \FloCMS\Core\Database(new \PDO('sqlite::memory:')));
-        self::assertSame('<p>One<br>two</p><p>Three &amp; four</p>', $values->richText("One\r\ntwo\r\n\r\nThree & four"));
-        self::assertSame('', $values->richText('   '));
-        self::assertSame('<p>Kept</p><img src="/uploads/a.jpg">', $values->richText('<p>Kept</p><img src="/uploads/a.jpg">'));
-        self::assertSame(0, $values->droppedMedia());
-        self::assertSame('<p>x</p>', $values->richText('<p>x</p><img src="https://other.example/b.png"><video src="//cdn.example/v.mp4"></video>'));
-        self::assertSame(2, $values->droppedMedia());
-        self::assertSame(0, $values->droppedMedia(), 'the count resets');
+        self::assertSame('<p>One<br>two</p><p>Three &amp; four</p>', Values::richText("One\r\ntwo\r\n\r\nThree & four"));
+        self::assertSame('<p>Tom &amp; Jerry</p>', Values::richText('Tom &amp; Jerry'), 'entities in text are not escaped twice');
+        self::assertSame('<p>Use &lt;b&gt; for bold, a &lt; b</p>', Values::richText('Use <b> for bold, a < b'), 'a lone tag is text');
+        self::assertSame('', Values::richText('   '));
+        // HTML is passed on whole; the editor's cleaner decides on save, media included (as when typed).
+        foreach (['<p>Kept</p><img src="https://cdn.example/b.png">', '<del>x</del> and <sup>2</sup>', 'Line<br>next',
+            '<video controls><source src="https://other.example/a.mp4"></video><p>After</p><p>More</p>'] as $html) {
+            self::assertTrue(Values::isHtml($html), $html);
+            self::assertSame($html, Values::richText($html));
+        }
+        self::assertFalse(Values::isHtml('Size <large> & <small'));
         self::assertTrue(Schema::importable(\FloCMS\Admin\Form\Fields\RichEditor::make('body')));
     }
 }

@@ -26,9 +26,6 @@ final class Values
     /** @var array<string, array<string, list<string>>> field => normalized title => ids */
     private array $titles = [];
 
-    /** Images and videos from other sites left out of rich text since the last droppedMedia() (0.25.1). */
-    private int $dropped = 0;
-
     /**
      * @param string $dateOrder 'dmy' or 'mdy' (how 05/10/2026 is read)
      * @param bool $decimalComma whether "1.250,5" means 1250.5 (files separated by ";")
@@ -55,51 +52,45 @@ final class Values
             $field instanceof Fields\BelongsToMany => $this->belongsToMany($field, $cell),
             $field instanceof Fields\KeyValue => [self::keyValue($field, $cell), null],
             $field instanceof Fields\Repeater => [$cell, null],
-            $field instanceof Fields\RichEditor => [$this->richText($cell), null],
+            $field instanceof Fields\RichEditor => [self::richText($cell), null],
             in_array('numeric', $field->getRules(), true) || in_array('integer', $field->getRules(), true) => [self::number($cell, $this->decimalComma), null],
             default => [$cell, null],
         };
     }
 
+    /** Tags that make a cell HTML even without a closing tag. */
+    private const VOID_TAGS = ['br', 'img', 'hr', 'video', 'iframe', 'source'];
+
     /**
-     * A rich text cell (0.25.1): plain text becomes paragraphs (a blank line
-     * starts a new one, a line break stays a line break); HTML is kept, and the
-     * form cleans it with the editor's allow-list when it is saved. Images and
-     * videos must be files of this site: one from another site is left out and
-     * counted (droppedMedia()); a full address of this site becomes a path.
+     * A rich text cell (0.25.1). HTML is passed on as it is: the editor's own
+     * allow-list cleans it when the row is saved, exactly as when it is typed,
+     * images and videos included. Plain text becomes paragraphs: a blank line
+     * starts a new one, a line break stays a line break.
      */
-    public function richText(string $cell): string
+    public static function richText(string $cell): string
     {
         $cell = trim(str_replace(["\r\n", "\r"], "\n", $cell));
-        if ($cell === '') { return ''; }
-        // HTML when it has HTML tags; "Size <large>" or "a < b" is text.
-        if (preg_match('~</?(p|br|div|span|strong|b|em|i|u|s|a|ul|ol|li|h[1-6]|blockquote|pre|code|img|video|figure|figcaption|table|thead|tbody|tr|td|th|hr|iframe)\b[^>]*>~i', $cell) !== 1) {
-            $paragraphs = preg_split('/\n\s*\n/', $cell) ?: [$cell];
-            return implode('', array_map(static fn (string $text): string
-                => '<p>' . preg_replace('/\s*\n\s*/', '<br>', htmlspecialchars(trim($text), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8')) . '</p>', $paragraphs));
-        }
-        $site = defined('SITE_URI') ? (string) parse_url((string) constant('SITE_URI'), PHP_URL_HOST) : '';
-        return (string) preg_replace_callback('~<(img|video|source)\b[^>]*>(?:\s*</video>)?~i', function (array $tag) use ($site): string {
-            if (preg_match('~\ssrc\s*=\s*(["\'])(.*?)\1~is', $tag[0], $m) !== 1) { return $tag[0]; }
-            $src = html_entity_decode(trim($m[2]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            if (str_starts_with($src, '/') && !str_starts_with($src, '//')) { return $tag[0]; }
-            $parts = parse_url($src);
-            if (is_array($parts) && $site !== '' && strcasecmp((string) ($parts['host'] ?? ''), $site) === 0 && isset($parts['path'])) {
-                // https://this-site/uploads/a.jpg → /uploads/a.jpg
-                $path = $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
-                return str_replace($m[0], ' src=' . $m[1] . htmlspecialchars($path, ENT_QUOTES | ENT_HTML5, 'UTF-8') . $m[1], $tag[0]);
-            }
-            $this->dropped++;
-            return '';
-        }, $cell);
+        if ($cell === '' || self::isHtml($cell)) { return $cell; }
+        $paragraphs = preg_split('/\n\s*\n/', $cell) ?: [$cell];
+        return implode('', array_map(static function (string $text): string {
+            // "Tom &amp; Jerry" typed as text means "Tom & Jerry", not "&amp;amp;".
+            $escaped = htmlspecialchars(html_entity_decode(trim($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            return '<p>' . (preg_replace('/\s*\n\s*/', '<br>', $escaped) ?? $escaped) . '</p>';
+        }, $paragraphs));
     }
 
-    /** How many outside images and videos richText() left out since the last call; resets the count. */
-    public function droppedMedia(): int
+    /**
+     * Whether a cell is HTML: a tag that is opened and closed (<p>…</p>,
+     * <del>…</del>), or a void tag (<br>, <img>). "Use <b> for bold" or
+     * "a < b" is text. Linear: tag names are collected, never backtracked.
+     */
+    public static function isHtml(string $cell): bool
     {
-        $count = $this->dropped;
-        $this->dropped = 0;
-        return $count;
+        if (preg_match_all('~<([a-z][a-z0-9]*)\b[^<>]*>~i', $cell, $open) === 0) { return false; }
+        $opened = array_map('strtolower', $open[1]);
+        if (array_intersect($opened, self::VOID_TAGS) !== []) { return true; }
+        preg_match_all('~</([a-z][a-z0-9]*)\s*>~i', $cell, $close);
+        return array_intersect($opened, array_map('strtolower', $close[1])) !== [];
     }
 
     /** "1 250 000,50", "1,250,000.50", "€ 1.250.000" → "1250000.50"; anything else as it is. */

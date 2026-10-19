@@ -247,7 +247,6 @@ final class Importer
                 $name = $result['status'] === 'error' ? 'errors' : $result['status'];
                 $counts[$name] = ($counts[$name] ?? 0) + 1;
                 $counts['emptied'] = ($counts['emptied'] ?? 0) + $result['emptied'];
-                if ($result['status'] !== 'error' && $result['dropped'] > 0) { $counts['media_dropped'] = ($counts['media_dropped'] ?? 0) + $result['dropped']; }
                 $this->store->insertRows([[
                     'import_id' => $run->id, 'line' => $line, 'status' => $result['status'],
                     'record_id' => $result['record'] !== null ? (string) $result['record']->{$this->resource::getPrimaryKey()} : null,
@@ -271,7 +270,7 @@ final class Importer
             throw new ImportException(AdminLang::get('import.busy', ['name' => $busy->userName]));
         }
         return $this->store->update($run, ['status' => 'importing', 'position' => 0, 'next_byte' => $run->dataStart,
-            'counts' => array_intersect_key($run->counts, array_flip(['new', 'update', 'errors', 'emptied', 'media_dropped'])) + ['created' => 0, 'updated' => 0, 'skipped' => 0]]);
+            'counts' => array_intersect_key($run->counts, array_flip(['new', 'update', 'errors', 'emptied'])) + ['created' => 0, 'updated' => 0, 'skipped' => 0]]);
     }
 
     private function importBatch(ImportRun $run, int $size): ImportRun
@@ -454,6 +453,12 @@ final class Importer
         return $run;
     }
 
+    /** Empty for that field: rich text like <p></p> or <p>&nbsp;</p> counts as empty, as in the editor. */
+    private static function blank(Field $field, string $value): bool
+    {
+        return $field instanceof Fields\RichEditor ? \FloCMS\Admin\Support\RichText::isEmpty(trim($value)) : trim($value) === '';
+    }
+
     /** Whether a stored key is the key from the file (numbers as numbers, text in any case). */
     private static function sameKey(string $stored, string $key): bool
     {
@@ -503,7 +508,7 @@ final class Importer
      * What a line would do, and why not.
      *
      * @param list<string> $cells
-     * @return array{status: string, record: ?object, state: array<string, mixed>, errors: list<array{field: string, value: string, message: string}>, key: string, emptied: int, dropped: int}
+     * @return array{status: string, record: ?object, state: array<string, mixed>, errors: list<array{field: string, value: string, message: string}>, key: string, emptied: int}
      */
     public function evaluate(ImportRun $run, int $line, array $cells, Values $values, bool $checking): array
     {
@@ -550,7 +555,7 @@ final class Importer
         }
         if ($run->mode === 'update' && $record === null) {
             $error($this->targets[$keyColumn]['label'] ?? $keyColumn, $key, AdminLang::get($key === '' ? 'import.key_empty' : 'import.not_found'));
-            return ['status' => 'error', 'record' => null, 'state' => [], 'errors' => $errors, 'key' => $key, 'emptied' => 0, 'dropped' => 0];
+            return ['status' => 'error', 'record' => null, 'state' => [], 'errors' => $errors, 'key' => $key, 'emptied' => 0];
         }
         if ($record !== null && !$this->resource->canEdit($record)) {
             $error($this->targets[$keyColumn]['label'] ?? $keyColumn, $key, AdminLang::get('import.not_editable'));
@@ -581,14 +586,15 @@ final class Importer
                 $merged = is_array($current) ? $current : [];
                 foreach (is_array($value) ? $value : [$default => (string) $value] as $lang => $text) {
                     if (!in_array($lang, Languages::all(), true)) { continue; }
-                    if ($record !== null && trim((string) $text) === '' && trim((string) ($merged[$lang] ?? '')) !== '') { $emptied++; }
-                    $merged[$lang] = $field instanceof Fields\RichEditor ? $values->richText((string) $text) : (string) $text;
+                    $text = $field instanceof Fields\RichEditor ? Values::richText((string) $text) : (string) $text;
+                    if ($record !== null && self::blank($field, $text) && !self::blank($field, (string) ($merged[$lang] ?? ''))) { $emptied++; }
+                    $merged[$lang] = $text;
                 }
                 $input[$name] = $merged;
                 continue;
             }
             $text = is_array($value) ? (string) ($value[$default] ?? '') : (string) $value;
-            if ($record !== null && trim($text) === '' && (is_array($current) ? $current !== [] : trim($current) !== '' && !($field instanceof Fields\Toggle && $current === '0'))) { $emptied++; }
+            if ($record !== null && self::blank($field, $text) && (is_array($current) ? $current !== [] : !self::blank($field, (string) $current) && !($field instanceof Fields\Toggle && $current === '0'))) { $emptied++; }
             [$converted, $message] = $values->read($field, $text);
             if ($message !== null) { $error(strip_tags($field->getLabel()), $text, $message); $unread[$name] = true; }
             if ($field instanceof Fields\BelongsToMany) {
@@ -607,8 +613,7 @@ final class Importer
             $error($label, $value, $message);
         }
         $status = $errors !== [] ? 'error' : ($record === null ? 'new' : 'update');
-        return ['status' => $status, 'record' => $record, 'state' => $state, 'errors' => $errors, 'key' => $key, 'emptied' => $status === 'update' ? $emptied : 0,
-            'dropped' => $values->droppedMedia()];
+        return ['status' => $status, 'record' => $record, 'state' => $state, 'errors' => $errors, 'key' => $key, 'emptied' => $status === 'update' ? $emptied : 0];
     }
 
     /**

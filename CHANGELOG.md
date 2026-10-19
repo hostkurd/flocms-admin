@@ -6,10 +6,10 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 
 Rich text can be imported.
 
-- `RichEditor` fields now have import columns (`body.en`, `body.ar`), so an exported file imports back with its descriptions. HTML is cleaned with the editor's own allow-list when the row is saved; text without HTML tags becomes paragraphs (a blank line starts a new one, a line break stays a line break). Images and videos must be files of this site: a full address of this site becomes a path, and ones from other websites are left out, with a warning and a count on the Preview step. Imported images count as uses in the media library.
+- `RichEditor` fields now have import columns (`body.en`, `body.ar`), so an exported file imports back with its descriptions, images and videos included. HTML is cleaned with the editor's own allow-list when the row is saved, as if it were typed. A cell without HTML (no tag that opens and closes, no `<br>` or `<img>`) is text and becomes paragraphs: a blank line starts a new one, a line break stays a line break, and `Use <b> for bold` stays text. Imported images count as uses in the media library; an empty paragraph counts as emptying the field in the Preview's warning.
 - Files whose cells hold HTML or JSON were refused at upload as "not a CSV file" (the server's type check saw `text/html` or `application/json`); they are accepted now.
 - The upload page's tip says that rich text is imported and image and file fields are not.
-- New words in the panel's `en`, `ar` and `ku` files: `import.media_dropped`; `import.tip_media` changed.
+- Changed words in the panel's `en`, `ar` and `ku` files: `import.tip_media`.
 
 ## 0.25.0 - 2026-10-19
 

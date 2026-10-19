@@ -1046,7 +1046,6 @@ return [
     'import.with_errors' => 'rows with errors, which won\'t be imported',
     'import.found_existing' => 'existing records found by :key',
     'import.emptied' => 'Empty cells will clear values in existing records (:count in all). Leave those columns out, or skip them, to keep the values.',
-    'import.media_dropped' => 'Images and videos from other websites are left out of rich text (:count). Upload them to the media library and use their /uploads/… addresses to keep them.',
     'import.problems_title' => 'Rows with errors',
     'import.download_problems' => 'Download rows to fix (:count)',
     'import.row' => 'Row',

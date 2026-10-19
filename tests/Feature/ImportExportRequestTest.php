@@ -334,8 +334,6 @@ final class ImportExportRequestTest extends RequestTestCase
         $checked = self::post('/en/admin/articles/import/' . $id . '/step', [], $articles + ['headers' => ['Accept' => 'application/json']]);
         $counts = json_decode($checked['body'], true)['counts'];
         self::assertSame(1, $counts['new'], $checked['body']);
-        self::assertSame(1, $counts['media_dropped']);
-        self::assertStringContainsString('Images and videos from other websites are left out of rich text (1).', self::request('GET', '/en/admin/articles/import/' . $id . '/preview', $articles)['body']);
 
         self::post('/en/admin/articles/import/' . $id . '/start', [], $articles);
         self::post('/en/admin/articles/import/' . $id . '/step', [], $articles + ['headers' => ['Accept' => 'application/json']]);
@@ -345,8 +343,16 @@ final class ImportExportRequestTest extends RequestTestCase
         self::assertStringContainsString('<p>Hi <strong>there</strong></p>', $body['en']);
         self::assertStringContainsString('src="/uploads/editor/a.jpg"', $body['en']);
         self::assertStringNotContainsString('script', $body['en']);
-        self::assertStringNotContainsString('elsewhere.example', $body['en']);
+        self::assertStringContainsString('src="https://elsewhere.example/b.jpg"', $body['en'], 'outside images stay, as the editor allows them');
         self::assertSame('<p>سطر أول<br>سطر ثانٍ</p><p>فقرة</p>', $body['ar'], 'plain text becomes paragraphs');
         self::assertSame('<p>Plain &lt;note&gt; &amp; more</p>', $row['note'], 'not HTML: escaped');
+
+        // Updating with an empty paragraph counts as emptying the note (the preview warns).
+        $csv = "id,title.en,note\r\n" . $row['id'] . ",Guide,<p>&nbsp;</p>\r\n";
+        self::request('POST', '/en/admin/articles/import', $articles + ['post' => ['_token' => 'tok'], 'files' => self::upload($csv, 'empty.csv')]);
+        $id = (int) self::lastRun()['id'];
+        self::post('/en/admin/articles/import/' . $id . '/match', ['columns' => ['id', 'title.en', 'note'], 'mode' => 'update', 'key' => 'id', 'date_order' => 'dmy'], $articles);
+        $checked = json_decode(self::post('/en/admin/articles/import/' . $id . '/step', [], $articles + ['headers' => ['Accept' => 'application/json']])['body'], true);
+        self::assertSame(1, $checked['counts']['emptied'] ?? 0, json_encode($checked));
     }
 }

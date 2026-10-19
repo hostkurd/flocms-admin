@@ -247,7 +247,7 @@ final class ImportPage
         $problems = $this->importer->problems($run, 100);
         return $this->view('preview', [
             'run' => $run, 'ready' => $run->count('new') + $run->count('update'), 'new' => $run->count('new'), 'update' => $run->count('update'),
-            'errorsCount' => $run->count('errors'), 'emptied' => $run->count('emptied'), 'mediaDropped' => $run->count('media_dropped'), 'problems' => $problems,
+            'errorsCount' => $run->count('errors'), 'emptied' => $run->count('emptied'), 'problems' => $problems,
             'problemsUrl' => $this->url($run, 'problems'), 'backUrl' => $this->url($run, 'match'), 'startUrl' => $this->url($run, 'start'),
             'keyLabel' => $this->importer->targets()[$run->keyColumn ?? '']['label'] ?? '',
         ]);
