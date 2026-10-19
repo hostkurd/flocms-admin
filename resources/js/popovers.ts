@@ -24,6 +24,15 @@ document.addEventListener('click', event => {
   const owner = event.target.closest<HTMLDetailsElement>(SELECTOR);
   closeAll(owner);
   if (!owner) return;
+  // Open a row menu and pin its panel in the same frame: left to the browser,
+  // the panel is painted once inside the table first and the page scrollbar flickers.
+  const toggle = summary(owner);
+  if (toggle && !event.defaultPrevented && event.target.closest('summary') === toggle && !owner.open && owner.matches('details.fa-menu')) {
+    event.preventDefault();
+    owner.open = true;
+    place(owner);
+    return;
+  }
   // Choosing a menu item closes the menu; remember it so focus can return to
   // its button when the action's dialog closes.
   const item = event.target.closest('.fa-menu-item');
@@ -73,7 +82,7 @@ document.addEventListener('flo-reactive:updated', event => {
   });
   openBeforeUpdate.forEach(id => {
     const details = document.getElementById(id);
-    if (details instanceof HTMLDetailsElement) details.open = true;
+    if (details instanceof HTMLDetailsElement) { details.open = true; if (details.matches('details.fa-menu')) place(details); }
   });
   openBeforeUpdate.clear();
 });
