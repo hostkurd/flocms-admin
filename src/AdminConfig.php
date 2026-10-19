@@ -346,6 +346,38 @@ final class AdminConfig
         ];
     }
 
+    /**
+     * Forgot password (0.26): on unless 'password_reset' => false. Existing
+     * configurations without the key are off until they add it (UPGRADING.md).
+     *
+     * @return array{enabled: bool, table: string, expires: int, per_email: int, per_ip: int}
+     */
+    public function passwordReset(): array
+    {
+        $value = $this->values['password_reset'] ?? false;
+        $options = is_array($value) ? $value : [];
+        $int = static fn (string $key, int $default, int $min, int $max): int => is_int($options[$key] ?? null) ? max($min, min($max, $options[$key])) : $default;
+        return [
+            'enabled' => ($value === true || is_array($value)) && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_password_resets'),
+            'expires' => $int('expires', 60, 5, 1440),
+            'per_email' => $int('per_email', 3, 1, 100),
+            'per_ip' => $int('per_ip', 10, 1, 1000),
+        ];
+    }
+
+    /**
+     * Mail settings of config/admin.php (0.26): 'send' replaces sending.
+     *
+     * @return array{send: ?callable}
+     */
+    public function mail(): array
+    {
+        $value = $this->values['mail'] ?? [];
+        $send = is_array($value) ? ($value['send'] ?? null) : null;
+        return ['send' => is_callable($send) ? $send : null];
+    }
+
     private static function tableName(mixed $candidate, string $default): string
     {
         return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,47}$/D', $candidate) === 1 ? $candidate : $default;

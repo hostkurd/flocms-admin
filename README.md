@@ -25,7 +25,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` ^2.4.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
+- `hostkurd/flocms-core` ^2.5.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
 - A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
@@ -358,12 +358,12 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 
 | Command | |
 | --- | --- |
-| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash, activity log, roles and imports migrations (never overwrites; run again after an upgrade to add what is missing) |
+| `php flo admin:install` | Create `config/admin.php`, `admin/Resources/` and the settings, preferences, media library, trash, activity log, roles, imports and password resets migrations (never overwrites; run again after an upgrade to add what is missing) |
 | `php flo make:admin-settings` | Create `admin/settings.php` with example settings pages |
 | `php flo make:admin-resource Property [--table=properties] [--slug=properties] [--form=modal] [--migration] [--reorderable] [--force]` | Create a resource class (`--form`: `page`, `modal` or `slide-over`), and optionally a migration; `--reorderable` adds a `sort` column and the Reorder button |
 | `php flo make:admin-widget PostStats [--type=stats\|records\|chart] [--resource=Post] [--force]` | Create a dashboard widget and register it in `config/admin.php` |
 | `php flo admin:list [--permissions]` | List resources, settings pages and widgets with URLs, tables and permissions; `--permissions` prints the permission names for a role |
-| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys), the roles table and the import tables, folder and keys |
+| `php flo admin:doctor` | Check config, languages, layout, the panel's pages, slug collisions, tables, columns (including the order column of reorderable lists), widgets, settings pages, the settings and preferences tables, the media library, the trash and activity tables (with a warning for `ON DELETE CASCADE` foreign keys), the roles table, the import tables, folder and keys, and the password resets table, email settings and `APP_URL` |
 | `php flo admin:media-import [--dry-run]` | Add the images and videos already in the media folder to the media library (and fingerprints to items from before 0.18), then rebuild where they are used |
 | `php flo admin:media-usage` | Rebuild where media library items are used (after changing records outside the panel) |
 | `php flo admin:trash-purge [--all]` | Delete for good the records older than the trash's days (`--all`: empty the whole trash) |
@@ -373,6 +373,7 @@ The main tokens are `--fa-bg`, `--fa-surface`, `--fa-text`, `--fa-muted`, `--fa-
 | `php flo admin:imports` | List the imports of the last 30 days |
 | `php flo admin:import-undo <id>` | Undo an import |
 | `php flo admin:import-purge` | Remove old import files and Undo data |
+| `php flo admin:mail-test <address>` | Send a test email with the `MAIL_*` settings in `.env` (the "Forgot password?" emails use them) |
 | `php flo admin:roles` | List the roles in force: level, panel access, source and permissions |
 | `php flo admin:roles-reset [role]` | Undo the Roles page for one role, or all (config roles get their config values back; added roles without users are removed) |
 
@@ -405,6 +406,10 @@ Admin 0.19 makes deleting safe and every change traceable. A deleted record goes
 ## Search
 
 Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) or `/` on any page, type, and pick a result with the arrow keys and Enter. It finds records of every resource by the columns their list already searches (`->searchable()`, every language), the panel's pages, "New …" actions, settings pages and media items, grouped and limited to what the person may open; before typing it shows the last 8 records opened. `#42` finds record 42. Nothing to install. See the [Search guide](docs/search.md).
+
+## Forgot password
+
+Admin 0.26 adds **Forgot password?** to the panel's login page. A person types the address they sign in with and gets a one-time link by email (valid 60 minutes); the answer is the same whether the address has an account or not, and requests are limited per address and per IP. The link opens a page to choose a new password; saving it signs the account out everywhere else, sends a short "your password was changed" note and goes to the activity log. Emails are sent with PHP `mail()` or SMTP from `.env` (`MAIL_*`), without a third-party package; `php flo admin:mail-test` checks them. Needs flocms-core 2.5; add `'password_reset' => true` to an existing `config/admin.php`, then run `php flo admin:install` and `php flo migrate`. See the [Forgot password guide](docs/password-reset.md).
 
 ## Roles and permissions
 

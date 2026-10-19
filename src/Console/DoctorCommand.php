@@ -126,6 +126,7 @@ final class DoctorCommand extends Command
         $this->checkHistory($config, $db, $project, $resources);
         $this->checkRoles($config, $db, $project);
         $this->checkImports($config, $db, $project);
+        $this->checkPasswordReset($config, $db, $project);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -679,6 +680,55 @@ final class DoctorCommand extends Command
     }
 
     /** The Roles page (0.21): flocms-core 2.4, the config maps it builds on, its table and the stored roles. */
+    private function checkPasswordReset(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        $reset = $config->passwordReset();
+        $this->section('Forgot password  (/admin/password/forgot)');
+        if (!$reset['enabled']) { $this->line('  Off: add \'password_reset\' => true to config/admin.php to show "Forgot password?" on the login page.'); return; }
+        if (!method_exists(\FloCMS\Core\App::class, 'allowGuestAdminActions') || !method_exists(\FloCMS\Core\Auth::class, 'checkSessionsUsing')) {
+            $this->bad('Needs flocms-core 2.5 or later: composer require hostkurd/flocms-core:^2.5');
+        }
+        if (!$config->loginThemeEnabled()) { $this->caution('login_theme is off, so the login page has no "Forgot password?" link (the pages still work).'); }
+        if (class_exists(\FloCMS\Admin\Support\Str::appControllerClass('password'))) {
+            $this->caution('Your site has a PasswordController, which always wins: the panel\'s /admin/password pages are not shown.');
+        }
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the password resets table was not checked.'); $db = null; }
+        }
+        if ($db !== null) {
+            $found = $this->columns($db, $reset['table']);
+            if ($found === null) {
+                $this->bad('Table "' . $reset['table'] . '" not found: run php flo admin:install, then php flo migrate. Until then the login page has no "Forgot password?" link.');
+            } elseif (($missing = array_values(array_diff(['id', 'kind', 'user_id', 'email_hash', 'ip_hash', 'token_hash', 'created_at', 'expires_at', 'used_at'], array_keys($found)))) !== []) {
+                $this->bad('Table "' . $reset['table'] . '" exists but is not the password resets table (missing ' . implode(', ', $missing) . '). Name another in config/admin.php: \'password_reset\' => [\'table\' => …].');
+            } else {
+                $this->ok('Table "' . $reset['table'] . '"');
+            }
+        }
+        $problem = \FloCMS\Admin\Mail\Mailer::problem();
+        $mail = \FloCMS\Admin\Mail\Mailer::settings();
+        if ($problem !== null) {
+            $this->bad('Email: ' . $problem . '.');
+        } else {
+            $this->ok('Email: ' . match ($mail['transport']) {
+                'smtp' => 'SMTP ' . $mail['host'] . ':' . $mail['port'] . ' (' . $mail['encryption'] . ')',
+                'log' => 'written to storage/logs/admin-mail.log (MAIL_TRANSPORT=log)',
+                default => 'PHP mail()',
+            } . ', from ' . ($mail['from'] !== '' ? $mail['from'] : '?') . '. Check it with: php flo admin:mail-test you@example.com');
+        }
+        $env = strtolower((string) \FloCMS\Core\Env::get('APP_ENV', ''));
+        if ($mail['transport'] === 'log' && $env === 'production') {
+            $this->bad('MAIL_TRANSPORT=log on a production site: reset links end up in a log file instead of an inbox.');
+        }
+        $url = (string) \FloCMS\Core\Env::get('APP_URL', '');
+        if (preg_match('#^https?://[^/]+#i', $url) !== 1) {
+            $this->bad('APP_URL in .env must be the full address of the site (https://…): it starts the link in the email.');
+        } elseif ($env === 'production' && stripos($url, 'https://') !== 0) {
+            $this->caution('APP_URL is not https: reset links would travel unencrypted.');
+        }
+        $this->line('  Links work once, for ' . $reset['expires'] . ' minutes; ' . $reset['per_email'] . ' requests an hour per address, ' . $reset['per_ip'] . ' per IP address.');
+    }
+
     private function checkRoles(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
     {
         if (!$config->roles()['enabled']) { return; }

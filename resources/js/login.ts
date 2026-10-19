@@ -3,7 +3,7 @@ export function initializeLogin(): void {
   if (!login) return;
   document.documentElement.lang = login.lang;
   document.documentElement.dir = login.dir;
-  login.querySelector<HTMLButtonElement>('[data-admin-password-toggle]')?.removeAttribute('hidden');
+  login.querySelectorAll<HTMLButtonElement>('[data-admin-password-toggle]').forEach(button => button.removeAttribute('hidden'));
 }
 document.addEventListener('click', event => {
   if (!(event.target instanceof Element)) return;

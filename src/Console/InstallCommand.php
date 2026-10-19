@@ -69,6 +69,11 @@ final class InstallCommand extends Command
         if ($import['enabled']) {
             $migrations[] = ['import-migration', $import['table'] . '_and_' . $import['rows_table'], ['imports_table' => $import['table'], 'rows_table' => $import['rows_table']], 'tables'];
         }
+        // Forgot password (0.26): reset requests and the links sent.
+        $reset = $settings->passwordReset();
+        if ($reset['enabled']) {
+            $migrations[] = ['password-resets-migration', $reset['table'], []];
+        }
         // Each new file a second later than the one before, so they run in this order.
         $time = time();
         foreach ($migrations as $migration) {
@@ -89,7 +94,7 @@ final class InstallCommand extends Command
 
         $this->newLine();
         $this->line('Next steps:');
-        $this->line('  1. php flo migrate                              (settings, preferences, media, trash, activity, roles and import tables)');
+        $this->line('  1. php flo migrate                              (settings, preferences, media, trash, activity, roles, import and password reset tables)');
         $this->line('  2. php flo make:admin-resource Post --migration');
         $this->line('  3. php flo make:admin-settings                  (website settings pages, optional)');
         $this->line('  4. Log in, then open /admin/dashboard');

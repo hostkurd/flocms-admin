@@ -96,7 +96,9 @@ final class ActivityEntry
             'imported' => 'teal',
             'import_undone' => 'red',
             'media_replaced', 'media_moved' => 'teal',
-            'login' => 'yellow',
+            'login', 'password_reset_requested' => 'yellow',
+            'password_reset' => 'blue',
+            'password_reset_limited' => 'red',
             default => '',
         };
     }
@@ -216,6 +218,13 @@ final class ActivityEntry
             'media_moved' => ['verb' => AdminLang::get('activity.what.media_moved', ['count' => $count]), 'target' => (string) ($this->meta['folder'] ?? AdminLang::get('media.unfiled')), 'url' => Admin::url('media')],
             'login' => ['verb' => AdminLang::get('activity.what.login'), 'target' => '', 'url' => null],
             'profile_updated' => ['verb' => AdminLang::get('activity.what.profile_updated'), 'target' => '', 'url' => null],
+            // Forgot password (0.26)
+            'password_reset_requested' => ['verb' => AdminLang::get(match (true) {
+                isset($this->meta['unknown']) => 'activity.what.password_reset_unknown',
+                isset($this->meta['inactive']) => 'activity.what.password_reset_inactive',
+                default => 'activity.what.password_reset_requested',
+            }), 'target' => '', 'url' => null],
+            'password_reset_limited', 'password_reset' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => '', 'url' => null],
             'settings_saved' => ['verb' => AdminLang::get('settings.title'), 'target' => $this->label(), 'url' => $this->recordUrl()],
             // CSV import and export (0.25)
             'imported' => ['verb' => AdminLang::get('activity.what.imported', ['created' => (int) ($this->meta['created'] ?? 0), 'updated' => (int) ($this->meta['updated'] ?? 0), 'label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],

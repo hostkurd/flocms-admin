@@ -15,7 +15,7 @@ final class ResourceRegistry
     public const RESERVED = ['users', 'pages'];
 
     /** URL segments of this package's own pages. */
-    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings', 'media'];
+    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings', 'media', 'password'];
 
     /** @var array<string, class-string<Resource>> slug => class */
     private array $resources = [];

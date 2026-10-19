@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.25.1';
+    public const VERSION = '0.26.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -37,6 +37,12 @@ final class Admin
         App::resolveControllersUsing(static fn (string $controller, string $route): ?string => self::resolve($controller, $route));
         // Roles edited on the Roles page (0.21, flocms-core 2.4+); read only when a permission is checked.
         \FloCMS\Admin\Roles\Roles::boot();
+        // Forgot password (0.26, flocms-core 2.5+): its two pages open without signing in,
+        // and a new password ends the account's other sessions.
+        if (method_exists(App::class, 'allowGuestAdminActions')) {
+            App::allowGuestAdminActions('password', ['admin_forgot', 'admin_reset']);
+        }
+        \FloCMS\Admin\Auth\PasswordStamp::boot();
         if (Config::get('auth.login_view') === null) { Config::set('auth.login_view', static fn (): ?string => \FloCMS\Admin\Auth\LoginView::render()); }
 
         // Where the skeleton's /admin page sends logged-in users (skeleton 1.8+).
@@ -79,6 +85,9 @@ final class Admin
         }
         if ($controller === 'media' && \FloCMS\Admin\Media\MediaLibrary::enabled()) {
             return \FloCMS\Admin\Http\MediaController::class;
+        }
+        if ($controller === 'password' && $config->passwordReset()['enabled']) {
+            return \FloCMS\Admin\Http\PasswordController::class;
         }
         if ($controller === 'profile' && $config->usersEnabled()) {
             return ProfileController::class;

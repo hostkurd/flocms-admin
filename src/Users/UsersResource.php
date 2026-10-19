@@ -149,6 +149,18 @@ final class UsersResource extends Resource
         return $data;
     }
 
+    /**
+     * A new password ends the account's other sessions (0.26); the admin who
+     * changed their own password here stays signed in.
+     */
+    public function afterSave(object $record): void
+    {
+        $id = Session::get('user_id');
+        if ((is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id === (int) ($record->id ?? 0) && is_string($record->password ?? null)) {
+            \FloCMS\Admin\Auth\PasswordStamp::restamp($record->password);
+        }
+    }
+
     /** A deleted user's personal preferences go too. */
     public function afterDelete(object $record): void
     {
