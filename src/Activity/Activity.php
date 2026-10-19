@@ -119,6 +119,8 @@ final class Activity
      */
     public static function record(string $action, ?string $resource = null, ?string $recordId = null, ?string $title = null, array $changes = [], array $meta = [], ?Database $db = null): void
     {
+        // An import (0.25) writes one entry for the whole run, not one per record.
+        if (self::$quiet && in_array($action, ['created', 'updated', 'deleted', 'restored'], true)) { return; }
         $db ??= App::db();
         if ($db === null || !self::enabled($db)) { return; }
         try {
@@ -142,6 +144,23 @@ final class Activity
     /* ---------------------------------------------------------------
      * Reading
      * ------------------------------------------------------------- */
+
+    private static bool $quiet = false;
+
+    /**
+     * Run $callback without one entry per created, updated, deleted or restored
+     * record (0.25: an import and its Undo log one entry for the whole run).
+     *
+     * @template T
+     * @param callable(): T $callback
+     * @return T
+     */
+    public static function quietly(callable $callback): mixed
+    {
+        $was = self::$quiet;
+        self::$quiet = true;
+        try { return $callback(); } finally { self::$quiet = $was; }
+    }
 
     public static function find(int $id, ?Database $db = null): ?ActivityEntry
     {

@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.24.1';
+    public const VERSION = '0.25.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -92,6 +92,10 @@ final class Admin
         }
         if ($controller === 'activity' && $config->activity()['enabled']) {
             return \FloCMS\Admin\Http\ActivityController::class;
+        }
+        // Site → Imports (0.25); a site resource with that slug keeps it.
+        if ($controller === 'imports' && $config->import()['enabled']) {
+            return \FloCMS\Admin\Http\ImportsController::class;
         }
         // Roles and permissions (0.21); a site resource with that slug keeps it.
         if ($controller === 'roles' && $config->roles()['enabled']) {

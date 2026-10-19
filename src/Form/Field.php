@@ -204,6 +204,32 @@ abstract class Field
         return $this->hiddenFromActivity;
     }
 
+    /* CSV export and import (0.25) */
+    protected bool $hiddenFromExport = false;
+    protected bool $notImportable = false;
+    /** @var list<string> */
+    protected array $importAliases = [];
+
+    /** Leave this field out of CSV exports (passwords are never exported). */
+    public function hiddenFromExport(bool $hidden = true): static { $this->hiddenFromExport = $hidden; return $this; }
+    public function isHiddenFromExport(): bool { return $this->hiddenFromExport; }
+
+    /** Never fill this field from an imported file. */
+    public function notImportable(bool $not = true): static { $this->notImportable = $not; return $this; }
+    public function isNotImportable(): bool { return $this->notImportable; }
+
+    /** More column headings the import recognises for this field: ['Preis', 'السعر']. */
+    public function importAliases(array $aliases): static
+    {
+        $this->importAliases = array_values(array_filter(array_map(static fn ($a): string => is_scalar($a) ? trim((string) $a) : '', $aliases), static fn (string $a): bool => $a !== ''));
+        return $this;
+    }
+    /** @return list<string> */
+    public function getImportAliases(): array { return $this->importAliases; }
+
+    /** The label as written (a lang key or text), to match headings in every panel language. */
+    public function rawLabel(): ?string { return $this->label; }
+
     public function getName(): string
     {
         return $this->name;

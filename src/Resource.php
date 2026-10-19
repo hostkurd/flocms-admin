@@ -104,8 +104,59 @@ abstract class Resource
      */
     protected static bool $navigation = true;
 
+    /**
+     * CSV export and import (0.25): the list's Export menu and Import button.
+     * Each also needs its permission (content.<slug>.export / .import) and the
+     * panel's 'export' / 'import' setting; false turns one off for this resource.
+     */
+    protected static bool $exportable = true;
+    protected static bool $importable = true;
+
     /** Set when the resource is seen from inside one parent record (a relation manager). */
     private ?\FloCMS\Admin\Relations\ParentScope $parentScope = null;
+
+    /**
+     * Shape the CSV export (0.25): fields left out, extra columns, a row limit.
+     *
+     *     return $export->except(['internal_notes'])->column('agent', fn (object $row) => …);
+     */
+    public function export(\FloCMS\Admin\ImportExport\Export $export): \FloCMS\Admin\ImportExport\Export
+    {
+        return $export;
+    }
+
+    /**
+     * Shape the CSV import (0.25): the unique column that finds existing records,
+     * values for fields the file does not carry, a hook that cleans each row.
+     *
+     *     return $import->key('reference')->defaults(['status' => 'draft']);
+     */
+    public function import(\FloCMS\Admin\ImportExport\Import $import): \FloCMS\Admin\ImportExport\Import
+    {
+        return $import;
+    }
+
+    public static function isExportable(): bool { return static::$exportable && Admin::config()->export()['enabled']; }
+    public static function isImportable(): bool { return static::$importable && Admin::config()->import()['enabled']; }
+
+    /** Whether the current user may download this resource's records as CSV. */
+    public static function canExport(): bool
+    {
+        return static::isExportable() && \FloCMS\Core\Auth::can(static::permission('view')) && \FloCMS\Core\Auth::can(static::permission('export'));
+    }
+
+    /** Whether an import may also update existing records (the update permission). */
+    public static function canImportUpdates(): bool
+    {
+        return \FloCMS\Core\Auth::can(static::permission('update'));
+    }
+
+    /** Whether the current user may import into this resource (creating records). */
+    public static function canImport(): bool
+    {
+        return static::isImportable() && \FloCMS\Core\Auth::can(static::permission('view')) && \FloCMS\Core\Auth::can(static::permission('import'))
+            && \FloCMS\Core\Auth::can(static::permission('create'));
+    }
 
     abstract public function form(Form $form): Form;
 

@@ -21,7 +21,7 @@ export function initializeSelection(root: Element): void {
   if (count) count.textContent = (form?.dataset.selectedText || ':count selected').replace(':count', String(selected.size));
   // The bulk bar appears only while records are selected.
   if (form) form.hidden = selected.size === 0;
-  form?.querySelectorAll<HTMLButtonElement>('[data-admin-bulk-action]').forEach(button => {
+  form?.querySelectorAll<HTMLButtonElement>('[data-admin-bulk-action], [data-admin-export-selected]').forEach(button => {
     button.disabled = selected.size === 0 || root.getAttribute('aria-busy') === 'true';
   });
 }
@@ -64,4 +64,18 @@ document.addEventListener('change', event => {
   input.value = JSON.stringify([...selected].sort());
   initializeSelection(root);
   input.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+// Export selected (0.25): download the chosen records as CSV.
+document.addEventListener('click', event => {
+  const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-admin-export-selected]') : null;
+  if (!button || button.disabled) return;
+  const root = button.closest('[data-rx-component]');
+  const input = root ? selectedInput(root) : null;
+  const ids: string[] = input ? JSON.parse(input.value || '[]') : [];
+  if (ids.length === 0) return;
+  const url = new URL(button.dataset.url || '', window.location.href);
+  url.searchParams.set('ids', ids.join(','));
+  if (button.dataset.parent) url.searchParams.set('parent', button.dataset.parent);
+  window.location.assign(url.toString());
 });

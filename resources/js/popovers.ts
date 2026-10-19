@@ -55,7 +55,7 @@ document.addEventListener('keydown', event => {
 // Applying filters closes the popover; validation errors re-open it from the server.
 document.addEventListener('submit', event => {
   const form = event.target;
-  if (form instanceof HTMLFormElement && form.hasAttribute('data-admin-filters')) {
+  if (form instanceof HTMLFormElement && (form.hasAttribute('data-admin-filters') || form.hasAttribute('data-admin-export'))) {
     const details = form.closest<HTMLDetailsElement>(SELECTOR);
     if (details) details.open = false;
   }

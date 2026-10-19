@@ -186,13 +186,13 @@ final class RoleEditor
         $wanted = Roles::cleanPatterns(array_merge($submitted, $added));
 
         $groups = PermissionCatalogue::groups();
-        // Ticking Create, Edit or Delete also gives View: the list is how a record is reached.
+        // Ticking Create, Edit, Delete, Export or Import also gives View: the list is how a record is reached.
         foreach ($groups as $group) {
             foreach ($group['rows'] as $row) {
                 $names = array_column($row['cells'], 'name', 'ability');
                 $view = $names['view'] ?? null;
                 if ($view === null || in_array($view, $wanted, true)) { continue; }
-                foreach (['create', 'update', 'delete'] as $ability) {
+                foreach (['create', 'update', 'delete', 'export', 'import'] as $ability) {
                     if (isset($names[$ability]) && in_array($names[$ability], $wanted, true) && Roles::holds($view)) { $wanted[] = $view; break; }
                 }
             }

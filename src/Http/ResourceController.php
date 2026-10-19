@@ -62,6 +62,8 @@ final class ResourceController extends PanelController
             'admin_reorder' => $class::permission('update'),
             'admin_trash' => $class::permission('view'),
             'admin_history' => $class::permission('update'),
+            'admin_export' => $class::permission('view'),
+            'admin_import' => $class::permission('view'),
         ];
     }
 
@@ -221,6 +223,75 @@ final class ResourceController extends PanelController
         $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
         $html = \FloCMS\Admin\Activity\ActivityView::history($label, \FloCMS\Admin\Activity\Activity::forRecord($this->resourceClass::getSlug(), $this->recordId()), false, $this->resourceClass::getSlug());
         return $this->panel(AdminLang::get('activity.history_of', ['title' => $label]), $html, $this->resourceClass::getSlug());
+    }
+
+    /**
+     * CSV export (0.25): GET /admin/<slug>/export with the list's q, filter, sort
+     * and dir (or ids, the chosen records), headings=readable for labels;
+     * ?template=1 is the empty file to import.
+     */
+    public function admin_export(): \FloCMS\Core\Http\Response
+    {
+        if (!$this->request->isMethod('GET', 'HEAD') || count($this->params) > 0) { throw new HttpException($this->request->isMethod('GET', 'HEAD') ? 404 : 405); }
+        $this->enterParent();
+        $class = $this->resourceClass;
+        $exporter = new \FloCMS\Admin\ImportExport\Exporter($this->resource, App::db() ?? throw new \RuntimeException('Database required.'));
+        if ($this->query('template', '') === '1') {
+            if (!\FloCMS\Admin\ImportExport\ListTools::canImport($this->resource)) { throw new HttpException(403); }
+            return $this->csv($exporter->fileName('template'), static fn (\FloCMS\Admin\ImportExport\CsvWriter $writer) => $exporter->writeTemplate($writer));
+        }
+        if (!$class::canExport()) { throw new HttpException(403); }
+        $table = $this->table();
+        $ids = null;
+        $chosen = $this->request->queryValue('ids', null);
+        if (is_string($chosen) || is_array($chosen)) {
+            $ids = \FloCMS\Admin\Relations\RelationSource::keys(is_string($chosen) ? explode(',', $chosen) : $chosen);
+            if (count($ids) > 1000) { throw new HttpException(413); }
+        }
+        $filterInput = $this->request->queryValue('filter', []);
+        if (!is_array($filterInput)) { throw new HttpException(400); }
+        $filters = new \FloCMS\Admin\Table\FilterSet($table, json_encode((object) $filterInput, JSON_THROW_ON_ERROR));
+        $search = $ids === null ? $this->query('q', '') : '';
+        $count = $exporter->count($table, $search, $ids === null ? $filters : null, $ids);
+        if ($count > $exporter->limit()) {
+            Session::setFlash(AdminLang::get('export.too_many', ['count' => number_format($count), 'max' => number_format($exporter->limit())]), 'danger');
+            $this->redirect($this->listUrl());
+        }
+        $readable = $this->query('headings', '') === 'readable';
+        return $this->csv($exporter->fileName(), function (\FloCMS\Admin\ImportExport\CsvWriter $writer) use ($exporter, $table, $search, $filters, $ids, $readable, $class): void {
+            $rows = $exporter->write($writer, $table, $search, $this->query('sort', '') ?: null, $this->query('dir', '') ?: null, $ids === null ? $filters : null, $ids, $readable);
+            \FloCMS\Admin\Activity\Activity::record('exported', $class::getSlug(), null, null, [], ['rows' => $rows] + ($ids !== null ? ['selected' => 1] : []));
+        });
+    }
+
+    /** Sends a CSV download written row by row, as it is produced. */
+    private function csv(string $fileName, \Closure $write): \FloCMS\Core\Http\Response
+    {
+        $headers = ImportPage::csvHeaders($fileName);
+        if ($this->request->isMethod('HEAD')) {
+            $response = \FloCMS\Core\Http\Response::make('');
+            foreach ($headers as $name => $value) { $response = $response->header($name, $value); }
+            return $response;
+        }
+        @set_time_limit(300);
+        foreach ($headers as $name => $value) { header($name . ': ' . $value); }
+        $write(new \FloCMS\Admin\ImportExport\CsvWriter());
+        $response = \FloCMS\Core\Http\Response::make('');
+        foreach ($headers as $name => $value) { $response = $response->header($name, $value); }
+        return $response;
+    }
+
+    /** CSV import (0.25): the import pages, see ImportPage. */
+    public function admin_import(): string|\FloCMS\Core\Http\Response
+    {
+        if ($this->request->input('parent') !== null || $this->request->queryValue('parent', null) !== null) { throw new HttpException(404); }
+        if (!\FloCMS\Admin\ImportExport\ListTools::canImport($this->resource)) { throw new HttpException(\FloCMS\Admin\ImportExport\ImportStore::status() === 'ready' ? 403 : 404); }
+        $page = new ImportPage($this->resource);
+        $result = $page->handle(array_values(array_map('strval', $this->params)), $this->isPost(), $this->request->all(), $this->request->acceptsJson());
+        if ($result instanceof \FloCMS\Core\Http\Response && $result->status() === 303) {
+            $this->redirect($result->headers()['Location'] ?? \FloCMS\Admin\Admin::url($this->resourceClass::getSlug()));
+        }
+        return is_string($result) ? $this->panel($page->title(), $result, $this->resourceClass::getSlug()) : $result;
     }
 
     /** Standard fallback for every declared action, also used by async navigation. */

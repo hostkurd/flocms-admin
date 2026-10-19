@@ -304,6 +304,48 @@ final class AdminConfig
         ];
     }
 
+    /**
+     * CSV export (0.25): on unless 'export' => false; 'limit' (default 50,000
+     * rows, at most 1,000,000) is the most rows one download may hold.
+     *
+     * @return array{enabled: bool, limit: int}
+     */
+    public function export(): array
+    {
+        $value = $this->values['export'] ?? true;
+        $options = is_array($value) ? $value : [];
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'limit' => is_int($options['limit'] ?? null) ? max(1, min(1000000, $options['limit'])) : 50000,
+        ];
+    }
+
+    /**
+     * CSV import (0.25): on unless 'import' => false. 'max_bytes' (default 10 MB,
+     * at most 64 MB), 'max_rows' (default 10,000, at most 100,000), 'batch_size'
+     * (rows per request, default 100, 10–1000), 'keep_hours' (how long an
+     * unfinished upload is kept, default 24), 'undo_days' (default 7, 0 = no Undo)
+     * and the tables 'table' (admin_imports) and 'rows_table' (admin_import_rows).
+     *
+     * @return array{enabled: bool, table: string, rows_table: string, max_bytes: int, max_rows: int, batch_size: int, keep_hours: int, undo_days: int}
+     */
+    public function import(): array
+    {
+        $value = $this->values['import'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $int = static fn (string $key, int $default, int $min, int $max): int => is_int($options[$key] ?? null) ? max($min, min($max, $options[$key])) : $default;
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_imports'),
+            'rows_table' => self::tableName($options['rows_table'] ?? null, 'admin_import_rows'),
+            'max_bytes' => $int('max_bytes', 10485760, 1024, 67108864),
+            'max_rows' => $int('max_rows', 10000, 1, 100000),
+            'batch_size' => $int('batch_size', 100, 10, 1000),
+            'keep_hours' => $int('keep_hours', 24, 1, 720),
+            'undo_days' => $int('undo_days', 7, 0, 365),
+        ];
+    }
+
     private static function tableName(mixed $candidate, string $default): string
     {
         return is_string($candidate) && preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,47}$/D', $candidate) === 1 ? $candidate : $default;

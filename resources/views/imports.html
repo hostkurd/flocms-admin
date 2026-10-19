@@ -1,0 +1,30 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $t('imports.title') }}</h1><p class="fa-page-description">{{ $description }}</p></div>
+</div>
+<div class="fa-card">
+    @if(count($rows) > 0)
+    <div class="fa-table-wrap">
+        <table class="fa-table fa-table-list fa-imports">
+            <thead><tr><th scope="col">{{ $t('imports.file') }}</th><th scope="col">{{ $t('imports.into') }}</th><th scope="col">{{ $t('imports.by') }}</th><th scope="col">{{ $t('imports.when') }}</th><th scope="col" class="fa-cell-numeric">{{ $t('imports.rows') }}</th><th scope="col">{{ $t('imports.status') }}</th><th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th></tr></thead>
+            <tbody>
+                @foreach($rows as $row)
+                <tr>
+                    <td class="fa-cell-primary" data-label="{{ $t('imports.file') }}">@if($row['url'] !== null)<a href="{{ $row['url'] }}"><bdi>{{ $row['file'] }}</bdi></a>@else<bdi>{{ $row['file'] }}</bdi>@endif<small class="fa-imports-detail">{{ $row['detail'] }}</small></td>
+                    <td data-label="{{ $t('imports.into') }}">{{ $row['into'] }}</td>
+                    <td data-label="{{ $t('imports.by') }}">{{ $row['by'] }}</td>
+                    <td data-label="{{ $t('imports.when') }}"><span class="fa-ltr">{{ $row['when'] }}</span></td>
+                    <td class="fa-cell-numeric" data-label="{{ $t('imports.rows') }}"><span class="fa-ltr">{{ $row['rows'] }}</span></td>
+                    <td data-label="{{ $t('imports.status') }}"><span class="fa-badge fa-badge-{{ $row['tone'] }}">{{ $t('imports.status_' . $row['status']) }}</span></td>
+                    <td class="fa-actions">@if($row['action'] === 'continue' && $row['url'] !== null)<a class="fa-btn fa-btn-sm fa-btn-primary" href="{{ $row['url'] }}">{{ $t('import.continue') }}</a>@elseif($row['action'] === 'undo' && $row['url'] !== null)<a class="fa-btn fa-btn-sm" href="{{ $row['url'] }}/result">{{ $t('import.undo') }}</a>@elseif($row['url'] !== null)<a class="fa-btn fa-btn-sm fa-btn-ghost" href="{{ $row['url'] }}">{{ $t('imports.open') }}</a>@endif</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @if($prevUrl !== null || $nextUrl !== null)
+    <div class="fa-table-foot"><span></span><nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">@if($prevUrl !== null)<a class="fa-page-link" href="{{ $prevUrl }}" rel="prev">{{ $t('table.previous') }}</a>@endif @if($nextUrl !== null)<a class="fa-page-link" href="{{ $nextUrl }}" rel="next">{{ $t('table.next') }}</a>@endif</nav></div>
+    @endif
+    @else
+    <div class="fa-blank"><p>{{ $t('imports.empty') }}</p></div>
+    @endif
+</div>

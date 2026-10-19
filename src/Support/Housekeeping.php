@@ -25,7 +25,8 @@ final class Housekeeping
     public static function run(): void
     {
         try {
-            if (!Trash::enabled() && !Activity::enabled()) { return; }
+            $imports = \FloCMS\Admin\ImportExport\ImportStore::status() === 'ready';
+            if (!Trash::enabled() && !Activity::enabled() && !$imports) { return; }
             $file = self::stampFile();
             $last = is_file($file) ? (int) @filemtime($file) : 0;
             if ($last > time() - self::INTERVAL) { return; }
@@ -33,6 +34,8 @@ final class Housekeeping
             if (@touch($file) === false) { return; }
             Trash::purgeExpired();
             Activity::purgeExpired();
+            // Old import uploads and Undo snapshots (0.25)
+            if ($imports) { \FloCMS\Admin\ImportExport\ImportStore::make()->purge(); }
         } catch (\Throwable $error) {
             error_log('flocms-admin: housekeeping failed: ' . $error->getMessage());
         }
