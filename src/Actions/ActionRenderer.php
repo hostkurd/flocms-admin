@@ -79,6 +79,24 @@ final class ActionRenderer
         return ['items' => $items, 'danger' => $danger];
     }
 
+    /**
+     * A record's actions as a plain list of links (0.28), for a card on its edit
+     * page: each opens its own page and comes back to $backUrl. Edit and Delete are
+     * left out (the page has them); greyed-out actions keep their tooltip.
+     */
+    public function links(object $record, string $backUrl): string
+    {
+        $items = ''; $group = null;
+        foreach ($this->allowed('row', $record) as $action) {
+            if (in_array($action->getName(), ['edit', 'delete', 'view'], true) || in_array($action->getKind(), ['edit', 'delete'], true)) { continue; }
+            if ($items !== '' && $action->getGroup() !== $group) { $items .= '<hr class="fa-menu-divider">'; }
+            $group = $action->getGroup();
+            // Not inside a menu here: no menuitem role.
+            $items .= str_replace(' role="menuitem"', '', $this->item($action, 'row', $record, false, 'fa-quick', $backUrl, 'menu'));
+        }
+        return $items === '' ? '' : '<nav class="fa-quick-actions" aria-label="' . Str::e(AdminLang::get('actions.quick')) . '">' . $items . '</nav>';
+    }
+
     private function firstGroup(string $placement, ?object $record): ?string
     {
         foreach ($this->allowed($placement, $record) as $action) {
@@ -104,8 +122,9 @@ final class ActionRenderer
         if (($reason = $action->reasonDisabled($this->resource, $record)) !== null) {
             $reasonId = Str::e($prefix . '-' . $name . '-' . ($id !== '' ? $id : $placement) . '-reason');
             return match ($style) {
-                'menu' => '<span class="fa-menu-item is-disabled" role="menuitem" aria-disabled="true" aria-describedby="' . $reasonId . '" data-admin-action="' . Str::e($name) . '">' . self::menuIcon($action)
-                    . '<span class="fa-menu-text"><span>' . Str::e($text) . '</span><small id="' . $reasonId . '">' . Str::e($reason) . '</small></span></span>',
+                // The label only; the reason is a tooltip on hover, focus or tap, and read out by screen readers.
+                'menu' => '<span class="fa-menu-item is-disabled" role="menuitem" tabindex="0" aria-disabled="true" aria-describedby="' . $reasonId . '" data-admin-action="' . Str::e($name) . '" data-admin-tip>' . self::menuIcon($action)
+                    . '<span>' . Str::e($text) . '</span><span class="fa-tip" role="tooltip" id="' . $reasonId . '">' . Str::e($reason) . '</span></span>',
                 'icon' => '<button type="button" class="fa-icon-action" disabled title="' . Str::e($text . ': ' . $reason) . '" data-admin-action="' . Str::e($name) . '">' . Icons::svg($action->getIcon() ?? 'pencil') . '<span class="fa-sr">' . Str::e($text . ': ' . $reason) . '</span></button>',
                 default => '<button type="button" class="fa-btn" disabled title="' . Str::e($reason) . '" data-admin-action="' . Str::e($name) . '">' . ($action->getIcon() !== null ? Icons::svg($action->getIcon()) : '') . '<span>' . Str::e($text) . '</span></button>',
             };
@@ -140,7 +159,10 @@ final class ActionRenderer
                 . \FloCMS\Core\Csrf::field() . '<input type="hidden" name="_back" value="' . Str::e($backUrl ?? Admin::url($this->resource::getSlug())) . '">'
                 . '<button type="submit" class="' . $class . '"' . $attributes . '>' . $label . '</button></form>';
         }
-        return '<a class="' . $class . '"' . $attributes . ' href="' . Str::e(Admin::url($path, ['parent' => $parent])) . '">' . $label . '</a>';
+        // Opened from another page than the list (0.28: a record's edit page), it returns there.
+        $list = Admin::url($this->resource::getSlug());
+        $back = $backUrl !== null && $backUrl !== $list && !str_starts_with($backUrl, $list . '?') ? $backUrl : null;
+        return '<a class="' . $class . '"' . $attributes . ' href="' . Str::e(Admin::url($path, ['parent' => $parent, 'back' => $back])) . '">' . $label . '</a>';
     }
 
     /** Menu items always have an icon column so labels line up. */

@@ -128,6 +128,11 @@ final class FormRenderer
             if ($node instanceof Field) {
                 $field = $form->field($node->getName());
                 if (!$field->isVisible()) { continue; }
+                if ($field instanceof Fields\Placeholder && $field->isHtml()) {
+                    $markup = $this->stringState($field);
+                    if (trim($markup) !== '') { $html .= '<div class="fa-field fa-span-full fa-field-html" data-field="' . Str::e($field->getName()) . '">' . $markup . '</div>'; }
+                    continue;
+                }
                 if ($field instanceof Hidden) { $html .= $field->renderControl($this->prefix . 'f-' . $field->getName(), $this->inputName($field->getName()), $this->stringState($field)); continue; }
                 $rendered = $this->field($field, $columns);
                 if (in_array($field->getName(), $live, true)) { $rendered = str_replace('data-field=', 'data-admin-live data-field=', $rendered); }
@@ -154,6 +159,13 @@ final class FormRenderer
                 $title = $node instanceof \FloCMS\Admin\Form\Layout\Grid ? '' : '<h3 class="fa-section-title" id="' . Str::e($id . '-title') . '">' . $label . '</h3>';
                 $description = $node->getDescription() === null ? '' : '<p class="fa-help">' . Str::e($node->getDescription()) . '</p>';
                 $body = $this->nodes($node->children(), $form, $node->getColumns(), $live, $id);
+                // A section with nothing to show (0.28) is left out.
+                if ($body === '<div class="fa-form-grid fa-grid-' . $node->getColumns() . '"></div>') { continue; }
+                // A section holding one field of the same name: its label is read out, not shown twice (0.28).
+                $children = $node->children();
+                if ($title !== '' && count($children) === 1 && $children[array_key_first($children)] instanceof Field && $children[array_key_first($children)]->getLabel() === $node->getLabel()) {
+                    $body = preg_replace('/<label class="fa-label"/', '<label class="fa-label fa-sr"', $body, 1) ?? $body;
+                }
                 if ($node instanceof \FloCMS\Admin\Form\Layout\Section && $node->isCollapsible()) {
                     // A native <details>: works without JavaScript; a section with an error opens.
                     $open = !$node->isCollapsed() || $this->hasErrors($node);

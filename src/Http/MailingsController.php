@@ -46,7 +46,7 @@ final class MailingsController extends PanelController
     protected array $actionPermissions = [
         'admin_index' => 'users.mailing', 'admin_show' => 'users.mailing', 'admin_step' => 'users.mailing',
         'admin_pause' => 'users.mailing', 'admin_resume' => 'users.mailing', 'admin_cancel' => 'users.mailing', 'admin_retry' => 'users.mailing',
-        'admin_compose' => null, 'admin_unsubscribe' => null,
+        'admin_compose' => null, 'admin_people' => null, 'admin_count' => null, 'admin_unsubscribe' => null,
     ];
 
     public function admin_index(): string|\FloCMS\Core\Http\Response
@@ -113,6 +113,16 @@ final class MailingsController extends PanelController
         // At most MAX_CHOSEN chosen users; the composer says how many were left out.
         $dropped = max(0, count($ids) - self::MAX_CHOSEN);
         $ids = array_slice($ids, 0, self::MAX_CHOSEN);
+        // Without JavaScript the To field's buttons post the form: a group from the menu, or × on a chip.
+        if ($this->isPost() && is_string($input['_to'] ?? null)) {
+            [$type, $value] = array_pad(explode(':', $input['_to'], 2), 2, '');
+            $input = ['to' => $type, 'role' => $value, 'status' => $value] + $input;
+            $ids = [];
+        }
+        if ($this->isPost() && is_string($input['_remove'] ?? null)) {
+            if ($input['_remove'] === 'group') { $input['to'] = 'users'; $ids = []; }
+            else { $ids = array_values(array_diff($ids, [(int) $input['_remove']])); }
+        }
         $audience = $this->audienceInput($input, $ids);
         $state = [];
         foreach ($form->fields() as $name => $field) { $state[$name] = $this->isPost() ? $field->stateFromInput($input, []) : ''; }
@@ -120,14 +130,14 @@ final class MailingsController extends PanelController
         try { $found = Mailings::audience($audience); } catch (\Throwable $error) { error_log('flocms-admin: mailing audience failed: ' . $error->getMessage()); }
         $count = count($found['people']);
         $direct = $audience['type'] === 'users' && $count <= self::DIRECT_LIMIT;
-        if ($this->isPost()) {
+        $intent = isset($input['_test']) ? 'test' : (isset($input['_send']) ? 'send' : 'preview');
+        if ($this->isPost() && $intent !== 'preview') {
             $errors = (new FormValidator([], Languages::default(), null, true))->validate($form, $state);
             if ($count === 0) { $errors['_form'] = AdminLang::get('mailings.nobody'); }
             if (!$direct && !Auth::can('users.mailing')) { $errors['_form'] = AdminLang::get('mailings.no_mailing_permission', ['count' => self::DIRECT_LIMIT]); }
             if ($direct && !Auth::can('users.email')) { throw new HttpException(403); }
             if (!$direct && !Mailings::available()) { $errors['_form'] = AdminLang::get('mailings.not_installed'); }
             elseif (!$direct && !Mailings::hasKey()) { $errors['_form'] = AdminLang::get('mailings.no_key'); }
-            $intent = isset($input['_test']) ? 'test' : (isset($input['_send']) ? 'send' : 'preview');
             if ($errors === [] && $intent === 'test') { $this->sendTest($state); }
             if ($errors === [] && $intent === 'send') {
                 // A mailing to many people asks for the number once more.
@@ -142,9 +152,13 @@ final class MailingsController extends PanelController
         $html = TemplateEngine::renderFile(PageView::viewPath('compose'), [
             't' => PageView::translator(), 'csrf' => \FloCMS\Core\Csrf::field(), 'action' => Admin::url('mailings/compose'),
             'title' => AdminLang::get($direct ? 'mailings.send_email' : 'mailings.email_users'),
-            'lead' => $direct ? AdminLang::get($count === 1 ? 'mailings.direct_lead_one' : 'mailings.direct_lead', ['count' => $count, 'name' => $preview['name'] !== '' ? $preview['name'] : $preview['email']]) : AdminLang::get('mailings.mailing_lead'),
+            'lead' => $direct ? self::directLead($found['people']) : AdminLang::get('mailings.mailing_lead'),
             'direct' => $direct, 'canMailing' => Auth::can('users.mailing'), 'ids' => implode(',', $ids),
-            'chosen' => $audience['type'] === 'users' ? array_map(static fn (array $p, int $id): array => ['name' => $p['name'] !== '' ? $p['name'] : $p['email'], 'email' => $p['email'], 'avatar' => \FloCMS\Admin\Support\Avatar::forUser($id, $p['name'], 24)], $found['people'], array_keys($found['people'])) : [],
+            'chosen' => $audience['type'] === 'users' ? array_map(static fn (array $p, int $id): array => self::person($id, $p), $found['people'], array_keys($found['people'])) : [],
+            'groupKey' => $audience['type'] === 'users' ? '' : $audience['type'] . ($audience['type'] !== 'everyone' ? ':' . $audience['value'] : ''),
+            'groupLabel' => $audience['type'] === 'users' ? '' : self::audienceLabel(['active_only' => false] + $audience),
+            'searchUrl' => Admin::url('mailings/people'), 'countUrl' => Admin::url('mailings/count'),
+            'xIcon' => \FloCMS\Admin\Support\Icons::svg('x'), 'usersIcon' => \FloCMS\Admin\Support\Icons::svg('users'), 'chevronIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-down'),
             'audience' => $audience, 'roles' => UsersResource::roles(), 'statuses' => UsersResource::statuses(),
             'count' => $count, 'unsubscribed' => $found['unsubscribed'], 'confirm' => !$direct && $count > 100,
             'fields' => (new FormRenderer($state, $errors, [], Languages::default(), false))->render($form), 'errors' => $errors,
@@ -157,6 +171,63 @@ final class MailingsController extends PanelController
             'mailProblem' => Mailer::problem(), 'dropped' => $dropped, 'maxChosen' => self::MAX_CHOSEN, 'richCss' => \FloCMS\Admin\Assets::richTextUrl(),
         ]);
         return $this->panel(AdminLang::get($direct ? 'mailings.send_email' : 'mailings.email_users'), $html, 'accounts');
+    }
+
+    /** People for the To field, by name, email or login (JSON): at most 8, active and pending users with an email. */
+    public function admin_people(): \FloCMS\Core\Http\Response
+    {
+        if (!Auth::can('users.manage') || (!Auth::can('users.email') && !Auth::can('users.mailing'))) { throw new HttpException(403); }
+        $text = static fn (mixed $value): string => is_string($value) ? $value : '';
+        $q = trim(mb_substr($text($this->request->queryValue('q', '')), 0, 100));
+        $skip = self::ids($text($this->request->queryValue('skip', '')));
+        $people = [];
+        if ($q !== '') {
+            $like = '%' . strtr($q, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+            $query = \FloCMS\Core\App::db()?->table('users')->select(['id', 'email', 'full_name', 'login'])->where('status', '!=', UsersResource::SUSPENDED)
+                ->whereRaw("(`full_name` LIKE ? ESCAPE '!' OR `email` LIKE ? ESCAPE '!' OR `login` LIKE ? ESCAPE '!')", [$like, $like, $like]);
+            if ($skip !== []) { $query = $query?->whereNotIn('id', array_slice($skip, 0, self::MAX_CHOSEN)); }
+            foreach ($query?->orderBy('full_name', 'asc')->limit(8)->get() ?? [] as $row) {
+                $email = trim((string) ($row->email ?? ''));
+                if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) { continue; }
+                $people[] = self::person((int) $row->id, ['email' => $email, 'name' => trim((string) ($row->full_name ?? ''))]);
+            }
+        }
+        return \FloCMS\Core\Http\Response::json(['people' => $people])->header('Cache-Control', 'no-store');
+    }
+
+    /** What the To field reaches (JSON): the count line, the Send button and the note under it. */
+    public function admin_count(): \FloCMS\Core\Http\Response
+    {
+        if (!Auth::can('users.manage') || (!Auth::can('users.email') && !Auth::can('users.mailing'))) { throw new HttpException(403); }
+        $input = array_map(static fn (mixed $value): string => is_string($value) ? $value : '', $this->request->query());
+        $ids = array_slice(self::ids((string) ($input['users'] ?? '')), 0, self::MAX_CHOSEN);
+        $audience = $this->audienceInput(['to' => (string) ($input['to'] ?? 'users'), 'role' => $input['role'] ?? '', 'status' => $input['status'] ?? '', 'active_only' => $input['active_only'] ?? ''], $ids, true);
+        $found = ['people' => [], 'unsubscribed' => 0];
+        try { $found = Mailings::audience($audience); } catch (\Throwable $error) { error_log('flocms-admin: mailing audience failed: ' . $error->getMessage()); }
+        $count = count($found['people']);
+        $direct = $audience['type'] === 'users' && $count <= self::DIRECT_LIMIT;
+        return \FloCMS\Core\Http\Response::json([
+            'count' => $count, 'direct' => $direct,
+            'countText' => $count === 1 ? AdminLang::get('mailings.people_one') : AdminLang::get('mailings.people', ['count' => number_format($count)]),
+            'unsubscribedText' => $found['unsubscribed'] > 0 ? AdminLang::get('mailings.unsubscribed_left_out', ['count' => $found['unsubscribed']]) : '',
+            'sendText' => $direct ? ($count === 1 ? AdminLang::get('mailings.send') : AdminLang::get('mailings.send_to', ['count' => $count])) : AdminLang::get('mailings.send_mailing', ['count' => $count]),
+            'note' => $direct ? AdminLang::get('mailings.direct_note', ['count' => self::DIRECT_LIMIT]) : AdminLang::get('mailings.mailing_note'),
+            'title' => AdminLang::get($direct ? 'mailings.send_email' : 'mailings.email_users'),
+            'lead' => $direct ? self::directLead($found['people']) : AdminLang::get('mailings.mailing_lead'),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    /** @param array<int, array{email: string, name: string}> $people */
+    private static function directLead(array $people): string
+    {
+        $first = $people !== [] ? reset($people) : ['email' => '', 'name' => ''];
+        return AdminLang::get(count($people) === 1 ? 'mailings.direct_lead_one' : 'mailings.direct_lead', ['count' => count($people), 'name' => $first['name'] !== '' ? $first['name'] : $first['email']]);
+    }
+
+    /** @param array{email: string, name: string} $person @return array{id: int, name: string, email: string, avatar: string} */
+    private static function person(int $id, array $person): array
+    {
+        return ['id' => $id, 'name' => $person['name'] !== '' ? $person['name'] : $person['email'], 'email' => $person['email'], 'avatar' => \FloCMS\Admin\Support\Avatar::forUser($id, $person['name'] !== '' ? $person['name'] : $person['email'], 24)];
     }
 
     /** The unsubscribe page of a mailing's email: GET asks, POST unsubscribes. No sign-in. */
@@ -195,10 +266,13 @@ final class MailingsController extends PanelController
     }
 
     /** @param list<int> $ids @return array{type: string, value: mixed, active_only: bool} */
-    private function audienceInput(array $input, array $ids): array
+    private function audienceInput(array $input, array $ids, bool $posted = false): array
     {
-        $type = (string) ($input['to'] ?? ($ids !== [] ? 'users' : 'everyone'));
-        if (!in_array($type, ['users', 'everyone', 'role', 'status'], true) || ($type === 'users' && $ids === [])) { $type = 'everyone'; }
+        $posted = $posted || $this->isPost();
+        // A new composer goes to the chosen users, else to everyone (or nobody yet, without the mailing permission).
+        $type = (string) ($input['to'] ?? ($ids !== [] || !Auth::can('users.mailing') ? 'users' : 'everyone'));
+        if (!in_array($type, ['users', 'everyone', 'role', 'status'], true) || (!$posted && $type === 'users' && $ids === [] && Auth::can('users.mailing'))) { $type = 'everyone'; }
+        if ($type !== 'users' && !Auth::can('users.mailing')) { $type = 'users'; }
         $value = match ($type) {
             'users' => $ids,
             'role' => array_key_exists((int) ($input['role'] ?? -1), UsersResource::roles()) ? (string) (int) $input['role'] : (string) array_key_first(UsersResource::roles()),
@@ -206,7 +280,7 @@ final class MailingsController extends PanelController
             default => '',
         };
         // A new composer has "Active users only" ticked.
-        $activeOnly = $this->isPost() ? ($input['active_only'] ?? '') === '1' : true;
+        $activeOnly = $posted ? ($input['active_only'] ?? '') === '1' : true;
         return ['type' => $type, 'value' => $value, 'active_only' => $type === 'users' ? false : $activeOnly];
     }
 

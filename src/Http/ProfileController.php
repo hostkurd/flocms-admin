@@ -188,20 +188,31 @@ final class ProfileController extends PanelController
         $roles = UsersResource::roles();
         $statuses = UsersResource::statuses();
 
+        // 0.28: the same layout as Users: details and password, photo and access in the sidebar.
         return (new Form())->schema([
-            TextInput::make('full_name')->label(AdminLang::get('users.full_name'))->rules('required|max:190'),
-            TextInput::make('email')->email()->label(AdminLang::get('users.email'))->rules('required|max:190')->unique(),
-            TextInput::make('login')->label(AdminLang::get('users.login'))->rules('max:190')->unique()
-                ->help(AdminLang::get('users.login_help')),
-            Placeholder::make('role_info')->label(AdminLang::get('users.role'))
-                ->content(static fn (?object $r): string => $roles[(int) ($r->role ?? -1)] ?? (string) ($r->role ?? '')),
-            TextInput::make('password')->password(false)->label(AdminLang::get('profile.new_password'))
-                ->rules('min:' . UsersResource::MIN_PASSWORD)->help(AdminLang::get('profile.new_password_help')),
-            TextInput::make('current_password')->password(false)->label(AdminLang::get('profile.current_password'))
-                ->help(AdminLang::get('profile.current_password_help')),
-            Placeholder::make('status_info')->label(AdminLang::get('users.status'))
-                ->content(static fn (?object $r): string => $statuses[(int) ($r->status ?? -1)] ?? (string) ($r->status ?? '')),
-            ...(UsersResource::hasImageColumn() ? [\FloCMS\Admin\Form\Fields\ImageUpload::make('image')->label(AdminLang::get('users.photo'))->avatar()->help(AdminLang::get('users.photo_help'))] : []),
+            \FloCMS\Admin\Form\Layout\Section::make('profile')->label(AdminLang::get('users.section_profile'))->schema([
+                TextInput::make('full_name')->label(AdminLang::get('users.full_name'))->rules('required|max:190'),
+                TextInput::make('email')->email()->label(AdminLang::get('users.email'))->rules('required|max:190')->unique(),
+                TextInput::make('login')->label(AdminLang::get('users.login'))->rules('max:190')->unique()
+                    ->help(AdminLang::get('users.login_help')),
+                ...(UsersResource::hasColumn('bio') ? [\FloCMS\Admin\Form\Fields\Textarea::make('bio')->label(AdminLang::get('users.bio'))->rows(4)->rules('max:2000')->nullable()->columnSpan('full')] : []),
+            ]),
+            \FloCMS\Admin\Form\Layout\Section::make('security')->label(AdminLang::get('users.section_password'))->schema([
+                TextInput::make('password')->password(false)->label(AdminLang::get('profile.new_password'))
+                    ->rules('min:' . UsersResource::MIN_PASSWORD)->help(AdminLang::get('profile.new_password_help')),
+                TextInput::make('current_password')->password(false)->label(AdminLang::get('profile.current_password'))
+                    ->help(AdminLang::get('profile.current_password_help')),
+            ]),
+        ])->aside([
+            ...(UsersResource::hasImageColumn() ? [\FloCMS\Admin\Form\Layout\Section::make('photo')->label(AdminLang::get('users.photo'))->columns(1)->schema([
+                \FloCMS\Admin\Form\Fields\ImageUpload::make('image')->label(AdminLang::get('users.photo'))->avatar()->help(AdminLang::get('users.photo_help')),
+            ])] : []),
+            \FloCMS\Admin\Form\Layout\Section::make('access')->label(AdminLang::get('users.section_access'))->columns(1)->schema([
+                Placeholder::make('role_info')->label(AdminLang::get('users.role'))
+                    ->content(static fn (?object $r): string => $roles[(int) ($r->role ?? -1)] ?? (string) ($r->role ?? '')),
+                Placeholder::make('status_info')->label(AdminLang::get('users.status'))
+                    ->content(static fn (?object $r): string => $statuses[(int) ($r->status ?? -1)] ?? (string) ($r->status ?? '')),
+            ]),
         ]);
     }
 
@@ -211,6 +222,7 @@ final class ProfileController extends PanelController
         $email = (string) $state['email'];
         $login = (string) $state['login'];
         $data = ['full_name' => (string) $state['full_name'], 'email' => $email, 'login' => $login];
+        if ($form->field('bio') !== null) { $bio = trim((string) ($state['bio'] ?? '')); $data['bio'] = $bio !== '' ? $bio : null; }
         if ($state['password'] !== '') {
             $data['password'] = password_hash((string) $state['password'], PASSWORD_DEFAULT);
         }

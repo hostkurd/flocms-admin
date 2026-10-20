@@ -1,13 +1,12 @@
 <link rel="stylesheet" href="{{ $richCss }}">
 <form method="post" action="{{ $action }}" class="fa-record fa-compose" id="fa-compose-form" novalidate data-admin-record-form data-admin-compose>
     {!! $csrf !!}
-    <input type="hidden" name="users" value="{{ $ids }}">
     <div class="fa-page-head">
         <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $lead }}</p></div>
         <div class="fa-action-group">
             <button type="submit" class="fa-btn" name="_preview" value="1">{{ $t('mailings.preview') }}</button>
             <button type="submit" class="fa-btn" name="_test" value="1">{{ $t('mailings.send_test') }}</button>
-            <button type="submit" class="fa-btn fa-btn-primary" name="_send" value="1">{!! $sendIcon !!}<span>{{ $direct ? ($count === 1 ? $t('mailings.send') : $t('mailings.send_to', ['count' => $count])) : $t('mailings.send_mailing', ['count' => $count]) }}</span></button>
+            <button type="submit" class="fa-btn fa-btn-primary" name="_send" value="1">{!! $sendIcon !!}<span data-admin-to-send>{{ $direct ? ($count === 1 ? $t('mailings.send') : $t('mailings.send_to', ['count' => $count])) : $t('mailings.send_mailing', ['count' => $count]) }}</span></button>
         </div>
     </div>
     @if($mailProblem !== null)<p class="fa-alert fa-alert-warning" role="alert">{{ $t('mailings.mail_problem', ['problem' => $mailProblem]) }}</p>@endif
@@ -15,23 +14,44 @@
     @if(isset($errors['_form']))<p class="fa-alert fa-alert-danger" role="alert">{{ $errors['_form'] }}</p>@endif
     <div class="fa-compose-layout">
         <section class="fa-card fa-compose-main" aria-label="{{ $t('mailings.message') }}">
-            <fieldset class="fa-compose-to">
-                <legend class="fa-label">{{ $t('mailings.to') }}</legend>
-                @if(count($chosen) > 0)
-                <label class="fa-compose-option{{ $audience['type'] === 'users' ? ' is-current' : '' }}"><input type="radio" name="to" value="users"@if($audience['type'] === 'users') checked @endif><span><strong>{{ $t('mailings.to_chosen', ['count' => count($chosen)]) }}</strong><span class="fa-compose-chips">@foreach($chosen as $person)<span class="fa-compose-chip">{!! $person['avatar'] !!}<span>{{ $person['name'] }}</span></span>@endforeach</span></span></label>
-                @endif
-                @if($canMailing)
-                <label class="fa-compose-option{{ $audience['type'] === 'everyone' ? ' is-current' : '' }}"><input type="radio" name="to" value="everyone"@if($audience['type'] === 'everyone') checked @endif><span><strong>{{ $t('mailings.to_everyone') }}</strong><small>{{ $t('mailings.to_everyone_note') }}</small></span></label>
-                <label class="fa-compose-option{{ $audience['type'] === 'role' ? ' is-current' : '' }}"><input type="radio" name="to" value="role"@if($audience['type'] === 'role') checked @endif><span><strong>{{ $t('mailings.to_role') }}</strong><select class="fa-input fa-input-sm" name="role" aria-label="{{ $t('mailings.to_role') }}">@foreach($roles as $value => $label)<option value="{{ $value }}"@if($audience['type'] === 'role' && (string) $audience['value'] === (string) $value) selected @endif>{{ $label }}</option>@endforeach</select></span></label>
-                <label class="fa-compose-option{{ $audience['type'] === 'status' ? ' is-current' : '' }}"><input type="radio" name="to" value="status"@if($audience['type'] === 'status') checked @endif><span><strong>{{ $t('mailings.to_status') }}</strong><select class="fa-input fa-input-sm" name="status" aria-label="{{ $t('mailings.to_status') }}">@foreach($statuses as $value => $label)<option value="{{ $value }}"@if($audience['type'] === 'status' && (string) $audience['value'] === (string) $value) selected @endif>{{ $label }}</option>@endforeach</select></span></label>
-                @endif
-                <div class="fa-compose-count">
-                    @if($canMailing && $audience['type'] !== 'users' && $audience['type'] !== 'status')<label class="fa-check"><input type="checkbox" name="active_only" value="1"@if($audience['active_only']) checked @endif><span>{{ $t('mailings.active_only') }}</span></label>@endif
-                    <span role="status"><strong>{{ $count === 1 ? $t('mailings.people_one') : $t('mailings.people', ['count' => number_format($count)]) }}</strong>@if($unsubscribed > 0) {{ $t('mailings.unsubscribed_left_out', ['count' => $unsubscribed]) }}@endif</span>
-                    @if($canMailing)<button type="submit" class="fa-btn fa-btn-ghost fa-btn-sm" name="_preview" value="1">{{ $t('mailings.update_count') }}</button>@endif
+            <div class="fa-field fa-to" data-admin-to data-search-url="{{ $searchUrl }}" data-count-url="{{ $countUrl }}" data-remove-text="{{ $t('mailings.remove') }}" data-none-text="{{ $t('mailings.no_match') }}" data-max="{{ $maxChosen }}">
+                <label class="fa-label" for="fa-to-input">{{ $t('mailings.to') }}</label>
+                <input type="hidden" name="to" value="{{ $audience['type'] }}" data-admin-to-type>
+                <input type="hidden" name="role" value="{{ $audience['type'] === 'role' ? $audience['value'] : '' }}" data-admin-to-role>
+                <input type="hidden" name="status" value="{{ $audience['type'] === 'status' ? $audience['value'] : '' }}" data-admin-to-status>
+                <div class="fa-to-wrap">
+                <div class="fa-to-box" data-admin-to-box>
+                    <span class="fa-to-chips" data-admin-to-chips>
+                        @if($audience['type'] === 'users')
+                        @foreach($chosen as $person)<span class="fa-to-chip" data-id="{{ $person['id'] }}" title="{{ $person['email'] }}">{!! $person['avatar'] !!}<span class="fa-to-chip-name">{{ $person['name'] }}</span><button type="submit" class="fa-to-remove" name="_remove" value="{{ $person['id'] }}" aria-label="{{ $t('mailings.remove') }} {{ $person['name'] }}">{!! $xIcon !!}</button></span>@endforeach
+                        @else
+                        <span class="fa-to-chip is-group" data-group="{{ $groupKey }}"><span class="fa-to-group-icon" aria-hidden="true">{!! $usersIcon !!}</span><span class="fa-to-chip-name">{{ $groupLabel }}</span><button type="submit" class="fa-to-remove" name="_remove" value="group" aria-label="{{ $t('mailings.remove') }} {{ $groupLabel }}">{!! $xIcon !!}</button></span>
+                        @endif
+                    </span>
+                    <input type="text" class="fa-to-input" id="fa-to-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fa-to-results" autocomplete="off" placeholder="{{ $t('mailings.to_placeholder') }}" data-admin-to-input hidden>
+                    @if($canMailing)
+                    <details class="fa-menu fa-to-group" data-admin-popover>
+                        <summary class="fa-btn fa-btn-sm fa-btn-ghost">{!! $usersIcon !!}<span>{{ $t('mailings.group') }}</span>{!! $chevronIcon !!}</summary>
+                        <div class="fa-menu-panel" role="menu">
+                            <button type="submit" class="fa-menu-item" role="menuitem" name="_to" value="everyone" data-label="{{ $t('mailings.to_everyone') }}"><span>{{ $t('mailings.to_everyone') }}</span><small class="fa-menu-meta">{{ $t('mailings.to_everyone_note') }}</small></button>
+                            <span class="fa-menu-heading">{{ $t('mailings.to_role') }}</span>
+                            @foreach($roles as $value => $label)<button type="submit" class="fa-menu-item" role="menuitem" name="_to" value="role:{{ $value }}" data-label="{{ $t('mailings.to_role_named', ['role' => $label]) }}">{{ $label }}</button>@endforeach
+                            <span class="fa-menu-heading">{{ $t('mailings.to_status') }}</span>
+                            @foreach($statuses as $value => $label)<button type="submit" class="fa-menu-item" role="menuitem" name="_to" value="status:{{ $value }}" data-label="{{ $t('mailings.to_status_named', ['status' => $label]) }}">{{ $label }}</button>@endforeach
+                        </div>
+                    </details>
+                    @endif
                 </div>
-                <p class="fa-help">{{ $direct ? $t('mailings.direct_note', ['count' => 20]) : $t('mailings.mailing_note') }}</p>
-            </fieldset>
+                <ul class="fa-to-results" id="fa-to-results" role="listbox" aria-label="{{ $t('mailings.to') }}" data-admin-to-results hidden></ul>
+                </div>
+                <input type="hidden" name="users" value="{{ $ids }}" data-admin-to-users>
+                <div class="fa-compose-count">
+                    <span role="status" data-admin-to-count><strong>{{ $count === 1 ? $t('mailings.people_one') : $t('mailings.people', ['count' => number_format($count)]) }}</strong>@if($unsubscribed > 0) {{ $t('mailings.unsubscribed_left_out', ['count' => $unsubscribed]) }}@endif</span>
+                    @if($canMailing)<label class="fa-check" data-admin-to-active@if($audience['type'] === 'users' || $audience['type'] === 'status') hidden @endif><input type="checkbox" name="active_only" value="1"@if($audience['active_only'] || $audience['type'] === 'users') checked @endif><span>{{ $t('mailings.active_only') }}</span></label>@endif
+                    <button type="submit" class="fa-btn fa-btn-ghost fa-btn-sm" name="_preview" value="1" data-admin-to-refresh>{{ $t('mailings.update_count') }}</button>
+                </div>
+                <p class="fa-help" data-admin-to-note>{{ $direct ? $t('mailings.direct_note', ['count' => 20]) : $t('mailings.mailing_note') }}</p>
+            </div>
             {!! $fields !!}
             <p class="fa-help">{{ $t('mailings.placeholders') }} @foreach($placeholders as $placeholder)<code dir="ltr">{{ $placeholder }}</code> @endforeach</p>
             @if($confirm)

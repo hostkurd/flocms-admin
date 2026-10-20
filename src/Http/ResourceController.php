@@ -460,13 +460,16 @@ final class ResourceController extends PanelController
         $executor = new \FloCMS\Admin\Actions\ActionExecutor($this->resource, $this->repository());
         $form = $action->getForm($this->resource);
         $errors = []; $state = []; $record = null;
+        // ?back= (0.28): an action opened from another page (the edit page's Quick actions) returns there.
+        $backParam = is_string($back = $this->request->queryValue('back', '')) ? $back : '';
+        $after = $this->safeBackUrl($backParam) ?? $this->listUrl();
         if ($this->isPost()) {
             $token = $this->request->input('_operation');
             if (!is_string($token)) { throw new HttpException(400); }
             \FloCMS\Admin\Actions\OperationStore::get($token, $this->resource::getSlug(), $placement, $name, $id);
             if ($this->request->input('_cancel') !== null) {
                 \FloCMS\Admin\Actions\OperationStore::consume($token);
-                $this->redirect($this->listUrl());
+                $this->redirect($after);
             }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
             try {
@@ -480,7 +483,7 @@ final class ResourceController extends PanelController
                     $form->refreshState($state, $record);
                 } else {
                     $executor->execute($action, $placement, $id, $token, $this->request->all(), $state);
-                    $this->redirect($this->listUrl());
+                    $this->redirect($after);
                 }
             } catch (\FloCMS\Core\ValidationException $error) {
                 foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); }
@@ -515,7 +518,7 @@ final class ResourceController extends PanelController
                 'other' => \FloCMS\Admin\Form\LanguageSwitch::otherNote(Languages::default(), $editing, false, $renderer->hasSharedFields()),
             ] : null,
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
-            'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : ''), ['parent' => $this->scope?->token()]),
+            'actionUrl' => Admin::url($this->resource::getSlug() . '/action/' . $placement . '/' . $name . ($id !== '' ? '/' . $id : ''), ['parent' => $this->scope?->token(), 'back' => $this->safeBackUrl($backParam) !== null ? $backParam : null]),
             'submitLabel' => $action->getSubmitLabel($this->resource), 'submitColor' => $action->getColor(),
         ]), $this->resource::getSlug());
     }
@@ -954,6 +957,9 @@ final class ResourceController extends PanelController
         foreach (array_filter([Admin::url($this->resourceClass::getSlug()), $this->scope?->parentUrl()]) as $base) {
             if ($url !== '' && ($url === $base || str_starts_with($url, $base . '?'))) { return $url; }
         }
+        // A record's own edit or view page of this resource (0.28).
+        $list = Admin::url($this->resourceClass::getSlug());
+        if (str_starts_with($url, $list . '/') && preg_match('~^/(edit|view)/[A-Za-z0-9_-]{1,64}$~D', substr($url, strlen($list))) === 1) { return $url; }
         return null;
     }
 

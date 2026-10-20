@@ -1,6 +1,12 @@
 # Users: photos, actions and emails
 
-Admin 0.28 turns **Users** (`/admin/accounts`) into a people list: photos, row and bulk actions such as Suspend and Send reset link, and emails to one person or to everyone. Run `php flo admin:install`, then `php flo migrate` for the mailing tables; everything else works without installing.
+Admin 0.28 turns **Users** (`/admin/accounts`) into a people list: photos, row and bulk actions such as Suspend and Send reset link, and emails to one person or to everyone. Run `php flo admin:install`, then `php flo migrate` for the mailing tables and the `bio` column; everything else works without installing.
+
+## The user page
+
+**New User** and **Edit** show the person's details in the main column: **Profile** (name, email, login, phone, bio) and **Password** (with **Generate**). The sidebar holds the **Photo**, **Access** (role and status) and, for an existing user, **Quick actions**: Send reset link, Send email, Activate and Suspend, greyed out with the reason as a tooltip when they don't apply. A quick action opens its own page and comes back to the user. The Profile page uses the same layout.
+
+**Bio** is an optional text column (`users.bio`) that `admin:install` adds to your site's own `users` table; the field shows once the column exists. On the website it is `$user->bio`.
 
 ## Photos
 
@@ -39,7 +45,7 @@ The row's **⋯** menu, each item following the person's permissions:
 | **Suspend** | asks for an optional reason (kept in the activity log), sets the status to Suspended, ends their access on their next request; **Tell them by email** sends them a note |
 | **Delete** | as before, to the trash |
 
-An action that does not apply is **greyed out with its reason**: for example "Already active", "You can’t do this to your own account" or "No email address". The server refuses it in the same cases.
+An action that does not apply is **greyed out**; its reason ("Already active", "You can’t do this to your own account", "No email address") shows as a tooltip on hover, keyboard focus or a tap, and screen readers read it. The server refuses it in the same cases.
 
 If an email can't be sent, the status still changes and a warning says the email didn't go out.
 
@@ -49,7 +55,9 @@ Select rows, then **Activate**, **Suspend**, **Send reset link**, **Send email**
 
 ## Emails
 
-**Email users** (top of the list) and **Send email** open the composer at `/admin/mailings/compose`: To, Subject, a rich-text Message, and a Preview as one of the recipients. `{name}`, `{first_name}`, `{email}` and `{site}` are replaced for each person. **Send me a test** sends it to yourself.
+**Email users** (top of the list) and **Send email** open the composer at `/admin/mailings/compose`: To, Subject, a rich-text Message, and a Preview as one of the recipients.
+
+**To** works like an email program: people are chips, added by typing a name or email (arrow keys and Enter pick one; Backspace removes the last). **Group** adds Everyone, a role or a status as one chip instead. The count, the Send button and the page title follow at once. Without JavaScript the Group menu and the × on each chip still work (the page reloads with what you typed). `{name}`, `{first_name}`, `{email}` and `{site}` are replaced for each person. **Send me a test** sends it to yourself.
 
 There are two kinds:
 

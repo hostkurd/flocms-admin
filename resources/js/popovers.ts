@@ -35,7 +35,7 @@ document.addEventListener('click', event => {
   }
   // Choosing a menu item closes the menu; remember it so focus can return to
   // its button when the action's dialog closes.
-  const item = event.target.closest('.fa-menu-item');
+  const item = event.target.closest('.fa-menu-item:not(.is-disabled)');
   if (item && owner.classList.contains('fa-menu')) {
     lastMenu = owner.id || null;
     owner.open = false;
@@ -113,14 +113,24 @@ function place(details: HTMLDetailsElement): void {
   panel.style.position = 'fixed';
   panel.style.insetInline = 'auto';
   panel.style.insetBlock = 'auto';
+  // Measured at the viewport's corner: at its old place near the edge the panel
+  // would be squeezed and measure too narrow (and then overflow the edge).
+  panel.style.top = '0px';
+  panel.style.left = '0px';
   const width = panel.offsetWidth, height = panel.offsetHeight;
+  // The page's width without its scrollbar; 12px from the edge.
+  const viewWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewHeight = document.documentElement.clientHeight || window.innerHeight;
   let top = rect.bottom + 4;
-  if (top + height > window.innerHeight - 8 && rect.top - 4 - height >= 8) top = rect.top - 4 - height;
+  if (top + height > viewHeight - 12 && rect.top - 4 - height >= 12) top = rect.top - 4 - height;
   const rtl = getComputedStyle(details).direction === 'rtl';
   let left = rtl ? rect.left : rect.right - width;
-  left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+  left = Math.max(12, Math.min(left, viewWidth - width - 12));
   panel.style.top = `${Math.round(top)}px`;
   panel.style.left = `${Math.round(left)}px`;
+  // Tooltips of greyed-out items go beside the menu when there is room, else below the item.
+  const room = rtl ? viewWidth - (left + width) : left;
+  panel.classList.toggle('is-tips-below', room < 240);
 }
 
 document.addEventListener('toggle', event => {
@@ -132,3 +142,14 @@ document.addEventListener('toggle', event => {
 const reposition = () => document.querySelectorAll<HTMLDetailsElement>('details.fa-menu[data-admin-popover][open]').forEach(place);
 window.addEventListener('resize', reposition);
 document.addEventListener('scroll', reposition, { capture: true, passive: true });
+
+// A greyed-out menu item shows why on hover and focus (CSS); a tap shows it too.
+document.addEventListener('click', event => {
+  const target = event.target instanceof Element ? event.target : null;
+  const item = target?.closest<HTMLElement>('[data-admin-tip]');
+  document.querySelectorAll<HTMLElement>('[data-admin-tip].is-tip-open').forEach(open => { if (open !== item) open.classList.remove('is-tip-open'); });
+  if (!item) return;
+  event.preventDefault();
+  item.classList.toggle('is-tip-open');
+  item.focus();
+});
