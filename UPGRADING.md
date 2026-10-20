@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.28.2
+
+Update with `composer require "hostkurd/flocms-admin:^0.28.2" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+---
+
 # Upgrading to Admin 0.28.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.28.1" -W`, run `php flo view:clear` and reload open Admin pages.

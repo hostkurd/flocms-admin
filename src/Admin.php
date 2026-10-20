@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.28.1';
+    public const VERSION = '0.28.2';
 
     private static bool $booted = false;
     private static ?string $root = null;

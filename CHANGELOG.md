@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.28.2 - 2026-10-20
+
+- **Row menus no longer slide when they open.** On a short page with a desktop scrollbar (Windows, Linux), the open menu briefly brought up the page's scrollbar, opened about 15 px too far to the side and then jumped into place. It now stays hidden for that first frame and appears where it belongs.
+
 ## 0.28.1 - 2026-10-20
 
 **Users, polished after review.** Run `php flo admin:install`, then `php flo migrate` for the new optional `bio` column. See [Users: photos, actions and emails](docs/users.md).

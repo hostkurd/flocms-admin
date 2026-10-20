@@ -108,8 +108,9 @@ function place(details: HTMLDetailsElement): void {
   const panel = details.querySelector<HTMLElement>(':scope > .fa-menu-panel');
   const button = summary(details);
   if (!panel || !button) return;
-  if (!details.open) { panel.removeAttribute('style'); return; }
-  const rect = button.getBoundingClientRect();
+  if (!details.open) { panel.removeAttribute('style'); delete panel.dataset.placed; return; }
+  // Out of the page's flow first: in its place in the table, the open panel can
+  // make the page's scrollbar appear for a moment and shift the button.
   panel.style.position = 'fixed';
   panel.style.insetInline = 'auto';
   panel.style.insetBlock = 'auto';
@@ -117,6 +118,13 @@ function place(details: HTMLDetailsElement): void {
   // would be squeezed and measure too narrow (and then overflow the edge).
   panel.style.top = '0px';
   panel.style.left = '0px';
+  // Just opened: hidden until its place is settled in the next frame, so it never jumps.
+  if (!panel.dataset.placed) {
+    panel.dataset.placed = '1';
+    panel.style.visibility = 'hidden';
+    requestAnimationFrame(() => { place(details); panel.style.visibility = ''; });
+  }
+  const rect = button.getBoundingClientRect();
   const width = panel.offsetWidth, height = panel.offsetHeight;
   // The page's width without its scrollbar; 12px from the edge.
   const viewWidth = document.documentElement.clientWidth || window.innerWidth;
