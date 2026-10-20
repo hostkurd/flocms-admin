@@ -131,7 +131,10 @@ final class ResourceController extends PanelController
             $this->can('update'),
             $this->can('delete'),
             fn (object $r): bool => $this->resource->canEdit($r),
-            fn (object $r): bool => $this->resource->canDelete($r), $filters
+            fn (object $r): bool => $this->resource->canDelete($r), $filters,
+            // Tabs above the list (0.28), counted with the search
+            \FloCMS\Admin\Table\TabsView::render($table, $filters, $this->repository()->whereSearch($this->repository()->newQuery(), $table, $search),
+                fn (array $state): string => Admin::url($class::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $this->scope?->token(), 'filter' => $state, 'q' => $search, 'sort' => $sort, 'dir' => $dir]))
         );
 
         return $this->panel($this->scope !== null ? AdminLang::get('relations.list_title', ['label' => $class::getPluralLabel(), 'parent' => $this->scope->parentTitle()]) : $class::getPluralLabel(), $html, $this->activeSlug());
@@ -398,6 +401,12 @@ final class ResourceController extends PanelController
         $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find('bulk', $name);
         $executor = new \FloCMS\Admin\Actions\BulkExecutor($this->resource, $this->repository());
         $ids = \FloCMS\Admin\Actions\BulkExecutor::ids($this->isPost() ? $this->request->input('_ids') : $this->request->queryValue('ids', []));
+        // A bulk action that opens a page (0.28): on to it with the chosen ids.
+        if ($action->opensPage()) {
+            if ($this->isPost()) { throw new HttpException(405); }
+            $action->authorizePermission($this->resource);
+            $this->redirect($action->getBulkUrl($ids) ?? throw new HttpException(404));
+        }
         $form = $action->getForm($this->resource); $errors = [];
         if ($this->isPost()) {
             $token = $this->request->input('_operation');
@@ -414,7 +423,12 @@ final class ResourceController extends PanelController
             catch (\FloCMS\Core\ValidationException $error) { foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); } }
         } else {
             try { $opened = $executor->open($action, $ids); }
-            catch (\FloCMS\Core\ValidationException) { throw new HttpException(404); }
+            catch (\FloCMS\Core\ValidationException $error) {
+                // Nothing left to do (every record skipped) or the records are gone: say so on the list.
+                $first = array_values(array_map(static fn ($m): string => implode(' ', (array) $m), $error->getErrors()))[0] ?? '';
+                Session::setFlash($first !== '' ? $first : AdminLang::get('bulk.missing'), 'warning');
+                $this->redirect($this->listUrl(true));
+            }
             $token = $opened['operation']; $state = $opened['state'];
         }
         $safe = \FloCMS\Admin\Actions\ActionForm::safe($form, $state);
@@ -423,7 +437,7 @@ final class ResourceController extends PanelController
         }
         return $this->panel($action->getTitle($this->resource), \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('bulk'), [
             't' => PageView::translator(), 'title' => $action->getTitle($this->resource),
-            'description' => \FloCMS\Admin\Actions\BulkExecutor::confirmText($this->resource, $action, count($ids)),
+            'description' => $executor->describe($action, $ids),
             'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default()))->render($form),
             'errors' => $errors, 'ids' => json_encode($ids, JSON_THROW_ON_ERROR), 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/bulk/' . $name, ['parent' => $this->scope?->token()]), 'submitLabel' => $action->getLabel($this->resource), 'submitColor' => $action->getColor(),
@@ -481,7 +495,7 @@ final class ResourceController extends PanelController
         foreach ($form->fields() as $fieldName => $field) {
             if (!$field->isWritable()) { $safe[$fieldName] = $field->stateFromRecord($record, Languages::default()); }
         }
-        $title = $action->getTitle($this->resource);
+        $title = $action->getTitle($this->resource, $record);
         // Page-level translation (0.23): the same switch as the dialog this page stands in for.
         $switch = $action->getKind() !== 'delete' && $this->resourceClass::usesLanguageSwitchFor($form);
         $editing = $switch ? \FloCMS\Admin\Translation\EditingLanguage::resolve($this->isPost() ? $this->request->input('_editing') : $this->request->queryValue('editing'), $record !== null) : Languages::default();
@@ -493,7 +507,7 @@ final class ResourceController extends PanelController
             languageSwitch: $switch, editing: $editing, sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name(Languages::default())]) : null);
         $fieldsHtml = $renderer->render($form);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
-            't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription($this->resource),
+            't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription($this->resource, $record),
             'fields' => $fieldsHtml,
             'translation' => $switch ? [
                 'editing' => $editing, 'defaultLang' => Languages::default(),
@@ -733,7 +747,7 @@ final class ResourceController extends PanelController
         if (!$field instanceof \FloCMS\Admin\Form\Fields\FileUpload || (!$pending && !$field->isVisible()) || ($viewer && $field->isHiddenOnView())) { throw new HttpException(404); }
         $path = $pending ? $entry['path'] : (string) ($record->{$name} ?? '');
         if (!$pending && !\FloCMS\Admin\Uploads\Uploads::managed($path, $this->resource, $field)) { throw new HttpException(404); }
-        $absolute = \FloCMS\Admin\Uploads\Uploads::storage()->path($path);
+        $absolute = ($pending ? \FloCMS\Admin\Uploads\Uploads::storage() : \FloCMS\Admin\Uploads\Uploads::storageFor($field))->path($path);
         if ($absolute === null || !is_file($absolute) || filesize($absolute) > 16777216) { throw new HttpException(404); }
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($absolute);
         $inline = $field instanceof \FloCMS\Admin\Form\Fields\ImageUpload && in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true);

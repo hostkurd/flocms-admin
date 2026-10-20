@@ -70,11 +70,12 @@
                 "FloCMS\\Admin\\Console\\ImportsCommand",
                 "FloCMS\\Admin\\Console\\ImportUndoCommand",
                 "FloCMS\\Admin\\Console\\ImportPurgeCommand",
+                "FloCMS\\Admin\\Console\\MailingsCommand",
                 "FloCMS\\Admin\\Console\\MailTestCommand"
             ]
         },
         "branch-alias": {
-            "dev-main": "0.27-dev"
+            "dev-main": "0.28-dev"
         }
     },
     "scripts": {

@@ -1,0 +1,27 @@
+<section class="fa-card fa-mailing-card" aria-labelledby="fa-mailing-{{ $card['id'] }}" data-admin-mailing="{{ $card['id'] }}"@if($card['stepUrl'] !== null) data-step-url="{{ $card['stepUrl'] }}"@endif>
+    <div class="fa-mailing-head">
+        <div class="fa-mailing-heading">
+            <span class="fa-status fa-status-{{ $card['tone'] }}"><span class="fa-status-dot" aria-hidden="true"></span>{{ $card['statusLabel'] }}</span>
+            <h2 class="fa-mailing-title" id="fa-mailing-{{ $card['id'] }}"><a href="{{ $card['url'] }}">{{ $card['subject'] }}</a></h2>
+            <p class="fa-mailing-meta">{{ $card['to'] }} · {{ $card['by'] }}</p>
+        </div>
+        <div class="fa-mailing-actions">
+            @if($card['stepUrl'] !== null)<form method="post" action="{{ $card['stepUrl'] }}" class="fa-inline" data-admin-local data-admin-mailing-continue>{!! $card['csrf'] !!}<button type="submit" class="fa-btn fa-btn-primary">{{ $t('mailings.continue') }}</button></form>@endif
+            @if($card['pauseUrl'] !== null)<form method="post" action="{{ $card['pauseUrl'] }}" class="fa-inline">{!! $card['csrf'] !!}<button type="submit" class="fa-btn">{{ $t('mailings.pause') }}</button></form>@endif
+            @if($card['resumeUrl'] !== null)<form method="post" action="{{ $card['resumeUrl'] }}" class="fa-inline">{!! $card['csrf'] !!}<button type="submit" class="fa-btn fa-btn-primary">{{ $t('mailings.resume') }}</button></form>@endif
+            @if($card['retryUrl'] !== null)<form method="post" action="{{ $card['retryUrl'] }}" class="fa-inline">{!! $card['csrf'] !!}<button type="submit" class="fa-btn">{{ $t('mailings.retry') }}</button></form>@endif
+            @if($card['cancelUrl'] !== null)<form method="post" action="{{ $card['cancelUrl'] }}" class="fa-inline" data-confirm data-confirm-text="{{ $t('mailings.cancel_confirm') }}">{!! $card['csrf'] !!}<button type="submit" class="fa-btn fa-btn-danger-outline">{{ $t('mailings.cancel') }}</button></form>@endif
+        </div>
+    </div>
+    <div class="fa-mailing-progress">
+        <progress class="fa-progress-bar" max="100" value="{{ $card['percent'] }}" aria-label="{{ $card['progress'] }}">{{ $card['percent'] }}%</progress>
+        <div class="fa-mailing-progress-text"><span>{{ $card['progress'] }}</span>@if($card['left'] !== '' && $card['status'] === 'sending')<span>{{ $card['left'] }}</span>@endif</div>
+    </div>
+    <dl class="fa-mailing-stats">
+        <div><dt>{{ $t('mailings.sent') }}</dt><dd>{{ number_format($card['sent']) }}</dd></div>
+        <div><dt>{{ $t('mailings.waiting') }}</dt><dd>{{ number_format($card['waiting']) }}</dd></div>
+        <div><dt>{{ $t('mailings.failed') }}</dt><dd class="{{ $card['failed'] > 0 ? 'is-danger' : '' }}">{{ number_format($card['failed']) }}</dd></div>
+        <div><dt>{{ $t('mailings.left_out') }}</dt><dd>{{ number_format($card['skipped']) }}</dd></div>
+    </dl>
+    @if($card['status'] === 'sending')<p class="fa-mailing-note" data-admin-mailing-note>{{ $t('mailings.sending_note') }}</p>@endif
+</section>

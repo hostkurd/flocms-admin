@@ -329,6 +329,32 @@ final class AdminConfig
      *
      * @return array{enabled: bool, table: string, rows_table: string, max_bytes: int, max_rows: int, batch_size: int, keep_hours: int, undo_days: int}
      */
+    /**
+     * Emails to users (0.28): on unless 'mailings' => false. Options: the three
+     * table names, 'per_batch' (emails per step, default 20), 'per_hour' (the
+     * whole site's mailings, default 200 — shared hosts often allow 100–500),
+     * 'direct_per_hour' (direct emails per admin, default 50) and 'keep_days'
+     * (how long recipient lists are kept after a mailing, default 30).
+     *
+     * @return array{enabled: bool, table: string, recipients_table: string, optouts_table: string, per_batch: int, per_hour: int, direct_per_hour: int, keep_days: int}
+     */
+    public function mailings(): array
+    {
+        $value = $this->values['mailings'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $int = static fn (string $key, int $default, int $min, int $max): int => is_int($options[$key] ?? null) ? max($min, min($max, $options[$key])) : $default;
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false && $this->usersEnabled(),
+            'table' => self::tableName($options['table'] ?? null, 'admin_mailings'),
+            'recipients_table' => self::tableName($options['recipients_table'] ?? null, 'admin_mailing_recipients'),
+            'optouts_table' => self::tableName($options['optouts_table'] ?? null, 'admin_mail_optouts'),
+            'per_batch' => $int('per_batch', 20, 1, 200),
+            'per_hour' => $int('per_hour', 200, 1, 100000),
+            'direct_per_hour' => $int('direct_per_hour', 50, 1, 1000),
+            'keep_days' => $int('keep_days', 30, 1, 365),
+        ];
+    }
+
     public function import(): array
     {
         $value = $this->values['import'] ?? true;
@@ -417,6 +443,32 @@ final class AdminConfig
             $url = rtrim($path, '/') . '/uploads/settings';
         }
         return ['root' => $root, 'url' => $url];
+    }
+
+    /**
+     * Where public resource uploads go (0.28: FileUpload::public(), such as
+     * avatars): shown on the panel and on the website without a permission check.
+     * Defaults: <root>/public/uploads/admin served at <site path>/uploads/admin.
+     *
+     * @return array{root: string, url: string}
+     */
+    public function publicUploads(): array
+    {
+        $uploads = is_array($this->values['public_uploads'] ?? null) ? $this->values['public_uploads'] : [];
+        $root = is_string($uploads['root'] ?? null) && trim($uploads['root']) !== '' ? str_replace('\\', '/', trim($uploads['root'])) : 'public/uploads/admin';
+        $absolute = str_starts_with($root, '/') || preg_match('/^[A-Za-z]:\//', $root) === 1;
+        $root = $absolute ? rtrim($root, '/') : rtrim($this->root, '/\\') . '/' . trim($root, '/');
+        $url = $uploads['url'] ?? null;
+        if (!is_string($url) || preg_match('~^(https?://[^\s"\'<>/]+)?/[^\s"\'<>]*$~iD', $url = rtrim(trim($url), '/')) !== 1 || str_starts_with($url, '//')) {
+            $url = self::sitePath() . '/uploads/admin';
+        }
+        return ['root' => $root, 'url' => $url];
+    }
+
+    /** The site's path below its domain ('' at the root), from SITE_URI. */
+    public static function sitePath(): string
+    {
+        return rtrim(defined('SITE_URI') ? (string) parse_url((string) SITE_URI, PHP_URL_PATH) : '', '/');
     }
 
     public function permissionPrefix(): string

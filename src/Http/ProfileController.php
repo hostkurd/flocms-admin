@@ -40,13 +40,17 @@ final class ProfileController extends PanelController
         $form = $this->form($user);
         $errors = [];
 
+        $users = new UsersResource();
         if ($this->isPost()) {
+            // The photo (0.28) arrives with the page, like a resource's upload field.
+            $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $this->request->all(), $_FILES['_uploads'] ?? [], $users, $user);
             $state = [];
             foreach ($form->fields() as $name => $field) {
                 $state[$name] = $field instanceof Placeholder
                     ? $field->stateFromRecord($user, Languages::default())
-                    : $field->stateFromInput($this->request->all(), []);
+                    : $field->stateFromInput($input, []);
             }
+            $state = \FloCMS\Admin\Uploads\Uploads::state($form, $state, $users, $user);
 
             $state = UsersResource::normalizeLogin($state);
 
@@ -67,7 +71,7 @@ final class ProfileController extends PanelController
 
             if ($errors === []) {
                 $before = \FloCMS\Admin\Activity\Activity::enabled() ? \FloCMS\Admin\Activity\ActivityChanges::state($form, $user) : [];
-                $this->save($db, (int) $id, $state);
+                $this->save($db, (int) $id, $state, $form, $users, $user);
                 if (\FloCMS\Admin\Activity\Activity::enabled()) {
                     $saved = $db->table('users')->where('id', '=', (int) $id)->first();
                     $changes = $saved !== null ? \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved)) : [];
@@ -91,7 +95,7 @@ final class ProfileController extends PanelController
 
         $title = AdminLang::get('profile.title');
         $html = self::page($title, null, Admin::url('profile'),
-            (new FormRenderer($state, $errors, [], Languages::default(), true))->render($form), 'account', $errors !== []);
+            (new FormRenderer($state, $errors, [], Languages::default(), true, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($users, $user)))->render($form), 'account', $errors !== []);
 
         return $this->panel($title, $html, 'profile');
     }
@@ -197,11 +201,12 @@ final class ProfileController extends PanelController
                 ->help(AdminLang::get('profile.current_password_help')),
             Placeholder::make('status_info')->label(AdminLang::get('users.status'))
                 ->content(static fn (?object $r): string => $statuses[(int) ($r->status ?? -1)] ?? (string) ($r->status ?? '')),
+            ...(UsersResource::hasImageColumn() ? [\FloCMS\Admin\Form\Fields\ImageUpload::make('image')->label(AdminLang::get('users.photo'))->avatar()->help(AdminLang::get('users.photo_help'))] : []),
         ]);
     }
 
     /** @param array<string, string|array<string, string>> $state */
-    private function save(Database $db, int $id, array $state): void
+    private function save(Database $db, int $id, array $state, Form $form, UsersResource $users, object $user): void
     {
         $email = (string) $state['email'];
         $login = (string) $state['login'];
@@ -210,7 +215,15 @@ final class ProfileController extends PanelController
             $data['password'] = password_hash((string) $state['password'], PASSWORD_DEFAULT);
         }
 
-        $db->table('users')->where('id', '=', $id)->update($data);
+        // The photo: stored (cropped square) before the row is saved; the old one deleted after.
+        $batch = new \FloCMS\Admin\Uploads\UploadBatch();
+        if ($form->field('image') !== null) {
+            $data['image'] = (string) ($batch->prepare($form, ['image' => $state['image'] ?? ''] + $state, $users, $user)['image'] ?? '');
+        }
+        try { $db->table('users')->where('id', '=', $id)->update($data); }
+        catch (\Throwable $error) { $batch->rollback(); throw $error; }
+        $batch->commit();
+        \FloCMS\Admin\Support\Avatar::reset();
         if (isset($data['password'])) {
             // Other sessions of this account end; this one stays signed in (0.26)
             \FloCMS\Admin\Auth\PasswordStamp::restamp($data['password']);

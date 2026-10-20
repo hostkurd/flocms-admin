@@ -31,6 +31,7 @@ $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_ENV['DEFAULT_LANG'] = 'en';
 // Forgot password (0.26): emails go to ROOT/storage/logs/admin-mail.log
 $_ENV['MAIL_TRANSPORT'] = 'log';
+$_ENV['APP_KEY'] = $_ENV['APP_KEY'] ?? 'browser-test-key-0123456789abcdef';
 $_ENV['MAIL_FROM'] = 'panel@example.test';
 $_ENV['APP_URL'] = 'http://127.0.0.1:8083';
 Config::set('routes', ['default' => '', 'admin' => 'admin_']);
@@ -211,6 +212,21 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             'media' => App::$db->query('SELECT id, title, alt, path, folder_id, focal_x, focal_y FROM media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
             'folders' => App::$db->query('SELECT id, parent_id, name FROM media_folders ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
         case '/__test/media-off': App::$db->query('DROP TABLE IF EXISTS media_folders'); App::$db->query('DROP TABLE IF EXISTS media_usage'); App::$db->query('DROP TABLE IF EXISTS media'); break;
+        case '/__test/people':
+            // The Users page (0.28): a few people, the mailing tables and the activity log.
+            foreach ([['mailings-migration', ['mailings_table' => 'admin_mailings', 'recipients_table' => 'admin_mailing_recipients', 'optouts_table' => 'admin_mail_optouts'], 'mailings'], ['trash-activity-migration', ['trash_table' => 'admin_trash', 'activity_table' => 'admin_activity'], 'history'], ['password-resets-migration', ['table' => 'admin_password_resets'], 'resets']] as [$stub, $values, $name]) {
+                $file = ROOT . '/' . $name . '-migration.php';
+                file_put_contents($file, \FloCMS\Admin\Console\Stub::render($stub, $values));
+                (require $file)->up(App::$db);
+            }
+            try { $pdo->exec("ALTER TABLE users ADD COLUMN image TEXT NOT NULL DEFAULT ''"); } catch (\PDOException) { /* already there */ }
+            if ((int) App::$db->table('users')->count() < 3) {
+                foreach ([['Daniel Okafor', 2, 1, 1], ['Lana Karim', 1, 1, 1], ['Omar Haddad', 0, 2, 0], ['Elena Papadopoulou', 1, 1, 1], ['Rebin Aziz', 0, 3, 1], ['Mia Fischer', 0, 1, 1], ['Yusuf Demir', 0, 2, 0]] as [$name, $role, $status, $verified]) {
+                    $login = strtolower(strtok($name, ' '));
+                    App::$db->table('users')->insert(['full_name' => $name, 'email' => $login . '@seaside.example', 'login' => $login, 'password' => '', 'role' => $role, 'status' => $status, 'is_verified' => $verified]);
+                }
+            }
+            break;
         case '/__test/history':
             // The trash and the activity log (0.19): off until a test asks, so other tests delete for good.
             $file = ROOT . '/history-migration.php';

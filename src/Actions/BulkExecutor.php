@@ -40,6 +40,43 @@ final class BulkExecutor
         return AdminLang::get($key('bulk.confirm'), ['count' => $count]);
     }
 
+    /**
+     * A skipping action's confirmation (0.28): how many records it changes, and
+     * which are left out and why ("1 is skipped: you can't suspend yourself.").
+     *
+     * @param array<string, int> $skipped reason => count
+     */
+    public static function skipText(int $count, array $skipped): string
+    {
+        $total = array_sum($skipped);
+        if ($total === 0) { return ''; }
+        $reasons = [];
+        foreach ($skipped as $reason => $n) { $reasons[] = $n > 1 && count($skipped) > 1 ? $reason . ' (' . $n . ')' : $reason; }
+        return AdminLang::get($total === 1 ? 'bulk.skipped_one' : 'bulk.skipped', ['count' => $total, 'reasons' => implode(AdminLang::get('form.list_separator'), $reasons)]);
+    }
+
+    /**
+     * The records of a skipping bulk action that it leaves out: reason => count.
+     *
+     * @return array<string, int>
+     */
+    /** The confirmation text for these ids: what happens, and what is left out (0.28). */
+    public function describe(BulkAction $action, array $ids): string
+    {
+        // The records may have changed since the dialog opened (another admin): the plain text then.
+        try { $skipped = $this->skipped($action, $ids); } catch (\FloCMS\Core\ValidationException) { $skipped = []; }
+        $count = count($ids) - array_sum($skipped);
+        $text = $action->hasDescription() ? str_replace(':count', (string) $count, $action->getDescription($this->resource)) : self::confirmText($this->resource, $action, $count);
+        return $skipped === [] ? $text : $text . ' ' . self::skipText(count($ids) - array_sum($skipped), $skipped);
+    }
+
+    public function skipped(BulkAction $action, array $ids): array
+    {
+        if (!$action->skipsUnavailable()) { return []; }
+        $this->records($action, self::ids($ids), $skipped);
+        return $skipped;
+    }
+
     private static function digest(array $ids): string { return hash('sha256', json_encode($ids, JSON_THROW_ON_ERROR)); }
     public function open(BulkAction $action, array $ids): array
     {
@@ -62,17 +99,25 @@ final class BulkExecutor
         $this->authorize($action, $ids, $token);
         $this->records($action, self::ids($ids));
     }
-    private function records(BulkAction $action, array $ids): array
+    /** @param array<string, int>|null $skipped filled with reason => count for a skipping action */
+    private function records(BulkAction $action, array $ids, ?array &$skipped = null): array
     {
         Auth::authorize($this->resource::permission('view'));
         $action->authorizePermission($this->resource);
-        $records = [];
+        $records = []; $skipped = [];
         foreach ($ids as $id) {
             $record = $this->repository->find($id) ?? throw new ValidationException(['_form' => AdminLang::get('bulk.missing')]);
             if ((string) $record->{$this->resource::getPrimaryKey()} !== $id) { throw new HttpException(400, 'Use canonical record IDs.'); }
+            // A skipping action (0.28) leaves out the records it doesn't apply to.
+            if ($action->skipsUnavailable() && !$action->allowed($this->resource, $record)) {
+                $reason = $action->skipReason($this->resource, $record);
+                $skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
+                continue;
+            }
             $action->authorizeRequest($this->resource, $record);
             $records[] = $record;
         }
+        if ($records === [] && $skipped !== []) { throw new ValidationException(['_form' => AdminLang::get('bulk.nothing_to_do', ['reasons' => implode(AdminLang::get('form.list_separator'), array_keys($skipped))])]); }
         return $records;
     }
     public function execute(BulkAction $action, array $ids, string $token, array $input, array &$accepted, ?int $maxBytes = null): void
@@ -84,7 +129,7 @@ final class BulkExecutor
         try {
         Notifications::capture(function () use ($action, $ids, $input, $entry, &$accepted, $maxBytes, $batch): void {
             $this->repository->transaction(function () use ($action, $ids, $input, $entry, &$accepted, $maxBytes, $batch): void {
-                $records = $this->records($action, $ids);
+                $records = $this->records($action, $ids, $skipped);
                 $fingerprints = json_decode($entry['fingerprint'], true, 512, JSON_THROW_ON_ERROR);
                 // Lock in deterministic ID order; reject every stale row before writing any.
                 foreach ($records as $record) {
@@ -106,7 +151,9 @@ final class BulkExecutor
                         'action' => mb_substr(strip_tags($action->getLabel($this->resource)), 0, 120), 'count' => count($records),
                         'titles' => array_slice(array_map(fn (object $record): string => \FloCMS\Admin\Trash\Trash::titleOf($this->resource, $record), $records), 0, 20),
                     ], db: $this->repository->connection());
-                    Notification::make()->title(AdminLang::get('bulk.completed', ['count' => count($ids)]))->success()->send();
+                    $done = Notification::make()->title($action->getCompletedTitle(count($records)))->success();
+                    if ($skipped !== []) { $done->body(self::skipText(count($records), $skipped)); }
+                    $done->send();
                 }
             });
         });

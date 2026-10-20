@@ -15,7 +15,7 @@
             @endforeach
             @if($mediaUrl !== null)<a class="fa-nav-link{{ $mediaActive ? ' is-active' : '' }}" href="{{ $mediaUrl }}"@if($mediaActive) aria-current="page"@endif>{!! $mediaIcon !!}<span>{{ $t('media.title') }}</span></a>@endif
             @endif
-            @if($usersUrl !== null || $rolesUrl !== null || $settingsUrl !== null || $activityUrl !== null || $trashUrl !== null || $importsUrl !== null)
+            @if($usersUrl !== null || $rolesUrl !== null || $settingsUrl !== null || $activityUrl !== null || $trashUrl !== null || $importsUrl !== null || $mailingsUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
             @endif
             @if($usersUrl !== null)
@@ -35,6 +35,9 @@
             @endif
             @if($importsUrl !== null)
             <a class="fa-nav-link{{ $importsActive ? ' is-active' : '' }}" href="{{ $importsUrl }}"@if($importsActive) aria-current="page"@endif>{!! $importsIcon !!}<span>{{ $t('nav.imports') }}</span></a>
+            @endif
+            @if($mailingsUrl !== null)
+            <a class="fa-nav-link{{ $mailingsActive ? ' is-active' : '' }}" href="{{ $mailingsUrl }}"@if($mailingsActive) aria-current="page"@endif>{!! $mailingsIcon !!}<span>{{ $t('mailings.title') }}</span></a>
             @endif
         </nav>
     </aside>
@@ -69,7 +72,7 @@
             @endif
             @if($user !== '')
             <details class="fa-topbar-menu fa-user-menu" id="fa-user-menu" data-admin-popover>
-                <summary class="fa-topbar-action" aria-label="{{ $t('nav.account') }}"><span class="fa-avatar" aria-hidden="true">{{ $userInitial }}</span><span class="fa-user-name">{{ $user }}</span>{!! $chevronIcon !!}</summary>
+                <summary class="fa-topbar-action" aria-label="{{ $t('nav.account') }}">{!! $userAvatar !!}<span class="fa-user-name">{{ $user }}</span>{!! $chevronIcon !!}</summary>
                 <div class="fa-menu-panel fa-topbar-panel">
                     @if($profileUrl !== null)<a class="fa-menu-item fa-topbar-user" href="{{ $profileUrl }}">{!! $profileIcon !!}<span>{{ $t('nav.profile') }}</span></a>@endif
                     <a class="fa-menu-item" href="{{ $siteUrl }}" target="_blank" rel="noopener">{!! $externalIcon !!}<span>{{ $t('nav.view_site') }}</span></a>

@@ -55,6 +55,18 @@ class TextInput extends Field
         return $this;
     }
 
+    private bool $generate = false;
+
+    /**
+     * A Generate button beside a password field (0.28): a random 16-character
+     * password, shown once with Copy. Needs JavaScript; the field works without.
+     */
+    public function generate(bool $generate = true): static
+    {
+        $this->generate = $generate;
+        return $this;
+    }
+
     /** A password field: the activity log never records it (0.19). */
     public function isPassword(): bool
     {
@@ -137,6 +149,11 @@ class TextInput extends Field
             'autocomplete' => $this->type === 'password' ? 'new-password' : null,
         ];
 
+        if ($this->type === 'password' && $this->generate) {
+            return '<div class="fa-input-generate"><input' . self::attributes($attrs) . '>'
+                . '<button type="button" class="fa-btn" data-admin-generate-password="' . \FloCMS\Admin\Support\Str::e($id) . '" data-copy-text="' . \FloCMS\Admin\Support\Str::e(\FloCMS\Admin\Support\AdminLang::get('view.copy')) . '" data-copied-text="' . \FloCMS\Admin\Support\Str::e(\FloCMS\Admin\Support\AdminLang::get('view.copied')) . '" hidden>'
+                . \FloCMS\Admin\Support\Str::e(\FloCMS\Admin\Support\AdminLang::get('users.generate')) . '</button></div>';
+        }
         return '<input' . self::attributes($attrs) . '>';
     }
 }

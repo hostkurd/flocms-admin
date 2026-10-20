@@ -412,6 +412,10 @@ Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) 
 
 Admin 0.27 adds a page that shows a record without editing it: `/admin/<slug>/view/<id>`, built from the form you already have. Each field is shown as its value (badges, links with copy buttons, thumbnails, files with Download, repeaters as tables), in the form's sections and sidebar, with **History**, **Edit** and **More** (actions, Print, Delete) in the header, a **Showing: EN · AR · KU** switch that marks what is not translated, and a print layout. The row title in every list is now a link: to Edit for people who may edit, else to the view page, so people with View permission can open records. `->hiddenOnView()`, `->formatOnView()`, `view()`, `canView()`, `$viewPage` and `$rowOpens` adjust it. See [The view page](docs/view-page.md).
 
+## Users: photos, actions and emails
+
+Admin 0.28 adds photos (or the first letter) to users, a people list with All / Active / Pending / Suspended tabs, row and bulk actions (**Send reset link**, **Send email**, **Activate**, **Suspend**, greyed out with a reason when they don't apply), and emails: a direct email to a few chosen users, or a mailing to everyone, a role or a status, sent in batches with an unsubscribe link and `php flo admin:mailings` for cron. See [Users: photos, actions and emails](docs/users.md).
+
 ## Forgot password
 
 Admin 0.26 adds **Forgot password?** to the panel's login page. A person types the address they sign in with and gets a one-time link by email (valid 60 minutes); the answer is the same whether the address has an account or not, and requests are limited per address and per IP. The link opens a page to choose a new password; saving it signs the account out everywhere else, sends a short "your password was changed" note and goes to the activity log. Emails are sent with PHP `mail()` or SMTP from `.env` (`MAIL_*`), without a third-party package; `php flo admin:mail-test` checks them. Needs flocms-core 2.5; add `'password_reset' => true` to an existing `config/admin.php`, then run `php flo admin:install` and `php flo migrate`. See the [Forgot password guide](docs/password-reset.md).
@@ -460,6 +464,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.25: CSV import and export (Export menu, the four-step Import with preview and Undo, Site → Imports, `admin:export`, `admin:import`)
 - 0.26: forgot password (one-time links by email, `mail()`/SMTP without a package, other sessions end; flocms-core 2.5)
 - 0.27: the view page (records shown as values, the row title as a link, `hiddenOnView()`, `formatOnView()`, print layout)
+- 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings
 
 ## Development
 

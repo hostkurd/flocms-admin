@@ -3,13 +3,17 @@ declare(strict_types=1);
 
 namespace FloCMS\Admin\Users;
 
+use FloCMS\Admin\Form\Fields\ImageUpload;
 use FloCMS\Admin\Form\Fields\Select;
 use FloCMS\Admin\Form\Fields\TextInput;
 use FloCMS\Admin\Form\Form;
+use FloCMS\Admin\Admin;
 use FloCMS\Admin\Resource;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Table\Columns\BadgeColumn;
 use FloCMS\Admin\Table\Columns\TextColumn;
+use FloCMS\Admin\Table\Filters\SelectFilter;
+use FloCMS\Admin\Table\Filters\TabsFilter;
 use FloCMS\Admin\Table\Table;
 use FloCMS\Core\Auth;
 use FloCMS\Core\Config;
@@ -66,29 +70,48 @@ final class UsersResource extends Resource
             TextInput::make('login')->label(AdminLang::get('users.login'))->rules('max:190')->unique()
                 ->help(AdminLang::get('users.login_help')),
             TextInput::make('password')->password()->label(AdminLang::get('users.password'))
-                ->rules('min:' . self::MIN_PASSWORD)->requiredOnCreate()
+                ->rules('min:' . self::MIN_PASSWORD)->requiredOnCreate()->generate()
                 ->help(AdminLang::get('users.password_help')),
             Select::make('role')->label(AdminLang::get('users.role'))->options(fn (): array => self::assignableRoles())->required(),
             Select::make('status')->label(AdminLang::get('users.status'))->options(fn (): array => self::statuses())->required()
                 ->default((string) self::ACTIVE),
             TextInput::make('phone')->tel()->label(AdminLang::get('users.phone'))->rules('max:50'),
+            // The photo (0.28): public, a 256 px square; without one the list shows the first letter.
+            ...(self::hasImageColumn() ? [ImageUpload::make('image')->label(AdminLang::get('users.photo'))->avatar()->nullable(false)->help(AdminLang::get('users.photo_help'))] : []),
         ]);
     }
 
     public function table(Table $table): Table
     {
+        // 0.28: one User column (photo or letter, name, email), status tabs with counts,
+        // a role filter, and Suspend / Activate / Reset link / Send email per row and in bulk.
         return $table
             ->columns([
-                TextColumn::make('id')->sortable(),
-                TextColumn::make('full_name')->label(AdminLang::get('users.full_name'))->searchable()->sortable(),
-                TextColumn::make('email')->label(AdminLang::get('users.email'))->searchable()->sortable(),
-                TextColumn::make('login')->label(AdminLang::get('users.login'))->searchable(),
+                TextColumn::make('full_name')->label(AdminLang::get('users.user'))->avatar('image')
+                    ->description('email')->descriptionMark(static fn (object $user): bool => (int) ($user->is_verified ?? 0) === 1, AdminLang::get('users.email_verified'))
+                    ->searchable()->searchAlso(['email', 'login', 'phone'])->sortable(),
                 BadgeColumn::make('role')->label(AdminLang::get('users.role'))->labels(self::roles())
-                    ->colors(array_fill_keys(array_keys(self::roles()), 'blue')),
-                BadgeColumn::make('status')->label(AdminLang::get('users.status'))->labels(self::statuses())
+                    ->colors(array_map(static fn (int $role): string => $role >= 2 ? 'blue' : ($role === 1 ? 'purple' : 'gray'), array_combine(array_keys(self::roles()), array_keys(self::roles())))),
+                BadgeColumn::make('status')->label(AdminLang::get('users.status'))->labels(self::statuses())->dot()
                     ->colors([self::ACTIVE => 'green', self::PENDING => 'yellow', self::SUSPENDED => 'red']),
+                TextColumn::make('phone')->label(AdminLang::get('users.phone'))->toggleable(hiddenByDefault: true),
+                TextColumn::make('login')->label(AdminLang::get('users.login'))->toggleable(hiddenByDefault: true),
             ])
+            ->tabs(TabsFilter::make('status')->label(AdminLang::get('users.status'))->options(array_map('strval', self::statuses())))
+            ->filters([SelectFilter::make('role')->label(AdminLang::get('users.role'))->options(array_map('strval', self::roles()))])
+            ->actions(UserActions::row())
+            ->bulkActions(UserActions::bulk())
             ->defaultSort('id', 'desc');
+    }
+
+    /** "Email users" beside New user (0.28), for people who may send emails. */
+    public function headerActions(): array
+    {
+        return [
+            \FloCMS\Admin\Actions\Action::make('email_users')->label(AdminLang::get('users.email_users'))->icon('mail')->permission('users.mailing')
+                ->url(static fn (?object $record): string => Admin::url('mailings/compose')),
+            \FloCMS\Admin\Actions\CreateAction::make(),
+        ];
     }
 
     public function canEdit(object $record): bool
@@ -202,6 +225,16 @@ final class UsersResource extends Resource
             self::PENDING => AdminLang::get('users.status_pending'),
             self::SUSPENDED => AdminLang::get('users.status_suspended'),
         ];
+    }
+
+    private static ?bool $imageColumn = null;
+
+    /** Whether the users table has the skeleton's `image` column (for the photo, 0.28). */
+    public static function hasImageColumn(): bool
+    {
+        if (self::$imageColumn !== null) { return self::$imageColumn; }
+        try { \FloCMS\Core\App::db()?->query('SELECT `image` FROM `users` WHERE 1 = 0'); return self::$imageColumn = \FloCMS\Core\App::db() !== null; }
+        catch (\Throwable) { return self::$imageColumn = false; }
     }
 
     public static function isCurrentUser(object $record): bool

@@ -55,7 +55,7 @@
                 @foreach($group['rows'] as $row)
                 <tr>
                     <td class="fa-muted fa-activity-time" data-label="{{ $t('activity.time') }}"><span class="fa-ltr">{{ $row['time'] }}</span></td>
-                    <td data-label="{{ $t('activity.who') }}"><span class="fa-who"><span class="fa-avatar fa-avatar-sm {{ $row['avatar'] }}" aria-hidden="true">{{ $row['initial'] }}</span>{{ $row['who'] }}</span></td>
+                    <td data-label="{{ $t('activity.who') }}"><span class="fa-who">{!! $row['face'] !!}{{ $row['who'] }}</span></td>
                     <td data-label="{{ $t('activity.action') }}"><span class="fa-badge fa-badge-{{ $row['badgeColor'] }} fa-badge-dot">{{ $row['badge'] }}</span></td>
                     <td data-label="{{ $t('activity.what') }}">
                         <span class="fa-activity-verb">{{ $row['verb'] }}</span>

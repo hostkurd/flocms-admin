@@ -99,6 +99,10 @@ final class ActivityEntry
             'login', 'password_reset_requested' => 'yellow',
             'password_reset' => 'blue',
             'password_reset_limited' => 'red',
+            'user_suspended', 'mailing_cancelled' => 'red',
+            'user_activated', 'mailing_finished' => 'green',
+            'password_link_sent', 'email_sent', 'mailing_started' => 'blue',
+            'mailing_paused' => 'yellow',
             default => '',
         };
     }
@@ -226,6 +230,10 @@ final class ActivityEntry
             }), 'target' => '', 'url' => null],
             'password_reset_limited', 'password_reset' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => '', 'url' => null],
             'settings_saved' => ['verb' => AdminLang::get('settings.title'), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            // The Users page and emails (0.28)
+            'user_suspended', 'user_activated', 'password_link_sent', 'email_sent' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            'mailing_started', 'mailing_finished', 'mailing_cancelled', 'mailing_paused' => ['verb' => AdminLang::get('activity.what.' . $this->action, ['count' => $count]), 'target' => $this->label(),
+                'url' => \FloCMS\Core\Auth::can('users.mailing') && $this->recordId !== null ? Admin::url('mailings/show/' . $this->recordId) : null],
             // CSV import and export (0.25)
             'imported' => ['verb' => AdminLang::get('activity.what.imported', ['created' => (int) ($this->meta['created'] ?? 0), 'updated' => (int) ($this->meta['updated'] ?? 0), 'label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],
             'import_undone' => ['verb' => AdminLang::get('activity.what.import_undone', ['label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],

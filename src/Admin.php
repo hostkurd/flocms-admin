@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.27.0';
+    public const VERSION = '0.28.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -41,6 +41,8 @@ final class Admin
         // and a new password ends the account's other sessions.
         if (method_exists(App::class, 'allowGuestAdminActions')) {
             App::allowGuestAdminActions('password', ['admin_forgot', 'admin_reset'], \FloCMS\Admin\Http\PasswordController::class);
+            // A mailing's unsubscribe link (0.28) opens without signing in.
+            App::allowGuestAdminActions('mailings', ['admin_unsubscribe'], \FloCMS\Admin\Http\MailingsController::class);
         }
         \FloCMS\Admin\Auth\PasswordStamp::boot();
         if (Config::get('auth.login_view') === null) { Config::set('auth.login_view', static fn (): ?string => \FloCMS\Admin\Auth\LoginView::render()); }
@@ -101,6 +103,10 @@ final class Admin
         }
         if ($controller === 'activity' && $config->activity()['enabled']) {
             return \FloCMS\Admin\Http\ActivityController::class;
+        }
+        // Emails to users (0.28); a site resource with that slug keeps it.
+        if ($controller === 'mailings' && $config->mailings()['enabled']) {
+            return \FloCMS\Admin\Http\MailingsController::class;
         }
         // Site → Imports (0.25); a site resource with that slug keeps it.
         if ($controller === 'imports' && $config->import()['enabled']) {

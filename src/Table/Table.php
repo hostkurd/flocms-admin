@@ -61,7 +61,8 @@ final class Table
     public function filters(array $filters): self
     {
         if (count($filters) > 20) { throw new InvalidArgumentException('Too many filters.'); }
-        $this->filters = [];
+        $tabs = $this->getTabs();
+        $this->filters = $tabs !== null ? [$tabs->getName() => $tabs] : [];
         foreach ($filters as $filter) {
             if (!$filter instanceof \FloCMS\Admin\Table\Filters\Filter || isset($this->filters[$filter->getName()])) { throw new InvalidArgumentException('Filters must have unique names.'); }
             $this->filters[$filter->getName()] = $filter;
@@ -69,6 +70,21 @@ final class Table
         return $this;
     }
     public function getFilters(): array { return $this->filters; }
+    /**
+     * Tabs above the list (0.28): one per value of a column, with counts.
+     * They are a filter, kept apart from the Filters menu.
+     */
+    public function tabs(\FloCMS\Admin\Table\Filters\TabsFilter $tabs): self
+    {
+        if ($this->getTabs() !== null || isset($this->filters[$tabs->getName()])) { throw new InvalidArgumentException('A table has one set of tabs, named apart from its filters.'); }
+        $this->filters = [$tabs->getName() => $tabs] + $this->filters;
+        return $this;
+    }
+    public function getTabs(): ?\FloCMS\Admin\Table\Filters\TabsFilter
+    {
+        foreach ($this->filters as $filter) { if ($filter instanceof \FloCMS\Admin\Table\Filters\TabsFilter) { return $filter; } }
+        return null;
+    }
     public function bulkActions(array $actions): self { $this->bulkActions = $actions; return $this; }
     public function getBulkActions(): array { return $this->bulkActions; }
 

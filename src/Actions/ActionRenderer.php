@@ -26,19 +26,22 @@ final class ActionRenderer
     private function renderRow(?object $record, bool $reactive, string $prefix, ?string $backUrl): string
     {
         $primary = '';
-        $items = ''; $danger = '';
+        $items = ''; $danger = ''; $group = null;
         foreach ($this->allowed('row', $record) as $action) {
             if ($action->getName() === 'edit' && $primary === '') {
                 $primary = $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'icon');
             } elseif ($action->getColor() === 'danger') {
                 $danger .= $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'menu');
             } else {
+                // A divider between groups (0.28)
+                if ($items !== '' && $action->getGroup() !== $group) { $items .= '<hr class="fa-menu-divider">'; }
+                $group = $action->getGroup();
                 $items .= $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'menu');
             }
         }
         // The view page (0.27), when the title opens Edit: one click away in the menu.
         if ($record !== null && $primary !== '' && $this->resource::rowOpens() === 'edit' && ($viewUrl = $this->resource->viewUrl($record)) !== null) {
-            $items = '<a class="fa-menu-item" data-admin-action="view" href="' . Str::e($viewUrl) . '">' . Icons::svg('eye') . '<span>' . Str::e(AdminLang::get('view.view')) . '</span></a>' . $items;
+            $items = '<a class="fa-menu-item" data-admin-action="view" href="' . Str::e($viewUrl) . '">' . Icons::svg('eye') . '<span>' . Str::e(AdminLang::get('view.view')) . '</span></a>' . ($items !== '' && $this->firstGroup('row', $record) !== null ? '<hr class="fa-menu-divider">' : '') . $items;
         }
         // Destructive actions come last, after a divider.
         $menu = $items . ($items !== '' && $danger !== '' ? '<hr class="fa-menu-divider">' : '') . $danger;
@@ -64,19 +67,30 @@ final class ActionRenderer
     /** @return array{items: string, danger: string} */
     public function menu(object $record, ?string $backUrl = null): array
     {
-        $items = ''; $danger = '';
+        $items = ''; $danger = ''; $group = null;
         foreach ($this->allowed('row', $record) as $action) {
             if ($action->getName() === 'edit') { continue; }
             $item = $this->item($action, 'row', $record, false, 'fa-view', $backUrl, 'menu');
-            if ($action->getColor() === 'danger') { $danger .= $item; } else { $items .= $item; }
+            if ($action->getColor() === 'danger') { $danger .= $item; continue; }
+            if ($items !== '' && $action->getGroup() !== $group) { $items .= '<hr class="fa-menu-divider">'; }
+            $group = $action->getGroup();
+            $items .= $item;
         }
         return ['items' => $items, 'danger' => $danger];
     }
 
-    /** @return list<Action> */
+    private function firstGroup(string $placement, ?object $record): ?string
+    {
+        foreach ($this->allowed($placement, $record) as $action) {
+            if ($action->getName() !== 'edit' && $action->getColor() !== 'danger') { return $action->getGroup(); }
+        }
+        return null;
+    }
+
+    /** @return list<Action> the actions the person may see: allowed, or greyed out with a reason (0.28) */
     private function allowed(string $placement, ?object $record): array
     {
-        return array_values(array_filter($this->registry->all($placement), fn (Action $action): bool => $action->allowed($this->resource, $record)));
+        return array_values(array_filter($this->registry->all($placement), fn (Action $action): bool => $action->allowed($this->resource, $record) || $action->reasonDisabled($this->resource, $record) !== null));
     }
 
     /** @param 'button'|'icon'|'menu' $style */
@@ -86,11 +100,25 @@ final class ActionRenderer
         $name = $action->getName();
         $color = $action->getColor();
         $text = $action->getLabel($this->resource);
+        // Greyed out (0.28): shown with its reason, never clickable; the server refuses it too.
+        if (($reason = $action->reasonDisabled($this->resource, $record)) !== null) {
+            $reasonId = Str::e($prefix . '-' . $name . '-' . ($id !== '' ? $id : $placement) . '-reason');
+            return match ($style) {
+                'menu' => '<span class="fa-menu-item is-disabled" role="menuitem" aria-disabled="true" aria-describedby="' . $reasonId . '" data-admin-action="' . Str::e($name) . '">' . self::menuIcon($action)
+                    . '<span class="fa-menu-text"><span>' . Str::e($text) . '</span><small id="' . $reasonId . '">' . Str::e($reason) . '</small></span></span>',
+                'icon' => '<button type="button" class="fa-icon-action" disabled title="' . Str::e($text . ': ' . $reason) . '" data-admin-action="' . Str::e($name) . '">' . Icons::svg($action->getIcon() ?? 'pencil') . '<span class="fa-sr">' . Str::e($text . ': ' . $reason) . '</span></button>',
+                default => '<button type="button" class="fa-btn" disabled title="' . Str::e($reason) . '" data-admin-action="' . Str::e($name) . '">' . ($action->getIcon() !== null ? Icons::svg($action->getIcon()) : '') . '<span>' . Str::e($text) . '</span></button>',
+            };
+        }
         [$class, $label, $attributes] = match ($style) {
             'icon' => ['fa-icon-action', Icons::svg($action->getIcon() ?? 'pencil') . '<span class="fa-sr">' . Str::e($text) . '</span>', ' title="' . Str::e($text) . '"'],
             'menu' => ['fa-menu-item' . ($color === 'danger' ? ' is-danger' : ''), self::menuIcon($action) . '<span>' . Str::e($text) . '</span>', ''],
             default => ['fa-btn' . ($color === 'default' ? '' : ' fa-btn-' . $color), ($action->getIcon() !== null ? Icons::svg($action->getIcon()) : '') . '<span>' . Str::e($text) . '</span>', ''],
         };
+ // An action with url() (0.28) opens its page: an ordinary link.
+        if (($url = $action->getUrl($record)) !== null) {
+            return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e($url) . '">' . $label . '</a>';
+        }
         // A page-mode Create or Edit is an ordinary link (the panel loads it without a reload).
         $page = $action->getMode($this->resource) === 'page' && in_array($action->getKind(), ['create', 'edit'], true);
         if ($reactive && !$page) {

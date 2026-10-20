@@ -20,12 +20,16 @@ final class UploadBatch
                 $entry = Uploads::entry($value, Uploads::scope($resource, $record, $name));
                 $metadata = $field->validateFile(['name' => $entry['name'], 'tmp_name' => Uploads::root() . '/' . $entry['path'], 'error' => UPLOAD_ERR_OK]);
                 $path = $resource::getSlug() . '/' . $name . '/' . bin2hex(random_bytes(20)) . '.' . $metadata['extension'];
-                $this->created[] = $path;
-                Uploads::storage()->put($path, Uploads::root() . '/' . $entry['path']);
-                chmod((string) Uploads::storage()->path($path), 0600);
+                $storage = Uploads::storageFor($field);
+                $this->created[] = [$storage, $path];
+                $source = Uploads::root() . '/' . $entry['path'];
+                // A square image (0.28, ImageUpload::square()): cropped and resized before it is stored.
+                if ($field instanceof \FloCMS\Admin\Form\Fields\ImageUpload && $field->getSquare() !== null) { \FloCMS\Admin\Support\ImageResize::square($source, $field->getSquare(), $metadata['mime']); }
+                $storage->put($path, $source);
+                if (!$field->isPublic()) { chmod((string) $storage->path($path), 0600); }
                 $this->tokens[] = $value; $state[$name] = $path;
             }
-            if ($state[$name] !== $old && Uploads::managed($old, $resource, $field)) { $this->removed[] = $old; }
+            if ($state[$name] !== $old && Uploads::managed($old, $resource, $field)) { $this->removed[] = [Uploads::storageFor($field), $old]; }
         }
         return $state;
     }
@@ -34,18 +38,18 @@ final class UploadBatch
         // A trashed record keeps its files until it is deleted for good (Trash::purge()).
         if (\FloCMS\Admin\Trash\Trash::enabledFor($resource)) { return; }
         foreach ($resource->form(new Form())->fields() as $name => $field) {
-            if ($field instanceof FileUpload && Uploads::managed((string) ($record->{$name} ?? ''), $resource, $field)) { $this->removed[] = (string) $record->{$name}; }
+            if ($field instanceof FileUpload && Uploads::managed((string) ($record->{$name} ?? ''), $resource, $field)) { $this->removed[] = [Uploads::storageFor($field), (string) $record->{$name}]; }
         }
     }
     public function commit(): void
     {
-        foreach ($this->removed as $path) { try { Uploads::storage()->delete($path); } catch (\Throwable $e) { error_log('Admin upload cleanup failed: ' . $e->getMessage()); } }
+        foreach ($this->removed as [$storage, $path]) { try { $storage->delete($path); } catch (\Throwable $e) { error_log('Admin upload cleanup failed: ' . $e->getMessage()); } }
         foreach ($this->tokens as $token) { try { Uploads::forget($token); } catch (\Throwable $e) { error_log('Admin pending upload cleanup failed: ' . $e->getMessage()); } }
         $this->created = $this->removed = $this->tokens = [];
     }
     public function rollback(): void
     {
-        foreach ($this->created as $path) { Uploads::storage()->delete($path); }
+        foreach ($this->created as [$storage, $path]) { $storage->delete($path); }
         $this->created = $this->removed = $this->tokens = [];
     }
 }

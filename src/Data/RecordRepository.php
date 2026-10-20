@@ -133,6 +133,9 @@ final class RecordRepository
                 } else {
                     $group->orWhereRaw('`' . $column->getName() . "` LIKE ? ESCAPE '!'", [$like]);
                 }
+                foreach ($column->getAlsoSearched() as $other) {
+                    $group->orWhereRaw('`' . $other . "` LIKE ? ESCAPE '!'", [$like]);
+                }
             }
         });
     }

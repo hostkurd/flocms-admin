@@ -1,0 +1,37 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $t('mailings.title') }}</h1><p class="fa-page-description">{{ $description }}</p></div>
+    @if($ready)<div class="fa-action-group"><a class="fa-btn fa-btn-primary" href="{{ $composeUrl }}">{!! $plusIcon !!}<span>{{ $t('mailings.new') }}</span></a></div>@endif
+</div>
+@if(!$ready)
+<div class="fa-card"><div class="fa-blank"><p>{{ $t('mailings.not_installed') }}</p></div></div>
+@else
+@foreach($active as $card){!! $cardHtml($card) !!}@endforeach
+<div class="fa-card">
+    <h2 class="fa-card-heading">{{ count($active) > 0 ? $t('mailings.earlier') : $t('mailings.all') }}</h2>
+    @if(count($rows) > 0)
+    <div class="fa-table-wrap">
+        <table class="fa-table fa-table-list">
+            <thead><tr><th scope="col">{{ $t('mailings.subject') }}</th><th scope="col">{{ $t('mailings.to') }}</th><th scope="col">{{ $t('mailings.status') }}</th><th scope="col" class="fa-cell-numeric">{{ $t('mailings.sent') }}</th><th scope="col" class="fa-cell-numeric">{{ $t('mailings.failed') }}</th><th scope="col">{{ $t('mailings.date') }}</th><th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th></tr></thead>
+            <tbody>
+                @foreach($rows as $row)
+                <tr>
+                    <td class="fa-cell-primary" data-label="{{ $t('mailings.subject') }}"><a class="fa-row-link" href="{{ $row['url'] }}">{{ $row['subject'] }}</a><small class="fa-imports-detail">{{ $row['by'] }}</small></td>
+                    <td data-label="{{ $t('mailings.to') }}">{{ $row['to'] }}</td>
+                    <td data-label="{{ $t('mailings.status') }}"><span class="fa-status fa-status-{{ $row['tone'] }}"><span class="fa-status-dot" aria-hidden="true"></span>{{ $row['statusLabel'] }}</span></td>
+                    <td class="fa-cell-numeric" data-label="{{ $t('mailings.sent') }}">{{ number_format($row['sent']) }}</td>
+                    <td class="fa-cell-numeric" data-label="{{ $t('mailings.failed') }}"><span class="{{ $row['failed'] > 0 ? 'fa-text-danger' : '' }}">{{ number_format($row['failed']) }}</span></td>
+                    <td data-label="{{ $t('mailings.date') }}">{{ $row['date'] }}</td>
+                    <td class="fa-actions">@if($row['retryUrl'] !== null)<form method="post" action="{{ $row['retryUrl'] }}" class="fa-inline">{!! $row['csrf'] !!}<button type="submit" class="fa-btn fa-btn-sm">{{ $t('mailings.retry') }}</button></form>@endif</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @if($prevUrl !== null || $nextUrl !== null)
+    <div class="fa-table-foot"><span></span><nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">@if($prevUrl !== null)<a class="fa-page-link" href="{{ $prevUrl }}" rel="prev">{{ $t('table.previous') }}</a>@endif @if($nextUrl !== null)<a class="fa-page-link" href="{{ $nextUrl }}" rel="next">{{ $t('table.next') }}</a>@endif</nav></div>
+    @endif
+    @elseif(count($active) === 0)
+    <div class="fa-blank"><p>{{ $t('mailings.empty') }}</p></div>
+    @endif
+</div>
+@endif

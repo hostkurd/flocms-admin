@@ -45,13 +45,14 @@ final class ActivityController extends PanelController
         $query = array_filter($filters, static fn (string $v): bool => $v !== '');
 
         $groups = [];
+        \FloCMS\Admin\Support\Avatar::preload(array_map(static fn ($entry): int => (int) $entry->userId, $result['items']));
         foreach ($result['items'] as $entry) {
             $key = date('Y-m-d', $entry->time());
             if (!isset($groups[$key])) { $groups[$key] = ['label' => Dates::day($entry->time()), 'rows' => []]; }
             $describe = $entry->describe();
             $groups[$key]['rows'][] = [
                 'time' => Dates::time($entry->time()),
-                'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => ActivityView::avatarClass($entry->userId),
+                'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => ActivityView::avatarClass($entry->userId), 'face' => ActivityView::face($entry->userId, $entry->who(), 'fa-avatar-sm'),
                 'badge' => $entry->badge(), 'badgeColor' => $entry->badgeColor(),
                 'verb' => $describe['verb'], 'target' => $describe['target'], 'url' => $describe['url'],
                 'fields' => $entry->fieldNames(),

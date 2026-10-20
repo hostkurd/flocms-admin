@@ -9,7 +9,7 @@
         <div class="fa-changes-heading">
             @if($dialog)<h2 class="fa-dialog-title" id="fa-changes-title">{{ $title }}</h2>@endif
             <p class="fa-changes-meta">
-                <span class="fa-who"><span class="fa-avatar fa-avatar-sm {{ $avatar }}" aria-hidden="true">{{ $initial }}</span>{{ $who }}</span>
+                <span class="fa-who">{!! $face !!}{{ $who }}</span>
                 <span aria-hidden="true">·</span><span class="fa-ltr">{{ $when }}</span>
                 <span aria-hidden="true">·</span><span class="fa-badge fa-badge-{{ $badgeColor }} fa-badge-dot">{{ $badge }}</span>
                 @if($reference !== '')<span aria-hidden="true">·</span><span>{{ $reference }}</span>@endif

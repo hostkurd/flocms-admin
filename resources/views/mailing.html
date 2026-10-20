@@ -1,0 +1,8 @@
+<link rel="stylesheet" href="{{ $richCss }}">
+<p class="fa-back-link"><a href="{{ $listUrl }}">{!! $backIcon !!}<span>{{ $t('mailings.title') }}</span></a></p>
+<div class="fa-page-head"><div><h1 class="fa-page-title">{{ $card['subject'] }}</h1></div></div>
+<div data-admin-mailing-slot>{!! $cardHtml($card) !!}</div>
+<section class="fa-card fa-mailing-message" aria-labelledby="fa-mailing-message-title">
+    <h2 class="fa-card-heading" id="fa-mailing-message-title">{{ $t('mailings.message') }}</h2>
+    <div class="rt-content fa-view-rich">{!! $body !!}</div>
+</section>
