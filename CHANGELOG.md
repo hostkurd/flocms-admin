@@ -12,7 +12,7 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 - **The home page**: one line at the start of the site's home controller shows it: `if ($page = home_page()) { return $page->response(); }` (skeleton 1.8.8 has it).
 - **On the website**: `{!! page_meta() !!}` in the layout's `<head>` prints the title, description, canonical address, `hreflang` with `x-default`, Open Graph and robots; `pages_menu()` gives the menu with nesting and the current page; `current_page()`; **`/sitemap.xml`** with the other languages as alternates. A page not translated shows the default language's, with the canonical pointing there, or a 404 with `'missing' => '404'`.
 - **Templates**: `views/page-templates/<name>.html`, offered by their names; `php flo admin:blocks` copies the default one there.
-- **Permissions**: `content.site-pages.*`, **`pages.publish`** (publish, schedule, Set as home page; without it a page stays a draft) and `blocks.html` for HTML pages.
+- **Permissions**: `content.site-pages.*`, **`pages.publish`** (publish, schedule, Set as home page, and change or delete live pages; without it people write drafts and live pages are read-only) and `blocks.html` for HTML pages.
 - **`CodeEditor`** field: line numbers, highlighting, Tab and Shift+Tab, Escape then Tab to leave, **Format**. Used by HTML pages; usable in any form.
 - **Block styles and scripts** from the package (before `php flo admin:blocks` copies them) are now linked as files at `/flo-admin/asset/…` instead of printed inline, so they work with a strict Content-Security-Policy and are cached.
 - `admin:doctor` checks pages: flocms-core 2.6, the table, addresses that something else answers, more than one home page, the home page line, `page_meta()` in the layout, templates.

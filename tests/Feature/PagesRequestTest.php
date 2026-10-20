@@ -114,7 +114,7 @@ final class PagesRequestTest extends RequestTestCase
         self::assertStringContainsString('<loc>https://example.test/en/about-us</loc>', $sitemap['body']);
         self::assertStringContainsString('<loc>https://example.test/en/services/web-design</loc>', $sitemap['body']);
         self::assertStringContainsString('hreflang="ar"', $sitemap['body']);
-        foreach (['plans', 'soon', 'offer', 'thanks'] as $hidden) { self::assertStringNotContainsString('/en/' . $hidden . '<', $sitemap['body'], $hidden); }
+        foreach (['plans', 'soon', 'offer', 'thanks', 'plans/inside'] as $hidden) { self::assertStringNotContainsString('/en/' . $hidden . '<', $sitemap['body'], $hidden); }
         self::assertSame(404, self::visit('/sitemap.xml', ['admin_config' => ['pages' => ['sitemap' => false]]])['status']);
     }
 
@@ -140,6 +140,36 @@ final class PagesRequestTest extends RequestTestCase
         self::assertStringContainsString('Not saved yet', $shown['body'], 'anyone with the link, without an account');
         self::assertStringContainsString('<p>We build websites.</p>', (string) self::row('admin_pages', 2)['body'], 'nothing saved');
         self::assertSame(404, self::visit('/en/flo-preview/' . str_repeat('a', 32))['status']);
+    }
+
+    public function testWithoutPublishLivePagesAreReadOnly(): void
+    {
+        $live = self::request('GET', '/en/admin/site-pages/edit/2', ['session' => self::EDITOR] + self::ON);
+        self::assertStringNotContainsString('name="title[en]"', $live['body'], 'a published page can\'t be changed without pages.publish');
+        $changed = self::post('/en/admin/site-pages/edit/2', ['title' => ['en' => 'Taken over'], 'slug' => ['en' => 'about-us'], 'type' => 'rich_text', 'body' => ['en' => '<p>x</p>']], ['session' => self::EDITOR] + self::ON);
+        self::assertStringNotContainsString('Taken over', (string) self::row('admin_pages', 2)['title'], json_encode($changed['status']));
+
+        $draft = self::request('GET', '/en/admin/site-pages/edit/5', ['session' => self::EDITOR] + self::ON);
+        self::assertSame(200, $draft['status'], 'drafts stay editable');
+        self::assertStringContainsString('name="title[en]"', $draft['body']);
+    }
+
+    public function testAnAddressIsCheckedAsVisitorsSeeIt(): void
+    {
+        // "About us" is /ar/team in Arabic; a new page "team" without an Arabic address answers at /ar/team too (the default language's stands in).
+        $update = self::pdo()->prepare('UPDATE admin_pages SET slug = ? WHERE id = 2');
+        $update->execute(['{"en":"about-us","ar":"team"}']);
+        $clash = self::post('/en/admin/site-pages/create', ['title' => ['en' => 'Team'], 'slug' => ['en' => 'team'], 'type' => 'rich_text', 'body' => ['en' => '<p>x</p>'], 'status' => 'draft'], ['session' => self::SUPER] + self::ON);
+        self::assertFalse($clash['redirected']);
+        self::assertStringContainsString('already has this address', $clash['body']);
+    }
+
+    public function testScheduledPagesWhoseTimeCameAreListedAsPublished(): void
+    {
+        self::pdo()->exec("UPDATE admin_pages SET publish_at = '2020-01-01 09:00:00' WHERE id = 6");
+        self::request('GET', '/en/admin/site-pages', ['session' => self::SUPER] + self::ON);
+        self::assertSame('published', self::row('admin_pages', 6)['status']);
+        self::assertSame('draft', self::row('admin_pages', 5)['status']);
     }
 
     public function testSavingChecksAddressesAndSchedules(): void

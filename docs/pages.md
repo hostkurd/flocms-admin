@@ -76,7 +76,7 @@ A page's address is its parents' addresses and its own: **Services** (`services`
 
 Addresses that something else answers can't be taken: the panel's and the framework's (`admin`, `login`, `api`, `flo-admin`, `flo-preview`, `sitemap.xml`, `robots.txt`, `assets`, `uploads`, `public`), the languages, and **your controllers**: a page called `contact` is refused when the site has a `ContactController`, which always wins. Two pages under the same parent can't share an address in one language. `admin:doctor` warns about pages saved before a controller of that name was added.
 
-A page under a draft is not shown, nor is one whose dates have passed.
+A page under a draft is not shown, nor is one whose dates have passed, nor one whose parent page was deleted. Pages go at most six levels deep.
 
 ## Editing a page
 
@@ -85,7 +85,7 @@ The editor works **one language at a time**: the **Editing** switch above the fo
 - **Content**: the title, the address, and the content as **Blocks**, **HTML** or **Rich text**. HTML pages need the `blocks.html` permission, the same as HTML blocks; without it the code is read-only. The HTML editor numbers lines, highlights tags, indents with Tab (Shift+Tab back; Escape, then Tab, leaves the editor) and has **Format**.
 - **SEO**: a title and description for search engines (the title is used when empty), a social image, **Hide from search engines**, and previews of the search result and the social card as you type.
 - **Settings**: the template, the parent page, **Show in menu**, the order, and a CSS class for the page.
-- **Publish**: Draft, Published or Scheduled, with **Publish at** and **Unpublish at**. A published page with a time to come is saved as scheduled, and shows from that time by itself. Only people with the **`pages.publish`** permission (Roles page, System) can publish; for others a page stays a draft.
+- **Publish**: Draft, Published or Scheduled, with **Publish at** and **Unpublish at**. A published page with a time to come is saved as scheduled, and shows from that time by itself (times are the server's, in PHP's time zone). Only people with the **`pages.publish`** permission (Roles page, System) can publish. For others a new page stays a draft, and a page visitors already see (or the home page) is read-only: it opens on its view page, and can't be deleted, since every change to it would be published at once. A page they restore from the trash comes back as a draft.
 - **Preview** opens the page as it is in the editor, saved or not, in a new tab. The link works for 30 minutes and can be sent to someone without an account; search engines are told to stay away.
 - The **Page** card has the address with **Copy**, when it was created and changed, and **History** (with the activity log on).
 
@@ -121,7 +121,7 @@ A site with a `sitemap.xml` file of its own in `public/` keeps it, since the web
 ## Permissions
 
 - `content.site-pages.view`, `.create`, `.update`, `.delete`: as for any resource.
-- `pages.publish`: publish, schedule, unpublish and Set as home page.
+- `pages.publish`: publish, schedule, unpublish, Set as home page, and change or delete pages visitors see.
 - `blocks.html`: HTML pages and HTML blocks.
 
 ## In code

@@ -18,7 +18,7 @@ final class Sitemap
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
             . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' . "\n";
         foreach (Pages::rows() as $row) {
-            if (!Pages::isLive($row) || (int) ($row->noindex ?? 0) === 1) { continue; }
+            if (!Pages::isVisible($row) || (int) ($row->noindex ?? 0) === 1) { continue; }
             $alternates = Pages::alternates($row);
             foreach ($alternates as $lang => $url) {
                 $xml .= "  <url>\n    <loc>" . $e($url) . "</loc>\n";

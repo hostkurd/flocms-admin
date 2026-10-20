@@ -76,6 +76,54 @@ final class PagesResource extends Resource
         return Auth::can(self::PUBLISH);
     }
 
+    /**
+     * Without pages.publish a page that visitors see (or the home page) is
+     * read-only: changing it would publish the change. Drafts and scheduled
+     * pages stay editable, and are saved as drafts.
+     */
+    public function canEdit(object $record): bool
+    {
+        return parent::canEdit($record) && (self::canPublish() || !self::isPublic($record));
+    }
+
+    public function canDelete(object $record): bool
+    {
+        return parent::canDelete($record) && (self::canPublish() || !self::isPublic($record));
+    }
+
+    private static bool $settled = false;
+
+    /**
+     * Scheduled pages whose time has come are stored as published, once per
+     * request, so the tabs and the status filter agree with what visitors see.
+     */
+    public function query(\FloCMS\Core\Database $query): \FloCMS\Core\Database
+    {
+        if (!self::$settled) {
+            self::$settled = true;
+            try {
+                App::db()->table(self::getTable())->where('status', '=', 'scheduled')->where('publish_at', '<=', date('Y-m-d H:i:s', Pages::now()))->update(['status' => 'published']);
+            } catch (\Throwable $e) {
+                error_log('flocms-admin: scheduled pages could not be published: ' . $e->getMessage());
+            }
+        }
+        return parent::query($query);
+    }
+
+    private static function isPublic(object $record): bool
+    {
+        return (int) ($record->is_home ?? 0) === 1 || Pages::isLive($record);
+    }
+
+    /** A page brought back from the trash is not the home page any more, and is a draft unless a publisher restores it. */
+    public function afterRestore(object $record): void
+    {
+        $data = ['is_home' => 0];
+        if (!self::canPublish()) { $data['status'] = 'draft'; }
+        App::db()->table(self::getTable())->where('id', '=', (int) $record->id)->update($data);
+        Pages::reset();
+    }
+
     /** @return array<string, string> */
     public static function statuses(): array
     {
@@ -150,7 +198,7 @@ final class PagesResource extends Resource
             ->actions([
                 EditAction::make(),
                 Action::make('view_site')->label(AdminLang::get('pages.view_on_site'))->icon('external')->group('site')
-                    ->disabled(static fn (?object $row): ?string => $row !== null && !Pages::isLive($row) ? AdminLang::get('pages.reason_not_live') : null)
+                    ->disabled(static fn (?object $row): ?string => $row !== null && !Pages::isVisible($row) ? AdminLang::get('pages.reason_not_live') : null)
                     ->url(static fn (?object $row): string => $row === null ? '' : Pages::url($row, AdminLang::language())),
                 Action::make('duplicate')->label(AdminLang::get('pages.duplicate'))->icon('copy')->permission(self::permission('create'))->group('page')
                     ->modalHeading(static fn (?object $row): string => AdminLang::get('pages.duplicate_title', ['title' => self::title($row)]))
@@ -161,12 +209,19 @@ final class PagesResource extends Resource
                         unset($id);
                     }),
                 Action::make('make_home')->label(AdminLang::get('pages.make_home'))->icon('home')->permission(self::PUBLISH)->group('page')
-                    ->disabled(static fn (?object $row): ?string => $row !== null && (int) ($row->is_home ?? 0) === 1 ? AdminLang::get('pages.reason_home') : null)
+                    ->visible(static fn (?object $row): bool => Auth::can(self::permission('update')) && ($row === null || (new self())->canEdit($row)))
+                    ->disabled(static fn (?object $row): ?string => $row === null ? null : ((int) ($row->is_home ?? 0) === 1 ? AdminLang::get('pages.reason_home') : (!Pages::isLive($row) ? AdminLang::get('pages.reason_not_live') : null)))
                     ->modalHeading(static fn (?object $row): string => AdminLang::get('pages.make_home_title', ['title' => self::title($row)]))
                     ->modalDescription(AdminLang::get('pages.make_home_text'))
                     ->action(static function (ActionContext $context): void {
-                        App::$db->table(self::getTable())->where('is_home', '=', 1)->update(['is_home' => 0]);
-                        $context->update(['is_home' => 1]);
+                        // The live page only (a draft as the home page would take the site's away); one home page at a time.
+                        if (!Pages::isLive($context->record) || !(new self())->canEdit($context->record)) { throw new \FloCMS\Core\ValidationException(['_form' => AdminLang::get('pages.reason_not_live')]); }
+                        $id = (int) $context->record->id;
+                        App::db()->transaction(static function (\FloCMS\Core\Database $db) use ($id): void {
+                            $db->table(self::getTable())->where('is_home', '=', 1)->where('id', '!=', $id)->update(['is_home' => 0]);
+                            $db->table(self::getTable())->where('id', '=', $id)->update(['is_home' => 1]);
+                        });
+                        Pages::reset();
                         Notification::make()->title(AdminLang::get('pages.made_home', ['title' => self::title($context->record)]))->success()->send();
                     }),
                 DeleteAction::make(),
@@ -235,30 +290,43 @@ final class PagesResource extends Resource
         $isHome = $record !== null && (int) ($record->is_home ?? 0) === 1;
         Pages::reset();
         $rows = Pages::rows();
+        $default = mb_strtolower(trim((string) ($slugs[Languages::default()] ?? '')));
+        $titles = is_array($state['title'] ?? null) ? $state['title'] : [];
         foreach (Languages::all() as $lang) {
-            $slug = mb_strtolower(trim((string) ($slugs[$lang] ?? '')));
+            $own = mb_strtolower(trim((string) ($slugs[$lang] ?? '')));
             $key = $lang === Languages::default() ? 'slug' : 'slug.' . $lang;
-            if ($slug === '') {
-                if ($lang === Languages::default() && !$isHome) { $errors[$key] = AdminLang::get('pages.slug_required'); }
+            if ($own === '' && $lang === Languages::default() && !$isHome) { $errors[$key] = AdminLang::get('pages.slug_required'); continue; }
+            if ($isHome) { continue; }
+            // The address the page answers at in this language: its own, else the default language's (Pages::slug()).
+            $slug = $own !== '' ? $own : $default;
+            $answers = trim((string) ($titles[$lang] ?? '')) !== '' || (Admin::config()->pages()['missing'] === 'default' && trim((string) ($titles[Languages::default()] ?? '')) !== '');
+            if ($slug === '' || ($own === '' && !$answers)) { continue; }
+            $base = $parent > 0 && isset($rows[$parent]) ? Pages::path($rows[$parent], $lang) : '';
+            // A first segment must not be one the site or the panel already answers.
+            if ($base === '' && ($taken = Pages::reservedSegment($slug)) !== null) {
+                $errors[$own !== '' ? $key : 'slug'] ??= AdminLang::get('pages.slug_reserved', ['slug' => $slug, 'by' => $taken]);
                 continue;
             }
-            // A top-level address must not be one the site or the panel already answers.
-            if ($parent === 0 && ($taken = Pages::reservedSegment($slug)) !== null) {
-                $errors[$key] = AdminLang::get('pages.slug_reserved', ['slug' => $slug, 'by' => $taken]);
-                continue;
-            }
+            // No other page answers at the same address in this language.
+            $path = ltrim($base . '/' . $slug, '/');
             foreach ($rows as $other) {
-                if ((int) $other->id === $id || (int) ($other->parent_id ?? 0) !== $parent) { continue; }
-                if (mb_strtolower(Pages::slug($other, $lang)) === $slug) {
-                    $errors[$key] = AdminLang::get('pages.slug_taken', ['title' => Translations::get($other->title ?? '', $lang)]);
+                if ((int) $other->id === $id || (int) ($other->is_home ?? 0) === 1 || !Pages::answersIn($other, $lang)) { continue; }
+                if (mb_strtolower(Pages::path($other, $lang)) === $path) {
+                    $errors[$key] = AdminLang::get('pages.slug_taken', ['title' => Translations::get($other->title ?? '', $lang) ?: Translations::get($other->title ?? '', Languages::default())]);
                     break;
                 }
             }
         }
         // A page can't sit under itself or a page under it.
+        $depth = 1;
         for ($at = $parent, $i = 0; $at > 0 && $i < Pages::MAX_DEPTH + 2; $i++) {
             if ($at === $id && $id > 0) { $errors['parent_id'] = AdminLang::get('pages.parent_loop'); break; }
+            $depth++;
             $at = (int) ($rows[$at]->parent_id ?? 0);
+        }
+        // Addresses up to MAX_DEPTH levels (with the pages under this one).
+        if (!isset($errors['parent_id']) && $depth + ($id > 0 ? self::levelsBelow($id, $rows) : 0) > Pages::MAX_DEPTH) {
+            $errors['parent_id'] = AdminLang::get('pages.parent_too_deep', ['max' => (string) Pages::MAX_DEPTH]);
         }
         // HTML pages: only with the HTML permission (a page that is HTML already may keep it).
         if (($state['type'] ?? '') === 'html' && !Html::allowed() && (string) ($record->type ?? '') !== 'html') {
@@ -267,13 +335,24 @@ final class PagesResource extends Resource
         return $errors;
     }
 
+    /** How many levels of pages sit under a page (0: none). @param array<int, object> $rows */
+    private static function levelsBelow(int $id, array $rows, int $depth = 0): int
+    {
+        if ($depth > Pages::MAX_DEPTH) { return $depth; }
+        $most = 0;
+        foreach ($rows as $row) {
+            if ((int) ($row->parent_id ?? 0) === $id && (int) $row->id !== $id) { $most = max($most, 1 + self::levelsBelow((int) $row->id, $rows, $depth + 1)); }
+        }
+        return $most;
+    }
+
     /** Scheduled when the publishing time is still to come; published when it has come. */
     public function beforeSave(array $data, ?object $record): array
     {
         if (array_key_exists('status', $data)) {
             $from = Pages::time(is_string($data['publish_at'] ?? null) ? $data['publish_at'] : null);
-            if ($data['status'] === 'published' && $from !== null && $from > time()) { $data['status'] = 'scheduled'; }
-            elseif ($data['status'] === 'scheduled' && ($from === null || $from <= time())) { $data['status'] = 'published'; }
+            if ($data['status'] === 'published' && $from !== null && $from > Pages::now()) { $data['status'] = 'scheduled'; }
+            elseif ($data['status'] === 'scheduled' && ($from === null || $from <= Pages::now())) { $data['status'] = 'published'; }
             elseif (!in_array($data['status'], Pages::STATUSES, true)) { $data['status'] = 'draft'; }
         }
         if (array_key_exists('parent_id', $data) && ((int) $data['parent_id'] <= 0)) { $data['parent_id'] = null; }

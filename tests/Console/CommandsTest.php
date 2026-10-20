@@ -53,8 +53,10 @@ final class CommandsTest extends TestCase
         file_put_contents($file, \FloCMS\Admin\Console\Stub::render('pages-migration', ['table' => 'admin_pages']));
         (require $file)->up(new \FloCMS\Core\Database($pdo));
         $pdo->exec("INSERT INTO admin_pages (title, slug, status, is_home) VALUES ('{\"en\":\"Home\"}', '{\"en\":\"home\"}', 'published', 1), ('{\"en\":\"Login\"}', '{\"en\":\"login\"}', 'published', 0)");
+        $pdo->exec("INSERT INTO admin_pages (title, slug, status, parent_id) VALUES ('{\"en\":\"Lost\"}', '{\"en\":\"lost\"}', 'published', 99)");
         $display = $this->runCommand(new DoctorCommand())->getDisplay();
-        self::assertStringContainsString('Table "admin_pages": 2 pages, with a home page', $display);
+        self::assertStringContainsString('Table "admin_pages": 3 pages, with a home page', $display);
+        self::assertStringContainsString('Page "Lost" is under a page that was deleted', $display);
         self::assertStringContainsString('has the address /login, which the panel or the framework answers first', $display);
         self::assertStringContainsString('Page templates: default', $display);
     }

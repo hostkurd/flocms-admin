@@ -72,7 +72,8 @@ function update(editor: HTMLElement): void {
   if (!input || !code || !lines) return;
   code.innerHTML = highlight(input.value);
   const count = input.value.split('\n').length;
-  if (lines.childElementCount !== count) lines.textContent = Array.from({ length: count }, (_, i) => String(i + 1)).join('\n');
+  // Only when the number of lines changes (the numbers are one text node).
+  if (lines.dataset.count !== String(count)) { lines.dataset.count = String(count); lines.textContent = Array.from({ length: count }, (_, i) => String(i + 1)).join('\n'); }
   scroll(editor);
 }
 

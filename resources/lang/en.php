@@ -1661,6 +1661,7 @@ return [
     'pages.parent' => 'Parent page',
     'pages.parent_help' => 'The page’s address starts with its parent’s, e.g. /services/web-design.',
     'pages.parent_loop' => 'A page can’t be under itself or one of its own pages.',
+    'pages.parent_too_deep' => 'Pages go at most :max levels deep, counting the pages under this one.',
     'pages.menu' => 'Show in menu',
     'pages.menu_help' => 'Listed by pages_menu() in your site’s header.',
     'pages.sort' => 'Order',

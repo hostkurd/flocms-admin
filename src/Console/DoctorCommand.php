@@ -790,7 +790,12 @@ final class DoctorCommand extends Command
                 $home = 0;
                 foreach ($rows as $row) {
                     if ((int) ($row->is_home ?? 0) === 1) { $home++; continue; }
-                    if ((int) ($row->parent_id ?? 0) > 0) { continue; }
+                    if ((int) ($row->parent_id ?? 0) > 0) {
+                        if (!in_array((int) $row->parent_id, array_map(static fn (object $other): int => (int) $other->id, $rows), true)) {
+                            $this->caution('Page "' . \FloCMS\Admin\Translation\Translations::get($row->title ?? '', \FloCMS\Admin\Translation\Languages::default()) . '" is under a page that was deleted: it is not shown. Choose another parent page, or restore that page from the trash.');
+                        }
+                        continue;
+                    }
                     foreach (\FloCMS\Admin\Translation\Translations::all($row->slug ?? '') as $lang => $slug) {
                         $first = explode('/', (string) $slug)[0];
                         if ($first !== '' && ($taken = \FloCMS\Admin\Pages\Pages::reservedSegment($first)) !== null) {

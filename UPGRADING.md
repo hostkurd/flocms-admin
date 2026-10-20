@@ -7,7 +7,7 @@ Update with `composer require "hostkurd/flocms-admin:^0.30.0" "hostkurd/flocms-c
 - **The home page**: to show a page at the main address, start your home controller's `index()` with `if ($page = home_page()) { return $page->response(); }`.
 - **Your controllers win**: a page can't take an address your site's controllers answer (a page called `contact` next to a `ContactController`). `php flo admin:doctor` lists any that clash.
 - **`/sitemap.xml`** is answered by the panel when pages are on. A `sitemap.xml` file in `public/` keeps working; `'pages' => ['sitemap' => false]` turns the panel's off.
-- **Tick `pages.publish`** on the Roles page (System) for the people who may publish pages. Without it they can write drafts. Super Admins have it (`*`).
+- **Tick `pages.publish`** on the Roles page (System) for the people who may publish pages. Without it they can write drafts, and pages visitors see are read-only for them. Super Admins have it (`*`).
 - **Block styles and scripts**, when the site hasn't copied them with `php flo admin:blocks`, are now linked as files from `/flo-admin/asset/` instead of printed in the page. Nothing to do; a strict Content-Security-Policy no longer blocks them.
 - **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
 

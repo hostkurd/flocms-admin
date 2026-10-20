@@ -59,7 +59,7 @@ final class PageEditor
         $html = '<div class="fa-page-buttons">'
             . '<button type="submit" class="fa-btn" formaction="' . Str::e(Admin::url('page-preview', ['page' => $record !== null && isset($record->id) ? (int) $record->id : null])) . '" formtarget="_blank" formnovalidate name="_preview" value="1" data-admin-download data-admin-preview>'
             . Icons::svg('eye', 'fa-icon') . '<span>' . Str::e(self::t('preview')) . '</span></button>';
-        if ($record !== null && isset($record->id) && Pages::isLive($record)) {
+        if ($record !== null && isset($record->id) && Pages::isVisible($record)) {
             $html .= '<a class="fa-btn fa-btn-ghost" href="' . Str::e(Pages::url($record, AdminLang::language())) . '" data-page-href="' . Str::e(self::urls($record, static fn (string $url): string => $url)) . '" target="_blank" rel="noopener">' . Icons::svg('external', 'fa-icon') . '<span>' . Str::e(self::t('view_on_site')) . '</span></a>';
         }
         return $html . '<p class="fa-help">' . Str::e(self::t('preview_help')) . '</p></div>';

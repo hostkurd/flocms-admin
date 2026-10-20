@@ -170,7 +170,13 @@ final class Pages
         return null;
     }
 
-    private static function ancestorsLive(object $row): bool
+    /** Whether visitors can open the page: live, and every page above it live too. */
+    public static function isVisible(object $row): bool
+    {
+        return self::isLive($row) && self::ancestorsLive($row);
+    }
+
+    public static function ancestorsLive(object $row): bool
     {
         $rows = self::rows();
         $parent = (int) ($row->parent_id ?? 0);

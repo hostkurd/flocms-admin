@@ -1641,6 +1641,7 @@ return [
     'pages.parent' => 'الصفحة الأم',
     'pages.parent_help' => 'يبدأ رابط الصفحة برابط صفحتها الأم، مثلاً /services/web-design.',
     'pages.parent_loop' => 'لا يمكن وضع الصفحة تحت نفسها أو تحت إحدى صفحاتها.',
+    'pages.parent_too_deep' => 'لا تتجاوز الصفحات :max مستويات، مع احتساب الصفحات التي تحت هذه الصفحة.',
     'pages.menu' => 'الإظهار في القائمة',
     'pages.menu_help' => 'تعرضها pages_menu() في ترويسة موقعك.',
     'pages.sort' => 'الترتيب',
