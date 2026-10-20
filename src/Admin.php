@@ -141,6 +141,7 @@ final class Admin
         self::$registry = null;
         self::$settings = null;
         \FloCMS\Admin\Settings\Settings::reset();
+        \FloCMS\Admin\Blocks\BlockRegistry::reset();
     }
 
     public static function config(): AdminConfig

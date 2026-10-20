@@ -824,7 +824,7 @@ final class ResourceController extends PanelController
 
             if ($switch && $errors !== []) { $editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($errors, $editing); }
             if (!$refreshing) {
-                $where = $form->errorSummary($errors);
+                $where = $form->errorSummary($errors, $state);
                 Session::setFlash($where === '' ? AdminLang::get('flash.fix_errors') : AdminLang::get('flash.fix_errors_in', ['fields' => $where]), 'danger');
             }
         } else {
