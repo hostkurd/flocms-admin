@@ -533,7 +533,10 @@ abstract class Resource
             $has = false;
             try {
                 foreach ($this->form(new \FloCMS\Admin\Form\Form())->fields() as $field) { if ($field instanceof \FloCMS\Admin\Form\Fields\Builder) { $has = true; break; } }
-            } catch (\Throwable) { $has = false; }
+            } catch (\Throwable) {
+                // A form that needs its record cannot be read here; it is asked again next time.
+                return false;
+            }
             self::$builders[static::class] = $has;
         }
         return self::$builders[static::class];

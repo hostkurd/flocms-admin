@@ -17,7 +17,7 @@
       slides.forEach(function (slide, i) {
         slide.classList.toggle('is-current', i === index);
         slide.classList.toggle('is-before', i < index);
-        if (i === index) slide.removeAttribute('aria-hidden'); else slide.setAttribute('aria-hidden', 'true');
+        if (i === index) { slide.removeAttribute('aria-hidden'); slide.inert = false; } else { slide.setAttribute('aria-hidden', 'true'); slide.inert = true; }
         var img = slide.querySelector('img[loading="lazy"]');
         if (img && Math.abs(i - index) <= 1) img.loading = 'eager';
         var video = slide.querySelector('video[data-flo-video]');

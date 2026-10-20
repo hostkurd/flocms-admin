@@ -219,6 +219,8 @@ class Builder extends Field
         foreach ($keys as $key) {
             if (is_array($value[$key] ?? null)) { $lists[$key] = $this->nodes($value[$key], '', false); }
         }
+        // Lists stored per language, read after ->translatable() was taken off: the default language's.
+        if (!$this->perLanguage && !isset($value[self::SINGLE])) { $lists[self::SINGLE] = $this->nodes(self::defaultList($value), '', false); }
         // A list stored before ->translatable(): the default language's.
         if ($this->perLanguage && isset($value[self::SINGLE]) && is_array($value[self::SINGLE]) && $lists[Languages::default()] === []) {
             $lists[Languages::default()] = $this->nodes($value[self::SINGLE], '', false);
@@ -290,9 +292,13 @@ class Builder extends Field
     }
 
     /** @param array<string, list<array<string, mixed>>> $lists */
-    public function encodeState(array $lists): string
+    /**
+     * @param array<string, list<array<string, mixed>>> $lists
+     * @param array<string, int> $expected how many blocks the browser said it sent, per list
+     */
+    public function encodeState(array $lists, array $expected = []): string
     {
-        return json_encode(['_state' => 1, 'lists' => $lists], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return json_encode(['_state' => 1, 'lists' => $lists] + ($expected !== [] ? ['sent' => $expected] : []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function stateFromRecord(?object $record, string $defaultLang): string|array
@@ -308,20 +314,74 @@ class Builder extends Field
 
     /**
      * Input: content[<lang>][<id>][type|parent|column|order|f][…] from the form,
-     * or the JSON state (a dialog's draft).
+     * with content[_total][<lang>] (how many blocks the page sent, first, so a
+     * cut-off request is noticed). A JSON value (an import's cell) is read as
+     * stored blocks. Either way every block goes through its fields' own input
+     * handling (rich text is cleaned) and Block::acceptInput() (HTML needs its
+     * permission); nothing the browser sends is stored as it is.
      */
     public function stateFromInput(array $input, array $languages): string|array
     {
         $value = $input[$this->name] ?? [];
-        if (is_string($value)) { return $this->encodeState($this->lists($value)); }
+        if (is_string($value)) { $value = $this->flatFromStored($value); }
         $value = is_array($value) ? $value : [];
         $lists = [];
+        $expected = [];
         foreach ($this->listKeys() as $key) {
             $entries = is_array($value[$key] ?? null) ? $value[$key] : [];
             $lists[$key] = $this->fromInput($entries, $languages);
+            $total = $value['_total'][$key] ?? null;
+            if (is_scalar($total) && is_numeric((string) $total)) { $expected[$key] = max(0, (int) $total); }
         }
-        return $this->encodeState($lists);
+        return $this->encodeState($lists, $expected);
     }
+
+    /**
+     * Stored blocks (JSON, or the editor's state) as the form's flat inputs, so
+     * they are read like a submitted form.
+     *
+     * @return array<string, mixed>
+     */
+    private function flatFromStored(string $json): array
+    {
+        $decoded = json_decode(trim($json), true);
+        if (!is_array($decoded)) { return []; }
+        if (($decoded['_state'] ?? null) === 1 && is_array($decoded['lists'] ?? null)) { $decoded = $decoded['lists']; }
+        $keys = $this->listKeys();
+        $lists = array_is_list($decoded) ? [$keys[0] => $decoded] : $decoded;
+        if (!$this->perLanguage && !array_key_exists(self::SINGLE, $lists)) { $lists = [self::SINGLE => self::defaultList($lists)]; }
+        $flat = [];
+        foreach ($keys as $key) {
+            $entries = [];
+            $walk = function (array $nodes, string $parent, int $depth) use (&$walk, &$entries): void {
+                foreach (array_values($nodes) as $order => $node) {
+                    if (!is_array($node) || $depth > self::DEPTH || count($entries) >= self::BLOCKS_LIMIT) { continue; }
+                    $id = self::isId($node['id'] ?? null) && !isset($entries[$node['id']]) ? (string) $node['id'] : self::newId();
+                    $fields = [];
+                    foreach (array_merge(is_array($node['data'] ?? null) ? $node['data'] : [], is_array($node['settings'] ?? null) ? $node['settings'] : []) as $name => $item) {
+                        $fields[$name] = is_bool($item) ? ($item ? '1' : '0') : (is_int($item) || is_float($item) ? (string) $item : $item);
+                    }
+                    $entries[$id] = ['type' => (string) ($node['type'] ?? ''), 'parent' => $parent, 'column' => (string) (int) ($node['column'] ?? 0), 'order' => (string) $order, 'f' => $fields];
+                    if (is_array($node['children'] ?? null)) { $walk($node['children'], $id, $depth + 1); }
+                }
+            };
+            $walk(is_array($lists[$key] ?? null) ? $lists[$key] : [], '', 0);
+            $flat[$key] = $entries;
+        }
+        return $flat;
+    }
+
+    /** The default language's list of a value stored with one list per language (or the first one there is). */
+    private static function defaultList(array $value): array
+    {
+        $default = $value[Languages::default()] ?? null;
+        if (is_array($default) && $default !== []) { return $default; }
+        foreach ($value as $list) { if (is_array($list) && array_is_list($list) && $list !== []) { return $list; } }
+        return [];
+    }
+
+    /** The most levels of blocks inside blocks. */
+    public const DEPTH = 4;
 
     /**
      * One list's blocks from its flat inputs: each block's fields through
@@ -336,14 +396,17 @@ class Builder extends Field
         $flat = [];
         foreach ($entries as $id => $entry) {
             if (!self::isId($id) || !is_array($entry) || count($flat) >= self::BLOCKS_LIMIT) { continue; }
+            $id = (string) $id;
             $type = (string) ($entry['type'] ?? '');
             $block = $this->block($type);
-            $node = ['id' => $id, 'type' => $type, 'column' => max(0, (int) ($entry['column'] ?? 0)), 'data' => [], 'settings' => [], 'children' => [],
+            $node = ['id' => $id, 'type' => $type, 'column' => max(0, min(11, (int) ($entry['column'] ?? 0))), 'data' => [], 'settings' => [], 'children' => [],
                 'parent' => is_string($entry['parent'] ?? null) && self::isId($entry['parent']) ? $entry['parent'] : '',
                 'order' => (int) ($entry['order'] ?? count($flat))];
             if ($block === null) {
-                $raw = is_string($entry['raw'] ?? null) ? json_decode($entry['raw'], true) : null;
-                if (!is_array($raw)) { continue; }
+                // A kind that no longer exists: kept only as the panel printed it (signed), never as the browser says.
+                $raw = self::unsign(is_string($entry['raw'] ?? null) ? $entry['raw'] : '', 'raw|' . $id);
+                $raw = $raw !== null ? json_decode($raw, true) : null;
+                if (!is_array($raw) || ($raw['type'] ?? null) !== $type || $this->block($type) !== null) { continue; }
                 $node['raw'] = $raw;
                 $flat[$id] = $node;
                 continue;
@@ -354,7 +417,9 @@ class Builder extends Field
                 $item = $field->stateFromInput($fields, $languages);
                 $state[$name] = is_string($item) ? $item : '';
             }
-            $state = $block->acceptInput($state);
+            $state = $block->acceptInput($state, $id);
+            // Someone without the HTML permission cannot add an HTML block (an empty one is dropped).
+            if ($block instanceof Html && !Html::allowed() && trim((string) ($state['html'] ?? '')) === '') { continue; }
             foreach ($state as $name => $item) {
                 if (in_array($name, $this->settingNames($block), true)) { $node['settings'][$name] = $item; } else { $node['data'][$name] = $item; }
             }
@@ -362,29 +427,35 @@ class Builder extends Field
         }
         // The tree: children under parents that hold blocks and accept them; the rest at the top.
         uasort($flat, static fn (array $a, array $b): int => [$a['column'], $a['order']] <=> [$b['column'], $b['order']]);
-        $roots = [];
         $byParent = [];
+        $placed = [];
         foreach ($flat as $id => $node) {
             $parent = $node['parent'];
             $parentBlock = $parent !== '' && isset($flat[$parent]) ? $this->block((string) $flat[$parent]['type']) : null;
-            if ($parentBlock !== null && $parentBlock->holdsBlocks() && $this->fits($node, $parentBlock::type()) && $flat[$parent]['parent'] !== $id) {
-                $byParent[$parent][] = $id;
-            } else {
-                $roots[] = $id;
-            }
+            $placed[$id] = $parentBlock !== null && $parentBlock->holdsBlocks() && $this->fits($node, $parentBlock::type()) && !self::reaches($flat, $parent, $id);
+            if ($placed[$id]) { $byParent[$parent][] = $id; }
         }
-        usort($roots, static fn (string $a, string $b): int => $flat[$a]['order'] <=> $flat[$b]['order']);
-        $build = function (string $id, int $depth) use (&$build, $flat, $byParent): array {
+        // A block that may not sit where it was put goes to the top, after the top block it was in.
+        $topOf = static function (string $id) use ($flat, $placed): string {
+            for ($i = 0; $i < 10 && $placed[$id]; $i++) { $id = $flat[$id]['parent']; }
+            return $id;
+        };
+        $roots = array_values(array_filter(array_keys($flat), static fn (string $id): bool => !$placed[$id]));
+        $key = static function (string $id) use ($flat, $topOf): array {
+            $parent = $flat[$id]['parent'];
+            if ($parent === '' || !isset($flat[$parent])) { return [$flat[$id]['order'], 0, 0]; }
+            return [$flat[$topOf($parent)]['order'], 1, $flat[$id]['order']];
+        };
+        usort($roots, static fn (string $a, string $b): int => $key($a) <=> $key($b));
+        $build = function (string $id, int $depth) use (&$build, $flat, $byParent, &$roots): array {
             $node = $flat[$id];
             unset($node['parent'], $node['order']);
-            if ($depth < 3) {
-                $block = $this->block((string) $node['type']);
-                $max = $block !== null ? $block->columnCount($node['data']) - 1 : 0;
-                foreach ($byParent[$id] ?? [] as $child) {
-                    $kid = $build($child, $depth + 1);
-                    $kid['column'] = min($kid['column'], $max);
-                    $node['children'][] = $kid;
-                }
+            $block = $this->block((string) $node['type']);
+            $max = $block !== null ? $block->columnCount($node['data']) - 1 : 0;
+            foreach ($byParent[$id] ?? [] as $child) {
+                $kid = $build($child, $depth + 1);
+                $kid['column'] = min($kid['column'], $max);
+                $node['children'][] = $kid;
             }
             return $node;
         };
@@ -396,10 +467,34 @@ class Builder extends Field
     /** Whether following parents up from $from leads to $id (a loop). */
     private static function reaches(array $flat, string $from, string $id): bool
     {
-        for ($i = 0, $at = $from; $i < 8 && $at !== '' && isset($flat[$at]); $i++, $at = $flat[$at]['parent']) {
+        for ($i = 0, $at = $from; $i < self::BLOCKS_LIMIT && $at !== '' && isset($flat[$at]); $i++, $at = $flat[$at]['parent']) {
             if ($at === $id) { return true; }
         }
         return false;
+    }
+
+    /**
+     * A value signed with this session's key (the panel's own copy of something
+     * a form carries back, such as a block that no longer exists).
+     */
+    public static function sign(string $value, string $purpose): string
+    {
+        return hash_hmac('sha256', $purpose . '|' . $value, self::key()) . '|' . base64_encode($value);
+    }
+
+    /** The value of sign(), or null when it was changed. */
+    public static function unsign(string $signed, string $purpose): ?string
+    {
+        [$sig, $encoded] = array_pad(explode('|', $signed, 2), 2, '');
+        $value = base64_decode($encoded, true);
+        return is_string($value) && hash_equals(hash_hmac('sha256', $purpose . '|' . $value, self::key()), $sig) ? $value : null;
+    }
+
+    private static function key(): string
+    {
+        $key = \FloCMS\Core\Session::get('admin_blocks_key');
+        if (!is_string($key) || strlen($key) < 32) { $key = bin2hex(random_bytes(32)); \FloCMS\Core\Session::set('admin_blocks_key', $key); }
+        return $key;
     }
 
     public function submitted(array $input): bool
@@ -483,6 +578,13 @@ class Builder extends Field
         }
         $errors = [];
         $this->validated = $this->lists($state);
+        // Fewer blocks arrived than the page sent: the server cut the request (max_input_vars).
+        $decoded = json_decode($state, true);
+        foreach (is_array($decoded['sent'] ?? null) ? $decoded['sent'] : [] as $key => $sent) {
+            if (isset($this->validated[$key]) && self::count($this->validated[$key]) < (int) $sent) {
+                return [$this->name => AdminLang::get('validation.builder_cut', ['attribute' => $this->getLabel(), 'max' => (string) ini_get('max_input_vars')])];
+            }
+        }
         foreach ($this->validated as $key => $nodes) {
             $walk = function (array $nodes) use (&$walk, &$errors, $key, $check): void {
                 foreach ($nodes as $node) {
@@ -508,7 +610,7 @@ class Builder extends Field
                 $errors[$this->name] = AdminLang::get('validation.builder_max', ['attribute' => $this->getLabel(), 'max' => (string) $this->maxBlocks]);
             }
         }
-        $first = $this->lists($state)[$this->listKeys()[0]] ?? [];
+        $first = $this->validated[$this->perLanguage ? Languages::default() : self::SINGLE] ?? [];
         if ($this->isRequired() && $first === []) {
             $errors[$this->name] = AdminLang::get('validation.builder_required', ['attribute' => $this->getLabel()]);
         }
@@ -624,8 +726,14 @@ class Builder extends Field
         foreach ($nodes as $index => $node) {
             if ($node['id'] === $id) {
                 if ($verb === 'remove') { array_splice($nodes, $index, 1); }
-                elseif ($verb === 'up' && $index > 0) { [$nodes[$index - 1], $nodes[$index]] = [$nodes[$index], $nodes[$index - 1]]; }
-                elseif ($verb === 'down' && $index < count($nodes) - 1) { [$nodes[$index + 1], $nodes[$index]] = [$nodes[$index], $nodes[$index + 1]]; }
+                else {
+                    // The block next to it in the same column (blocks of a Columns block share one list).
+                    $column = (int) ($node['column'] ?? 0);
+                    $step = $verb === 'up' ? -1 : ($verb === 'down' ? 1 : 0);
+                    for ($other = $index + $step; $step !== 0 && $other >= 0 && $other < count($nodes); $other += $step) {
+                        if ((int) ($nodes[$other]['column'] ?? 0) === $column) { [$nodes[$other], $nodes[$index]] = [$nodes[$index], $nodes[$other]]; break; }
+                    }
+                }
                 return array_values($nodes);
             }
             $nodes[$index]['children'] = self::change($node['children'] ?? [], $id, $verb);
@@ -681,7 +789,7 @@ class Builder extends Field
     public function title(array $node): string
     {
         $block = $this->block((string) $node['type']);
-        if ($block === null) { return AdminLang::get('blocks.unknown', ['type' => (string) $node['type']]); }
+        if ($block === null) { return AdminLang::get('blocks.unknown', ['type' => mb_substr((string) $node['type'], 0, 40)]); }
         try { return $block->title($node['data'] ?? []); } catch (\Throwable) { return $block::label(); }
     }
 

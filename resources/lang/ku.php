@@ -1404,7 +1404,7 @@ return [
     'blocks.empty_help' => 'بلۆکێک زیاد بکە بۆ دەستپێکردنی دروستکردنی ئەم پەڕەیە.',
     'blocks.copy_all_from' => 'لەبەرگرتنەوەی هەموو لە :language',
     'blocks.count' => ':count بلۆک',
-    'blocks.reorder_hint' => 'ڕایبکێشە بۆ ڕیزکردنەوە، یان Alt + ↑ ↓. گۆڕانکارییەکان تا پاشەکەوت دەکەیت هەڵدەگیرێن.',
+    'blocks.reorder_hint' => 'ڕایبکێشە بۆ ڕیزکردنەوە، یان Alt لەگەڵ تیرەکان (← → بۆ چوونە ناو بەش و ستوونەکان و دەرچوون لێیان). گۆڕانکارییەکان تا پاشەکەوت دەکەیت هەڵدەگیرێن.',
     'blocks.choose' => 'بلۆکێک لە پێکهاتەکەدا هەڵبژێرە بۆ دەستکاریکردنی.',
     'blocks.column' => 'ستوونی :number',
     'blocks.drag' => 'ڕایبکێشە بۆ ڕیزکردنەوە: :block',
@@ -1601,4 +1601,5 @@ return [
     'validation.builder_max' => ':attribute زۆرترین :max بلۆکی تێدا دەبێت.',
     'validation.builder_required' => 'لانیکەم یەک بلۆک بۆ :attribute زیاد بکە.',
     'validation.builder_size' => ':attribute زۆر گەورەیە (زۆرترین :max کیلۆبایت).',
+    'validation.builder_cut' => 'نەتوانرا :attribute پاشەکەوت بکرێت: ڕاژەکار داواکارییەکەی بڕی (max_input_vars = :max). هیچ پاشەکەوت نەکرا؛ داوای زیادکردنی max_input_vars بکە، یان پەڕەکە دابەش بکە.',
 ];

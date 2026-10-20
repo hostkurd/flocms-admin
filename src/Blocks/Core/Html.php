@@ -8,7 +8,6 @@ use FloCMS\Admin\Form\Fields\Hidden;
 use FloCMS\Admin\Form\Fields\Textarea;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Core\Auth;
-use FloCMS\Core\Session;
 
 /**
  * Raw HTML, printed on the website as written (0.29). Only people with the
@@ -36,30 +35,21 @@ final class Html extends Block
         return self::allowed() ? [$html] : [$html->disabled(), Hidden::make('_signed')];
     }
 
-    /** The state as it goes into the form: a locked copy carries its signature. */
-    public function prepareState(array $state): array
+    /** The state as it goes into the form: a locked copy carries its signature, for this block only. */
+    public function prepareState(array $state, string $id = ''): array
     {
-        if (!self::allowed()) { $state['_signed'] = self::sign((string) ($state['html'] ?? '')) . '|' . base64_encode((string) ($state['html'] ?? '')); }
+        if (!self::allowed()) { $state['_signed'] = \FloCMS\Admin\Form\Fields\Builder::sign((string) ($state['html'] ?? ''), 'html|' . $id); }
         return $state;
     }
 
-    /** Submitted values: without the permission only a signed, unchanged copy is kept. */
-    public function acceptInput(array $state): array
+    /** Submitted values: without the permission only this block's signed, unchanged copy is kept. */
+    public function acceptInput(array $state, string $id = ''): array
     {
-        if (self::allowed()) { unset($state['_signed']); return $state; }
-        $signed = (string) ($state['_signed'] ?? '');
-        [$sig, $encoded] = array_pad(explode('|', $signed, 2), 2, '');
-        $html = base64_decode($encoded, true);
-        $state['html'] = is_string($html) && hash_equals(self::sign($html), $sig) ? $html : '';
+        if (!self::allowed()) {
+            $state['html'] = \FloCMS\Admin\Form\Fields\Builder::unsign((string) ($state['_signed'] ?? ''), 'html|' . $id) ?? '';
+        }
         unset($state['_signed']);
         return $state;
-    }
-
-    private static function sign(string $html): string
-    {
-        $key = Session::get('admin_blocks_key');
-        if (!is_string($key) || strlen($key) < 32) { $key = bin2hex(random_bytes(32)); Session::set('admin_blocks_key', $key); }
-        return hash_hmac('sha256', 'html-block|' . $html, $key);
     }
 
     public function title(array $fields): string

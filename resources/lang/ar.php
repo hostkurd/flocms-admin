@@ -1404,7 +1404,7 @@ return [
     'blocks.empty_help' => 'أضف كتلة لتبدأ بناء هذه الصفحة.',
     'blocks.copy_all_from' => 'نسخ الكل من :language',
     'blocks.count' => ':count كتلة',
-    'blocks.reorder_hint' => 'اسحب لإعادة الترتيب، أو استخدم Alt + ↑ ↓. لا تُحفظ التغييرات إلا عند الحفظ.',
+    'blocks.reorder_hint' => 'اسحب لإعادة الترتيب، أو استخدم Alt مع الأسهم (← → للدخول إلى الأقسام والأعمدة والخروج منها). لا تُحفظ التغييرات إلا عند الحفظ.',
     'blocks.choose' => 'اختر كتلة في البنية لتعديلها.',
     'blocks.column' => 'العمود :number',
     'blocks.drag' => 'اسحب لإعادة الترتيب: :block',
@@ -1601,4 +1601,5 @@ return [
     'validation.builder_max' => 'يمكن أن يحتوي :attribute على :max كتلة كحد أقصى.',
     'validation.builder_required' => 'أضف كتلة واحدة على الأقل إلى :attribute.',
     'validation.builder_size' => ':attribute كبير جدًا (:max كيلوبايت كحد أقصى).',
+    'validation.builder_cut' => 'تعذّر حفظ :attribute: قطع الخادم الطلب (max_input_vars = :max). لم يُحفظ شيء؛ اطلب رفع قيمة max_input_vars أو قسّم الصفحة.',
 ];

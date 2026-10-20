@@ -31,7 +31,7 @@ public function form(Form $form): Form
 The field shows the page's **structure** on the left, one row per block, and the selected block's fields on the right.
 
 - **Add block** opens a picker with search and categories (Media, Text, Layout, Marketing, Your site). **+** on a row adds a block after it; **Add to column 2** or **Add a block inside** add one into a Section or Columns.
-- **Drag** a block by its handle anywhere it may sit, or move it with **Alt + ↑ ↓**. A Section sits at the top only; Columns sit at the top or in a Section; other blocks sit anywhere.
+- **Drag** a block by its handle anywhere it may sit, or move it with **Alt + ↑ ↓**, and into the Section or Columns before it or out of its container with **Alt + → ←** (mirrored right to left). A Section sits at the top only; Columns sit at the top or in a Section; other blocks sit anywhere.
 - A block's own tabs come first (a slider has **Content** and **Slides**), then **Settings**, shared by every block:
   - **Status** (Published, Draft) and **Show from / Show until**: a draft or a block outside its dates is not printed. The row says "Draft", "From 1 Nov" or "Ended".
   - **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Show on** (all screens, desktop only, phones only).
@@ -40,7 +40,9 @@ The field shows the page's **structure** on the left, one row per block, and the
 - Changing a Columns layout to fewer columns moves the blocks of the columns that go into the last one.
 - Errors open the block that has them; the message above the form says where: "Page content → Hero: Heading".
 - Without JavaScript every block's fields are shown one after another and the buttons send the form, as with [repeaters](repeaters.md).
-- A form with a Builder always opens as a page, never in a dialog.
+- A list inside a block (a slider's slides, cards) opens one item at a time: its fields fill the panel, with Back, "2 of 3" and the previous and next item.
+- A form with a Builder opens as a page, never in a dialog (inside a [relation manager](relation-managers.md) it still opens over the parent's page).
+- **Large pages and `max_input_vars`**: every field of every block is sent with the form, about 20 per block (more with slides and cards), and PHP drops what goes past `max_input_vars` (1000 by default). The page notices a request cut short and saves nothing, with a message saying so. For pages of more than about 40 blocks set `max_input_vars = 5000` in `php.ini` or `.user.ini`; `admin:doctor` warns when it is lower than 3000.
 - On phones a block's fields open over the structure, with Close at the top.
 
 `->translatable()` keeps **one list per language**, so each language may have different blocks. Without it there is one list for every language; the block fields themselves are never translatable.
@@ -66,7 +68,7 @@ The field shows the page's **structure** on the left, one row per block, and the
 
 ### HTML blocks
 
-An HTML block prints its code on the website as written, so only people with the **`blocks.html`** permission (Roles page, System) may add or change one. For everyone else an existing HTML block is read-only: it can be moved or removed, and its code is kept exactly (a signed copy travels with the form, so it cannot be swapped).
+An HTML block prints its code on the website as written, so only people with the **`blocks.html`** permission (Roles page, System) may add or change one. For everyone else an existing HTML block is read-only: it can be moved or removed, and its code is kept exactly (a copy signed for that block travels with the form, so it cannot be changed or copied into another block). Nothing the browser sends is stored as it is: every block goes through its fields' own checks (rich text is cleaned), also for imports, where HTML blocks are kept only for people with the permission.
 
 ## On the website
 
@@ -87,7 +89,7 @@ and the inside comes from **`views/blocks/<type>.html`** in the site, or the pac
 - **`{!! blocks_assets() !!}`** in the layout's `<head>` adds the base styles and only the scripts the page needs (the slider's about 4 KB where there is a slider), from `public/assets/flo-blocks/` with a version in the address, or inline from the package before you copy them. The styles use CSS variables, so a theme restyles them without editing the files: `--flo-container`, `--flo-narrow`, `--flo-gutter`, `--flo-block-gap`, `--flo-radius`, `--flo-brand`, `--flo-light`, `--flo-dark`, `--flo-slider-overlay`…
 - On a **settings page**, a `Builder::make('blocks')` is printed with `{!! blocks(setting('home.blocks')) !!}`.
 - **`blocks_data($value)`** returns the blocks shown now as arrays (`id`, `type`, `fields`, `settings`, `children`), for a site that renders them in JavaScript or an API.
-- **Caching**: the printed HTML of a list is kept in `storage/cache/blocks` until its content, a template or the language changes, a block's dates start or end, or six hours pass. Blocks with their own `data()` (which may read the database) are not cached unless they say so.
+- **Caching**: the printed HTML of a list is kept in `storage/cache/blocks` until its content, a template or the language changes, a block's dates start or end, or six hours pass. Blocks with their own `data()` (which may read the database) are not cached unless they say so, and nothing is cached while a `BlockRenderer::rendering()` listener is set. Links typed in blocks are printed only when they are http(s), `mailto:`, `tel:` or an address on the site.
 - The slider: the first slide loads at once, the others lazily; arrows, dots, swipe and arrow keys; autoplay pauses on hover, on focus and in a hidden tab, has a pause button, and is off with "reduce motion". Right-to-left pages slide the other way.
 
 ## A slider on its own

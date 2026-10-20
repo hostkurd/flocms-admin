@@ -198,17 +198,63 @@ final class BuilderUnitTest extends TestCase
             $_SESSION['role'] = 1;
             $field = Builder::make('content');
             self::assertFalse($field->canAdd($html));
-            $state = $html->prepareState(['html' => '<iframe src="/map"></iframe>']);
-            $signed = $state['_signed'];
-            // Sent back unchanged: kept; changed or forged: emptied
-            $kept = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<script>x</script>', '_signed' => $signed]]]]], self::LANGS);
+            $signed = $html->prepareState(['html' => '<iframe src="/map"></iframe>'], 'bh')['_signed'];
+            $post = static fn (string $id, array $f): array => ['content' => ['_' => [$id => ['type' => 'html', 'f' => $f]]]];
+            // Sent back unchanged by the same block: kept
+            $kept = $field->stateFromInput($post('bh', ['html' => '<script>x</script>', '_signed' => $signed]), self::LANGS);
             self::assertSame('<iframe src="/map"></iframe>', $field->lists($kept)['_'][0]['data']['html']);
-            $forged = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<script>x</script>', '_signed' => 'x|' . base64_encode('<script>x</script>')]]]]], self::LANGS);
-            self::assertArrayNotHasKey('html', json_decode((string) $field->dehydrate($forged), true)[0]['data']);
             self::assertStringNotContainsString('_signed', (string) $field->dehydrate($kept));
+            // Forged, or the copy of another block: the block is not kept
+            foreach ([$post('bh', ['html' => '<script>x</script>', '_signed' => 'x|' . base64_encode('<script>x</script>')]), $post('bnew', ['_signed' => $signed]), $post('bnew', ['html' => '<script>x</script>'])] as $input) {
+                self::assertSame([], $field->lists($field->stateFromInput($input, self::LANGS))['_']);
+            }
+            // The JSON path (an import, a forged draft) goes through the same checks
+            foreach (['[{"id":"b1","type":"html","data":{"html":"<script>x</script>"}}]', '{"_state":1,"lists":{"_":[{"id":"b1","type":"html","data":{"html":"<script>x</script>"}}]}}'] as $json) {
+                self::assertNull($field->dehydrate($field->stateFromInput(['content' => $json], self::LANGS)));
+            }
+            // A kind that no longer exists can't be made up by the browser
+            $raw = $field->stateFromInput(['content' => ['_' => ['b2' => ['type' => 'gone', 'raw' => '{"id":"b2","type":"html","data":{"html":"<script>"}}']]]], self::LANGS);
+            self::assertSame([], $field->lists($raw)['_']);
         } finally {
             $_SESSION = $session;
         }
+    }
+
+    public function testRichTextFromJsonIsCleaned(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => '[{"id":"b1","type":"rich_text","data":{"body":"<p onmouseover=\"alert(1)\">Hi</p><script>alert(2)</script>"}}]'], self::LANGS);
+        $stored = (string) $field->dehydrate($state);
+        self::assertStringContainsString('Hi', $stored);
+        self::assertStringNotContainsString('onmouseover', $stored);
+        self::assertStringNotContainsString('<script', $stored);
+    }
+
+    public function testListsReadAfterTranslatableWasTakenOff(): void
+    {
+        $field = Builder::make('content');
+        $lists = $field->lists('{"en":[{"id":"b1","type":"heading","data":{"text":"Kept"}}],"ar":[]}');
+        self::assertSame('Kept', $lists['_'][0]['data']['text']);
+    }
+
+    public function testUpAndDownStayInTheirColumn(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromRecord((object) ['content' => json_encode([['id' => 'bc', 'type' => 'columns', 'data' => ['layout' => '50-50'], 'children' => [
+            ['id' => 'ba', 'type' => 'heading', 'data' => ['text' => 'A']], ['id' => 'bb', 'type' => 'heading', 'column' => 1, 'data' => ['text' => 'B']], ['id' => 'bd', 'type' => 'heading', 'data' => ['text' => 'C']],
+        ]]])], 'en');
+        $moved = $field->lists((string) $field->applyOperation($state, 'content:block:up:_:bd'))['_'][0]['children'];
+        self::assertSame(['bd', 'bb', 'ba'], array_column($moved, 'id'));
+        self::assertSame(['C', 'A'], array_values(array_map(static fn (array $n): string => $n['data']['text'], array_filter($moved, static fn (array $n): bool => $n['column'] === 0))));
+    }
+
+    public function testACutRequestIsNotSaved(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_total' => ['_' => '3'], '_' => ['b1' => ['type' => 'heading', 'f' => ['text' => 'Only one arrived']]]]], self::LANGS);
+        self::assertArrayHasKey('content', $field->validateBlocks($state, static fn (): array => []));
+        $whole = $field->stateFromInput(['content' => ['_total' => ['_' => '1'], '_' => ['b1' => ['type' => 'heading', 'f' => ['text' => 'All']]]]], self::LANGS);
+        self::assertSame([], $field->validateBlocks($whole, static fn (): array => []));
     }
 
     public function testMediaInBlocksIsCounted(): void

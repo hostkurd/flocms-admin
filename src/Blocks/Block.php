@@ -122,7 +122,7 @@ abstract class Block
      * @param array<string, mixed> $state
      * @return array<string, mixed>
      */
-    public function prepareState(array $state): array { return $state; }
+    public function prepareState(array $state, string $id = ''): array { return $state; }
 
     /**
      * The submitted state of the block, before it is validated and stored
@@ -131,7 +131,7 @@ abstract class Block
      * @param array<string, mixed> $state
      * @return array<string, mixed>
      */
-    public function acceptInput(array $state): array { return $state; }
+    public function acceptInput(array $state, string $id = ''): array { return $state; }
 
     /** Layout blocks hold other blocks (Section, Columns). */
     public function holdsBlocks(): bool { return false; }

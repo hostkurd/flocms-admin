@@ -80,6 +80,10 @@ final class BuilderRenderer
         }
         // Marks the field as sent even when every block was removed.
         $html .= '<input type="hidden" name="' . Str::e($base) . '[_sent]" value="1">';
+        // How many blocks each list sends, first, so a request the server cut short is noticed (builder.ts keeps it up to date).
+        foreach ($keys as $key) {
+            $html .= '<input type="hidden" name="' . Str::e($base) . '[_total][' . Str::e($key) . ']" value="' . Builder::count($lists[$key]) . '" data-builder-total="' . Str::e($key) . '">';
+        }
         if (isset($this->errors[$name])) {
             $html .= '<p class="fa-error" role="alert" id="' . Str::e($this->id) . '-error">' . Str::e($this->errors[$name]) . '</p>';
         }
@@ -267,7 +271,7 @@ final class BuilderRenderer
         $html .= $hidden('type', $type, 'type') . $hidden('parent', $parent, 'parent') . $hidden('column', (string) (int) ($node['column'] ?? 0), 'column') . $hidden('order', (string) $order, 'order');
 
         if ($block === null) {
-            $html .= $hidden('raw', (string) json_encode($node['raw'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'raw');
+            $html .= $hidden('raw', Builder::sign((string) json_encode($node['raw'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'raw|' . $id), 'raw');
             $html .= '<div class="fa-builder-pane-body"><p class="fa-help">' . Str::e(self::t('unknown_help', ['type' => $type])) . '</p></div>';
             return $html . '</section>';
         }
@@ -280,7 +284,7 @@ final class BuilderRenderer
             }
         }
         $form = $field->blockForm($block, !$writable);
-        $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []));
+        $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []), $id);
         $child = $this->parent->child($state, $errors, $paneId . '-', $base . '[f]', $op . 'item:' . $key . ':' . $id . ':');
         $html .= '<div class="fa-builder-pane-body">' . $child->render($form) . '</div>';
         return $html . '</section>';

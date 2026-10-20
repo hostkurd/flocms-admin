@@ -1407,7 +1407,7 @@ return [
     'blocks.empty_help' => 'Add a block to start building this page.',
     'blocks.copy_all_from' => 'Copy all from :language',
     'blocks.count' => ':count blocks',
-    'blocks.reorder_hint' => 'Drag to reorder, or Alt + ↑ ↓. Changes are kept until you save.',
+    'blocks.reorder_hint' => 'Drag to reorder, or Alt + arrow keys (← → in and out of sections and columns). Changes are kept until you save.',
     'blocks.choose' => 'Choose a block in the structure to edit it.',
     'blocks.column' => 'Column :number',
     'blocks.drag' => 'Drag to reorder: :block',
@@ -1620,4 +1620,5 @@ return [
     'validation.builder_max' => ':attribute can hold up to :max blocks.',
     'validation.builder_required' => 'Add at least one block to :attribute.',
     'validation.builder_size' => ':attribute is too large (up to :max kB).',
+    'validation.builder_cut' => ':attribute could not be saved: the server cut the request short (max_input_vars = :max). Nothing was saved; ask for a higher max_input_vars, or split the page.',
 ];

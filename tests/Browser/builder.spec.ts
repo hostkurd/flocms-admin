@@ -123,6 +123,18 @@ test('fewer columns move their blocks into the last one', async ({ page }) => {
   expect(columns.children.map((block: { column?: number }) => block.column ?? 0)).toEqual([0, 1, 1]);
 });
 
+test('the keyboard moves blocks into and out of a section', async ({ page }) => {
+  await page.goto('/en/admin/landings/edit/1');
+  await row(page, 'bcta1').locator('[data-builder-select]').first().focus();
+  await page.keyboard.press('Alt+ArrowRight');
+  await expect(row(page, 'bsect1').locator('[data-builder-node="bcta1"]')).toHaveCount(1);
+  await expect(pane(page, 'bcta1').locator('[data-builder-parent]')).toHaveValue('bsect1');
+  await expect(builder(page).locator('[data-builder-total="en"]')).toHaveValue('7');
+  await page.keyboard.press('Alt+ArrowLeft');
+  await expect(titlesOf(top(page))).toHaveText(['Home slider', 'Services', 'Start a project']);
+  await expect(pane(page, 'bcta1').locator('[data-builder-parent]')).toHaveValue('');
+});
+
 test('copy a block, or all of them, to another language', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
   await row(page, 'bhead1').locator('[data-builder-select]').first().click();

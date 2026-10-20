@@ -2,10 +2,14 @@
 (function () {
   'use strict';
   var dialog = null, image = null, links = [], index = 0;
-  function make() {
+  function make(gallery) {
     dialog = document.createElement('dialog');
     dialog.className = 'flo-lightbox';
-    dialog.innerHTML = '<img alt=""><button type="button" data-prev aria-label="Previous">‹</button><button type="button" data-next aria-label="Next">›</button><button type="button" data-close aria-label="Close">×</button>';
+    dialog.innerHTML = '<img alt=""><button type="button" data-prev>‹</button><button type="button" data-next>›</button><button type="button" data-close>×</button>';
+    ['prev', 'next', 'close'].forEach(function (name) {
+      var label = gallery.getAttribute('data-' + (name === 'prev' ? 'previous' : name)) || name;
+      dialog.querySelector('[data-' + name + ']').setAttribute('aria-label', label);
+    });
     image = dialog.querySelector('img');
     dialog.addEventListener('click', function (event) {
       var button = event.target.closest('button');
@@ -29,8 +33,9 @@
     var link = event.target.closest && event.target.closest('[data-flo-gallery-item]');
     if (!link || typeof HTMLDialogElement !== 'function') return;
     event.preventDefault();
-    if (!dialog) make();
-    links = [].slice.call(link.closest('[data-flo-gallery]').querySelectorAll('[data-flo-gallery-item]'));
+    var gallery = link.closest('[data-flo-gallery]');
+    if (!dialog) make(gallery);
+    links = [].slice.call(gallery.querySelectorAll('[data-flo-gallery-item]'));
     show(links.indexOf(link));
     dialog.showModal();
   });

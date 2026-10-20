@@ -78,6 +78,7 @@ final class Settings
         $data = self::data();
         $value = self::filled($data['values'][$key] ?? null) ? $data['values'][$key] : ($data['defaults'][$key] ?? null);
         if (!self::filled($value)) { return []; }
+        if (is_array($value) && self::holdsLists($value)) { return []; }
         $values = is_array($value) ? array_filter(array_map('strval', $value), static fn (string $v): bool => $v !== '') : [Languages::default() => (string) $value];
         return isset($data['files'][$key]) ? array_map([self::class, 'url'], $values) : $values;
     }

@@ -4,7 +4,7 @@
      role="region" aria-roledescription="carousel" aria-label="{{ $name !== '' ? $name : \FloCMS\Admin\Support\AdminLang::get('blocks.site_slider') }}">
     <div class="flo-slider-track" aria-live="off">
         @foreach($slides as $index => $slide)
-        <div class="flo-slide is-{{ $slide['position'] }} is-{{ $slide['tone'] }}{{ $index === 0 ? ' is-current' : '' }}" role="group" aria-roledescription="slide" aria-label="{{ ($index + 1) . ' / ' . count($slides) }}"{!! $index === 0 ? '' : ' aria-hidden="true"' !!}>
+        <div class="flo-slide is-{{ $slide['position'] }} is-{{ $slide['tone'] }}{{ $index === 0 ? ' is-current' : '' }}" role="group" aria-roledescription="slide" aria-label="{{ ($index + 1) . ' / ' . count($slides) }}"{!! $index === 0 ? '' : ' aria-hidden="true" inert' !!}>
             <div class="flo-slide-media">
                 @if($slide['item']->isVideo())
                 {!! $slide['item']->video(['controls' => false, 'muted' => true, 'loop' => true, 'autoplay' => $index === 0, 'preload' => $index === 0 ? 'auto' : 'none', 'data-flo-video' => true]) !!}

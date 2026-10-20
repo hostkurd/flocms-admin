@@ -90,7 +90,8 @@ final class BlockRenderer
         $lang ??= self::language();
         $nodes = self::nodes($value, $lang);
         if ($nodes === []) { return ''; }
-        $cache = self::cacheFile($nodes, $lang);
+        // Listeners may add data for this visitor: their pages are never cached.
+        $cache = self::$listeners === [] ? self::cacheFile($nodes, $lang) : null;
         if ($cache !== null && is_file($cache)) {
             $cached = json_decode((string) @file_get_contents($cache), true);
             if (is_array($cached) && (int) ($cached['until'] ?? 0) > self::now() && is_string($cached['html'] ?? null)) {
@@ -106,6 +107,10 @@ final class BlockRenderer
             // At most a few hours, so a changed image or alt text in the library shows the same day.
             $until = min(self::nextChange($nodes) ?? PHP_INT_MAX, self::now() + self::CACHE_SECONDS);
             @file_put_contents($cache, json_encode(['until' => $until, 'types' => array_keys($types), 'html' => $html], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+            // Now and then, files of old versions of pages go.
+            if (random_int(1, 50) === 1) {
+                foreach (glob(dirname($cache) . '/*.json') ?: [] as $old) { if ((int) @filemtime($old) < time() - self::CACHE_SECONDS * 2) { @unlink($old); } }
+            }
         }
         return $html;
     }
@@ -123,6 +128,7 @@ final class BlockRenderer
             if (!self::visible($node)) { continue; }
             $block = BlockRegistry::find((string) ($node['type'] ?? ''));
             $fields = is_array($node['data'] ?? null) ? $node['data'] : [];
+            $fields = $block !== null ? self::withDefaults($block, $fields) : self::safeLinks($fields);
             $extra = $block !== null ? $block->data($fields) : [];
             array_walk_recursive($extra, static function (mixed &$item): void { if (is_object($item) && method_exists($item, 'toArray')) { $item = $item->toArray(); } });
             $entry = ['id' => (string) ($node['id'] ?? ''), 'type' => (string) ($node['type'] ?? ''), 'fields' => $extra + $fields,
@@ -298,7 +304,7 @@ final class BlockRenderer
     {
         $defaults = ['name' => '', 'height' => 'screen', 'height_px' => '560', 'height_phone' => '420', 'effect' => 'fade', 'interval' => '6', 'autoplay' => '1', 'arrows' => '1', 'dots' => '1', 'fit' => 'cover', 'overlay' => '35'];
         $vars = array_map(static fn ($value): string => is_bool($value) ? ($value ? '1' : '0') : (string) $value, array_intersect_key($options, $defaults)) + $defaults;
-        $vars['slides'] = Core\Slider::shownSlides($slides);
+        $vars['slides'] = Core\Slider::shownSlides(self::safeLinks(['slides' => is_string($slides) ? (json_decode($slides, true) ?? []) : $slides])['slides']);
         if ($vars['slides'] === []) { return ''; }
         $vars['block'] = (object) ['id' => 's' . substr(hash('sha256', json_encode($slides) . json_encode($options)), 0, 8), 'type' => 'slider', 'settings' => [], 'lang' => self::language(), 'anchor' => ''];
         self::$printed['slider'] = true;

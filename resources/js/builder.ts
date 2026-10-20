@@ -104,6 +104,8 @@ function sync(list: HTMLElement): void {
     if (handle) handle.setAttribute('aria-label', text(builder.dataset.dragText, { block: title }) || title);
   });
   const count = nodes(list).length;
+  const total = builder.querySelector<HTMLInputElement>(`[data-builder-total="${CSS.escape(list.dataset.builderList || '')}"]`);
+  if (total) total.value = String(count);
   const max = Number(builder.dataset.max || 0);
   const counter = list.querySelector<HTMLElement>('[data-builder-count]');
   if (counter) counter.textContent = text(builder.dataset.countText, { count: String(count) });
@@ -752,6 +754,28 @@ document.addEventListener('keydown', event => {
   if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown') && list && event.target.closest('.fa-builder-row')) {
     const node = event.target.closest<HTMLElement>('[data-builder-node]');
     if (node) { event.preventDefault(); move(list, node, event.key === 'ArrowUp' ? -1 : 1); }
+    return;
+  }
+  // Alt + → moves a block into the container before it; Alt + ← out of its container (mirrored right to left).
+  if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight') && list && event.target.closest('.fa-builder-row')) {
+    const node = event.target.closest<HTMLElement>('[data-builder-node]');
+    if (!node) return;
+    const rtl = getComputedStyle(list).direction === 'rtl';
+    const into = (event.key === 'ArrowRight') !== rtl;
+    event.preventDefault();
+    if (into) {
+      const before = node.previousElementSibling as HTMLElement | null;
+      const slot = before?.hasAttribute('data-builder-node') ? [...before.querySelectorAll<HTMLElement>(':scope > [data-builder-slot], :scope > [data-builder-cols] > [data-builder-col] > [data-builder-slot]')].reverse().find(target => allowed(list, node.dataset.type || '', target)) : null;
+      if (!slot) return;
+      slot.append(node);
+    } else {
+      const parent = node.parentElement?.closest<HTMLElement>('[data-builder-node]');
+      if (!parent || !allowed(list, node.dataset.type || '', slotOf(parent))) return;
+      parent.after(node);
+    }
+    changed(list);
+    node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus();
+    announce(builderOf(list)!, text(builderOf(list)!.dataset.movedText, { block: titleOf(list, node), position: String(childNodes(slotOf(node)).indexOf(node) + 1) }));
     return;
   }
   if (event.target.matches('[data-builder-handle]') && (event.key === 'ArrowUp' || event.key === 'ArrowDown') && list) {

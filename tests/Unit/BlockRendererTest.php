@@ -102,5 +102,18 @@ final class BlockRendererTest extends TestCase
         self::assertStringNotContainsString('data:text', $html);
         self::assertStringContainsString('href="mailto:hi@example.com"', $html);
         self::assertStringContainsString('href="/about"', $html);
+        $data = blocks_data('[{"id":"b1","type":"call_to_action","data":{"heading":"A","link":"javascript:alert(1)"}}]');
+        self::assertSame('', $data[0]['fields']['link']);
+    }
+
+    public function testListenersSeeEveryViewAndTurnTheCacheOff(): void
+    {
+        $seen = 0;
+        BlockRenderer::rendering(static function (array $vars) use (&$seen): ?array { $seen++; return null; });
+        $page = '[{"id":"b1","type":"heading","data":{"text":"Hi"}}]';
+        blocks($page);
+        blocks($page);
+        self::assertSame(2, $seen);
+        self::assertSame([], glob(\FloCMS\Admin\Admin::root() . '/storage/cache/blocks/*.json') ?: []);
     }
 }

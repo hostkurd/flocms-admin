@@ -271,6 +271,10 @@ final class DoctorCommand extends Command
         // Blocks (0.29): one JSON document per column, often large.
         foreach ($form->fields() as $name => $field) {
             if (!$field instanceof \FloCMS\Admin\Form\Fields\Builder) { continue; }
+            $vars = (int) ini_get('max_input_vars');
+            if ($vars > 0 && $vars < 3000) {
+                $this->caution('max_input_vars is ' . $vars . ': a page of "' . $name . '" with many blocks can be too large to save; set max_input_vars = 5000 in php.ini or .user.ini');
+            }
             $type = strtolower(trim((string) ($columns[strtolower($name)] ?? '')));
             if ($type !== '' && preg_match('/json|text|clob/', $type) !== 1) {
                 $this->caution('Column "' . $name . '" holds blocks but its type is ' . $type . ': use JSON or LONGTEXT');
