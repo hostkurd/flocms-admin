@@ -81,6 +81,12 @@ final class ActivityChanges
                 continue;
             }
 
+            // Blocks (0.29): added, removed, moved, and changes inside a block.
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Builder) {
+                array_push($changes, ...self::blockChanges($field, $name, $label, $secret, is_string($old) ? $old : '', is_string($new) ? $new : '', $db));
+                continue;
+            }
+
             if (is_array($old) || is_array($new)) {
                 $old = is_array($old) ? $old : [];
                 $new = is_array($new) ? $new : [];
@@ -160,6 +166,71 @@ final class ActivityChanges
         $common = static fn (array $from, array $to): array => array_values(array_filter(array_keys($from), static fn (string $id): bool => isset($to[$id])));
         if ($common($before, $after) !== $common($after, $before)) {
             $changes[] = ['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'order', 'before' => '', 'after' => ''];
+        }
+        return $changes;
+    }
+
+    /**
+     * Changes of a Builder, in words: "Page content · Added: Call to action", "Page content · Hero ·
+     * Heading: Welcome → Hello", "Page content · Order changed". Blocks are matched by their id,
+     * in each language's list.
+     *
+     * @return list<array{field: string, label: string, lang: ?string, type: string, before: string, after: string}>
+     */
+    private static function blockChanges(\FloCMS\Admin\Form\Fields\Builder $field, string $name, string $label, bool $secret, string $old, string $new, ?Database $db): array
+    {
+        if ($field->dehydrate($old) === $field->dehydrate($new)) { return []; }
+        if ($secret) { return [['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'hidden', 'before' => '', 'after' => '']]; }
+        $flatten = static function (array $nodes, string $parent = '') use (&$flatten): array {
+            $flat = [];
+            foreach ($nodes as $node) {
+                $flat[(string) $node['id']] = $node + ['parent' => $parent];
+                $flat += $flatten($node['children'] ?? [], (string) $node['id']);
+            }
+            return $flat;
+        };
+        $was = $field->lists($old);
+        $now = $field->lists($new);
+        $changes = [];
+        foreach ($field->listKeys() as $key) {
+            $lang = $key === \FloCMS\Admin\Form\Fields\Builder::SINGLE ? null : $key;
+            $before = $flatten($was[$key] ?? []);
+            $after = $flatten($now[$key] ?? []);
+            $title = static fn (array $node): string => self::clip($field->title($node));
+            foreach ($before as $id => $node) {
+                if (!isset($after[$id])) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => $lang, 'type' => 'item', 'before' => $title($node), 'after' => '']; }
+            }
+            foreach ($after as $id => $node) {
+                if (!isset($before[$id])) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => $lang, 'type' => 'item', 'before' => '', 'after' => $title($node)]; continue; }
+                $block = $field->block((string) $node['type']);
+                if ($block === null) { continue; }
+                $form = $field->blockForm($block);
+                $a = $before[$id]['data'] + $before[$id]['settings'];
+                $b = $node['data'] + $node['settings'];
+                foreach ($form->fields() as $subName => $sub) {
+                    if ($sub instanceof \FloCMS\Admin\Form\Fields\Hidden) { continue; }
+                    $x = (string) ($a[$subName] ?? '');
+                    $y = (string) ($b[$subName] ?? '');
+                    if ($sub instanceof Toggle) { $x = $x === '1' ? '1' : '0'; $y = $y === '1' ? '1' : '0'; }
+                    if ($sub instanceof \FloCMS\Admin\Form\Fields\Repeater || $sub instanceof \FloCMS\Admin\Form\Fields\MediaPicker) {
+                        $x = (string) json_encode($sub->dehydrate($x));
+                        $y = (string) json_encode($sub->dehydrate($y));
+                    }
+                    if ($x === $y) { continue; }
+                    $subLabel = $label . ' · ' . $title($node) . ' · ' . mb_substr(trim(strip_tags($sub->getLabel())), 0, 120);
+                    $entry = $sub instanceof \FloCMS\Admin\Form\Fields\Repeater
+                        ? ['label' => $subLabel, 'lang' => $lang, 'type' => 'value',
+                            'before' => AdminLang::get('blocks.items_count', ['count' => (string) count(json_decode((string) $sub->dehydrate((string) ($a[$subName] ?? '')), true) ?: [])]),
+                            'after' => AdminLang::get('blocks.items_count', ['count' => (string) count(json_decode((string) $sub->dehydrate((string) ($b[$subName] ?? '')), true) ?: [])])]
+                        : array_diff_key(self::entry($sub, $subName, $subLabel, $lang, $sub->isHiddenFromActivity(), $x, $y, $a, $b, $form, $db), ['field' => true]);
+                    $changes[] = ['field' => $name] + $entry;
+                }
+            }
+            // The same blocks in another place or order
+            $places = static fn (array $from, array $to): array => array_values(array_map(static fn (array $node): string => $node['id'] . '@' . $node['parent'] . ':' . (int) ($node['column'] ?? 0), array_filter($from, static fn (array $node): bool => isset($to[$node['id']]))));
+            if ($places($before, $after) !== $places($after, $before)) {
+                $changes[] = ['field' => $name, 'label' => $label, 'lang' => $lang, 'type' => 'order', 'before' => '', 'after' => ''];
+            }
         }
         return $changes;
     }

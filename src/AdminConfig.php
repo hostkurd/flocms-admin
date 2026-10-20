@@ -361,6 +361,12 @@ final class AdminConfig
      *
      * @return list<class-string<\FloCMS\Admin\Blocks\Block>>
      */
+    /** The 'blocks' value as written, for admin:doctor. */
+    public function configuredBlocks(): mixed
+    {
+        return $this->values['blocks'] ?? [];
+    }
+
     public function blocks(): array
     {
         $value = $this->values['blocks'] ?? [];

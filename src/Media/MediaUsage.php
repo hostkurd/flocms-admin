@@ -50,6 +50,9 @@ final class MediaUsage
                     }
                 }
                 $store->syncUsage($resource, $recordId, $name, array_values(array_unique($ids)), $strict);
+            } elseif ($field instanceof \FloCMS\Admin\Form\Fields\Builder) {
+                // Media in blocks (0.29): pickers, pickers in a block's lists, and rich text.
+                $store->syncUsage($resource, $recordId, $name, $field->mediaIds($values[$name] ?? null), $strict);
             }
         }
     }

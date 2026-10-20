@@ -183,4 +183,66 @@ final class BuilderUnitTest extends TestCase
         self::assertTrue($form->applyRepeaterOperation($values, 'content:block:item:_:bs:slides:add'));
         self::assertCount(1, json_decode($field->lists($values['content'])['_'][1]['data']['slides'], true));
     }
+
+    public function testLockedHtmlKeepsItsMarkupAndCannotBeChanged(): void
+    {
+        $session = $_SESSION ?? [];
+        try {
+            \FloCMS\Core\Config::set('permissions', [1 => [], 2 => ['blocks.html']]);
+            $_SESSION = ['role' => 2];
+            $html = BlockRegistry::find('html');
+            $field = Builder::make('content');
+            $allowed = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<iframe src="/map"></iframe>']]]]], self::LANGS);
+            self::assertSame('<iframe src="/map"></iframe>', $field->lists($allowed)['_'][0]['data']['html']);
+
+            $_SESSION['role'] = 1;
+            $field = Builder::make('content');
+            self::assertFalse($field->canAdd($html));
+            $state = $html->prepareState(['html' => '<iframe src="/map"></iframe>']);
+            $signed = $state['_signed'];
+            // Sent back unchanged: kept; changed or forged: emptied
+            $kept = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<script>x</script>', '_signed' => $signed]]]]], self::LANGS);
+            self::assertSame('<iframe src="/map"></iframe>', $field->lists($kept)['_'][0]['data']['html']);
+            $forged = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<script>x</script>', '_signed' => 'x|' . base64_encode('<script>x</script>')]]]]], self::LANGS);
+            self::assertArrayNotHasKey('html', json_decode((string) $field->dehydrate($forged), true)[0]['data']);
+            self::assertStringNotContainsString('_signed', (string) $field->dehydrate($kept));
+        } finally {
+            $_SESSION = $session;
+        }
+    }
+
+    public function testMediaInBlocksIsCounted(): void
+    {
+        $field = Builder::make('content')->translatable();
+        $stored = json_encode(['en' => [
+            ['id' => 'b1', 'type' => 'image', 'data' => ['media' => '7']],
+            ['id' => 'b2', 'type' => 'slider', 'data' => ['slides' => [['_key' => 'k1', 'media' => '8'], ['_key' => 'k2', 'media' => '7']]]],
+        ], 'ar' => [['id' => 'b3', 'type' => 'gallery', 'data' => ['images' => ['9', '10']]]]]);
+        $ids = $field->mediaIds($stored);
+        sort($ids);
+        self::assertSame([7, 8, 9, 10], $ids);
+    }
+
+    public function testTheActivityLogNamesBlocks(): void
+    {
+        $field = Builder::make('content');
+        $form = (new Form())->schema([$field]);
+        $old = $field->stateFromRecord((object) ['content' => '[{"id":"b1","type":"heading","data":{"text":"Welcome"}},{"id":"b2","type":"rich_text","data":{"body":"<p>Hi</p>"}}]'], 'en');
+        $new = $field->stateFromRecord((object) ['content' => '[{"id":"b2","type":"rich_text","data":{"body":"<p>Hi</p>"}},{"id":"b1","type":"heading","data":{"text":"Hello"}},{"id":"b3","type":"call_to_action","data":{"heading":"Start"}}]'], 'en');
+        $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form, ['content' => $old], ['content' => $new]);
+        $types = array_column($changes, 'type');
+        self::assertContains('order', $types);
+        self::assertContains(['label' => 'Content', 'type' => 'item', 'after' => 'Start'], array_map(static fn (array $c): array => array_intersect_key($c, ['label' => 1, 'type' => 1, 'after' => 1]), $changes));
+        $value = array_values(array_filter($changes, static fn (array $c): bool => $c['type'] === 'value'))[0];
+        self::assertSame(['Content · Hello · Heading', 'Welcome', 'Hello'], [$value['label'], $value['before'], $value['after']]);
+        self::assertSame([], \FloCMS\Admin\Activity\ActivityChanges::diff($form, ['content' => $old], ['content' => $old]));
+    }
+
+    public function testErrorSummaryNamesTheBlock(): void
+    {
+        $field = Builder::make('content')->label('Page content');
+        $form = (new Form())->schema([$field]);
+        $state = $field->stateFromRecord((object) ['content' => '[{"id":"b1","type":"call_to_action","data":{"heading":"Start"}}]'], 'en');
+        self::assertSame('Page content → Start: Button text', $form->errorSummary(['content._.b1.button' => 'Required.'], ['content' => $state]));
+    }
 }

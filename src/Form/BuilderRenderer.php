@@ -94,7 +94,7 @@ final class BuilderRenderer
         }
         foreach ($keys as $key) {
             $list = $this->list($key, $lists[$key], $lists);
-            $html .= $perLanguage ? '<div class="fa-lang-pane' . ($key === $this->ctx['editing'] ? ' is-current' : '') . '" data-lang="' . Str::e($key) . '" lang="' . Str::e($key) . '" dir="' . Languages::direction($key) . '">'
+            $html .= $perLanguage ? '<div class="fa-lang-pane' . ($key === $this->ctx['editing'] ? ' is-current' : '') . '" data-lang="' . Str::e($key) . '">'
                 . '<span class="fa-lang-pane-code"><code class="fa-lang-code' . ($key === $this->ctx['default'] ? ' is-default' : '') . '">' . Str::e($key) . '</code> ' . Str::e(Languages::name($key)) . '</span>' . $list . '</div>' : $list;
         }
         if ($perLanguage) { $html .= '</div>'; }
@@ -278,7 +278,7 @@ final class BuilderRenderer
             }
         }
         $form = $field->blockForm($block, !$writable);
-        $state = ($node['data'] ?? []) + ($node['settings'] ?? []);
+        $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []));
         $child = $this->parent->child($state, $errors, $paneId . '-', $base . '[f]', $op . 'item:' . $key . ':' . $id . ':');
         $html .= '<div class="fa-builder-pane-body">' . $child->render($form) . '</div>';
         return $html . '</section>';

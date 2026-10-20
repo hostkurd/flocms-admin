@@ -124,6 +124,8 @@ class Action
     {
         // Inside a relation manager Create and Edit open over the parent's page (0.22).
         if ($resource->parentScope() !== null && in_array($this->kind, ['create', 'edit'], true)) { return $this->mode === 'slide-over' || ($this->mode === null && $resource::getFormMode() === 'slide-over') ? 'slide-over' : 'modal'; }
+        // A form with blocks needs the whole page (0.29).
+        if (in_array($this->kind, ['create', 'edit'], true) && $resource->hasBuilder()) { return 'page'; }
         if ($this->mode !== null) { return $this->mode; }
         return in_array($this->kind, ['create', 'edit'], true) ? $resource::getFormMode() : 'modal';
     }

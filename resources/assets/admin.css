@@ -1140,6 +1140,10 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
   .fa-builder-row-kind{display:none}
   .fa-builder-outline{padding:8px}
 }
+.fa-view-blocks{display:flex;flex-direction:column;gap:6px;margin:0;padding-inline-start:20px}
+.fa-view-blocks.is-top{padding-inline-start:18px}
+.fa-view-blocks .fa-view-blocks{margin-block-start:6px;padding-inline-start:18px;border-inline-start:2px solid var(--fa-border)}
+.fa-view-block-kind{color:var(--fa-muted);font-size:12.5px}
 /* Page-level translation (0.23): the "Editing: language" switch */
 .fa-lang-switch{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
 .fa-lang-switch[hidden]{display:none}

@@ -577,7 +577,7 @@ final class Importer
             // From the file (or defaults() / beforeRow()); uploads never come from a file.
             $given = array_key_exists($name, $fields) && $field->isWritable() && !$field->isOmitted() && !$field instanceof Fields\FileUpload && !$field instanceof Fields\MediaPicker;
             if (!$given) {
-                if ($field instanceof Fields\BelongsToMany || $field instanceof Fields\Repeater) { continue; }
+                if ($field instanceof Fields\BelongsToMany || $field instanceof Fields\Repeater || $field instanceof Fields\Builder) { continue; }
                 $input[$name] = $current;
                 continue;
             }

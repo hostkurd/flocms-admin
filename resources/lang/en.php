@@ -1383,6 +1383,8 @@ return [
     'users.bio_help' => 'A few words about this person, for your site to show if it wants.',
     'actions.quick' => 'Quick actions',
     // Builder and blocks (0.29)
+    'roles.perm.blocks_html' => 'Edit HTML blocks',
+    'roles.perm.blocks_html_help' => 'Add and change blocks of raw HTML, which the website prints as written. Give it only to people you trust with the site’s code.',
     'blocks.add' => 'Add block',
     'blocks.add_after' => 'Add a block after :block',
     'blocks.add_after_short' => 'Add a block after this one',
@@ -1424,6 +1426,7 @@ return [
     'blocks.language' => 'Language',
     'blocks.has_errors' => 'This block has errors.',
     'blocks.error_place' => ':field → :block: :item',
+    'blocks.items_count' => ':count items',
     'blocks.state_draft' => 'Draft',
     'blocks.state_from' => 'From :date',
     'blocks.state_ended' => 'Ended',

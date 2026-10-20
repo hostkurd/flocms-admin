@@ -643,6 +643,40 @@ class Builder extends Field
         }, $nodes);
     }
 
+    /**
+     * The library items a stored value uses: media pickers in blocks and in
+     * their lists, and images in rich text.
+     *
+     * @return list<int>
+     */
+    public function mediaIds(mixed $stored): array
+    {
+        $ids = [];
+        $walk = function (array $nodes) use (&$walk, &$ids): void {
+            foreach ($nodes as $node) {
+                $block = $this->block((string) $node['type']);
+                if ($block !== null) {
+                    $values = $node['data'] + $node['settings'];
+                    foreach ($this->blockForm($block)->fields() as $name => $field) {
+                        $value = (string) ($values[$name] ?? '');
+                        if ($field instanceof MediaPicker) { array_push($ids, ...MediaPicker::ids($value)); }
+                        elseif ($field instanceof RichEditor) { array_push($ids, ...\FloCMS\Admin\Media\MediaUsage::idsInText($value)); }
+                        elseif ($field instanceof Repeater) {
+                            foreach ($field->items($value) as $item) {
+                                foreach ($field->fields() as $subName => $sub) {
+                                    if ($sub instanceof MediaPicker) { array_push($ids, ...MediaPicker::ids($item[$subName] ?? '')); }
+                                }
+                            }
+                        }
+                    }
+                }
+                $walk($node['children'] ?? []);
+            }
+        };
+        foreach ($this->lists($stored) as $nodes) { $walk($nodes); }
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
     /** A block's name in the structure. */
     public function title(array $node): string
     {
