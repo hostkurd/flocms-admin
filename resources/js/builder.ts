@@ -522,6 +522,72 @@ function enhance(root: ParentNode): void {
   });
 }
 
+/*
+ * A list inside a block (a slider's slides, cards) opens one item at a time
+ * in the narrow inspector: its fields fill the pane, with Back, "2 of 3" and
+ * the previous and next item.
+ */
+function drillItems(repeater: HTMLElement): HTMLElement[] {
+  return [...repeater.querySelectorAll<HTMLElement>(':scope > [data-repeater-items] > [data-repeater-item]')];
+}
+
+function drill(repeater: HTMLElement, item: HTMLElement | null): void {
+  const builder = builderOf(repeater);
+  drillItems(repeater).forEach(other => {
+    const open = other === item;
+    other.classList.toggle('is-drilled', open);
+    const body = other.querySelector<HTMLElement>(':scope > .fa-repeater-body');
+    if (body && open) { body.hidden = false; other.classList.remove('is-collapsed'); }
+  });
+  repeater.classList.toggle('is-drilling', item !== null);
+  let bar = repeater.querySelector<HTMLElement>(':scope > [data-builder-drill]');
+  if (item === null) { if (bar) bar.hidden = true; return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'fa-builder-drill';
+    bar.dataset.builderDrill = '';
+    const label = (key: string) => (builder?.dataset[key] || '').replace(/[<>&"]/g, '');
+    const button = (action: string, key: string, path: string) => `<button type="button" class="fa-builder-tool" data-drill="${action}" aria-label="${label(key)}" title="${label(key)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg></button>`;
+    bar.innerHTML = button('back', 'backText', 'M15 18l-6-6 6-6') + '<span class="fa-builder-drill-place" aria-live="polite"></span>'
+      + button('prev', 'previousText', 'M18 15l-6-6-6 6') + button('next', 'nextText', 'M6 9l6 6 6-6');
+    repeater.querySelector(':scope > [data-repeater-items]')?.before(bar);
+  }
+  bar.hidden = false;
+  const list = drillItems(repeater);
+  const index = list.indexOf(item);
+  bar.querySelector<HTMLElement>('.fa-builder-drill-place')!.textContent = text(builder?.dataset.itemOfText, { number: String(index + 1), count: String(list.length) });
+  bar.querySelector<HTMLButtonElement>('[data-drill="prev"]')!.disabled = index <= 0;
+  bar.querySelector<HTMLButtonElement>('[data-drill="next"]')!.disabled = index >= list.length - 1;
+}
+
+document.addEventListener('click', event => {
+  if (!(event.target instanceof Element)) return;
+  const repeater = event.target.closest<HTMLElement>('.fa-builder.is-ready [data-builder-pane] [data-repeater]:not(.is-table)');
+  if (!repeater) return;
+  const control = event.target.closest<HTMLElement>('[data-drill]');
+  if (control && control.closest('[data-builder-drill]')?.parentElement === repeater) {
+    const list = drillItems(repeater);
+    const current = list.find(item => item.classList.contains('is-drilled')) ?? null;
+    const index = current ? list.indexOf(current) : -1;
+    if (control.dataset.drill === 'back') {
+      drill(repeater, null);
+      current?.querySelector<HTMLElement>('[data-repeater-handle], [data-repeater-action]')?.focus();
+    } else {
+      drill(repeater, list[index + (control.dataset.drill === 'prev' ? -1 : 1)] ?? current);
+    }
+    return;
+  }
+  // Add opens the new item; removing the open item goes back to the list.
+  if (event.target.closest('[data-repeater-add]')) { const list = drillItems(repeater); if (list.length) drill(repeater, list[list.length - 1]); return; }
+  if (event.target.closest('[data-repeater-action="remove"]')) { if (!drillItems(repeater).some(item => item.classList.contains('is-drilled'))) drill(repeater, null); return; }
+  // A click on an item's head (not on its tools) opens it.
+  const head = event.target.closest<HTMLElement>('.fa-repeater-item-head');
+  const item = head?.closest<HTMLElement>('[data-repeater-item]');
+  if (!head || !item || item.parentElement?.parentElement !== repeater || event.target.closest('button') || item.classList.contains('is-drilled')) return;
+  drill(repeater, item);
+  item.querySelector<HTMLElement>('.fa-repeater-body input:not([type="hidden"]), .fa-repeater-body select, .fa-repeater-body textarea')?.focus();
+});
+
 /** The editor's own language buttons (when the page has no language switch). */
 function showLanguage(builder: HTMLElement, lang: string): void {
   builder.querySelectorAll<HTMLElement>(':scope > [data-lang-panes] > .fa-lang-pane').forEach(pane => pane.classList.toggle('is-current', pane.dataset.lang === lang));
@@ -549,6 +615,11 @@ export function initializeBuilders(root: ParentNode): void {
         if (add.closest('[data-builder-col]')) add.dataset.columnLabel = builder.dataset.addColumnText || '';
       });
       sync(list);
+      // A list in a block with an error opens its first item that has one.
+      list.querySelectorAll<HTMLElement>('[data-builder-pane] [data-repeater]:not(.is-table)').forEach(repeater => {
+        const wrong = drillItems(repeater).find(item => item.classList.contains('has-error'));
+        if (wrong) drill(repeater, wrong);
+      });
       const invalid = list.querySelector<HTMLElement>('[data-builder-node].has-error');
       select(list, invalid?.dataset.builderNode || null);
     });

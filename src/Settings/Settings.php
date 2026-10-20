@@ -43,7 +43,8 @@ final class Settings
         if (!self::filled($value)) {
             return $default ?? '';
         }
-        if (is_array($value)) {
+        // A list (a repeater's items, blocks) or one list per language comes back as it is stored.
+        if (is_array($value) && !self::holdsLists($value)) {
             $value = self::pick($value, $lang);
         }
         if (isset($data['files'][$key]) && is_string($value)) {
@@ -153,11 +154,18 @@ final class Settings
         return (string) reset($values);
     }
 
+    /** Whether a stored array holds lists or records (items, blocks) rather than one text per language. */
+    private static function holdsLists(array $value): bool
+    {
+        foreach ($value as $item) { if (is_array($item)) { return true; } }
+        return false;
+    }
+
     private static function filled(mixed $value): bool
     {
         if ($value === null || $value === '' || $value === []) { return false; }
         if (is_array($value)) {
-            foreach ($value as $item) { if (is_scalar($item) && (string) $item !== '') { return true; } }
+            foreach ($value as $item) { if ((is_scalar($item) && (string) $item !== '') || (is_array($item) && $item !== [])) { return true; } }
             return false;
         }
         return true;

@@ -32,6 +32,19 @@ test('the structure shows the blocks, and a row opens its block', async ({ page 
   // The slides are on their own tab
   await pane(page, 'bslider1').getByRole('tab', { name: 'Slides' }).click();
   await expect(pane(page, 'bslider1').locator('[data-repeater-item]')).toHaveCount(2);
+  // One slide at a time: its fields fill the pane, with Back and the next one
+  await pane(page, 'bslider1').locator('[data-repeater-item]').nth(0).locator('[data-repeater-title]').click();
+  await expect(pane(page, 'bslider1').locator('[data-builder-drill]')).toContainText('1 of 2');
+  await expect(pane(page, 'bslider1').locator('[data-repeater-item]').nth(1)).toBeHidden();
+  await expect(pane(page, 'bslider1').locator('[name$="[slides][k1][heading]"]')).toBeVisible();
+  await pane(page, 'bslider1').locator('[data-drill="next"]').click();
+  await expect(pane(page, 'bslider1').locator('[data-builder-drill]')).toContainText('2 of 2');
+  await expect(pane(page, 'bslider1').locator('[name$="[slides][k2][heading]"]')).toBeVisible();
+  await pane(page, 'bslider1').locator('[data-drill="back"]').click();
+  await expect(pane(page, 'bslider1').locator('[data-repeater-item]')).toHaveCount(2);
+  await expect(pane(page, 'bslider1').locator('[name$="[slides][k2][heading]"]')).toBeHidden();
+  await pane(page, 'bslider1').locator('[data-repeater-add]').click();
+  await expect(pane(page, 'bslider1').locator('[data-builder-drill]')).toContainText('3 of 3');
   await pane(page, 'bslider1').locator('[data-builder-action="close"]').click();
   await expect(pane(page, 'bslider1')).toBeHidden();
 });

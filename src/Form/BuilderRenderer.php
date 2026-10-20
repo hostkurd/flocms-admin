@@ -70,6 +70,8 @@ final class BuilderRenderer
             . ' data-add-column-text="' . Str::e(self::t('add_to_column', ['number' => ':number'])) . '"'
             . ' data-drag-text="' . Str::e(self::t('drag', ['block' => ':block'])) . '"'
             . ' data-undo-text="' . Str::e(self::t('undo')) . '"'
+            . ' data-item-of-text="' . Str::e(self::t('item_of', ['number' => ':number', 'count' => ':count'])) . '"'
+            . ' data-back-text="' . Str::e(self::t('back')) . '" data-previous-text="' . Str::e(self::t('previous')) . '" data-next-text="' . Str::e(self::t('next')) . '"'
             . ' data-full-text="' . Str::e(self::t('full', ['max' => (string) $field->getMaxBlocks()])) . '">';
         $html .= '<div class="fa-builder-head"><span class="fa-label" id="' . Str::e($this->id) . '-label">' . $label . '</span></div>';
         if (($help = $field->getHelp()) !== null) { $html .= '<p class="fa-help" id="' . Str::e($this->id) . '-help">' . Str::e($help) . '</p>'; }
