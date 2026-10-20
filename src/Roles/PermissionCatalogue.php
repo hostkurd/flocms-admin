@@ -100,6 +100,10 @@ final class PermissionCatalogue
             $system[] = ['name' => \FloCMS\Admin\Activity\Activity::PERMISSION, 'label' => AdminLang::get('roles.perm.activity_view'), 'sub' => AdminLang::get('roles.perm.activity_view_help')];
         }
         $system[] = ['name' => Roles::PERMISSION, 'label' => AdminLang::get('roles.perm.roles_manage'), 'sub' => AdminLang::get('roles.perm.roles_manage_help')];
+        // Publishing pages (0.30)
+        if (Admin::config()->pages()['enabled']) {
+            $system[] = ['name' => \FloCMS\Admin\Pages\PagesResource::PUBLISH, 'label' => AdminLang::get('roles.perm.pages_publish'), 'sub' => AdminLang::get('roles.perm.pages_publish_help')];
+        }
         // HTML blocks print their markup on the website as written (0.29).
         $system[] = ['name' => \FloCMS\Admin\Blocks\Core\Html::PERMISSION, 'label' => AdminLang::get('roles.perm.blocks_html'), 'sub' => AdminLang::get('roles.perm.blocks_html_help')];
         $groups[] = self::group('system', AdminLang::get('roles.group.system'), AdminLang::get('roles.group.system_help'), null, '', '', [], [], $system);

@@ -37,7 +37,8 @@ document.addEventListener('submit', event => {
   const form = event.target;
   if (form instanceof HTMLFormElement && form.matches('[data-admin-record-form]')) {
     const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null;
-    if (submitter?.name !== '_refresh' && form.dataset.adminRefreshing !== 'true') form.dataset.adminDirty = 'false';
+    // A preview (0.30) opens in another tab: the changes are still unsaved.
+    if (submitter?.name !== '_refresh' && !submitter?.hasAttribute('data-admin-preview') && form.dataset.adminRefreshing !== 'true') form.dataset.adminDirty = 'false';
   }
   // Deleting the record discards its changes too.
   if (form instanceof HTMLFormElement && form.id === 'fa-record-delete') { const record = recordForm(); if (record) record.dataset.adminDirty = 'false'; }

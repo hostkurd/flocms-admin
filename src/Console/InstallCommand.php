@@ -83,6 +83,11 @@ final class InstallCommand extends Command
         if ($settings->usersEnabled()) {
             $migrations[] = ['users-bio-migration', 'users_bio', [], 'column'];
         }
+        // Pages (0.30), with 'pages' => true.
+        $pages = $settings->pages();
+        if ($pages['enabled']) {
+            $migrations[] = ['pages-migration', $pages['table'], []];
+        }
         // Each new file a second later than the one before, so they run in this order.
         $time = time();
         foreach ($migrations as $migration) {
@@ -103,7 +108,7 @@ final class InstallCommand extends Command
 
         $this->newLine();
         $this->line('Next steps:');
-        $this->line('  1. php flo migrate                              (settings, preferences, media, trash, activity, roles, import, password reset and mailing tables, users.bio)');
+        $this->line('  1. php flo migrate                              (settings, preferences, media, trash, activity, roles, import, password reset, mailing and pages tables, users.bio)');
         $this->line('  2. php flo make:admin-resource Post --migration');
         $this->line('  3. php flo make:admin-settings                  (website settings pages, optional)');
         $this->line('  4. Log in, then open /admin/dashboard');

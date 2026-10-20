@@ -412,6 +412,26 @@ final class AdminConfig
     }
 
     /**
+     * Pages (0.30): 'pages' => true, or an array. Off by default.
+     *   'table'    the pages table (admin_pages)
+     *   'missing'  a page not translated: 'default' shows the default language's (with hreflang), '404' does not
+     *   'sitemap'  /sitemap.xml lists the published pages (true), unless the site has its own
+     *
+     * @return array{enabled: bool, table: string, missing: string, sitemap: bool}
+     */
+    public function pages(): array
+    {
+        $value = $this->values['pages'] ?? false;
+        $options = is_array($value) ? $value : [];
+        return [
+            'enabled' => ($value === true || is_array($value)) && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_pages'),
+            'missing' => ($options['missing'] ?? 'default') === '404' ? '404' : 'default',
+            'sitemap' => ($options['sitemap'] ?? true) !== false,
+        ];
+    }
+
+    /**
      * Mail settings of config/admin.php (0.26): 'send' replaces sending.
      *
      * @return array{send: ?callable}

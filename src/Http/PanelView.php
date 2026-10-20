@@ -74,6 +74,9 @@ final class PanelView
             'mediaActive' => $activeSlug === 'media',
             'mediaIcon' => Icons::svg('image'),
             'mediaPicker' => self::mediaPicker(),
+            'pagesUrl' => $urls['pages'],
+            'pagesActive' => $activeSlug === \FloCMS\Admin\Pages\PagesResource::SLUG,
+            'pagesIcon' => Icons::svg('file'),
             'usersUrl' => $urls['users'],
             'usersActive' => $activeSlug === 'accounts',
             'rolesUrl' => $urls['roles'],
@@ -200,12 +203,14 @@ final class PanelView
      * The panel's own pages the current person may open (null when not): the sidebar
      * and Ctrl+K search (0.20) show the same set.
      *
-     * @return array{media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, mailings: ?string, profile: ?string}
+     * @return array{pages: ?string, media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, mailings: ?string, profile: ?string}
      */
     public static function pageUrls(): array
     {
         $usersEnabled = Admin::registry()->find('accounts') !== null;
         return [
+            // Site → Pages (0.30)
+            'pages' => Admin::registry()->isBuiltIn(\FloCMS\Admin\Pages\PagesResource::SLUG) && Auth::can(\FloCMS\Admin\Pages\PagesResource::permission('view')) ? Admin::url(\FloCMS\Admin\Pages\PagesResource::SLUG) : null,
             'media' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media')) && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view') ? Admin::url('media') : null,
             'users' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
             'roles' => self::rolesUrl(),
@@ -294,7 +299,7 @@ final class PanelView
             if ($title !== AdminLang::get('media.title')) { $items[] = ['label' => $title, 'url' => null]; }
             return $items;
         }
-        if ($activeSlug === 'accounts') {
+        if ($activeSlug === 'accounts' || ($activeSlug === \FloCMS\Admin\Pages\PagesResource::SLUG && Admin::registry()->isBuiltIn($activeSlug))) {
             return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];
         }
         if ($activeSlug === 'roles' && Admin::registry()->find('roles') === null) {

@@ -15,7 +15,7 @@ final class ResourceRegistry
     public const RESERVED = ['users', 'pages'];
 
     /** URL segments of this package's own pages. */
-    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings', 'media', 'password'];
+    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings', 'media', 'password', 'page-preview'];
 
     /** @var array<string, class-string<Resource>> slug => class */
     private array $resources = [];
@@ -45,6 +45,10 @@ final class ResourceRegistry
 
         if ($config->usersEnabled()) {
             $registry->add(\FloCMS\Admin\Users\UsersResource::class, true);
+        }
+        // Site → Pages (0.30), with 'pages' => true
+        if ($config->pages()['enabled']) {
+            $registry->add(\FloCMS\Admin\Pages\PagesResource::class, true);
         }
 
         return $registry;

@@ -328,7 +328,17 @@ final class BlockRenderer
         $path = self::templatePath($type);
         if ($path === null) { return ''; }
         if (defined('VIEWS_PATH') && defined('DS')) { return TemplateEngine::renderFile($path, $vars); }
-        // Outside a site (tests, a command): the same template syntax, without the view cache.
+        return self::evaluate($path, $vars);
+    }
+
+    /**
+     * A template rendered outside a site (tests, a command): the same syntax,
+     * without the view cache.
+     *
+     * @internal
+     */
+    public static function evaluate(string $path, array $vars): string
+    {
         return (static function (string $__path, array $__vars): string {
             extract($__vars, EXTR_SKIP);
             $__level = ob_get_level();

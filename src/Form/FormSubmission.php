@@ -51,6 +51,31 @@ final class FormSubmission
     }
 
     /** Optional original record enables atomic optimistic concurrency for Reactive saves. */
+    /**
+     * The values a save would write, without writing them (a page's preview,
+     * 0.30): each writable field as stored, after beforeSave(). Uploads are
+     * not handled here.
+     *
+     * @return array<string, mixed>
+     */
+    public function values(Form $form, array $state, ?object $record): array
+    {
+        $form = $form->evaluate($state, $record);
+        $skip = $this->skip($form, $state, $record);
+        $data = [];
+        foreach ($form->writableFields() as $name => $field) {
+            if (in_array($name, $skip, true) || !$field->storesInColumn() || $field instanceof \FloCMS\Admin\Form\Fields\FileUpload) { continue; }
+            $value = $state[$name];
+            if ($record !== null && $field->isTranslatable()) {
+                $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
+                $editable = array_fill_keys(Languages::all(), '');
+                $value = array_replace($stored, $editable, array_intersect_key(is_array($value) ? $value : [], $editable));
+            }
+            $data[$name] = $field->dehydrate($value);
+        }
+        return $this->resource->beforeSave($data, $record);
+    }
+
     public function save(Form $form, array $state, ?object $record, bool $guarded = false, ?\FloCMS\Admin\Uploads\UploadBatch $batch = null): string
     {
         $form = $form->evaluate($state, $record);
