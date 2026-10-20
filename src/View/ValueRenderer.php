@@ -58,6 +58,7 @@ final class ValueRenderer
             return $text === '' ? self::empty() : Str::e($text);
         }
         return match (true) {
+            $field instanceof Fields\Builder => $this->builder($field, $state),
             $field instanceof Fields\KeyValue => $this->keyValue($field, $state),
             $field instanceof Fields\Repeater => $this->repeater($field, $state),
             $field instanceof Fields\RichEditor => $this->rich($field, (string) $state),
@@ -227,6 +228,29 @@ final class ValueRenderer
             $cards .= '</dl></li>';
         }
         return '<ol class="fa-view-items">' . $cards . '</ol>';
+    }
+
+    /** Blocks (0.29): the structure in the language shown, each block's kind, name and state. */
+    private function builder(Fields\Builder $field, mixed $state): string
+    {
+        $lists = $field->lists(is_string($state) ? $state : '');
+        $nodes = $lists[$field->isPerLanguage() ? $this->lang : Fields\Builder::SINGLE] ?? [];
+        if ($nodes === []) {
+            return $field->isPerLanguage() && $this->lang !== $this->defaultLang && ($lists[$this->defaultLang] ?? []) !== []
+                ? '<span class="fa-view-missing">' . Str::e(AdminLang::get('view.not_translated')) . '</span>' : self::empty();
+        }
+        $walk = function (array $nodes) use (&$walk, $field): string {
+            $html = '';
+            foreach ($nodes as $node) {
+                $block = $field->block((string) $node['type']);
+                $status = (string) ($node['settings']['status'] ?? 'published');
+                $html .= '<li><span class="fa-view-block"><strong>' . Str::e($field->title($node)) . '</strong> <span class="fa-view-block-kind">' . Str::e($block !== null ? $block::label() : AdminLang::get('blocks.unknown_kind')) . '</span>'
+                    . ($status === 'draft' ? ' <span class="fa-badge">' . Str::e(AdminLang::get('blocks.state_draft')) . '</span>' : '') . '</span>'
+                    . (($node['children'] ?? []) !== [] ? '<ol class="fa-view-blocks">' . $walk($node['children']) . '</ol>' : '') . '</li>';
+            }
+            return $html;
+        };
+        return '<ol class="fa-view-blocks is-top">' . $walk($nodes) . '</ol>';
     }
 
     private function keyValue(Fields\KeyValue $field, mixed $state): string

@@ -166,4 +166,19 @@ final class SettingsEditorTest extends TestCase
         self::assertFalse($registry->add(\FloCMS\Admin\Tests\Fixtures\Settings\TranslatableUploadResource::class));
         self::assertStringContainsString('translatable uploads are supported on settings pages only', $registry->problems()[0]);
     }
+
+    public function testABuilderOnASettingsPageStoresItsBlocks(): void
+    {
+        $page = SettingsPage::make('home')->schema([\FloCMS\Admin\Form\Fields\Builder::make('blocks')->blocks(['heading', 'rich_text'])]);
+        $result = (new SettingsEditor($page, $this->store))->submit(['blocks' => ['_sent' => '1', '_' => [
+            'b1' => ['type' => 'heading', 'order' => '0', 'f' => ['text' => 'Welcome', 'level' => 'h2', 'align' => 'start']],
+        ]]], []);
+        self::assertTrue($result['saved'], json_encode($result['errors']));
+        $stored = $this->store->all()['home.blocks'];
+        self::assertSame('Welcome', $stored[0]['data']['text'] ?? (json_decode((string) $stored, true)[0]['data']['text'] ?? null));
+        // Shown again in the form, and printed on the website
+        $state = (new SettingsEditor($page, $this->store))->initialState();
+        self::assertStringContainsString('Welcome', (string) $state['blocks']);
+        self::assertStringContainsString('Welcome', blocks(Settings::get('home.blocks')));
+    }
 }

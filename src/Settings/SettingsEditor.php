@@ -194,8 +194,8 @@ final class SettingsEditor
             }
             return is_string($state) && $state !== '' && $state !== SettingsUploads::PENDING ? $state : null;
         }
-        if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater) {
-            // Stored as the list itself (0.24), so setting('contact.links') is an array.
+        if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater || $field instanceof \FloCMS\Admin\Form\Fields\Builder) {
+            // Stored as the list itself (0.24; blocks 0.29), so setting('contact.links') is an array.
             $encoded = $field->dehydrate(is_string($state) ? $state : '');
             $list = is_string($encoded) ? json_decode($encoded, true) : null;
             return is_array($list) && $list !== [] ? $list : null;

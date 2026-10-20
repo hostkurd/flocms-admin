@@ -8,6 +8,8 @@ use FloCMS\Admin\Console\InstallCommand;
 use FloCMS\Admin\Console\ListCommand;
 use FloCMS\Admin\Console\MakeResourceCommand;
 use FloCMS\Admin\Console\MakeWidgetCommand;
+use FloCMS\Admin\Console\MakeBlockCommand;
+use FloCMS\Admin\Console\BlocksCommand;
 use FloCMS\Admin\Console\TrashPurgeCommand;
 use FloCMS\Admin\Console\ActivityPurgeCommand;
 use FloCMS\CLI\Console\Testing\CommandTester;
@@ -453,6 +455,44 @@ final class CommandsTest extends TestCase
         $tester = $this->runCommand(new MakeWidgetCommand(), ['Three']);
         self::assertSame(0, $tester->getStatusCode());
         self::assertStringContainsString("Add it to config/admin.php", $tester->getDisplay());
+    }
+
+    public function testMakeBlockWritesTheClassAndTemplateAndRegistersIt(): void
+    {
+        $this->runCommand(new InstallCommand());
+        $tester = $this->runCommand(new MakeBlockCommand(), ['LatestProjects']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        $code = (string) file_get_contents($this->root . '/admin/Blocks/LatestProjects.php');
+        self::assertStringContainsString('namespace App\Admin\Blocks;', $code);
+        self::assertStringContainsString("protected static string \$type = 'latest_projects';", $code);
+        $this->lint($this->root . '/admin/Blocks/LatestProjects.php');
+        $template = (string) file_get_contents($this->root . '/views/blocks/latest_projects.html');
+        self::assertStringContainsString('{{ $heading }}', $template);
+        self::assertStringContainsString('class="flo-latest-projects"', $template);
+        $this->lint($this->root . '/config/admin.php');
+        self::assertSame(['App\Admin\Blocks\LatestProjects'], (require $this->root . '/config/admin.php')['blocks']);
+        // Never twice; an existing template is kept unless --force
+        self::assertSame(1, $this->runCommand(new MakeBlockCommand(), ['LatestProjects'])->getStatusCode());
+        self::assertStringContainsString('already registered', $this->runCommand(new MakeBlockCommand(), ['LatestProjects', '--force'])->getDisplay());
+        self::assertNotSame(0, $this->runCommand(new MakeBlockCommand(), ['latest-projects'])->getStatusCode());
+    }
+
+    public function testAdminBlocksCopiesTheDefaultsAndNeverOverwrites(): void
+    {
+        $tester = $this->runCommand(new BlocksCommand());
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertFileExists($this->root . '/views/blocks/slider.html');
+        self::assertFileExists($this->root . '/public/assets/flo-blocks/slider.js');
+        self::assertFileExists($this->root . '/public/assets/flo-blocks/blocks.css');
+        file_put_contents($this->root . '/views/blocks/slider.html', 'mine');
+        file_put_contents($this->root . '/views/blocks/hero.html', 'mine too');
+        $again = $this->runCommand(new BlocksCommand());
+        self::assertStringContainsString('already there and kept', $again->getDisplay());
+        self::assertSame('mine', file_get_contents($this->root . '/views/blocks/slider.html'));
+        $this->runCommand(new BlocksCommand(), ['--force=slider.html']);
+        self::assertStringContainsString('data-flo-slider', (string) file_get_contents($this->root . '/views/blocks/slider.html'));
+        self::assertSame('mine too', file_get_contents($this->root . '/views/blocks/hero.html'), 'only the file named');
+        self::assertNotSame(0, $this->runCommand(new BlocksCommand(), ['--force=../config/admin.php'])->getStatusCode());
     }
 
     public function testMakeWidgetRefusesBadInput(): void

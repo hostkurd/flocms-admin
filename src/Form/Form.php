@@ -102,9 +102,9 @@ final class Form
      */
     public function applyRepeaterOperation(array &$state, mixed $operation): bool
     {
-        if (!is_string($operation) || strlen($operation) > 200) { return false; }
+        if (!is_string($operation) || strlen($operation) > 300) { return false; }
         foreach ($this->fields as $name => $field) {
-            if (!$field instanceof \FloCMS\Admin\Form\Fields\Repeater || !$field->isWritable()) { continue; }
+            if (!($field instanceof \FloCMS\Admin\Form\Fields\Repeater || $field instanceof \FloCMS\Admin\Form\Fields\Builder) || !$field->isWritable()) { continue; }
             $changed = $field->applyOperation(is_string($state[$name] ?? null) ? $state[$name] : '', $operation);
             if ($changed !== null) { $state[$name] = $changed; return true; }
         }
@@ -123,8 +123,9 @@ final class Form
      * Errors of fields inside a tab name the tab; an error with no field gives its own text.
      *
      * @param array<string, mixed> $errors
+     * @param array<string, mixed> $state the values, for the names of blocks with errors (0.29)
      */
-    public function errorSummary(array $errors): string
+    public function errorSummary(array $errors, array $state = []): string
     {
         $tabs = [];
         $walk = function (array $nodes, ?string $tab) use (&$walk, &$tabs): void {
@@ -154,6 +155,11 @@ final class Form
                     static fn (?string $part): bool => $part !== null && $part !== ''));
                 $places[(string) $key] = \FloCMS\Admin\Support\AdminLang::get('repeater.error_place', ['field' => $field->getLabel(), 'number' => (string) ((int) $match[1] + 1), 'item' => $sub?->getLabel() ?? $match[2]])
                     . ($notes !== [] ? ' (' . implode(\FloCMS\Admin\Support\AdminLang::get('form.list_separator'), $notes) . ')' : '');
+                continue;
+            }
+            // Inside a block (0.29): "Page content → Call to action: Heading (Arabic)".
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Builder && ($place = $field->errorPlace((string) $key, is_string($state[$name] ?? null) ? $state[$name] : null)) !== null) {
+                $places[(string) $key] = $place . ($tab !== null && $tab !== '' ? ' (' . $tab . ')' : '');
                 continue;
             }
             // A translation's error names its language: "Title (Arabic)".

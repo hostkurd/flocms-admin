@@ -355,6 +355,24 @@ final class AdminConfig
         ];
     }
 
+    /**
+     * The site's own kinds of blocks (0.29) for every Builder field and Pages:
+     * 'blocks' => [App\Blocks\LatestPosts::class]. Unknown entries are left out (admin:doctor names them).
+     *
+     * @return list<class-string<\FloCMS\Admin\Blocks\Block>>
+     */
+    /** The 'blocks' value as written, for admin:doctor. */
+    public function configuredBlocks(): mixed
+    {
+        return $this->values['blocks'] ?? [];
+    }
+
+    public function blocks(): array
+    {
+        $value = $this->values['blocks'] ?? [];
+        return array_values(array_filter(is_array($value) ? $value : [], static fn ($class): bool => is_string($class) && is_a($class, \FloCMS\Admin\Blocks\Block::class, true)));
+    }
+
     public function import(): array
     {
         $value = $this->values['import'] ?? true;

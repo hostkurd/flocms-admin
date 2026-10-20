@@ -63,6 +63,11 @@ final class FormValidator
                 $errors += $field->validateItems(is_string($value) ? $value : '', fn (Field $item, string|array $itemValue, string $key): array => $this->fieldErrors($item, $itemValue, $key, false));
                 continue;
             }
+            // Blocks (0.29): every block's fields, keyed "content.<lang>.<id>.<field>".
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Builder) {
+                $errors += $field->validateBlocks(is_string($value) ? $value : '', fn (Field $item, string|array $itemValue, string $key): array => $this->fieldErrors($item, $itemValue, $key, false));
+                continue;
+            }
 
             $errors += $this->fieldErrors($field, $value, $name);
         }

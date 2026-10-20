@@ -1,0 +1,94 @@
+/* Blocks (flocms-admin 0.29): base styles for the default block templates.
+   Yours to change once php flo admin:blocks has copied it to public/assets/flo-blocks.
+   Change the look with these variables in your theme instead of editing the rules. */
+:root {
+  --flo-container: 1200px;
+  --flo-narrow: 760px;
+  --flo-gutter: 20px;
+  --flo-block-gap: 48px;
+  --flo-radius: 12px;
+  --flo-brand: #0b6e91;
+  --flo-brand-text: #fff;
+  --flo-light: #f4f6f8;
+  --flo-dark: #101828;
+  --flo-muted: #667085;
+}
+.flo-block { box-sizing: border-box; }
+.flo-block *, .flo-block *::before, .flo-block *::after { box-sizing: inherit; }
+.flo-block.is-boxed { max-width: calc(var(--flo-container) + 2 * var(--flo-gutter)); margin-inline: auto; padding-inline: var(--flo-gutter); }
+.flo-block.is-full { width: 100%; }
+.flo-column > .flo-block.is-boxed, .flo-section-inner > .flo-block.is-boxed { max-width: none; padding-inline: 0; }
+.flo-space-above-none { margin-block-start: 0; } .flo-space-above-small { margin-block-start: calc(var(--flo-block-gap) / 3); }
+.flo-space-above-medium { margin-block-start: calc(var(--flo-block-gap) / 2); } .flo-space-above-large { margin-block-start: var(--flo-block-gap); }
+.flo-space-below-none { margin-block-end: 0; } .flo-space-below-small { margin-block-end: calc(var(--flo-block-gap) / 3); }
+.flo-space-below-medium { margin-block-end: calc(var(--flo-block-gap) / 2); } .flo-space-below-large { margin-block-end: var(--flo-block-gap); }
+@media (max-width: 767px) { .flo-only-desktop { display: none !important; } }
+@media (min-width: 768px) { .flo-only-phone { display: none !important; } }
+
+.flo-heading { margin: 0 0 .5em; line-height: 1.2; }
+.flo-heading.is-align-center { text-align: center; }
+.flo-rich-text > :first-child { margin-top: 0; } .flo-rich-text > :last-child { margin-bottom: 0; }
+.flo-rich-text img { max-width: 100%; height: auto; }
+
+.flo-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 999px; background: var(--flo-brand); color: var(--flo-brand-text); font-weight: 600; text-decoration: none; }
+.flo-button:hover { filter: brightness(1.08); }
+.flo-button.is-secondary { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
+.flo-buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.flo-image { margin: 0; }
+.flo-image img, .flo-image video { display: block; width: 100%; height: auto; border-radius: var(--flo-radius); }
+.flo-image.is-content { max-width: var(--flo-narrow); margin-inline: auto; }
+.flo-image figcaption, .flo-video figcaption { margin-top: 8px; color: var(--flo-muted); font-size: .9em; }
+
+.flo-hero { position: relative; display: grid; align-items: end; min-height: 420px; overflow: hidden; color: #fff; background: var(--flo-dark); }
+.flo-hero.is-screen { min-height: 100svh; } .flo-hero.is-large { min-height: 640px; }
+.flo-hero-media, .flo-hero-media > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.flo-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,var(--flo-hero-overlay, .35)), rgba(0,0,0,calc(var(--flo-hero-overlay, .35) / 2))); }
+.flo-hero-text { position: relative; z-index: 1; width: 100%; max-width: calc(var(--flo-container) + 2 * var(--flo-gutter)); margin-inline: auto; padding: 64px var(--flo-gutter); }
+.flo-hero.is-align-center .flo-hero-text { text-align: center; } .flo-hero.is-align-center .flo-buttons { justify-content: center; }
+.flo-hero-heading { margin: 0 0 .3em; font-size: clamp(2rem, 5vw, 3.75rem); line-height: 1.08; max-width: 18ch; }
+.flo-hero.is-align-center .flo-hero-heading { margin-inline: auto; }
+.flo-hero-lead { margin: 0 0 1.5em; font-size: 1.15rem; max-width: 52ch; opacity: .92; }
+.flo-hero.is-align-center .flo-hero-lead { margin-inline: auto; }
+
+.flo-gallery-grid, .flo-cards-grid { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.flo-gallery-grid { grid-template-columns: repeat(var(--flo-gallery-columns, 3), minmax(0, 1fr)); }
+.flo-gallery-grid img, .flo-gallery-grid video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: calc(var(--flo-radius) * .66); }
+.flo-cards-grid { grid-template-columns: repeat(var(--flo-cards-columns, 3), minmax(0, 1fr)); gap: 24px; }
+.flo-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(16,24,40,.1); border-radius: var(--flo-radius); background: #fff; }
+.flo-card-media img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.flo-card-body { padding: 18px 20px 22px; } .flo-card-body p { margin: 0; color: var(--flo-muted); }
+.flo-card-title { margin: 0 0 .4em; font-size: 1.15rem; } .flo-card-title a { color: inherit; text-decoration: none; } .flo-card-title a:hover { text-decoration: underline; }
+@media (max-width: 767px) { .flo-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .flo-cards-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.flo-video { margin: 0; } .flo-video video { display: block; width: 100%; height: auto; border-radius: var(--flo-radius); }
+.flo-video-frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--flo-radius); background: #000; }
+.flo-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.flo-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; padding: 40px; border-radius: var(--flo-radius); }
+.flo-cta.is-brand { background: var(--flo-brand); color: var(--flo-brand-text); } .flo-cta.is-brand .flo-button { background: #fff; color: var(--flo-brand); }
+.flo-cta.is-light { background: var(--flo-light); } .flo-cta.is-dark { background: var(--flo-dark); color: #fff; }
+.flo-cta-heading { margin: 0 0 .25em; font-size: 1.6rem; } .flo-cta-text p { margin: 0; opacity: .85; }
+
+.flo-section { position: relative; overflow: hidden; }
+.flo-section.is-bg-light { background: var(--flo-light); } .flo-section.is-bg-dark { background: var(--flo-dark); color: #fff; }
+.flo-section.is-bg-brand { background: var(--flo-brand); color: var(--flo-brand-text); } .flo-section.is-bg-colour { background: var(--flo-section-bg, var(--flo-light)); }
+.flo-section.is-bg-image { color: #fff; background: var(--flo-dark); }
+.flo-section-media, .flo-section-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.flo-section.is-bg-image::before { content: ""; position: absolute; inset: 0; z-index: 1; background: rgba(0,0,0,.45); }
+.flo-section-inner { position: relative; z-index: 2; margin-inline: auto; padding-inline: var(--flo-gutter); }
+.flo-section-inner.is-boxed { max-width: calc(var(--flo-container) + 2 * var(--flo-gutter)); } .flo-section-inner.is-narrow { max-width: calc(var(--flo-narrow) + 2 * var(--flo-gutter)); }
+.flo-section.is-padding-small { padding-block: 24px; } .flo-section.is-padding-medium { padding-block: 48px; } .flo-section.is-padding-large { padding-block: 80px; }
+.flo-section-inner > .flo-block:first-child { margin-block-start: 0; } .flo-section-inner > .flo-block:last-child { margin-block-end: 0; }
+
+.flo-columns { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 32px; }
+.flo-columns.is-gap-none { gap: 0; } .flo-columns.is-gap-small { gap: 16px; } .flo-columns.is-gap-large { gap: 56px; }
+.flo-column { grid-column: span var(--flo-column-share, 6); min-width: 0; }
+.flo-columns.is-align-middle { align-items: center; } .flo-columns.is-align-bottom { align-items: end; } .flo-columns.is-align-top { align-items: start; }
+.flo-column > .flo-block:first-child { margin-block-start: 0; } .flo-column > .flo-block:last-child { margin-block-end: 0; }
+@media (max-width: 767px) {
+  .flo-columns.is-stacking { grid-template-columns: minmax(0, 1fr); }
+  .flo-columns.is-stacking > .flo-column { grid-column: auto; }
+  .flo-columns.is-stacking.is-reversed > .flo-column:last-child { order: -1; }
+  .flo-cta { padding: 28px 22px; }
+}

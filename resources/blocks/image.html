@@ -1,0 +1,13 @@
+@php /* Image block (flocms-admin 0.29). */ $item = media($media ?? null); @endphp
+@if($item)
+<figure class="flo-image is-{{ $size }}">
+    @if($link !== '')
+    <a href="{{ $link }}">{!! $item->html() !!}</a>
+    @else
+    {!! $item->html() !!}
+    @endif
+    @if($caption !== '')
+    <figcaption>{{ $caption }}</figcaption>
+    @endif
+</figure>
+@endif

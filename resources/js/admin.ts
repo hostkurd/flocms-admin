@@ -17,6 +17,7 @@ import { initializeRoles } from './roles';
 import { initializeImports } from './import';
 import { updateManagerCounts } from './managers';
 import { initialize as initializeRepeaters } from './repeater';
+import { initializeBuilders } from './builder';
 import './popovers';
 import './dialogs';
 import './search';
@@ -60,6 +61,7 @@ function initialize(): void {
   initializeForms(root);
   initializeTranslations(root);
   initializeRepeaters(root);
+  initializeBuilders(root);
   initializeEditors(root);
   initializeSelection(root);
   initializeRecord(root);

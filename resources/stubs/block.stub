@@ -1,0 +1,38 @@
+<?php
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use FloCMS\Admin\Blocks\Block;
+use FloCMS\Admin\Form\Fields\Select;
+use FloCMS\Admin\Form\Fields\TextInput;
+
+/**
+ * A block of the site's own (flocms-admin 0.29), printed with views/blocks/{{ type }}.html.
+ * Registered in config/admin.php under 'blocks', so every Builder offers it.
+ */
+final class {{ class }} extends Block
+{
+    protected static string $type = '{{ type }}';
+    protected static string $category = 'site';   // media, text, layout, marketing, site or other
+    protected static string $icon = 'square';     // an icon name of the panel
+    protected static ?string $label = '{{ label }}';
+    protected static ?string $description = null;
+
+    public function fields(): array
+    {
+        return [
+            TextInput::make('heading')->required()->rules('max:160')->columnSpan('full'),
+            Select::make('count')->options(['3' => '3', '6' => '6', '9' => '9'])->default('3'),
+        ];
+    }
+
+    /**
+     * Extra variables for the template, read when the page is shown. A block
+     * with its own data() is not cached; return true from cacheable() if it may be.
+     */
+    public function data(array $fields): array
+    {
+        return ['items' => []];
+    }
+}

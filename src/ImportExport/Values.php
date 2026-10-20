@@ -51,7 +51,7 @@ final class Values
             $field instanceof Fields\BelongsTo => $this->belongsTo($field, $cell),
             $field instanceof Fields\BelongsToMany => $this->belongsToMany($field, $cell),
             $field instanceof Fields\KeyValue => [self::keyValue($field, $cell), null],
-            $field instanceof Fields\Repeater => [$cell, null],
+            $field instanceof Fields\Repeater, $field instanceof Fields\Builder => [$cell, null],
             $field instanceof Fields\RichEditor => [self::richText($cell), null],
             in_array('numeric', $field->getRules(), true) || in_array('integer', $field->getRules(), true) => [self::number($cell, $this->decimalComma), null],
             default => [$cell, null],

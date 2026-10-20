@@ -1,3 +1,17 @@
+# Upgrading to Admin 0.29.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.29.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: the Builder needs only a column on the tables that use it.
+
+- **Nothing changes until you add a `Builder` or `Slider` field.** Give its column a type that holds large JSON: `JSON`, `LONGTEXT` or `MEDIUMTEXT` on MySQL and MariaDB (`TEXT` stops at 64 kB), `TEXT` on SQLite and PostgreSQL. `php flo admin:doctor` warns about a column that is too small.
+- **Printing blocks**: put `{!! blocks_assets() !!}` in your layout's `<head>` and `{!! blocks($record->content) !!}` where they go. Run `php flo admin:blocks` when you want to change the templates, styles or slider script: they are copied into your site and never replaced by updates.
+- **`max_input_vars`**: every block's fields are sent with the form (about 20 per block). Pages of more than about 40 blocks need `max_input_vars = 5000` in `php.ini` or `.user.ini`; a request cut short is refused, not saved half.
+- **Tick `blocks.html`** on the Roles page (System) for the people who may add or change HTML blocks. No existing role gets it, Super Admins aside (`*`).
+- **`Select` shown as buttons**: `->segmented()`, `->pictures()` and `->positions()` are new; a select without them is drawn as before. The field's label now has an id (`<id>-label`).
+- **`make:admin-widget`** shares its config code with the new `make:admin-block`; it behaves as before.
+- **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.28.2
 
 Update with `composer require "hostkurd/flocms-admin:^0.28.2" -W`, run `php flo view:clear` and reload open Admin pages. No migration.

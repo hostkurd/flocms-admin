@@ -1,0 +1,9 @@
+/* Gallery lightbox (flocms-admin 0.29) */
+.flo-lightbox { padding: 0; border: 0; max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh; background: rgba(0,0,0,.92); color: #fff; }
+.flo-lightbox::backdrop { background: rgba(0,0,0,.6); }
+.flo-lightbox img { position: absolute; inset: 0; margin: auto; max-width: calc(100vw - 120px); max-height: calc(100vh - 80px); object-fit: contain; }
+.flo-lightbox button { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+.flo-lightbox button:hover { background: rgba(255,255,255,.24); }
+.flo-lightbox [data-close] { top: 16px; inset-inline-end: 16px; }
+.flo-lightbox [data-prev] { top: 50%; inset-inline-start: 16px; } .flo-lightbox [data-next] { top: 50%; inset-inline-end: 16px; }
+@media (max-width: 640px) { .flo-lightbox img { max-width: 100vw; } .flo-lightbox [data-prev], .flo-lightbox [data-next] { top: auto; bottom: 16px; } }

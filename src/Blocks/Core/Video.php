@@ -1,0 +1,51 @@
+<?php
+declare(strict_types=1);
+
+namespace FloCMS\Admin\Blocks\Core;
+
+use FloCMS\Admin\Blocks\Block;
+use FloCMS\Admin\Form\Fields\MediaPicker;
+use FloCMS\Admin\Form\Fields\TextInput;
+use FloCMS\Admin\Form\Fields\Toggle;
+use FloCMS\Admin\Support\AdminLang;
+
+/** A video file from the media library, or a YouTube or Vimeo address (0.29). */
+final class Video extends Block
+{
+    protected static string $type = 'video';
+    protected static string $category = 'media';
+    protected static string $icon = 'video';
+    protected static ?string $label = 'blocks.video';
+    protected static ?string $description = 'blocks.video_help';
+
+    public function fields(): array
+    {
+        $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);
+        return [
+            MediaPicker::make('video')->label($t('video_file'))->videos()->help($t('video_file_help'))->columnSpan('full'),
+            TextInput::make('url')->label($t('video_url'))->rules('max:300')->placeholder('https://www.youtube.com/watch?v=…')->help($t('video_url_help'))->columnSpan('full'),
+            MediaPicker::make('poster')->label($t('video_poster'))->columnSpan('full'),
+            TextInput::make('caption')->label($t('caption'))->rules('max:300')->columnSpan('full'),
+            Toggle::make('autoplay')->label($t('video_autoplay'))->help($t('video_autoplay_help')),
+            Toggle::make('loop')->label($t('video_loop')),
+        ];
+    }
+
+    /** A YouTube or Vimeo address as an embed address, or null. */
+    public static function embedUrl(string $url): ?string
+    {
+        $url = trim($url);
+        if (preg_match('~^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{6,20})~', $url, $m) === 1) {
+            return 'https://www.youtube-nocookie.com/embed/' . $m[1];
+        }
+        if (preg_match('~^https?://(?:www\.|player\.)?vimeo\.com/(?:video/)?(\d{5,12})~', $url, $m) === 1) {
+            return 'https://player.vimeo.com/video/' . $m[1];
+        }
+        return null;
+    }
+
+    public function data(array $fields): array
+    {
+        return ['embed' => self::embedUrl((string) ($fields['url'] ?? ''))];
+    }
+}

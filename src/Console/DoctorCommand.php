@@ -75,6 +75,7 @@ final class DoctorCommand extends Command
         }
 
         $this->checkMedia($config);
+        $this->checkBlocks();
         $this->checkLayout();
         if ($config->loginThemeEnabled()) {
             $login = $project->path('views/users/admin_login.html');
@@ -265,6 +266,20 @@ final class DoctorCommand extends Command
                 $this->caution('Column "' . $name . '" holds a list of items but its type is ' . $type . ': use JSON (or a TEXT type)');
             } elseif ($type !== null && preg_match('/^(tiny)?text$/i', trim($type)) === 1 && str_starts_with(strtolower(trim($type)), 'tiny')) {
                 $this->caution('Column "' . $name . '" is TINYTEXT: too small for a list, use TEXT or JSON');
+            }
+        }
+        // Blocks (0.29): one JSON document per column, often large.
+        foreach ($form->fields() as $name => $field) {
+            if (!$field instanceof \FloCMS\Admin\Form\Fields\Builder) { continue; }
+            $vars = (int) ini_get('max_input_vars');
+            if ($vars > 0 && $vars < 3000) {
+                $this->caution('max_input_vars is ' . $vars . ': a page of "' . $name . '" with many blocks can be too large to save; set max_input_vars = 5000 in php.ini or .user.ini');
+            }
+            $type = strtolower(trim((string) ($columns[strtolower($name)] ?? '')));
+            if ($type !== '' && preg_match('/json|text|clob/', $type) !== 1) {
+                $this->caution('Column "' . $name . '" holds blocks but its type is ' . $type . ': use JSON or LONGTEXT');
+            } elseif ($type === 'tinytext' || $type === 'text') {
+                $this->caution('Column "' . $name . '" holds blocks and is ' . strtoupper($type) . ' (up to 64 kB on MySQL): use MEDIUMTEXT, LONGTEXT or JSON');
             }
         }
     }
@@ -553,6 +568,24 @@ final class DoctorCommand extends Command
     }
 
     /** Rich text uploads go to a public folder: it must be writable and reachable by the web server. */
+    /** The site's own blocks (config 'blocks', 0.29): classes that extend Block, with a valid, unique type. */
+    private function checkBlocks(): void
+    {
+        $value = \FloCMS\Admin\Admin::config()->configuredBlocks();
+        if (!is_array($value) || $value === []) { return; }
+        $types = [];
+        foreach ($value as $class) {
+            if (!is_string($class) || !class_exists($class)) { $this->bad('Block ' . (is_string($class) ? $class : gettype($class)) . ' in admin.blocks does not exist'); continue; }
+            if (!is_a($class, \FloCMS\Admin\Blocks\Block::class, true)) { $this->bad('Block ' . $class . ' must extend ' . \FloCMS\Admin\Blocks\Block::class); continue; }
+            try { $type = $class::type(); } catch (\Throwable $e) { $this->bad('Block ' . $class . ': ' . $e->getMessage()); continue; }
+            if (isset($types[$type])) { $this->caution('Blocks ' . $types[$type] . ' and ' . $class . ' have the same type "' . $type . '": the last one is used'); }
+            $types[$type] = $class;
+            try { \FloCMS\Admin\Form\Fields\Builder::make('doctor')->blockForm(new $class()); }
+            catch (\Throwable $e) { $this->bad('Block ' . $class . ': ' . $e->getMessage()); continue; }
+        }
+        $this->ok(count($types) . ' block' . (count($types) === 1 ? '' : 's') . ' of the site\'s own');
+    }
+
     private function checkMedia(\FloCMS\Admin\AdminConfig $config): void
     {
         $uses = false;

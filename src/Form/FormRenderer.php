@@ -64,6 +64,37 @@ final class FormRenderer
     ) {
     }
 
+    /** Before the no-JavaScript buttons' values of repeaters in a block (0.29): "content:block:item:_:b1:". */
+    private string $operationPrefix = '';
+
+    /**
+     * A renderer for fields inside a part of this form (a block of a Builder),
+     * with the same languages and endpoints (0.29).
+     *
+     * @internal
+     * @param array<string, string|array<string, string>> $state
+     * @param array<string, string> $errors
+     */
+    public function child(array $state, array $errors, string $prefix, string $namePrefix, string $operationPrefix = ''): self
+    {
+        $child = new self($state, $errors, $this->languages, $this->defaultLang, $this->isEdit, false, $prefix, $this->reactive, $this->fileUrl, $this->mediaUrl, $this->editorKey,
+            false, null, $this->lookupUrl, $this->recordId, $this->ownTable, $this->editing, $this->switchActive, null, $namePrefix);
+        $child->operationPrefix = $operationPrefix;
+        return $child;
+    }
+
+    /** @internal the languages, the default first, the one being edited, and whether the page has a language switch */
+    public function languageContext(): array
+    {
+        return ['languages' => $this->languages === [] ? [$this->defaultLang] : $this->languages, 'default' => $this->defaultLang, 'editing' => $this->editingLanguage(), 'switch' => $this->languageSwitch, 'prefix' => $this->prefix];
+    }
+
+    /** @internal the input name of a field of this form */
+    public function nameOf(string $name): string
+    {
+        return $this->inputName($name);
+    }
+
     /** The input name of a field (and language): "title[ar]", or "rooms[k1][name][ar]" inside an item. */
     private function inputName(string $name, ?string $lang = null): string
     {
@@ -201,6 +232,9 @@ final class FormRenderer
         if ($field instanceof Fields\Repeater) {
             return $this->repeater($field);
         }
+        if ($field instanceof Fields\Builder) {
+            return (new BuilderRenderer($this, $field, $this->stringState($field), $this->errors))->render();
+        }
         $name = $field->getName();
         $id = $this->prefix . 'f-' . $name;
         $error = $this->errors[$name] ?? null;
@@ -233,7 +267,7 @@ final class FormRenderer
 
         $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '"' . ($shared ? ' data-same-all' : '')
             . ($panes || $switched ? ' data-translatable' : '') . ($switched && $isRich ? ' data-rich' : '') . ($switched && $isUpload ? ' data-uncounted' : '') . '>';
-        $html .= '<label class="fa-label" for="' . Str::e($id) . '">' . $label . (($panes || ($switched && $isRich)) && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
+        $html .= '<label class="fa-label" id="' . Str::e($id) . '-label" for="' . Str::e($id) . '">' . $label . (($panes || ($switched && $isRich)) && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
         // Settings pages: an "All languages" pill above the input; record forms: a line below it.
         // Inside repeater items ($sameNote ''): locked without a note on every field.
         $note = $shared && $this->sameNote !== '' ? '<p class="fa-same-note' . ($this->sameNote !== null ? ' is-line' : '') . '"' . ($this->locksShared() ? '' : ' hidden') . '>'
@@ -328,7 +362,7 @@ final class FormRenderer
         if ($free) {
             $html .= '<div class="fa-repeater-undo" role="status" aria-live="polite" data-repeater-undo hidden><span data-repeater-undo-text></span>'
                 . '<button type="button" class="fa-btn fa-btn-sm" data-repeater-undo-button>' . Str::e($t('undo')) . '</button></div>';
-            $html .= '<button type="submit" name="_repeater" value="' . Str::e($name . ':add') . '" class="fa-repeater-add' . ($table ? ' is-compact' : '') . '" data-repeater-add formnovalidate'
+            $html .= '<button type="submit" name="_repeater" value="' . Str::e($this->operationPrefix . $name . ':add') . '" class="fa-repeater-add' . ($table ? ' is-compact' : '') . '" data-repeater-add formnovalidate'
                 . (count($items) >= $field->getMaxItems() ? ' disabled' : '') . '>' . Icons::svg('plus') . '<span>' . Str::e($field->getAddLabel()) . '</span></button>';
             // An empty item for Add: the script replaces __KEY__ with a new key.
             $empty = ['_key' => '__KEY__'];
@@ -365,6 +399,7 @@ final class FormRenderer
         $form = (new Form())->columns($columns)->schema(array_values($schema));
         $child = new self($state, $errors, $this->languages, $this->defaultLang, $this->isEdit, false, $prefix, $this->reactive, $this->fileUrl, $this->mediaUrl, $this->editorKey,
             $this->languageSwitch, null, $this->lookupUrl, $this->recordId, $this->ownTable, $this->editing, $this->switchActive, $this->languageSwitch ? '' : null, $this->inputName($name) . '[' . $key . ']');
+        $child->operationPrefix = $this->operationPrefix;
         $body = $child->render($form);
         if (!$template) {
             $stats = $child->languageStats();
@@ -381,8 +416,9 @@ final class FormRenderer
         $bodyId = $prefix . 'body';
         $html = '<div class="fa-repeater-item' . ($errors !== [] ? ' has-error' : '') . ($collapsed ? ' is-collapsed' : '') . '" role="listitem" data-repeater-item data-key="' . Str::e($key) . '">';
         $html .= '<input type="hidden" name="' . Str::e($this->inputName($name) . '[' . $key . '][_key]') . '" value="' . Str::e($key) . '">';
+        $operation = $this->operationPrefix;
         $tool = static fn (string $action, string $icon, string $label, string $extra = ''): string => '<button type="' . (in_array($action, ['up', 'down', 'remove'], true) ? 'submit' : 'button') . '"'
-            . (in_array($action, ['up', 'down', 'remove'], true) ? ' name="_repeater" value="' . Str::e($name . ':' . $action . ':' . $key) . '" formnovalidate' : '')
+            . (in_array($action, ['up', 'down', 'remove'], true) ? ' name="_repeater" value="' . Str::e($operation . $name . ':' . $action . ':' . $key) . '" formnovalidate' : '')
             . ' class="fa-repeater-tool' . ($action === 'remove' ? ' is-danger' : '') . '" data-repeater-action="' . $action . '" aria-label="' . Str::e($label) . '" title="' . Str::e($label) . '"' . $extra . '>'
             . Icons::svg($icon) . '</button>';
         $handle = $free ? '<button type="button" class="fa-repeater-handle" data-repeater-handle aria-label="' . Str::e($t('drag', ['item' => $title])) . '" hidden>' . Icons::svg('grip') . '</button>' : '';

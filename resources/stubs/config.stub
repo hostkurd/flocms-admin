@@ -25,6 +25,13 @@ return [
     'widgets_namespace' => 'App\\Admin\\Widgets',
     'widget_columns' => 2,
 
+    // The site's own blocks for Builder fields (0.29): php flo make:admin-block LatestProjects.
+    'blocks' => [
+        // App\Admin\Blocks\LatestProjects::class,
+    ],
+    'blocks_path' => 'admin/Blocks',
+    'blocks_namespace' => 'App\\Admin\\Blocks',
+
     // Users management at /admin/accounts and the profile page at /admin/profile
     // (the skeleton's users table). false switches both off.
     'users' => true,

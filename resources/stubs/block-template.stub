@@ -1,0 +1,7 @@
+@php /* {{ label }} block: the fields of {{ namespace }}\{{ class }} are variables here ($heading, $count), with data() ($items). */ @endphp
+<div class="flo-{{ css }}">
+    <h2 class="flo-heading">{{ heading_var }}</h2>
+    @foreach($items as $item)
+    <p>{{ item_var }}</p>
+    @endforeach
+</div>

@@ -523,6 +523,25 @@ abstract class Resource
         return in_array(static::$formMode, self::FORM_MODES, true) ? static::$formMode : 'page';
     }
 
+    /** @var array<class-string, bool> */
+    private static array $builders = [];
+
+    /** Whether the form has a Builder field (0.29): its editor needs a page, never a dialog. */
+    public function hasBuilder(): bool
+    {
+        if (!isset(self::$builders[static::class])) {
+            $has = false;
+            try {
+                foreach ($this->form(new \FloCMS\Admin\Form\Form())->fields() as $field) { if ($field instanceof \FloCMS\Admin\Form\Fields\Builder) { $has = true; break; } }
+            } catch (\Throwable) {
+                // A form that needs its record cannot be read here; it is asked again next time.
+                return false;
+            }
+            self::$builders[static::class] = $has;
+        }
+        return self::$builders[static::class];
+    }
+
     /** The configured value as written, for admin:doctor. */
     public static function configuredFormMode(): string
     {

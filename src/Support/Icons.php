@@ -10,6 +10,15 @@ final class Icons
 {
     private const PATHS = [
         'list' => 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
+        // Blocks (0.29)
+        'slides' => 'M6 5h12v11H6zM2 7v7M22 7v7M9 20h.01M12 20h.01M15 20h.01',
+        'hero' => 'M3 4h18v12H3zM7 9h7M7 12h4M3 20h18',
+        'heading' => 'M6 4v16M18 4v16M6 12h12',
+        'text' => 'M4 6h16M4 10h16M4 14h16M4 18h10',
+        'section' => 'M3 4h18M3 20h18M5 8h14v8H5z',
+        'arrow-right' => 'M5 12h14M13 6l6 6-6 6',
+        'cards' => 'M3 5h8v14H3zM13 5h8v14h-8zM5 15h4M15 15h4',
+        'square' => 'M5 5h14v14H5z',
         // Rich text toolbar
         'bold' => 'M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z',
         'italic' => 'M10 5h8M6 19h8M14 5l-4 14',
