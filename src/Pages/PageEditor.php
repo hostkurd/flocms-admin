@@ -28,10 +28,10 @@ final class PageEditor
         $description = $record !== null ? Translations::get($record->meta_description ?? '', $lang) : '';
         $url = $record !== null && isset($record->id) ? Pages::url($record, $lang) : (defined('SITE_URI') ? (string) constant('SITE_URI') : '') . '/' . $lang . '/…';
         $host = (string) (parse_url($url, PHP_URL_HOST) ?: 'example.com');
-        $crumbs = trim((string) parse_url($url, PHP_URL_PATH), '/');
-        return '<div class="fa-seo-preview" data-seo-preview data-empty-title="' . Str::e(self::t('seo_untitled')) . '">'
+        $crumbs = static fn (string $url): string => $host . (($path = trim(rawurldecode((string) parse_url($url, PHP_URL_PATH)), '/')) !== '' ? ' › ' . str_replace('/', ' › ', $path) : '');
+        return '<div class="fa-seo-preview" data-seo-preview data-empty-title="' . Str::e(self::t('seo_untitled')) . '" data-seo-urls="' . Str::e(self::urls($record, $crumbs)) . '">'
             . '<div class="fa-seo-card fa-seo-search" aria-label="' . Str::e(self::t('seo_search')) . '"><p class="fa-seo-kicker">' . Str::e(self::t('seo_search')) . '</p>'
-            . '<p class="fa-seo-url" dir="ltr">' . Str::e($host) . ($crumbs !== '' ? ' › ' . Str::e(str_replace('/', ' › ', $crumbs)) : '') . '</p>'
+            . '<p class="fa-seo-url" dir="ltr" data-seo-url>' . Str::e($crumbs($url)) . '</p>'
             . '<p class="fa-seo-title" data-seo-title>' . Str::e($title !== '' ? $title : self::t('seo_untitled')) . '</p>'
             . '<p class="fa-seo-desc" data-seo-desc>' . Str::e($description) . '</p></div>'
             . '<div class="fa-seo-card fa-seo-social" aria-label="' . Str::e(self::t('seo_social')) . '"><p class="fa-seo-kicker">' . Str::e(self::t('seo_social')) . '</p>'
@@ -41,6 +41,18 @@ final class PageEditor
             . '<p class="fa-seo-desc" data-seo-desc>' . Str::e($description) . '</p></div></div>';
     }
 
+    /**
+     * The page's address in each language, as JSON (lang => text), for the
+     * "Editing: language" switch (resources/js/pages.ts).
+     */
+    private static function urls(?object $record, callable $format): string
+    {
+        if ($record === null || !isset($record->id)) { return '{}'; }
+        $urls = [];
+        foreach (\FloCMS\Admin\Translation\Languages::all() as $lang) { $urls[$lang] = $format(Pages::url($record, $lang)); }
+        return (string) json_encode($urls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     /** Preview (the page as edited, saved or not, in a new tab) and View on site. */
     public static function buttons(?object $record): string
     {
@@ -48,7 +60,7 @@ final class PageEditor
             . '<button type="submit" class="fa-btn" formaction="' . Str::e(Admin::url('page-preview', ['page' => $record !== null && isset($record->id) ? (int) $record->id : null])) . '" formtarget="_blank" formnovalidate name="_preview" value="1" data-admin-download data-admin-preview>'
             . Icons::svg('eye', 'fa-icon') . '<span>' . Str::e(self::t('preview')) . '</span></button>';
         if ($record !== null && isset($record->id) && Pages::isLive($record)) {
-            $html .= '<a class="fa-btn fa-btn-ghost" href="' . Str::e(Pages::url($record, AdminLang::language())) . '" target="_blank" rel="noopener">' . Icons::svg('external', 'fa-icon') . '<span>' . Str::e(self::t('view_on_site')) . '</span></a>';
+            $html .= '<a class="fa-btn fa-btn-ghost" href="' . Str::e(Pages::url($record, AdminLang::language())) . '" data-page-href="' . Str::e(self::urls($record, static fn (string $url): string => $url)) . '" target="_blank" rel="noopener">' . Icons::svg('external', 'fa-icon') . '<span>' . Str::e(self::t('view_on_site')) . '</span></a>';
         }
         return $html . '<p class="fa-help">' . Str::e(self::t('preview_help')) . '</p></div>';
     }
@@ -61,7 +73,7 @@ final class PageEditor
         $id = 'fa-page-address-' . (int) $record->id;
         $date = static fn (mixed $value): string => ($time = Pages::time(is_string($value) ? $value : null)) === null ? '–' : \FloCMS\Admin\Support\Dates::full($time);
         $html = '<dl class="fa-page-info">'
-            . '<div><dt>' . Str::e(self::t('address')) . '</dt><dd class="fa-page-address"><input class="fa-input" id="' . Str::e($id) . '" value="' . Str::e($url) . '" readonly dir="ltr" aria-label="' . Str::e(self::t('address')) . '">'
+            . '<div><dt>' . Str::e(self::t('address')) . '</dt><dd class="fa-page-address"><input class="fa-input" id="' . Str::e($id) . '" value="' . Str::e(rawurldecode($url)) . '" readonly dir="ltr" aria-label="' . Str::e(self::t('address')) . '" data-page-urls="' . Str::e(self::urls($record, 'rawurldecode')) . '">'
             . '<button type="button" class="fa-btn fa-btn-sm" data-media-copy="' . Str::e($id) . '" data-copied="' . Str::e(self::t('copied')) . '" hidden>' . Str::e(self::t('copy')) . '</button></dd></div>';
         if ((int) ($record->is_home ?? 0) === 1) { $html .= '<div><dt>' . Str::e(self::t('home')) . '</dt><dd><span class="fa-badge fa-badge-blue">' . Str::e(self::t('home_badge')) . '</span></dd></div>'; }
         $html .= '<div><dt>' . Str::e(self::t('created')) . '</dt><dd>' . Str::e($date($record->created_at ?? null)) . '</dd></div>'

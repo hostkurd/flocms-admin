@@ -60,6 +60,8 @@ final class PagesResource extends Resource
     protected static bool $timestamps = true;
     protected static bool $navigation = false;
     protected static string $rowOpens = 'edit';
+    /** One language at a time for the whole page (the "Editing: language" switch), whatever the panel's mode. */
+    protected static string $translationMode = 'page';
 
     public static function getTable(): string
     {
@@ -169,7 +171,8 @@ final class PagesResource extends Resource
                     }),
                 DeleteAction::make(),
             ])
-            ->defaultSort('sort', 'asc');
+            // The editors' order (the menu's too): the Reorder button, and the list follows it.
+            ->reorderable('sort');
     }
 
     public static function title(?object $row): string

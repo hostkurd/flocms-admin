@@ -13,6 +13,11 @@ function value(form: HTMLElement, name: string, lang: string): string {
   return (field?.value || '').trim();
 }
 
+/** The text for a language from a JSON map (lang => text), else the default language's. */
+function pick(json: string | undefined, lang: string, fallback: string): string {
+  try { const map = JSON.parse(json || '{}'); return map[lang] || map[fallback] || ''; } catch { return ''; }
+}
+
 function refresh(preview: HTMLElement): void {
   const form = preview.closest<HTMLElement>('form');
   if (!form) return;
@@ -21,6 +26,17 @@ function refresh(preview: HTMLElement): void {
   const fallback = scope?.dataset.defaultLang || lang;
   const title = value(form, 'meta_title', lang) || value(form, 'title', lang) || value(form, 'title', fallback) || preview.dataset.emptyTitle || '';
   const description = value(form, 'meta_description', lang);
+  const url = pick(preview.dataset.seoUrls, lang, fallback);
+  const shown = preview.querySelector<HTMLElement>('[data-seo-url]');
+  if (url && shown) shown.textContent = url;
+  form.querySelectorAll<HTMLInputElement>('[data-page-urls]').forEach(input => {
+    const address = pick(input.dataset.pageUrls, lang, fallback);
+    if (address) input.value = address;
+  });
+  form.querySelectorAll<HTMLAnchorElement>('a[data-page-href]').forEach(link => {
+    const address = pick(link.dataset.pageHref, lang, fallback);
+    if (address) link.href = address;
+  });
   preview.querySelectorAll<HTMLElement>('[data-seo-title]').forEach(element => { element.textContent = title; });
   preview.querySelectorAll<HTMLElement>('[data-seo-desc]').forEach(element => { element.textContent = description; });
   const media = form.querySelector<HTMLElement>('[data-field="social_image"] [data-admin-media-field]');

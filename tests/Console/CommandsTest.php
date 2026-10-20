@@ -32,6 +32,33 @@ final class CommandsTest extends TestCase
         exec('rm -rf ' . escapeshellarg($this->root));
     }
 
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testDoctorChecksThePages(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false];");
+        self::assertStringContainsString("Off: add 'pages' => true", $this->runCommand(new DoctorCommand())->getDisplay());
+
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'pages' => true];");
+        self::assertStringContainsString('Table "admin_pages" not found', $this->runCommand(new DoctorCommand())->getDisplay());
+
+        $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
+        $file = $this->root . '/pages-migration.php';
+        file_put_contents($file, \FloCMS\Admin\Console\Stub::render('pages-migration', ['table' => 'admin_pages']));
+        (require $file)->up(new \FloCMS\Core\Database($pdo));
+        $pdo->exec("INSERT INTO admin_pages (title, slug, status, is_home) VALUES ('{\"en\":\"Home\"}', '{\"en\":\"home\"}', 'published', 1), ('{\"en\":\"Login\"}', '{\"en\":\"login\"}', 'published', 0)");
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Table "admin_pages": 2 pages, with a home page', $display);
+        self::assertStringContainsString('has the address /login, which the panel or the framework answers first', $display);
+        self::assertStringContainsString('Page templates: default', $display);
+    }
+
     private function runCommand(object $command, array $arguments = []): CommandTester
     {
         $tester = new CommandTester($command, new Project($this->root));
