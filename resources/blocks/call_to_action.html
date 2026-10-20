@@ -1,0 +1,12 @@
+@php /* Call to action block (flocms-admin 0.29). */ @endphp
+<div class="flo-cta is-{{ $style }}">
+    <div class="flo-cta-text">
+        <h2 class="flo-cta-heading">{{ $heading }}</h2>
+        @if($text !== '')
+        <p>{{ $text }}</p>
+        @endif
+    </div>
+    @if($button !== '' && $link !== '')
+    <a class="flo-button" href="{{ $link }}">{{ $button }}</a>
+    @endif
+</div>

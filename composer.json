@@ -57,6 +57,8 @@
                 "FloCMS\\Admin\\Console\\MakeResourceCommand",
                 "FloCMS\\Admin\\Console\\MakeWidgetCommand",
                 "FloCMS\\Admin\\Console\\MakeSettingsCommand",
+                "FloCMS\\Admin\\Console\\MakeBlockCommand",
+                "FloCMS\\Admin\\Console\\BlocksCommand",
                 "FloCMS\\Admin\\Console\\ListCommand",
                 "FloCMS\\Admin\\Console\\DoctorCommand",
                 "FloCMS\\Admin\\Console\\MediaImportCommand",

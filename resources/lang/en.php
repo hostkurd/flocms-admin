@@ -1437,6 +1437,13 @@ return [
     'blocks.tab_settings' => 'Settings',
     'blocks.tab_slides' => 'Slides',
     'blocks.tab_cards' => 'Cards',
+    // On the website
+    'blocks.site_slider' => 'Slides',
+    'blocks.site_previous' => 'Previous slide',
+    'blocks.site_next' => 'Next slide',
+    'blocks.site_go_to' => 'Go to slide :number',
+    'blocks.site_pause' => 'Pause',
+    'blocks.site_play' => 'Play',
     // Shared settings
     'blocks.status' => 'Status',
     'blocks.status_published' => 'Published',

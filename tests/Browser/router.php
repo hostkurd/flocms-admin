@@ -205,7 +205,7 @@ if (preg_match('~^/uploads/(editor|settings)/([A-Za-z0-9/_.-]+)$~', (string) par
     readfile($file); exit;
 }
 if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' && parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== '/__test/landing-view') { http_response_code(405); exit; }
     switch (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)) {
         case '/__test/widgets': Session::set('widget_demo', true); Session::set('widget_static', ($_POST['static'] ?? '') === '1'); break;
         case '/__test/widget-add': App::$db->table('posts')->insert(['title'=>'{"en":"Fresh widget post"}', 'slug'=>'widget-'.bin2hex(random_bytes(4)), 'status'=>'published', 'featured'=>1, 'views'=>7]); break;
@@ -293,7 +293,15 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             echo json_encode(['path' => $links[1] === [] ? null : end($links[1]), 'mails' => substr_count((string) @file_get_contents(ROOT . '/storage/logs/admin-mail.log'), '==== ')]); exit;
         case '/__test/managers': $seedManagers($pdo); break;
         case '/__test/apartments': $seedApartments($pdo); break;
-        case '/__test/landings': $seedLandings($pdo); break;
+        case '/__test/landings': $seedLandings($pdo); array_map('unlink', glob(ROOT . '/storage/cache/blocks/*.json') ?: []); break;
+        case '/__test/landing-view':
+            // The website side (0.29): a page that prints a landing's blocks, as a site's layout would.
+            $row = $pdo->query('SELECT * FROM landings WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+            $lang = preg_match('/^[a-z]{2}$/', (string) ($_GET['lang'] ?? '')) === 1 ? (string) $_GET['lang'] : 'en';
+            $body = blocks($row['content'] ?? '', $lang);
+            echo '<!doctype html><html lang="' . $lang . '" dir="' . ($lang === 'en' ? 'ltr' : 'rtl') . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Landing</title>'
+                . '<style>body{margin:0;font-family:system-ui,sans-serif;color:#101828}</style>' . blocks_assets() . '</head><body>' . $body . '</body></html>';
+            exit;
         case '/__test/landings-state': header('Content-Type: application/json'); echo json_encode($pdo->query('SELECT * FROM landings ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)); exit;
         case '/__test/products': $seedProducts($pdo); break;
         case '/__test/products-state': header('Content-Type: application/json'); echo json_encode(['products' => $pdo->query('SELECT * FROM products ORDER BY id')->fetchAll(PDO::FETCH_ASSOC), 'features' => $pdo->query('SELECT * FROM product_feature ORDER BY product_id, feature_id')->fetchAll(PDO::FETCH_ASSOC)]); exit;

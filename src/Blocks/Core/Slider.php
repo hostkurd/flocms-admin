@@ -76,4 +76,32 @@ final class Slider extends Block
     }
 
     public function assets(): array { return ['slider']; }
+
+    public function defaultWidth(): string { return 'full'; }
+
+    /** The template gets the slides that are shown, each with its media item. */
+    public function data(array $fields): array
+    {
+        return ['slides' => self::shownSlides($fields['slides'] ?? [])];
+    }
+
+    /**
+     * Slides as the template uses them: shown ones only, with "item" (the
+     * media item, or null) next to the stored "media" id.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function shownSlides(mixed $value): array
+    {
+        if (is_string($value)) { $value = json_decode($value, true); }
+        $slides = [];
+        foreach (is_array($value) ? $value : [] as $slide) {
+            if (!is_array($slide) || (string) ($slide['shown'] ?? '1') === '0') { continue; }
+            unset($slide['_key']);
+            $slide['item'] = function_exists('media') ? media($slide['media'] ?? null) : null;
+            if ($slide['item'] === null) { continue; }
+            $slides[] = $slide + ['heading' => '', 'text' => '', 'button' => '', 'link' => '', 'position' => 'bottom-start', 'tone' => 'light'];
+        }
+        return $slides;
+    }
 }

@@ -179,3 +179,59 @@ if (!function_exists('key_values')) {
         return $pairs;
     }
 }
+
+if (!function_exists('blocks')) {
+    /**
+     * The blocks of a Builder column (0.29), printed with the site's templates
+     * (views/blocks/<type>.html, else the package's): only published blocks in
+     * their time window, in the page's language.
+     *
+     *     {!! blocks($page->content) !!}
+     *
+     * Put {!! blocks_assets() !!} in the layout's <head> for their styles and scripts.
+     */
+    function blocks(mixed $value, ?string $lang = null): string
+    {
+        return \FloCMS\Admin\Blocks\BlockRenderer::render($value, $lang);
+    }
+}
+
+if (!function_exists('blocks_data')) {
+    /**
+     * The blocks shown now as plain arrays, for a site that renders them itself
+     * (React, an API): [['id' => …, 'type' => 'slider', 'fields' => […], 'settings' => […], 'children' => […]], …].
+     *
+     * @return list<array<string, mixed>>
+     */
+    function blocks_data(mixed $value, ?string $lang = null): array
+    {
+        return \FloCMS\Admin\Blocks\BlockRenderer::data($value, $lang);
+    }
+}
+
+if (!function_exists('blocks_assets')) {
+    /**
+     * The styles and scripts of the blocks printed on this page (the slider's
+     * script only where there is a slider):
+     *
+     *     <head> … {!! blocks_assets() !!} </head>
+     */
+    function blocks_assets(): string
+    {
+        return \FloCMS\Admin\Blocks\BlockRenderer::assets();
+    }
+}
+
+if (!function_exists('slider')) {
+    /**
+     * A Slider field's slides (0.29) as a slider, with the slider block's template:
+     *
+     *     {!! slider($property->photos, ['height' => 'fixed', 'height_px' => 480]) !!}
+     *
+     * Options are the slider block's settings (height, effect, interval, autoplay, arrows, dots, fit, overlay).
+     */
+    function slider(mixed $slides, array $options = []): string
+    {
+        return \FloCMS\Admin\Blocks\BlockRenderer::slider($slides, $options);
+    }
+}

@@ -1,0 +1,47 @@
+@php /* Slider block (flocms-admin 0.29). Yours to change once php flo admin:blocks has copied it to views/blocks. */ @endphp
+<div class="flo-slider is-{{ $effect }} is-height-{{ $height }} is-fit-{{ $fit }}" data-flo-slider data-interval="{{ max(3, (int) $interval) * 1000 }}" data-autoplay="{{ $autoplay === '1' ? '1' : '0' }}"
+     style="--flo-slider-height: {{ max(120, (int) $height_px) }}px; --flo-slider-height-phone: {{ max(120, (int) $height_phone) }}px; --flo-slider-overlay: {{ max(0, min(90, (int) $overlay)) / 100 }}"
+     role="region" aria-roledescription="carousel" aria-label="{{ $name !== '' ? $name : \FloCMS\Admin\Support\AdminLang::get('blocks.site_slider') }}">
+    <div class="flo-slider-track" aria-live="off">
+        @foreach($slides as $index => $slide)
+        <div class="flo-slide is-{{ $slide['position'] }} is-{{ $slide['tone'] }}{{ $index === 0 ? ' is-current' : '' }}" role="group" aria-roledescription="slide" aria-label="{{ ($index + 1) . ' / ' . count($slides) }}"{!! $index === 0 ? '' : ' aria-hidden="true"' !!}>
+            <div class="flo-slide-media">
+                @if($slide['item']->isVideo())
+                {!! $slide['item']->video(['controls' => false, 'muted' => true, 'loop' => true, 'autoplay' => $index === 0, 'preload' => $index === 0 ? 'auto' : 'none', 'data-flo-video' => true]) !!}
+                @else
+                {!! $slide['item']->img(['loading' => $index === 0 ? 'eager' : 'lazy', 'fetchpriority' => $index === 0 ? 'high' : null, 'sizes' => '100vw']) !!}
+                @endif
+            </div>
+            @if($slide['heading'] !== '' || $slide['text'] !== '' || $slide['button'] !== '')
+            <div class="flo-slide-text">
+                @if($slide['heading'] !== '')
+                <h2 class="flo-slide-heading">{{ $slide['heading'] }}</h2>
+                @endif
+                @if($slide['text'] !== '')
+                <p class="flo-slide-lead">{{ $slide['text'] }}</p>
+                @endif
+                @if($slide['button'] !== '' && $slide['link'] !== '')
+                <a class="flo-button" href="{{ $slide['link'] }}">{{ $slide['button'] }}</a>
+                @endif
+            </div>
+            @endif
+        </div>
+        @endforeach
+    </div>
+    @if(count($slides) > 1)
+    @if($arrows === '1')
+    <button type="button" class="flo-slider-arrow is-prev" data-flo-prev aria-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.site_previous') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <button type="button" class="flo-slider-arrow is-next" data-flo-next aria-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.site_next') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>
+    @endif
+    @if($dots === '1')
+    <div class="flo-slider-dots">
+        @foreach($slides as $index => $slide)
+        <button type="button" data-flo-dot="{{ $index }}" aria-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.site_go_to', ['number' => (string) ($index + 1)]) }}"{!! $index === 0 ? ' aria-current="true"' : '' !!}></button>
+        @endforeach
+    </div>
+    @endif
+    @if($autoplay === '1')
+    <button type="button" class="flo-slider-pause" data-flo-pause aria-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.site_pause') }}" data-play-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.site_play') }}" data-pause-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.site_pause') }}"><svg class="is-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg><svg class="is-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg></button>
+    @endif
+    @endif
+</div>

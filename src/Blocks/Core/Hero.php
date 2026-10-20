@@ -35,4 +35,6 @@ final class Hero extends Block
             Select::make('overlay')->label($t('slider_overlay'))->options(['0' => '0%', '20' => '20%', '35' => '35%', '50' => '50%', '65' => '65%', '80' => '80%'])->default('35'),
         ];
     }
+
+    public function defaultWidth(): string { return 'full'; }
 }

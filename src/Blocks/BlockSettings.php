@@ -30,15 +30,21 @@ final class BlockSettings
         ];
         // A Section sets the width of its own content; blocks inside a Section or Columns follow it.
         if (!$block instanceof Core\Section) {
-            $fields[] = Select::make('width')->label($t('width'))->options(['boxed' => $t('width_boxed'), 'full' => $t('width_full')])->default('boxed')->segmented()->help($t('width_help'))->columnSpan('full');
+            $fields[] = Select::make('width')->label($t('width'))->options(['boxed' => $t('width_boxed'), 'full' => $t('width_full')])->default($block->defaultWidth() === 'full' ? 'full' : 'boxed')->segmented()->help($t('width_help'))->columnSpan('full');
         }
         return array_merge($fields, [
-            Select::make('space_above')->label($t('space_above'))->options($space)->default('medium'),
-            Select::make('space_below')->label($t('space_below'))->options($space)->default('medium'),
+            // Full-width kinds (slider, hero) sit edge to edge by default.
+            Select::make('space_above')->label($t('space_above'))->options($space)->default(self::defaultSpace($block)),
+            Select::make('space_below')->label($t('space_below'))->options($space)->default(self::defaultSpace($block)),
             Select::make('devices')->label($t('devices'))->options(['all' => $t('devices_all'), 'desktop' => $t('devices_desktop'), 'phone' => $t('devices_phone')])->default('all')->segmented()->columnSpan('full'),
             TextInput::make('anchor')->label($t('anchor'))->help($t('anchor_help'))->rules('max:60'),
             TextInput::make('class')->label($t('css_class'))->help($t('css_class_help'))->rules('max:120'),
         ]);
+    }
+
+    public static function defaultSpace(Block $block): string
+    {
+        return $block->defaultWidth() === 'full' ? 'none' : 'medium';
     }
 
     /** An anchor as it may appear in an id ("projects"), or ''. */

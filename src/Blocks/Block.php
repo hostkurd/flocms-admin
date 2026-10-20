@@ -142,6 +142,19 @@ abstract class Block
     /** Script and style names the website needs for this block ("slider"). */
     public function assets(): array { return []; }
 
+    /** The width a new block of this kind gets: 'boxed' (in the site's container) or 'full'. */
+    public function defaultWidth(): string { return 'boxed'; }
+
+    /**
+     * Whether the printed HTML may be cached until the content changes. True
+     * unless the block has its own data() (which may read the database, as
+     * "latest posts" does); override to say so either way.
+     */
+    public function cacheable(): bool
+    {
+        return (new \ReflectionMethod($this, 'data'))->getDeclaringClass()->getName() === self::class || str_starts_with(static::class, __NAMESPACE__ . '\\Core\\');
+    }
+
     /** Whether this block may sit inside a block of the given type ('' = the top level). */
     public function allowedIn(string $parentType): bool
     {

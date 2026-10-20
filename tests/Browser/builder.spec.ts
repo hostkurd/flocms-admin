@@ -140,6 +140,20 @@ test('errors open the block that has them', async ({ page }) => {
   await expect(pane(page, 'bcta1').locator('.fa-error')).toBeVisible();
 });
 
+test('the website shows the blocks with their own templates and the slider works', async ({ page }) => {
+  await page.goto('/__test/landing-view');
+  const slider = page.locator('[data-flo-slider]');
+  await expect(slider.locator('.flo-slide.is-current .flo-slide-heading')).toHaveText('Design that works');
+  await expect(slider.locator('.flo-slide').nth(1)).toHaveAttribute('aria-hidden', 'true');
+  await slider.locator('[data-flo-next]').click();
+  await expect(slider.locator('.flo-slide.is-current .flo-slide-heading')).toHaveText('Built to last');
+  await expect(slider.locator('[data-flo-dot="1"]')).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('.flo-section h2')).toHaveText('What we do');
+  await expect(page.getByText('Start a project')).toHaveCount(0);
+  // Only the scripts the page needs
+  await expect(page.locator('script')).toHaveCount(1);
+});
+
 test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
   test('the buttons send the form and the blocks change without saving', async ({ page }) => {
