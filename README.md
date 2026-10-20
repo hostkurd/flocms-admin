@@ -464,7 +464,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.25: CSV import and export (Export menu, the four-step Import with preview and Undo, Site → Imports, `admin:export`, `admin:import`)
 - 0.26: forgot password (one-time links by email, `mail()`/SMTP without a package, other sessions end; flocms-core 2.5)
 - 0.27: the view page (records shown as values, the row title as a link, `hiddenOnView()`, `formatOnView()`, print layout)
-- 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings
+- 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings (0.28.1: user page sidebar, bio, email-style To field)
 
 ## Development
 

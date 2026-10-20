@@ -1,13 +1,22 @@
+# Upgrading to Admin 0.28.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.28.1" -W`, run `php flo view:clear` and reload open Admin pages.
+
+- **Run `php flo admin:install`, then `php flo migrate`** to add the optional **`bio` column to your `users` table** (added only if it isn't there; `php flo migrate:rollback` removes it again). Without it the user page simply has no Bio field.
+- **The user form is laid out in sections with a sidebar.** A site that extends `UsersResource::form()` should check its fields still sit where it wants them.
+- **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.28.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.28.0" -W`, run `php flo view:clear` and reload open Admin pages.
 
-- **Run `php flo admin:install`, then `php flo migrate`** for the mailing tables (`admin_mailings`, `admin_mailing_recipients`, `admin_mail_optouts`) and the optional **`bio` column on your `users` table** (added only if it isn't there; `php flo migrate:rollback` removes it again). Until then Users works as before and **Email users** says the tables are missing.
+- **Run `php flo admin:install`, then `php flo migrate`** for the mailing tables (`admin_mailings`, `admin_mailing_recipients`, `admin_mail_optouts`). Until then Users works as before and **Email users** says the tables are missing.
 - **Mailings need `APP_KEY`** in `.env` (at least 16 characters, as most FloCMS sites already have): it signs the unsubscribe links. Without it direct emails still work.
 - **Tick the new permissions** on the Roles page: `users.email` (direct emails to up to 20 chosen users) and `users.mailing` (mailings). No existing role gets them, Super Admins aside (`*`).
 - **Optional cron** so mailings go on with no page open: `* * * * * cd /path/to/site && php flo admin:mailings`. Check `per_hour` against your host's limit (`'mailings' => ['per_hour' => 200]`).
 - **Photos are stored in `public/uploads/admin`**, so the folder must be writable. Existing values of `users.image` (a path under `public/` or an address) are shown as they are.
-- **The user form is laid out in sections with a sidebar.** A site that extends `UsersResource::form()` should check its fields still sit where it wants them.
 - **The ID column is gone** from Users (the list is sorted as before). The row title still opens the user.
 - **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
 
