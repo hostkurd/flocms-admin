@@ -27,35 +27,42 @@ export function highlight(code: string): string {
 }
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
-const RAW = new Set(['script', 'style', 'pre', 'textarea']);
 
 /** Each tag on its own line, indented by nesting; text, scripts and styles kept as they are. */
+/** Text-level elements stay inside their line: "<p>Read <a href="#">more</a></p>" is one line. */
+const INLINE = new Set(['a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'data', 'dfn', 'em', 'i', 'img', 'kbd', 'label', 'mark', 'q', 's', 'samp', 'small', 'span', 'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr']);
+
 export function format(code: string): string {
-  const tokens = code.match(/<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>|[^<]+|</g) || [];
+  // Scripts, styles, <pre> and <textarea> are kept as they are (their "<" is not a tag).
+  const kept: string[] = [];
+  code = code.replace(/<(script|style|pre|textarea)\b[\s\S]*?<\/\1\s*>/gi, block => `\u0000${kept.push(block) - 1}\u0000`);
+  const tokens = code.match(/\u0000\d+\u0000|<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>|[^<\u0000]+|[<\u0000]/g) || [];
   const lines: string[] = [];
   let depth = 0;
-  let raw: string | null = null;
-  let buffer = '';
-  const push = (text: string) => { const trimmed = text.trim(); if (trimmed) lines.push('  '.repeat(Math.max(0, depth)) + trimmed); };
+  let text = '';
+  let opened = -1; // the line of the last opening tag, while nothing followed it on a line of its own
+  const indent = () => '  '.repeat(Math.max(0, depth));
+  const line = (value: string) => { lines.push(indent() + value); opened = -1; };
+  const flush = () => { const value = text.replace(/\s+/g, ' ').trim(); text = ''; if (value) line(value); };
   for (const token of tokens) {
-    if (raw) {
-      buffer += token;
-      if (new RegExp(`^</${raw}\\b`, 'i').test(token)) {
-        lines.push('  '.repeat(depth) + buffer.trim());
-        buffer = ''; raw = null;
-      }
-      continue;
-    }
+    const block = /^\u0000(\d+)\u0000$/.exec(token);
+    if (block) { flush(); line(kept[Number(block[1])].trim()); continue; }
+    if (token.startsWith('<!--')) { flush(); line(token.trim()); continue; }
     const tag = /^<(\/?)([A-Za-z][\w:-]*)/.exec(token);
-    if (!tag) { push(token.replace(/\s+/g, ' ')); continue; }
+    if (!tag || INLINE.has(tag[2].toLowerCase())) { text += token; continue; }
     const name = tag[2].toLowerCase();
-    if (tag[1]) { depth = Math.max(0, depth - 1); push(token); continue; }
-    if (RAW.has(name) && !token.endsWith('/>')) { raw = name; buffer = token; continue; }
-    push(token);
-    if (!VOID.has(name) && !token.endsWith('/>') && !token.startsWith('<!')) depth++;
+    if (tag[1]) {
+      depth = Math.max(0, depth - 1);
+      // Only text inside: one line, "<p>One</p>"
+      if (opened >= 0 && opened === lines.length - 1) { lines[opened] += text.replace(/\s+/g, ' ').trim() + token; text = ''; opened = -1; continue; }
+      flush(); line(token); continue;
+    }
+    flush();
+    line(token.trim());
+    if (!VOID.has(name) && !token.endsWith('/>') && !token.startsWith('<!')) { opened = lines.length - 1; depth++; }
   }
-  if (buffer) lines.push(buffer);
-  return lines.join('\n') + '\n';
+  flush();
+  return lines.join('\n');
 }
 
 function update(editor: HTMLElement): void {
