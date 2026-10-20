@@ -25,7 +25,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` ^2.5.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
+- `hostkurd/flocms-core` ^2.6.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
 - A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
@@ -206,6 +206,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `Repeater` | cards or rows of items | A short list inside the record (rooms, days, opening hours): `->schema([...])`, `->itemLabel('name')`, `->maxItems(12)`, `->table()`, `->distinct('name')`; one JSON column ([guide](docs/repeaters.md)) |
 | `Builder` | structure and block editor | Blocks of different kinds in one record (slider, hero, heading, rich text, cards, sections, columns, your own): `->blocks([...])`, `->maxBlocks(40)`, `->translatable()`; one JSON column, printed with `blocks()` ([guide](docs/builder.md)) |
 | `Slider` | slides | A slider's slides on their own (image or video, heading, text, button, text position): printed with `slider()` ([guide](docs/builder.md)) |
+| `CodeEditor` | code editor | HTML with line numbers, highlighting, Tab indent and Format: `CodeEditor::make('html')`, `->translatable()` (0.30) |
 | `KeyValue` | rows of key and value | Labels and values (specs, social links): `->keyLabel()`, `->valueLabel()`, `->translatableValues()`, `->keys([...])` for fixed keys ([guide](docs/repeaters.md)) |
 | `MediaPicker` | a framed card: preview, sortable tiles, drop to upload | Items of the media library: `->images()` (default), `->videos()`, `->any()`, `->multiple()`, `->max(12)`, `->folder('Listings/Covers')`, `->aspectRatio('16:9')`; stores an id, or a JSON list of ids in order ([guide](docs/media.md)) |
 
@@ -416,6 +417,10 @@ Admin 0.20 adds a search field to the top bar: press **Ctrl+K** (⌘K on a Mac) 
 
 Admin 0.27 adds a page that shows a record without editing it: `/admin/<slug>/view/<id>`, built from the form you already have. Each field is shown as its value (badges, links with copy buttons, thumbnails, files with Download, repeaters as tables), in the form's sections and sidebar, with **History**, **Edit** and **More** (actions, Print, Delete) in the header, a **Showing: EN · AR · KU** switch that marks what is not translated, and a print layout. The row title in every list is now a link: to Edit for people who may edit, else to the view page, so people with View permission can open records. `->hiddenOnView()`, `->formatOnView()`, `view()`, `canView()`, `$viewPage` and `$rowOpens` adjust it. See [The view page](docs/view-page.md).
 
+## Pages
+
+Admin 0.30 adds **Site → Pages** (`/admin/site-pages`): the website's pages, built from blocks, written as HTML or typed as rich text, shown at their address without a controller (`/en/services/web-design`, and per language). One language at a time in the editor, SEO with live search and social previews, Draft / Published / Scheduled with dates, Preview of unsaved changes with a shareable link, parent pages, Show in menu, Reorder, Duplicate and the home page. The website gets `{!! page_meta() !!}` (title, description, canonical, hreflang, Open Graph), `pages_menu()`, `home_page()`, `/sitemap.xml` and templates in `views/page-templates/`. Needs flocms-core 2.6; turn on with `'pages' => true`. See [Pages](docs/pages.md).
+
 ## Builder: blocks and sliders
 
 Admin 0.29 adds the **Builder** field: `Builder::make('content')` keeps a list of blocks of different kinds in one JSON column (a slider, a hero, headings, rich text, images, a gallery, a video, cards, a call to action, HTML, and Sections and Columns that hold other blocks). The editor shows the page's structure with drag and drop and Alt + arrow keys, a block picker with search and categories, and the selected block's fields with shared settings: Draft or published, show from and until, width, spacing, screens, anchor and CSS class. `->translatable()` keeps one list per language with Copy to another language. The website prints them with `{!! blocks($page->content) !!}` and templates the site owns (`php flo admin:blocks` copies them to `views/blocks/`); `{!! blocks_assets() !!}` adds only the styles and scripts the page needs, such as the slider's. A site adds its own blocks with `php flo make:admin-block`. `Slider::make('photos')` and `slider()` give a record a slider without blocks. See [Builder: blocks and sliders](docs/builder.md).
@@ -474,7 +479,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.27: the view page (records shown as values, the row title as a link, `hiddenOnView()`, `formatOnView()`, print layout)
 - 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings (0.28.1: user page sidebar, bio, email-style To field)
 - 0.29: the `Builder` field (blocks, sections and columns, the block picker, templates owned by the site, `blocks()`, `blocks_assets()`, `make:admin-block`, `admin:blocks`) and the `Slider` field
-- Next, 0.30: Pages (a ready-made resource for pages built from blocks, HTML or rich text, with SEO, scheduling and the home page)
+- 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development
 

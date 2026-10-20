@@ -11,7 +11,8 @@ use FloCMS\CLI\Console\Input\Option;
  * php flo admin:blocks [--force=slider.html]
  *
  * Copies the default block templates to views/blocks/ and their styles and
- * scripts to public/assets/flo-blocks/, so the site owns them. A file that is
+ * scripts to public/assets/flo-blocks/ (and, with pages, the default page
+ * template to views/page-templates/), so the site owns them. A file that is
  * already there is never replaced, except the one named with --force.
  */
 final class BlocksCommand extends Command
@@ -43,6 +44,9 @@ final class BlocksCommand extends Command
             ['from' => $package . '/resources/blocks', 'to' => 'views/blocks', 'pattern' => '*.html'],
             ['from' => $package . '/resources/site', 'to' => 'public/assets/flo-blocks', 'pattern' => '*.{css,js}'],
         ];
+        // The default page template too, on a site with pages (0.30).
+        \FloCMS\Admin\Admin::setRoot($project->root());
+        if (\FloCMS\Admin\Admin::config()->pages()['enabled']) { $groups[] = ['from' => $package . '/resources/pages', 'to' => 'views/page-templates', 'pattern' => '*.html']; }
         foreach ($groups as $group) {
             foreach (glob($group['from'] . '/' . $group['pattern'], GLOB_BRACE) ?: [] as $source) {
                 $name = basename($source);
@@ -54,7 +58,7 @@ final class BlocksCommand extends Command
                 $copied++;
             }
         }
-        if ($force !== '' && !$known) { $this->invalid('There is no block file named "' . $force . '". Files: the templates (slider.html …), blocks.css, slider.css, slider.js, gallery.css, gallery.js.'); }
+        if ($force !== '' && !$known) { $this->invalid('There is no block file named "' . $force . '". Files: the templates (slider.html …, and default.html for pages), blocks.css, slider.css, slider.js, gallery.css, gallery.js.'); }
         if ($kept > 0) { $this->note($kept . ' file' . ($kept === 1 ? ' was' : 's were') . ' already there and kept (--force=<file> replaces one).'); }
         if ($copied > 0) {
             $this->note('They are yours now: panel updates never change them. Put {!! blocks_assets() !!} in your layout\'s <head>.');

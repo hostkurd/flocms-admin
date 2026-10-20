@@ -520,6 +520,12 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('data-flo-slider', (string) file_get_contents($this->root . '/views/blocks/slider.html'));
         self::assertSame('mine too', file_get_contents($this->root . '/views/blocks/hero.html'), 'only the file named');
         self::assertNotSame(0, $this->runCommand(new BlocksCommand(), ['--force=../config/admin.php'])->getStatusCode());
+
+        // With pages (0.30), the default page template too
+        self::assertFileDoesNotExist($this->root . '/views/page-templates/default.html');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['pages' => true];");
+        $this->runCommand(new BlocksCommand());
+        self::assertStringContainsString('{!! $content !!}', (string) file_get_contents($this->root . '/views/page-templates/default.html'));
     }
 
     public function testMakeWidgetRefusesBadInput(): void
