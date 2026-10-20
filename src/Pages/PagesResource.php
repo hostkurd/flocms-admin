@@ -186,7 +186,7 @@ final class PagesResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('title')->label(AdminLang::get('pages.title'))->searchable()->searchAlso(['slug'])->sortable()
-                    ->description(static fn (object $row): string => Pages::url($row, AdminLang::language()) . ((int) ($row->is_home ?? 0) === 1 ? ' · ' . AdminLang::get('pages.home') : '')),
+                    ->description(static fn (object $row): string => rawurldecode(Pages::url($row, AdminLang::language())) . ((int) ($row->is_home ?? 0) === 1 ? ' · ' . AdminLang::get('pages.home') : '')),
                 PageStatusColumn::make('status')->label(AdminLang::get('pages.status'))->labels(self::statuses())->dot()
                     ->colors(['draft' => 'gray', 'published' => 'green', 'scheduled' => 'blue']),
                 TranslationsColumn::make('translations')->fields(['title']),
@@ -368,6 +368,6 @@ final class PagesResource extends Resource
 
     public function searchDetails(object $record): ?string
     {
-        return Pages::url($record, AdminLang::language());
+        return rawurldecode(Pages::url($record, AdminLang::language()));
     }
 }
