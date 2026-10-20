@@ -2,6 +2,18 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.28.1 - 2026-10-20
+
+**Users, polished after review.** Run `php flo admin:install`, then `php flo migrate` for the new optional `bio` column. See [Users: photos, actions and emails](docs/users.md).
+
+- **The user page** is laid out in sections: **Profile** (name, email, login, phone, **bio**) and **Password** in the main column, and **Photo**, **Access** (role, status) and **Quick actions** (Send reset link, Send email, Activate, Suspend) in the sidebar. A quick action comes back to the user. The Profile page has the same layout.
+- **Bio**: `admin:install` writes a migration that adds an optional `bio` text column to your site's `users` table (only if it isn't there); the field shows once the column exists.
+- **To field** in the composer works like an email program: people as chips, found by typing a name or email (arrow keys, Enter, Backspace), or one group from **Group** (everyone, a role, a status). The count, the Send button and the page title follow at once. Works without JavaScript.
+- **Greyed-out menu items** show only their label; the reason is a tooltip on hover, keyboard focus or a tap, and screen readers read it.
+- **Row menus** keep 12 px from the window's edge (they could touch it). The status tabs no longer show a small scrollbar.
+- For developers: `Placeholder::html()`; a section with nothing to show is left out; a section holding one field of the same name doesn't repeat its label; an action page returns to `?back=` (the list, or the record's edit or view page); `ActionRenderer::links()`.
+- New words in the panel's `en`, `ar` and `ku` files: `users.section_*`, `users.bio`, `users.bio_help`, `actions.quick`, `mailings.remove`, `mailings.to_placeholder`, `mailings.group`, `mailings.no_match`.
+
 ## 0.28.0 - 2026-10-20
 
 **Users: photos, actions and emails.** Run `php flo admin:install`, then `php flo migrate` for the mailing tables. See [Users: photos, actions and emails](docs/users.md).

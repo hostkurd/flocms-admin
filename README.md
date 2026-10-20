@@ -414,7 +414,7 @@ Admin 0.27 adds a page that shows a record without editing it: `/admin/<slug>/vi
 
 ## Users: photos, actions and emails
 
-Admin 0.28 adds photos (or the first letter) to users, a people list with All / Active / Pending / Suspended tabs, row and bulk actions (**Send reset link**, **Send email**, **Activate**, **Suspend**, greyed out with a reason when they don't apply), and emails: a direct email to a few chosen users, or a mailing to everyone, a role or a status, sent in batches with an unsubscribe link and `php flo admin:mailings` for cron. See [Users: photos, actions and emails](docs/users.md).
+Admin 0.28 adds photos (or the first letter) and a bio to users, a user page with Photo, Access and Quick actions in a sidebar, a people list with All / Active / Pending / Suspended tabs, row and bulk actions (**Send reset link**, **Send email**, **Activate**, **Suspend**, greyed out with a reason when they don't apply), and emails with an email-style To field: a direct email to a few chosen users, or a mailing to everyone, a role or a status, sent in batches with an unsubscribe link and `php flo admin:mailings` for cron. See [Users: photos, actions and emails](docs/users.md).
 
 ## Forgot password
 
@@ -464,7 +464,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.25: CSV import and export (Export menu, the four-step Import with preview and Undo, Site → Imports, `admin:export`, `admin:import`)
 - 0.26: forgot password (one-time links by email, `mail()`/SMTP without a package, other sessions end; flocms-core 2.5)
 - 0.27: the view page (records shown as values, the row title as a link, `hiddenOnView()`, `formatOnView()`, print layout)
-- 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings
+- 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings (0.28.1: user page sidebar, bio, email-style To field)
 
 ## Development
 

@@ -220,6 +220,7 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
                 (require $file)->up(App::$db);
             }
             try { $pdo->exec("ALTER TABLE users ADD COLUMN image TEXT NOT NULL DEFAULT ''"); } catch (\PDOException) { /* already there */ }
+            try { $pdo->exec('ALTER TABLE users ADD COLUMN bio TEXT NULL'); } catch (\PDOException) { /* already there */ }
             if ((int) App::$db->table('users')->count() < 3) {
                 foreach ([['Daniel Okafor', 2, 1, 1], ['Lana Karim', 1, 1, 1], ['Omar Haddad', 0, 2, 0], ['Elena Papadopoulou', 1, 1, 1], ['Rebin Aziz', 0, 3, 1], ['Mia Fischer', 0, 1, 1], ['Yusuf Demir', 0, 2, 0]] as [$name, $role, $status, $verified]) {
                     $login = strtolower(strtok($name, ' '));

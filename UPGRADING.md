@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.28.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.28.1" -W`, run `php flo view:clear` and reload open Admin pages.
+
+- **Run `php flo admin:install`, then `php flo migrate`** to add the optional **`bio` column to your `users` table** (added only if it isn't there; `php flo migrate:rollback` removes it again). Without it the user page simply has no Bio field.
+- **The user form is laid out in sections with a sidebar.** A site that extends `UsersResource::form()` should check its fields still sit where it wants them.
+- **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.28.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.28.0" -W`, run `php flo view:clear` and reload open Admin pages.

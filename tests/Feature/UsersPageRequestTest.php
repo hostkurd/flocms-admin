@@ -100,10 +100,10 @@ final class UsersPageRequestTest extends RequestTestCase
     {
         $body = self::request('GET', '/en/admin/accounts', self::admin())['body'];
         // Sara is active: Activate greyed out with the reason
-        self::assertMatchesRegularExpression('~<span class="fa-menu-item is-disabled" role="menuitem" aria-disabled="true" aria-describedby="[^"]+-activate-1-reason" data-admin-action="activate">.*?<small id="[^"]+">Already active</small>~s', $body);
+        self::assertMatchesRegularExpression('~<span class="fa-menu-item is-disabled" role="menuitem" tabindex="0" aria-disabled="true" aria-describedby="[^"]+-activate-1-reason" data-admin-action="activate" data-admin-tip>.*?<span>Activate</span><span class="fa-tip" role="tooltip" id="[^"]+">Already active</span>~s', $body);
         self::assertStringContainsString('/en/admin/accounts/action/row/suspend/1', $body, 'Suspend is there for Sara');
         // Ali himself: no suspend, no reset link
-        self::assertMatchesRegularExpression('~data-admin-action="suspend">.*?<small[^>]*>You can’t do this to your own account</small>~s', $body);
+        self::assertMatchesRegularExpression('~data-admin-action="suspend" data-admin-tip>.*?<span class="fa-tip"[^>]*>You can’t do this to your own account</span>~s', $body);
         // Root is above Ali
         self::assertStringContainsString('Your role can’t manage this user', $body);
         // Dara is pending: no reset link yet
@@ -227,5 +227,36 @@ final class UsersPageRequestTest extends RequestTestCase
         self::assertMatchesRegularExpression('~^accounts/image/[a-f0-9]{40}\.png$~', $path);
         $top = self::request('GET', '/en/admin/dashboard', ['session' => self::EDITOR])['body'];
         self::assertStringContainsString('<img class="fa-avatar fa-avatar-size fa-avatar-img" src="/uploads/admin/' . $path . '"', $top, 'the top bar shows it');
+    }
+
+    public function testTheUserPageHasASidebarABioAndQuickActions(): void
+    {
+        $file = self::$root . '/users-bio-migration.php';
+        file_put_contents($file, Stub::render('users-bio-migration', []));
+        $migration = require $file;
+        $migration->up(new \FloCMS\Core\Database(self::pdo()));
+        $migration->up(new \FloCMS\Core\Database(self::pdo())); // twice: nothing happens
+        try {
+            $create = self::request('GET', '/en/admin/accounts/create', self::admin())['body'];
+            self::assertStringContainsString('<div class="fa-form-aside">', $create);
+            self::assertStringContainsString('name="bio"', $create);
+            self::assertStringNotContainsString('Quick actions', $create, 'no quick actions before the user exists');
+            $edit = self::request('GET', '/en/admin/accounts/edit/1', self::admin())['body'];
+            self::assertStringContainsString('<nav class="fa-quick-actions"', $edit);
+            self::assertStringContainsString('/en/admin/accounts/action/row/suspend/1?back=', $edit, 'Suspend comes back to the edit page');
+            self::assertStringNotContainsString('/en/admin/accounts/delete/1"', substr($edit, (int) strpos($edit, 'fa-quick-actions')), 'Delete stays in the header');
+            // The action page returns to the edit page
+            $back = '/en/admin/accounts/edit/1';
+            $page = self::request('GET', '/en/admin/accounts/action/row/suspend/1?back=' . rawurlencode($back), self::admin());
+            self::assertStringContainsString('back=' . rawurlencode($back), $page['body']);
+            $done = self::post('/en/admin/accounts/action/row/suspend/1?back=' . rawurlencode($back), ['_operation' => self::operation($page), 'reason' => ''], ['session' => $page['session']] + self::admin());
+            self::assertTrue($done['redirected'], $done['body']);
+            self::assertSame(3, (int) self::row('users', 1)['status']); // where it lands is checked in users.spec.ts
+            // Somewhere else is refused: the list
+            $page = self::request('GET', '/en/admin/accounts/action/row/activate/1?back=' . rawurlencode('https://evil.example/x'), self::admin());
+            self::assertDoesNotMatchRegularExpression('~<form method="post" enctype="multipart/form-data" action="[^"]*evil~', $page['body'], 'the form does not carry it');
+        } finally {
+            try { self::pdo()->exec('ALTER TABLE users DROP COLUMN bio'); } catch (\PDOException) {}
+        }
     }
 }

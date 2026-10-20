@@ -60,7 +60,7 @@ final class MailingsRequestTest extends RequestTestCase
         self::assertSame(403, self::request('GET', '/en/admin/mailings/compose?users=1', self::as(self::ADMIN))['status'], 'Admins need users.email');
         $page = self::request('GET', '/en/admin/mailings/compose?users=1,4', self::emailer());
         self::assertSame(200, $page['status'], $page['body']);
-        self::assertStringContainsString('The 2 chosen users', $page['body']);
+        self::assertSame(2, substr_count($page['body'], 'class="fa-to-chip" data-id='), 'two chips');
         self::assertStringContainsString('Send to 2 people', $page['body']);
         self::assertStringNotContainsString('value="everyone"', $page['body'], 'without users.mailing: chosen users only');
 
@@ -211,5 +211,33 @@ final class MailingsRequestTest extends RequestTestCase
         self::assertSame(0, (int) self::pdo()->query('SELECT COUNT(*) FROM admin_mailings')->fetchColumn());
         $emailOnly = self::as(self::ADMIN, ['permissions' => array_replace(self::PERMISSIONS, [2 => ['content.*', 'users.email']])]);
         self::assertSame(403, self::request('GET', '/en/admin/mailings/compose?users=1,4', $emailOnly)['status'], 'names and addresses need the Users page');
+    }
+
+    public function testTheToFieldWorksWithoutJavaScriptAndAsks(): void
+    {
+        // A group from the menu replaces the chosen users; × on its chip leaves nobody
+        $page = self::post('/en/admin/mailings/compose', ['users' => '1,4', 'to' => 'users', '_to' => 'role:1', 'subject' => 'Kept', 'body' => ''], self::as(self::SUPER));
+        self::assertStringContainsString('data-group="role:1"', $page['body']);
+        self::assertStringContainsString('value="Kept"', $page['body'], 'what was typed stays');
+        self::assertStringNotContainsString('fa-alert-danger', $page['body'], 'no errors before sending');
+        $page = self::post('/en/admin/mailings/compose', ['to' => 'role', 'role' => '1', '_remove' => 'group', 'subject' => '', 'body' => ''], self::as(self::SUPER));
+        self::assertStringContainsString('0 people will get it.', $page['body']);
+        $page = self::post('/en/admin/mailings/compose', ['users' => '1,4', 'to' => 'users', '_remove' => '4', 'subject' => '', 'body' => ''], self::as(self::SUPER));
+        self::assertSame(1, substr_count($page['body'], 'class="fa-to-chip" data-id='));
+
+        $json = ['headers' => ['Accept' => 'application/json']];
+        $found = json_decode(self::request('GET', '/en/admin/mailings/people?q=dar', self::as(self::SUPER) + $json)['body'], true);
+        self::assertSame([4], array_column($found['people'], 'id'));
+        self::assertStringNotContainsString('<b>', $found['people'][0]['avatar'], 'names are escaped');
+        $count = json_decode(self::request('GET', '/en/admin/mailings/count?to=users&users=1,4', self::as(self::SUPER) + $json)['body'], true);
+        self::assertSame([2, true, 'Send email'], [$count['count'], $count['direct'], $count['title']]);
+        $count = json_decode(self::request('GET', '/en/admin/mailings/count?to=everyone&active_only=1', self::as(self::SUPER) + $json)['body'], true);
+        self::assertSame([4, false], [$count['count'], $count['direct']]);
+        $emailOnly = self::as(self::ADMIN, ['permissions' => array_replace(self::PERMISSIONS, [2 => ['content.*', 'users.email']])]);
+        self::assertSame(403, self::request('GET', '/en/admin/mailings/people?q=a', $emailOnly)['status']);
+        self::assertSame(403, self::request('GET', '/en/admin/mailings/count?to=everyone', $emailOnly)['status']);
+        // Without users.mailing a group is never used: chosen users only
+        $count = json_decode(self::request('GET', '/en/admin/mailings/count?to=everyone&users=1', self::emailer() + $json)['body'], true);
+        self::assertSame(1, $count['count']);
     }
 }

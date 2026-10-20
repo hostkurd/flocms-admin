@@ -4,6 +4,9 @@ declare(strict_types=1);
 namespace FloCMS\Admin\Users;
 
 use FloCMS\Admin\Form\Fields\ImageUpload;
+use FloCMS\Admin\Form\Fields\Placeholder;
+use FloCMS\Admin\Form\Fields\Textarea;
+use FloCMS\Admin\Form\Layout\Section;
 use FloCMS\Admin\Form\Fields\Select;
 use FloCMS\Admin\Form\Fields\TextInput;
 use FloCMS\Admin\Form\Form;
@@ -64,20 +67,36 @@ final class UsersResource extends Resource
 
     public function form(Form $form): Form
     {
+        // 0.28: the person's details in the main column; photo, access and quick actions in the sidebar.
         return $form->schema([
-            TextInput::make('full_name')->label(AdminLang::get('users.full_name'))->rules('required|max:190'),
-            TextInput::make('email')->email()->label(AdminLang::get('users.email'))->rules('required|max:190')->unique(),
-            TextInput::make('login')->label(AdminLang::get('users.login'))->rules('max:190')->unique()
-                ->help(AdminLang::get('users.login_help')),
-            TextInput::make('password')->password()->label(AdminLang::get('users.password'))
-                ->rules('min:' . self::MIN_PASSWORD)->requiredOnCreate()->generate()
-                ->help(AdminLang::get('users.password_help')),
-            Select::make('role')->label(AdminLang::get('users.role'))->options(fn (): array => self::assignableRoles())->required(),
-            Select::make('status')->label(AdminLang::get('users.status'))->options(fn (): array => self::statuses())->required()
-                ->default((string) self::ACTIVE),
-            TextInput::make('phone')->tel()->label(AdminLang::get('users.phone'))->rules('max:50'),
+            Section::make('profile')->label(AdminLang::get('users.section_profile'))->schema([
+                TextInput::make('full_name')->label(AdminLang::get('users.full_name'))->rules('required|max:190'),
+                TextInput::make('email')->email()->label(AdminLang::get('users.email'))->rules('required|max:190')->unique(),
+                TextInput::make('login')->label(AdminLang::get('users.login'))->rules('max:190')->unique()
+                    ->help(AdminLang::get('users.login_help')),
+                TextInput::make('phone')->tel()->label(AdminLang::get('users.phone'))->rules('max:50'),
+                ...(self::hasColumn('bio') ? [Textarea::make('bio')->label(AdminLang::get('users.bio'))->rows(4)->rules('max:2000')->nullable()->columnSpan('full')->help(AdminLang::get('users.bio_help'))] : []),
+            ]),
+            Section::make('security')->label(AdminLang::get('users.section_password'))->schema([
+                TextInput::make('password')->password()->label(AdminLang::get('users.password'))
+                    ->rules('min:' . self::MIN_PASSWORD)->requiredOnCreate()->generate()
+                    ->help(AdminLang::get('users.password_help'))->columnSpan('full'),
+            ]),
+        ])->aside([
             // The photo (0.28): public, a 256 px square; without one the list shows the first letter.
-            ...(self::hasImageColumn() ? [ImageUpload::make('image')->label(AdminLang::get('users.photo'))->avatar()->nullable(false)->help(AdminLang::get('users.photo_help'))] : []),
+            ...(self::hasImageColumn() ? [Section::make('photo')->label(AdminLang::get('users.photo'))->columns(1)->schema([
+                ImageUpload::make('image')->label(AdminLang::get('users.photo'))->avatar()->nullable(false)->help(AdminLang::get('users.photo_help')),
+            ])] : []),
+            Section::make('access')->label(AdminLang::get('users.section_access'))->columns(1)->schema([
+                Select::make('role')->label(AdminLang::get('users.role'))->options(fn (): array => self::assignableRoles())->required(),
+                Select::make('status')->label(AdminLang::get('users.status'))->options(fn (): array => self::statuses())->required()
+                    ->default((string) self::ACTIVE),
+            ]),
+            // On an existing user: Send reset link, Send email, Activate, Suspend (greyed out with the reason when they don't apply).
+            Section::make('quick')->label(AdminLang::get('actions.quick'))->columns(1)->schema([
+                Placeholder::make('quick_actions')->html(fn (?object $record): string => $record === null || !isset($record->id) ? ''
+                    : (new \FloCMS\Admin\Actions\ActionRenderer($this, new \FloCMS\Admin\Actions\ActionRegistry($this)))->links($record, Admin::url(static::getSlug() . '/edit/' . $record->id))),
+            ]),
         ]);
     }
 
@@ -227,14 +246,19 @@ final class UsersResource extends Resource
         ];
     }
 
-    private static ?bool $imageColumn = null;
+    /** @var array<string, bool> */
+    private static array $columns = [];
 
     /** Whether the users table has the skeleton's `image` column (for the photo, 0.28). */
-    public static function hasImageColumn(): bool
+    public static function hasImageColumn(): bool { return self::hasColumn('image'); }
+
+    /** Whether the site's users table has this column ('image', 'bio' since admin:install 0.28). */
+    public static function hasColumn(string $column): bool
     {
-        if (self::$imageColumn !== null) { return self::$imageColumn; }
-        try { \FloCMS\Core\App::db()?->query('SELECT `image` FROM `users` WHERE 1 = 0'); return self::$imageColumn = \FloCMS\Core\App::db() !== null; }
-        catch (\Throwable) { return self::$imageColumn = false; }
+        if (!in_array($column, ['image', 'bio'], true)) { return false; }
+        if (isset(self::$columns[$column])) { return self::$columns[$column]; }
+        try { \FloCMS\Core\App::db()?->query('SELECT `' . $column . '` FROM `users` WHERE 1 = 0'); return self::$columns[$column] = \FloCMS\Core\App::db() !== null; }
+        catch (\Throwable) { return self::$columns[$column] = false; }
     }
 
     public static function isCurrentUser(object $record): bool
