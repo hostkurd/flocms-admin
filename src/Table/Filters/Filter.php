@@ -29,6 +29,8 @@ abstract class Filter
     /** Validate a client value; return a safe, canonical value. */
     abstract public function value(mixed $value): string|array;
     abstract public function apply(Database $query, string|array $value): Database;
+    /** Shown as tabs above the list (TabsFilter, 0.28) instead of in the Filters menu. */
+    public function isTabs(): bool { return false; }
     /** The value when the filter is not used. */
     public function emptyFilterValue(): string|array { return ''; }
     /** The control in the Filters menu, or null for the built-in select/date range markup. */

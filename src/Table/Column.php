@@ -22,6 +22,8 @@ abstract class Column
     protected ?Closure $formatter = null;
     protected bool $toggleable = false;
     protected bool $hiddenByDefault = false;
+    /** @var list<string> other columns the list's search looks in with this one (0.28) */
+    protected array $alsoSearched = [];
 
     final public function __construct(string $name)
     {
@@ -53,6 +55,28 @@ abstract class Column
     {
         $this->searchable = $searchable;
         return $this;
+    }
+
+    /**
+     * The search also looks in these columns of the table (0.28), which need
+     * no column of their own: TextColumn::make('full_name')->searchable()->searchAlso(['email', 'phone']).
+     *
+     * @param list<string> $columns
+     */
+    public function searchAlso(array $columns): static
+    {
+        foreach ($columns as $column) {
+            if (!is_string($column) || preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $column) !== 1) { throw new InvalidArgumentException('searchAlso() takes column names.'); }
+        }
+        $this->alsoSearched = array_values(array_unique($columns));
+        $this->searchable = true;
+        return $this;
+    }
+
+    /** @return list<string> */
+    public function getAlsoSearched(): array
+    {
+        return $this->alsoSearched;
     }
 
     /**

@@ -45,6 +45,7 @@ final class ActivityView
     {
         $days = [];
         $arrow = self::arrow();
+        \FloCMS\Admin\Support\Avatar::preload(array_map(static fn ($entry): int => (int) $entry->userId, $entries));
         foreach ($entries as $entry) {
             $key = date('Y-m-d', $entry->time());
             if (!isset($days[$key])) { $days[$key] = ['label' => Dates::day($entry->time()), 'items' => []]; }
@@ -55,7 +56,7 @@ final class ActivityView
             }
             $more = max(0, count($entry->changes) - self::INLINE);
             $days[$key]['items'][] = [
-                'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => self::avatarClass($entry->userId),
+                'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => self::avatarClass($entry->userId), 'face' => self::face($entry->userId, $entry->who()),
                 // A related record's entry in its parent's History (0.22): "Units · created Flat 3".
                 'phrase' => $resource !== null && $entry->resource !== $resource
                     ? AdminLang::get('activity.history.related', ['type' => ($class = $entry->resourceClass()) !== null ? $class::getPluralLabel() : $entry->typeLabel(), 'phrase' => $entry->phrase(), 'title' => $entry->label()])
@@ -78,7 +79,7 @@ final class ActivityView
         return TemplateEngine::renderFile(PageView::viewPath('changes'), [
             't' => PageView::translator(),
             'title' => AdminLang::get('activity.changes_title', ['title' => $describe['target'] !== '' ? $describe['target'] : $entry->badge()]),
-            'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => self::avatarClass($entry->userId),
+            'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => self::avatarClass($entry->userId), 'face' => self::face($entry->userId, $entry->who(), 'fa-avatar-sm'),
             'when' => Dates::full($entry->time()),
             'badge' => $entry->badge(), 'badgeColor' => $entry->badgeColor(),
             'reference' => self::reference($entry),
@@ -155,6 +156,18 @@ final class ActivityView
     }
 
     /** One of four avatar colours, the same for a person everywhere. */
+    /**
+     * A person's avatar in the activity log and trash (0.28): their photo or
+     * letter (Avatar), or the system's mark for commands and scripts.
+     */
+    public static function face(?int $userId, string $who, string $class = ''): string
+    {
+        if ($userId === null) {
+            return '<span class="fa-avatar fa-avatar-system ' . $class . '" aria-hidden="true">' . \FloCMS\Admin\Support\Str::e(\FloCMS\Admin\Support\Avatar::initial(ltrim($who, '#'))) . '</span>';
+        }
+        return \FloCMS\Admin\Support\Avatar::forUser($userId, ltrim($who, '#'), 36, $class);
+    }
+
     public static function avatarClass(?int $userId): string
     {
         return $userId === null ? 'fa-avatar-system' : ['', 'fa-avatar-2', 'fa-avatar-3', 'fa-avatar-4'][$userId % 4];

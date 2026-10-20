@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="{{ $lang }}" dir="{{ $dir }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>{{ $t('mailings.unsubscribe_title') }} · {{ $brand }}</title>
+{!! $assets !!}
+</head>
+<body>
+<main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}">
+    <div class="fa-login-container">
+        <p class="fa-login-brand"><span class="fa-brand-mark" aria-hidden="true">{{ $initial }}</span><span>{{ $brand }}</span></p>
+        <section class="fa-login-card" aria-labelledby="fa-login-title">
+            <header>
+                <h1 id="fa-login-title">{{ $done ? $t('mailings.unsubscribed_title') : ($valid ? $t('mailings.unsubscribe_title') : $t('mailings.unsubscribe_invalid')) }}</h1>
+                <p class="fa-login-description">{{ $done ? $t('mailings.unsubscribed_text', ['brand' => $brand]) : ($valid ? $t('mailings.unsubscribe_text', ['brand' => $brand]) : $t('mailings.unsubscribe_invalid_text')) }}</p>
+            </header>
+            @if($valid && !$done)
+            <form method="post" action="{{ $action }}" class="fa-login-form">
+                {!! $csrf !!}
+                <button type="submit" class="fa-login-submit">{{ $t('mailings.unsubscribe_button') }}</button>
+            </form>
+            @endif
+        </section>
+    </div>
+</main>
+</body>
+</html>

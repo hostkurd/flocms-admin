@@ -22,6 +22,14 @@ class BadgeColumn extends Column
     protected array $colors = [];
     /** @var array<string, string> */
     protected array $labels = [];
+    protected bool $dot = false;
+
+    /** A coloured dot before the word instead of a filled badge (0.28), for statuses. */
+    public function dot(bool $dot = true): static
+    {
+        $this->dot = $dot;
+        return $this;
+    }
 
     /** @param array<int|string, string> $colors value => gray|green|blue|yellow|red|purple */
     public function colors(array $colors): static
@@ -52,6 +60,9 @@ class BadgeColumn extends Column
         $key = (string) $value;
         $text = isset($this->labels[$key]) ? AdminLang::label($this->labels[$key]) : $key;
 
+        if ($this->dot) {
+            return '<span class="fa-status fa-status-' . ($this->colors[$key] ?? 'gray') . '"><span class="fa-status-dot" aria-hidden="true"></span>' . Str::e($text) . '</span>';
+        }
         return '<span class="fa-badge fa-badge-' . ($this->colors[$key] ?? 'gray') . '">' . Str::e($text) . '</span>';
     }
 }

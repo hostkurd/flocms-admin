@@ -3,6 +3,7 @@
     <div><h1 class="fa-page-title">{{ $title }}</h1>@if($resource::getDescription() !== null)<p class="fa-page-description">{{ $resource::getDescription() }}</p>@endif</div>
     <div class="fa-action-group">@if($importUrl !== null)<a class="fa-btn" href="{{ $importUrl }}">{!! $importIcon !!}<span>{{ $t('import.button') }}</span></a>@endif{!! $pageActions !!}</div>
 </div>
+{!! $tabs !!}
 <div class="fa-card">
     @if(count($bulkActions) > 0)
     <form class="fa-bulk-toolbar" id="fa-list-bulk" data-admin-standard-bulk method="get" action="{{ $bulkUrl }}" data-selected-text="{{ $t('bulk.selected', ['count' => ':count']) }}">

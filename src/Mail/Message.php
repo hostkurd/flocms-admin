@@ -10,6 +10,8 @@ namespace FloCMS\Admin\Mail;
  */
 final class Message
 {
+    public const HEADERS = ['Reply-To', 'List-Unsubscribe', 'List-Unsubscribe-Post', 'Precedence'];
+
     public function __construct(
         public readonly string $to,
         public readonly string $subject,
@@ -18,8 +20,13 @@ final class Message
         public readonly ?string $from = null,
         public readonly ?string $fromName = null,
         public readonly ?string $toName = null,
+        /** @var array<string, string> extra headers (0.28): Reply-To, List-Unsubscribe, List-Unsubscribe-Post, Precedence */
+        public readonly array $headers = [],
     ) {
-        foreach ([$to, $subject, (string) $from, (string) $fromName, (string) $toName] as $value) {
+        foreach ($headers as $name => $value) {
+            if (!in_array($name, self::HEADERS, true) || !is_string($value)) { throw new \InvalidArgumentException('Unsupported email header.'); }
+        }
+        foreach ([$to, $subject, (string) $from, (string) $fromName, (string) $toName, ...array_values($headers)] as $value) {
             if (preg_match('/[\r\n\0]/', $value) === 1) {
                 throw new \InvalidArgumentException('Line breaks are not allowed in email headers.');
             }
@@ -71,6 +78,7 @@ final class Message
             'MIME-Version: 1.0',
             'Auto-Submitted: auto-generated',
         ];
+        foreach ($this->headers as $name => $value) { $headers[] = $name . ': ' . $value; }
         $text = self::encodeBody($this->text);
         if ($this->html === null || $this->html === '') {
             $headers[] = 'Content-Type: text/plain; charset=UTF-8';

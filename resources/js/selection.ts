@@ -79,3 +79,16 @@ document.addEventListener('click', event => {
   if (button.dataset.parent) url.searchParams.set('parent', button.dataset.parent);
   window.location.assign(url.toString());
 });
+
+// A bulk action that opens a page (0.28): go there with the chosen ids.
+document.addEventListener('click', event => {
+  const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-admin-bulk-link]') : null;
+  if (!button || button.disabled) return;
+  const root = button.closest('[data-rx-component]');
+  const input = root ? selectedInput(root) : null;
+  const ids: string[] = input ? JSON.parse(input.value || '[]') : [];
+  if (ids.length === 0) return;
+  const url = new URL(button.dataset.url || '', window.location.href);
+  ids.forEach(id => url.searchParams.append('ids[]', id));
+  window.location.assign(url.toString());
+});

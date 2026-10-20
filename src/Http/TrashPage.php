@@ -223,6 +223,7 @@ final class TrashPage
                 'who' => $entry->deletedByName ?? ($entry->deletedBy !== null ? '#' . $entry->deletedBy : AdminLang::get('activity.system')),
                 'initial' => mb_strtoupper(mb_substr(ltrim((string) ($entry->deletedByName ?? AdminLang::get('activity.system')), '#'), 0, 1)),
                 'avatar' => ActivityView::avatarClass($entry->deletedBy),
+                'face' => ActivityView::face($entry->deletedBy, (string) ($entry->deletedByName ?? AdminLang::get('activity.system')), 'fa-avatar-sm'),
                 'when' => Dates::relative($time, $now),
                 'deletedAt' => date('c', $time),
                 'deletedFull' => Dates::full($time),

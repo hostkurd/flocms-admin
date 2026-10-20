@@ -69,7 +69,7 @@
                 <tr>
                     @if($canRestore || $canPurge)<td class="fa-selection-col"><input type="checkbox" form="fa-list-bulk" name="ids[]" value="{{ $row['id'] }}" aria-label="{{ $t('trash.select', ['title' => $row['label']]) }}"></td>@endif
                     @foreach($row['cells'] as $cell)<td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>@endforeach
-                    <td data-label="{{ $t('trash.deleted_by') }}"><span class="fa-who"><span class="fa-avatar fa-avatar-sm {{ $row['avatar'] }}" aria-hidden="true">{{ $row['initial'] }}</span>{{ $row['who'] }}</span></td>
+                    <td data-label="{{ $t('trash.deleted_by') }}"><span class="fa-who">{!! $row['face'] !!}{{ $row['who'] }}</span></td>
                     <td class="fa-muted" data-label="{{ $t('trash.deleted') }}"><time datetime="{{ $row['deletedAt'] }}" title="{{ $row['deletedFull'] }}">{{ $row['when'] }}</time></td>
                     <td data-label="{{ $t('trash.purged_in') }}"><span class="{{ $row['soon'] ? 'fa-soon' : '' }}">{{ $row['left'] }}</span></td>
                     <td class="fa-actions">

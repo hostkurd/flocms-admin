@@ -12,6 +12,14 @@ class FileUpload extends Field
     protected array $mimeTypes = ['application/pdf', 'text/plain'];
     protected int $maxBytes = 5242880;
     protected array $dimensions = [];
+    protected bool $public = false;
+    /**
+     * Store the file in the public uploads folder (0.28; default
+     * public/uploads/admin), so it is shown without a permission check, on the
+     * website too. For avatars and logos, never for private documents.
+     */
+    public function public(bool $public = true): static { $this->public = $public; return $this; }
+    public function isPublic(): bool { return $this->public; }
     protected function setUp(): void { $this->nullable = true; }
     /** One file per language: supported on settings pages only (resources reject it). */
     public function supportsTranslation(): bool { return true; }
@@ -48,7 +56,7 @@ class FileUpload extends Field
         $pending = str_starts_with($value, '@upload:');
         $present = $value !== '' && !in_array($value, ['@remove', '@invalid'], true);
         $image = $this instanceof ImageUpload;
-        $html = '<div class="fa-upload" data-admin-upload data-upload-error="' . Str::e(AdminLang::get('uploads.invalid')) . '" data-upload-ready="' . Str::e(AdminLang::get('uploads.ready')) . '" data-upload-remove-text="' . Str::e(AdminLang::get('uploads.remove')) . '" data-upload-loading="' . Str::e(AdminLang::get('uploads.loading')) . '" data-upload-image="' . ($image ? 'true' : 'false') . '">';
+        $html = '<div class="fa-upload' . ($this instanceof ImageUpload && $this->isAvatar() ? ' fa-upload-avatar' : '') . '" data-admin-upload data-upload-error="' . Str::e(AdminLang::get('uploads.invalid')) . '" data-upload-ready="' . Str::e(AdminLang::get('uploads.ready')) . '" data-upload-remove-text="' . Str::e(AdminLang::get('uploads.remove')) . '" data-upload-loading="' . Str::e(AdminLang::get('uploads.loading')) . '" data-upload-image="' . ($image ? 'true' : 'false') . '">';
         // The file input is a FileDrop (0.18): drop, preview, progress and checks before sending.
         $input = array_diff_key($this->baseAttributes($id, '_uploads[' . $name . ']', $attributes), ['id' => 0, 'name' => 0, 'class' => 0]);
         $drop = FileDrop::make('_uploads[' . $name . ']')->id($id)->accept($this->mimeTypes)->maxBytes($this->maxBytes)

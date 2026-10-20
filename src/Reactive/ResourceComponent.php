@@ -303,8 +303,9 @@ final class ResourceComponent extends Component
             'emptyIcon' => \FloCMS\Admin\Support\Icons::svg($scope?->manager->getIcon() ?? 'layers'), 'trashIcon' => \FloCMS\Admin\Support\Icons::svg('trash'),
             'columnChoices' => array_map(static fn (string $name, bool $shown): array => ['name' => $name, 'label' => $table->getColumns()[$name]->getLabel(), 'visible' => $shown], array_keys($visibility->choices()), $visibility->choices()),
             'search' => $this->search, 'page' => $this->page, 'last' => $last, 'prefix' => $prefix, 'mode' => $this->mode,
+            'tabs' => \FloCMS\Admin\Table\TabsView::render($table, $filters, $this->repository()->whereSearch($this->repository()->newQuery(), $table, $this->search)),
             'filterFields' => $filters->render($prefix), 'filters' => $this->filters, 'hasActiveFilters' => $filters->active() !== [],
-            'filterErrors' => $filters->errors !== [], 'filterCount' => count($filters->active()), 'chips' => $filters->chips(),
+            'filterErrors' => $filters->errors !== [], 'filterCount' => $filters->panelCount(), 'chips' => $filters->chips(),
             'pageNumbers' => \FloCMS\Admin\Http\PageView::pageNumbers($this->page, $last),
             'searchIcon' => \FloCMS\Admin\Support\Icons::svg('search'), 'filterIcon' => \FloCMS\Admin\Support\Icons::svg('filter'), 'removeIcon' => \FloCMS\Admin\Support\Icons::svg('x'),
             'prevIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-left', 'fa-icon fa-flip-rtl'), 'nextIcon' => \FloCMS\Admin\Support\Icons::svg('chevron-right', 'fa-icon fa-flip-rtl'),
@@ -313,10 +314,12 @@ final class ResourceComponent extends Component
             'fullPageUrl' => Admin::url($resource::getSlug(), ['static' => 1, 'parent' => $scope?->token(), 'q' => $this->search, 'sort' => $this->sort, 'dir' => $this->direction, 'page' => $this->page, 'filter' => $filters->active()]),
             'pageActions' => $renderer->render('page', prefix: $prefix, backUrl: $listUrl), 'tableActions' => $renderer->render('table', prefix: $prefix, backUrl: $listUrl),
             'rowActions' => static fn (object $row): string => $renderer->render('row', $row, prefix: $prefix, backUrl: $listUrl),
+            // A bulk action that opens a page (0.28): the panel's bulk URL, the chosen ids added by selection.js
+            'bulkPageUrl' => static fn (\FloCMS\Admin\Actions\BulkAction $bulk): string => Admin::url($resource::getSlug() . '/bulk/' . $bulk->getName(), ['parent' => $scope?->token()]),
             'rowLink' => static fn (object $row, string $html): string => \FloCMS\Admin\Http\PageView::rowLink($resource, $row, $html, ['parent' => $scope?->token()]),
             'dialogMinHeight' => $action?->getModalMinHeight(),
             'dialogStyle' => $action !== null && $action->getMode($resource) === 'slide-over' ? 'slide-over' : 'modal',
-            'actionTitle' => $action?->getTitle($resource) ?? '', 'actionDescription' => $this->mode === 'bulk' ? \FloCMS\Admin\Actions\BulkExecutor::confirmText($resource, $action, count(\FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds))) : trim(($action?->getDescription($resource) ?? '')
+            'actionTitle' => $action?->getTitle($resource, $record) ?? '', 'actionDescription' => $this->mode === 'bulk' && $action instanceof \FloCMS\Admin\Actions\BulkAction ? $this->bulkExecutor()->describe($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds)) : trim(($action?->getDescription($resource, $record) ?? '')
                 // Deleting a parent says how many related records it has (0.22).
                 . ($this->mode === 'delete' && $this->editingId !== '' ? ' ' . (\FloCMS\Admin\Relations\ManagersView::deleteCount($resource, $this->editingId) ?? '') : '')),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',

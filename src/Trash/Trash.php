@@ -443,7 +443,7 @@ final class Trash
         });
         if (!$deleted) { return; }
         foreach ($entry->files as $path) {
-            try { Uploads::storage()->delete($path); } catch (\Throwable $error) { error_log('flocms-admin: could not delete trashed file ' . $path . ': ' . $error->getMessage()); }
+            try { Uploads::deleteStored($path); } catch (\Throwable $error) { error_log('flocms-admin: could not delete trashed file ' . $path . ': ' . $error->getMessage()); }
         }
     }
 

@@ -91,6 +91,9 @@ final class PanelView
             'importsUrl' => $urls['imports'],
             'importsActive' => $activeSlug === 'imports',
             'importsIcon' => Icons::svg('upload'),
+            'mailingsUrl' => $urls['mailings'],
+            'mailingsActive' => $activeSlug === 'mailings',
+            'mailingsIcon' => Icons::svg('mail'),
             'profileUrl' => $urls['profile'],
             'logoutUrl' => Admin::url('users/logout'),
             'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
@@ -112,6 +115,8 @@ final class PanelView
             'logo' => \FloCMS\Admin\Support\Appearance::logo(),
             'brandInitial' => self::initial(\FloCMS\Admin\Support\Appearance::brand()),
             'userInitial' => self::initial($user),
+            // The signed-in person's photo or letter (0.28)
+            'userAvatar' => \FloCMS\Admin\Support\Avatar::forUser(is_numeric(\FloCMS\Core\Session::get('user_id')) ? (int) \FloCMS\Core\Session::get('user_id') : null, (string) $user, 32),
             'breadcrumbs' => $this->breadcrumbs($title, $activeSlug),
             'languages' => self::languageLinks($lang),
             'globeIcon' => Icons::svg('globe'),
@@ -195,7 +200,7 @@ final class PanelView
      * The panel's own pages the current person may open (null when not): the sidebar
      * and Ctrl+K search (0.20) show the same set.
      *
-     * @return array{media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, profile: ?string}
+     * @return array{media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, mailings: ?string, profile: ?string}
      */
     public static function pageUrls(): array
     {
@@ -208,6 +213,7 @@ final class PanelView
             'activity' => self::activityUrl(),
             'trash' => self::trashUrl(),
             'imports' => self::importsUrl(),
+            'mailings' => self::mailingsUrl(),
             'profile' => $usersEnabled ? Admin::url('profile') : null,
         ];
     }
@@ -236,6 +242,13 @@ final class PanelView
     {
         if (Admin::registry()->find('trash') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('trash'))) { return null; }
         try { return \FloCMS\Admin\Trash\Trash::enabled() && TrashPage::allowedResources() !== [] ? Admin::url('trash') : null; } catch (\Throwable) { return null; }
+    }
+
+    /** Site → Mailings (0.28), for people with users.mailing. */
+    public static function mailingsUrl(): ?string
+    {
+        if (Admin::registry()->find('mailings') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('mailings'))) { return null; }
+        return Admin::config()->mailings()['enabled'] && Auth::can('users.mailing') ? Admin::url('mailings') : null;
     }
 
     /** Site → Imports (0.25), for people who may import into at least one resource. */

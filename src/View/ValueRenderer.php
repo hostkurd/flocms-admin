@@ -171,7 +171,7 @@ final class ValueRenderer
         $url = \FloCMS\Admin\Uploads\Uploads::url($this->resource, $this->record)($field, $value);
         $name = basename($value);
         $extension = strtoupper((string) pathinfo($name, PATHINFO_EXTENSION));
-        $path = \FloCMS\Admin\Uploads\Uploads::storage()->path($value);
+        $path = \FloCMS\Admin\Uploads\Uploads::storageFor($field)->path($value);
         $size = $path !== null && is_file($path) ? self::bytes((int) filesize($path)) : '';
         if ($field instanceof Fields\ImageUpload && $url !== '') {
             return '<figure class="fa-view-media"><a href="' . Str::e($url) . '" target="_blank" rel="noopener"><img src="' . Str::e($url) . '" alt="" loading="lazy"></a></figure>';

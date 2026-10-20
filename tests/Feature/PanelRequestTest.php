@@ -73,7 +73,7 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringContainsString('<span class="fa-brand-mark" aria-hidden="true">T</span>', $body);
         self::assertMatchesRegularExpression('~<nav class="fa-breadcrumbs"[^>]*><ol>\s*<li><span>Content</span></li>\s*<li><span aria-current="page">Posts</span></li>~', $body);
         self::assertStringContainsString('href="https://example.test/ku/admin/posts?static=1&amp;switch_language=1" hreflang="ku"', $body);
-        self::assertStringContainsString('<span class="fa-avatar" aria-hidden="true">S</span>', $body);
+        self::assertMatchesRegularExpression('~<span class="fa-avatar fa-avatar-size fa-avatar-c[1-6]" aria-hidden="true" data-size="32">S</span>~', $body, 'the letter avatar (0.28)');
         self::assertStringContainsString('class="fa-menu-item fa-topbar-user" href="https://example.test/en/admin/profile"', $body);
         $form = self::request('GET', '/en/admin/posts/create')['body'];
         self::assertMatchesRegularExpression('~<li><a href="https://example.test/en/admin/posts">Posts</a></li>\s*<li><span aria-current="page">New Post</span></li>~', $form);

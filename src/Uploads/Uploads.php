@@ -12,6 +12,19 @@ final class Uploads
     private const KEY = '_flo_admin_uploads';
     public static function root(): string { return Admin::config()->root() . '/storage/admin-uploads'; }
     public static function storage(): LocalStorage { return new LocalStorage(['root' => self::root(), 'visibility' => 'private']); }
+    /** Public uploads (0.28, FileUpload::public()): avatars and the like, served directly. */
+    public static function publicStorage(): LocalStorage { return new LocalStorage(['root' => Admin::config()->publicUploads()['root'], 'visibility' => 'public']); }
+    public static function storageFor(FileUpload $field): LocalStorage { return $field->isPublic() ? self::publicStorage() : self::storage(); }
+    /** The public URL of a stored public upload. */
+    public static function publicUrl(string $path): string { return Admin::config()->publicUploads()['url'] . '/' . ltrim($path, '/'); }
+    /** Delete a stored file wherever it is (the trash keeps paths, not fields). */
+    public static function deleteStored(string $path): void
+    {
+        foreach ([self::storage(), self::publicStorage()] as $storage) {
+            $absolute = $storage->path($path);
+            if (is_string($absolute) && is_file($absolute)) { $storage->delete($path); }
+        }
+    }
     public static function scope(Resource $resource, ?object $record, string $name): string
     {
         return json_encode([$resource::getSlug(), (string) ($record->{$resource::getPrimaryKey()} ?? ''), $name], JSON_THROW_ON_ERROR);
@@ -101,7 +114,9 @@ final class Uploads
     {
         return static function (FileUpload $field, string $value) use ($resource, $record): string {
             if (str_starts_with($value, '@upload:')) { return Admin::url($resource::getSlug() . '/file/pending/' . $field->getName(), ['token' => $value]); }
-            if ($record !== null && self::managed($value, $resource, $field) && $value === (string) ($record->{$field->getName()} ?? '')) { return Admin::url($resource::getSlug() . '/file/' . $record->{$resource::getPrimaryKey()} . '/' . $field->getName()); }
+            if ($record !== null && self::managed($value, $resource, $field) && $value === (string) ($record->{$field->getName()} ?? '')) {
+                return $field->isPublic() ? self::publicUrl($value) : Admin::url($resource::getSlug() . '/file/' . $record->{$resource::getPrimaryKey()} . '/' . $field->getName());
+            }
             return '';
         };
     }

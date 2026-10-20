@@ -34,6 +34,28 @@ final class FilterSet
     {
         return array_filter($this->values, static fn ($value): bool => is_array($value) ? implode('', $value) !== '' : $value !== '');
     }
+    /** How many filters of the Filters menu are in use (tabs left out, 0.28). */
+    public function panelCount(): int
+    {
+        $tabs = $this->table->getTabs();
+        return count(array_diff_key($this->active(), $tabs !== null ? [$tabs->getName() => true] : []));
+    }
+    /** The active filters with the tab set to $value ('' = All): for the tabs' links (0.28). */
+    public function withTab(string $value): array
+    {
+        $tabs = $this->table->getTabs();
+        $active = $this->active();
+        if ($tabs === null) { return $active; }
+        unset($active[$tabs->getName()]);
+        return $value === '' ? $active : [$tabs->getName() => $value] + $active;
+    }
+    /** The query with every active filter but the tabs (for the tabs' counts). */
+    public function applyExceptTabs(Database $query): Database
+    {
+        if ($this->errors !== []) { return $query; }
+        foreach ($this->table->getFilters() as $name => $filter) { if (!$filter->isTabs()) { $query = $filter->apply($query, $this->values[$name]); } }
+        return $query;
+    }
     public function json(): string { return json_encode((object) $this->active(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE); }
     /**
      * Active filters as removable chips: label, readable value, and the filter
@@ -47,7 +69,7 @@ final class FilterSet
         $chips = [];
         $active = $this->active();
         foreach ($this->table->getFilters() as $name => $filter) {
-            if (!array_key_exists($name, $active)) { continue; }
+            if (!array_key_exists($name, $active) || $filter->isTabs()) { continue; }
             $value = $active[$name];
             if (($described = $filter->describeFilterValue($value)) !== null) {
                 $text = $described;
@@ -70,8 +92,10 @@ final class FilterSet
     }
     public function render(string $prefix): string
     {
-        $html = '';
+        $html = ''; $hidden = '';
         foreach ($this->table->getFilters() as $name => $filter) {
+            // The tab in use rides along when the Filters menu is applied (0.28).
+            if ($filter->isTabs()) { $hidden .= '<input type="hidden" name="filter[' . Str::e($name) . ']" value="' . Str::e((string) $this->values[$name]) . '" data-admin-filter="' . Str::e($name) . '">'; continue; }
             $id = $prefix . '-filter-' . $name;
             $invalid = isset($this->errors[$name]) ? ' aria-invalid="true" aria-describedby="' . Str::e($id . '-error') . '"' : '';
             $html .= '<div class="fa-filter"><label class="fa-label" for="' . Str::e($filter instanceof DateRangeFilter ? $id . '-from' : $id) . '">' . Str::e($filter->getLabel()) . '</label>';
@@ -89,6 +113,6 @@ final class FilterSet
             if (isset($this->errors[$name])) { $html .= '<p class="fa-error" id="' . Str::e($id . '-error') . '" role="alert">' . Str::e($this->errors[$name]) . '</p>'; }
             $html .= '</div>';
         }
-        return $html;
+        return $html === '' ? '' : $hidden . $html;
     }
 }

@@ -74,6 +74,11 @@ final class InstallCommand extends Command
         if ($reset['enabled']) {
             $migrations[] = ['password-resets-migration', $reset['table'], []];
         }
+        // Emails to users (0.28): mailings, their recipients and the unsubscribed addresses.
+        $mailings = $settings->mailings();
+        if ($mailings['enabled']) {
+            $migrations[] = ['mailings-migration', $mailings['table'] . '_and_' . $mailings['recipients_table'], ['mailings_table' => $mailings['table'], 'recipients_table' => $mailings['recipients_table'], 'optouts_table' => $mailings['optouts_table']], 'tables'];
+        }
         // Each new file a second later than the one before, so they run in this order.
         $time = time();
         foreach ($migrations as $migration) {
@@ -94,7 +99,7 @@ final class InstallCommand extends Command
 
         $this->newLine();
         $this->line('Next steps:');
-        $this->line('  1. php flo migrate                              (settings, preferences, media, trash, activity, roles, import and password reset tables)');
+        $this->line('  1. php flo migrate                              (settings, preferences, media, trash, activity, roles, import, password reset and mailing tables)');
         $this->line('  2. php flo make:admin-resource Post --migration');
         $this->line('  3. php flo make:admin-settings                  (website settings pages, optional)');
         $this->line('  4. Log in, then open /admin/dashboard');

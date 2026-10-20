@@ -2,6 +2,20 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.28.0 - 2026-10-20
+
+**Users: photos, actions and emails.** Run `php flo admin:install`, then `php flo migrate` for the mailing tables. See [Users: photos, actions and emails](docs/users.md).
+
+- **Photos**: each user can have one, set on Users and on the Profile, cropped to 256 × 256 and stored in `public/uploads/admin` (`public_uploads`). Without one, the first letter of the name on a colour of its own. Shown in the Users list, the top bar, Activity, History, Changes and the Trash.
+- **A people list**: the photo, name and email in one cell (the email has a tick when verified; search also finds email, login and phone), Role and a Status dot. The ID column is gone. **All / Active / Pending / Suspended** tabs with counts, also without JavaScript.
+- **Row actions** in the ⋯ menu: **Send reset link** (optionally signing them out everywhere), **Send email**, **Activate**, **Suspend** (with a reason for the activity log) and Delete. Activate and Suspend can tell the user by email. An action that doesn't apply is greyed out with its reason ("Already active", "You can't do this to your own account") and refused by the server.
+- **Bulk actions**: Activate, Suspend, Send reset link, Send email and Delete. Users an action doesn't apply to are skipped and counted ("2 are skipped: Already active (1), …").
+- **Emails**: a composer with a preview as one of the recipients, **Send me a test** and `{name}`, `{first_name}`, `{email}`, `{site}`. A **direct email** goes at once to up to 20 chosen users (`users.email`); a **mailing** goes to everyone, a role, a status or chosen users (`users.mailing`, and `APP_KEY` in `.env`) in batches, with an unsubscribe link, Pause, Resume, Cancel and Retry failed, and a page showing its progress. **Mailings** lists them. `php flo admin:mailings` in cron sends them with no page open, at most `per_hour` (200) an hour.
+- Two new permissions on the Roles page: `users.email` and `users.mailing`.
+- Activity log: `user_suspended`, `user_activated`, `password_link_sent`, `email_sent`, `mailing_started`, `mailing_paused`, `mailing_cancelled`, `mailing_finished`.
+- For every resource: `Action::disabled()`, `Action::url()`, `->group()`, `->modalHeading()`, `->modalDescription()`; `BulkAction::skipUnavailable()`, `->bulkUrl()`, `->completedTitle()`; `TabsFilter` with `Table::tabs()`; `TextColumn::avatar()`, `->description()`, `->descriptionMark()`; `Column::searchAlso()`; `BadgeColumn::dot()`; `ImageUpload::avatar()`, `->square()`; `FileUpload::public()`; `TextInput::generate()`; `Message` takes `Reply-To`, `List-Unsubscribe` and `Precedence` headers.
+- New words in the panel's `en`, `ar` and `ku` files: `users.*`, `mailings.*`, `mail.activated_*`, `mail.suspended_*`, `bulk.skip*`, `roles.perm.users_email*`, `roles.perm.users_mailing*`, `activity.*`.
+
 ## 0.27.0 - 2026-10-20
 
 **The view page.** Every record can be opened without editing it, at `/admin/<slug>/view/<id>`. Nothing to install. See [The view page](docs/view-page.md).

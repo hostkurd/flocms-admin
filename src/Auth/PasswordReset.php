@@ -124,6 +124,36 @@ final class PasswordReset
      * The account a link belongs to, when the link still works; null for a
      * wrong, used or expired link (recorded as an attempt, limited per IP).
      */
+    /**
+     * A link an admin sends from the Users list (0.28): the same one-time link
+     * as Forgot password, for an active account, within the per-address limit
+     * (an admin's IP address is not limited, so a selection can be sent).
+     * Returns what to email, or null when the account is not active or its
+     * address had too many links this hour.
+     *
+     * @return array{user: object, token: string}|null
+     */
+    public static function issueFor(object $user, ?Database $db = null): ?array
+    {
+        $db ??= App::db();
+        if ($db === null || !self::available($db) || !self::isActive($user)) { return null; }
+        $settings = Admin::config()->passwordReset();
+        $email = mb_strtolower(trim((string) ($user->email ?? '')));
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) { return null; }
+        $now = time();
+        $emailHash = self::hash('email', $email);
+        $recent = $db->table(self::table())->where('kind', '=', 'request')->where('email_hash', '=', $emailHash)->where('created_at', '>', gmdate('Y-m-d H:i:s', $now - 3600))->count();
+        if ($recent >= $settings['per_email']) { return null; }
+        $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        // A newer link replaces older ones
+        $db->table(self::table())->where('user_id', '=', (int) $user->id)->where('kind', '=', 'request')
+            ->whereNotNull('token_hash')->whereNull('used_at')->where('expires_at', '>', gmdate('Y-m-d H:i:s', $now))
+            ->update(['expires_at' => gmdate('Y-m-d H:i:s', $now)]);
+        $db->table(self::table())->insert(['kind' => 'request', 'user_id' => (int) $user->id, 'email_hash' => $emailHash, 'ip_hash' => self::hash('ip', 'admin'),
+            'token_hash' => hash('sha256', $token), 'created_at' => gmdate('Y-m-d H:i:s', $now), 'expires_at' => gmdate('Y-m-d H:i:s', $now + $settings['expires'] * 60), 'used_at' => null]);
+        return ['user' => $user, 'token' => $token];
+    }
+
     public static function find(string $token, string $ip, ?Database $db = null): ?object
     {
         $db ??= App::db();

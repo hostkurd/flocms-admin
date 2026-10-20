@@ -17,6 +17,9 @@ class Action
     private ?string $permission = null;
     private ?Closure $visibility = null;
     private ?Closure $authorization = null;
+    private ?Closure $disabledReason = null;
+    private ?Closure $link = null;
+    private ?string $group = null;
     private ?Closure $form = null;
     private ?Closure $fill = null;
     private ?Closure $normalizer = null;
@@ -25,6 +28,8 @@ class Action
     private ?Closure $uniqueness = null;
     private bool $confirmation = true;
     private ?string $description = null;
+    private ?Closure $describer = null;
+    private ?Closure $heading = null;
     private ?string $mode = null;
     private ?string $minHeight = null;
 
@@ -51,6 +56,27 @@ class Action
     /** Visibility is also enforced when opening/executing, including direct requests. */
     public function visible(Closure $callback): static { $this->visibility = $callback; return $this; }
     public function authorize(Closure $callback): static { $this->authorization = $callback; return $this; }
+    /**
+     * Show the action greyed out, with a reason, when it does not apply to a
+     * record (0.28): fn (?object $record): ?string returns the reason (a
+     * translation key or text) or null when it applies. A greyed-out action is
+     * refused on the server too.
+     */
+    public function disabled(Closure $reason): static { $this->disabledReason = $reason; return $this; }
+    /**
+     * Open a page instead of a dialog (0.28): fn (?object $record): string
+     * returns its URL (a row action: the record's; a page action: null).
+     */
+    public function url(Closure $url): static { $this->link = $url; return $this; }
+    /** Menus put a divider between groups (0.28): actions with the same group sit together. */
+    public function group(?string $group): static { $this->group = $group; return $this; }
+    public function getGroup(): ?string { return $this->group; }
+    public function getUrl(?object $record): ?string
+    {
+        if ($this->link === null) { return null; }
+        $url = ($this->link)($record);
+        return is_string($url) && $url !== '' ? $url : null;
+    }
     /** Closure(Form): Form. Custom action forms are independent of the resource form. */
     public function form(Closure $callback): static
     {
@@ -63,7 +89,14 @@ class Action
     /** Closure(ActionContext, array): void; only executes after validation inside the transaction. */
     public function action(Closure $callback): static { $this->customOnly(); $this->handler = $callback; return $this; }
     public function requiresConfirmation(bool $value = true): static { $this->confirmation = $value; return $this; }
-    public function modalDescription(string $description): static { $this->description = $description; return $this; }
+    /** The dialog's text: a string (translation key or text), or fn (?object $record): string (0.28). */
+    public function modalDescription(string|Closure $description): static
+    {
+        if ($description instanceof Closure) { $this->describer = $description; $this->description = ''; } else { $this->description = $description; $this->describer = null; }
+        return $this;
+    }
+    /** The dialog's title for a record (0.28): fn (?object $record): string, e.g. "Suspend Lana Karim?". */
+    public function modalHeading(Closure $heading): static { $this->heading = $heading; return $this; }
     /**
      * Reserve room in the dialog's body (0.19.1): pixels or a CSS length such as
      * '20rem'; null fits the content (the default, or the panel's 'dialog_min_height').
@@ -110,16 +143,19 @@ class Action
             default => Str::headline($this->name),
         };
     }
-    public function getTitle(Resource $resource): string
+    public function getTitle(Resource $resource, ?object $record = null): string
     {
+        if ($this->heading !== null && ($heading = ($this->heading)($record)) !== '' && is_string($heading)) { return $heading; }
         return match ($this->kind) {
             'create' => AdminLang::get('form.create_title', ['label' => $resource::getLabel()]),
             'edit' => AdminLang::get('form.edit_title', ['label' => $resource::getLabel()]),
             'delete' => AdminLang::get('delete.title'), default => $this->getLabel($resource),
         };
     }
-    public function getDescription(?Resource $resource = null): string
+    public function hasDescription(): bool { return $this->description !== null; }
+    public function getDescription(?Resource $resource = null, ?object $record = null): string
     {
+        if ($this->describer !== null) { return (string) ($this->describer)($record); }
         if ($this->description !== null) { return AdminLang::label($this->description); }
         if ($this->kind === 'delete') { return $resource !== null ? \FloCMS\Admin\Http\PageView::deleteText($resource::class) : AdminLang::get('delete.text'); }
         return AdminLang::get('action.confirm_text');
@@ -146,6 +182,25 @@ class Action
         return $form;
     }
     public function allowed(Resource $resource, ?object $record): bool
+    {
+        return $this->permits($resource, $record) && $this->disabledReason($record) === null;
+    }
+    /**
+     * Why the action is greyed out for this record, when the person could run
+     * it otherwise; null when it applies (or is not theirs to see at all).
+     */
+    public function reasonDisabled(Resource $resource, ?object $record): ?string
+    {
+        return $this->permits($resource, $record) ? $this->disabledReason($record) : null;
+    }
+    private function disabledReason(?object $record): ?string
+    {
+        if ($this->disabledReason === null) { return null; }
+        $reason = ($this->disabledReason)($record);
+        return is_string($reason) && $reason !== '' ? AdminLang::label($reason) : null;
+    }
+    /** Permission, record policy, visible() and authorize(): whether the person may see the action. */
+    public function permits(Resource $resource, ?object $record): bool
     {
         $ability = match ($this->kind) { 'edit' => 'update', 'custom' => $this->name, default => $this->kind };
         if (!Auth::can($this->permission ?? $resource::permission($ability))) { return false; }

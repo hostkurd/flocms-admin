@@ -13,7 +13,7 @@
     <ol class="fa-timeline">
         @foreach($day['items'] as $item)
         <li class="fa-timeline-item">
-            <span class="fa-avatar {{ $item['avatar'] }}" aria-hidden="true">{{ $item['initial'] }}</span>
+            {!! $item['face'] !!}
             <div class="fa-timeline-body">
                 <p class="fa-timeline-line"><strong>{{ $item['who'] }}</strong> {{ $item['phrase'] }}</p>
                 <p class="fa-timeline-time"><span class="fa-ltr">{{ $item['time'] }}</span>@if($item['badge'] !== '') · <span class="fa-badge fa-badge-{{ $item['badgeColor'] }} fa-badge-xs">{{ $item['badge'] }}</span>@endif</p>

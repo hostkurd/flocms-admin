@@ -88,6 +88,9 @@ final class PermissionCatalogue
                 ['name' => 'users.manage', 'label' => AdminLang::get('roles.perm.users_manage'), 'sub' => AdminLang::get('roles.perm.users_manage_help')],
                 ['name' => 'users.assign_role', 'label' => AdminLang::get('roles.perm.users_assign_role'), 'sub' => AdminLang::get('roles.perm.users_assign_role_help')],
                 ['name' => 'users.manage_any', 'label' => AdminLang::get('roles.perm.users_manage_any'), 'sub' => AdminLang::get('roles.perm.users_manage_any_help')],
+                // Emails to users (0.28)
+                ['name' => 'users.email', 'label' => AdminLang::get('roles.perm.users_email'), 'sub' => AdminLang::get('roles.perm.users_email_help')],
+                ...(Admin::config()->mailings()['enabled'] ? [['name' => 'users.mailing', 'label' => AdminLang::get('roles.perm.users_mailing'), 'sub' => AdminLang::get('roles.perm.users_mailing_help')]] : []),
             ]);
         }
 
