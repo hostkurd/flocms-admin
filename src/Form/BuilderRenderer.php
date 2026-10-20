@@ -271,7 +271,7 @@ final class BuilderRenderer
         $html .= $hidden('type', $type, 'type') . $hidden('parent', $parent, 'parent') . $hidden('column', (string) (int) ($node['column'] ?? 0), 'column') . $hidden('order', (string) $order, 'order');
 
         if ($block === null) {
-            $html .= $hidden('raw', Builder::sign((string) json_encode($node['raw'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'raw|' . $id), 'raw');
+            $html .= $hidden('raw', Builder::sign((string) json_encode($node['raw'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'raw|' . $key . '|' . $id), 'raw');
             $html .= '<div class="fa-builder-pane-body"><p class="fa-help">' . Str::e(self::t('unknown_help', ['type' => $type])) . '</p></div>';
             return $html . '</section>';
         }
@@ -284,7 +284,7 @@ final class BuilderRenderer
             }
         }
         $form = $field->blockForm($block, !$writable);
-        $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []), $id);
+        $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []), $key . '|' . $id);
         $child = $this->parent->child($state, $errors, $paneId . '-', $base . '[f]', $op . 'item:' . $key . ':' . $id . ':');
         $html .= '<div class="fa-builder-pane-body">' . $child->render($form) . '</div>';
         return $html . '</section>';

@@ -1602,4 +1602,5 @@ return [
     'validation.builder_required' => 'لانیکەم یەک بلۆک بۆ :attribute زیاد بکە.',
     'validation.builder_size' => ':attribute زۆر گەورەیە (زۆرترین :max کیلۆبایت).',
     'validation.builder_cut' => 'نەتوانرا :attribute پاشەکەوت بکرێت: ڕاژەکار داواکارییەکەی بڕی (max_input_vars = :max). هیچ پاشەکەوت نەکرا؛ داوای زیادکردنی max_input_vars بکە، یان پەڕەکە دابەش بکە.',
+    'validation.builder_stale' => 'نەتوانرا :attribute پاشەکەوت بکرێت چونکە پەڕەکە کۆنە (لە دانیشتنێکی تردا کراوەتەوە). پەڕەکە نوێ بکەرەوە و گۆڕانکارییەکانت دووبارە بکە.',
 ];

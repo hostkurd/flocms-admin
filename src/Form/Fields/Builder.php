@@ -294,11 +294,11 @@ class Builder extends Field
     /** @param array<string, list<array<string, mixed>>> $lists */
     /**
      * @param array<string, list<array<string, mixed>>> $lists
-     * @param array<string, int> $expected how many blocks the browser said it sent, per list
+     * @param array<string, true> $problems 'cut' (the request was cut short) or 'stale' (a signed copy no longer matches: reload)
      */
-    public function encodeState(array $lists, array $expected = []): string
+    public function encodeState(array $lists, array $problems = []): string
     {
-        return json_encode(['_state' => 1, 'lists' => $lists] + ($expected !== [] ? ['sent' => $expected] : []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return json_encode(['_state' => 1, 'lists' => $lists] + ($problems !== [] ? ['problems' => $problems] : []), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function stateFromRecord(?object $record, string $defaultLang): string|array
@@ -326,14 +326,18 @@ class Builder extends Field
         if (is_string($value)) { $value = $this->flatFromStored($value); }
         $value = is_array($value) ? $value : [];
         $lists = [];
-        $expected = [];
+        $problems = [];
         foreach ($this->listKeys() as $key) {
             $entries = is_array($value[$key] ?? null) ? $value[$key] : [];
-            $lists[$key] = $this->fromInput($entries, $languages);
+            $stale = false;
+            $lists[$key] = $this->fromInput($entries, $languages, $key, $stale);
+            if ($stale) { $problems['stale'] = true; }
+            // Fewer blocks arrived than the page sent: the server cut the request short (max_input_vars).
             $total = $value['_total'][$key] ?? null;
-            if (is_scalar($total) && is_numeric((string) $total)) { $expected[$key] = max(0, (int) $total); }
+            $arrived = count(array_filter(array_keys($entries), static fn ($id): bool => self::isId($id)));
+            if (is_scalar($total) && is_numeric((string) $total) && $arrived < (int) $total) { $problems['cut'] = true; }
         }
-        return $this->encodeState($lists, $expected);
+        return $this->encodeState($lists, $problems);
     }
 
     /**
@@ -391,7 +395,7 @@ class Builder extends Field
      * @param list<string> $languages
      * @return list<array<string, mixed>>
      */
-    private function fromInput(array $entries, array $languages): array
+    private function fromInput(array $entries, array $languages, string $key = self::SINGLE, bool &$stale = false): array
     {
         $flat = [];
         foreach ($entries as $id => $entry) {
@@ -404,9 +408,10 @@ class Builder extends Field
                 'order' => (int) ($entry['order'] ?? count($flat))];
             if ($block === null) {
                 // A kind that no longer exists: kept only as the panel printed it (signed), never as the browser says.
-                $raw = self::unsign(is_string($entry['raw'] ?? null) ? $entry['raw'] : '', 'raw|' . $id);
+                $signed = is_string($entry['raw'] ?? null) ? $entry['raw'] : '';
+                $raw = self::unsign($signed, 'raw|' . $key . '|' . $id);
                 $raw = $raw !== null ? json_decode($raw, true) : null;
-                if (!is_array($raw) || ($raw['type'] ?? null) !== $type || $this->block($type) !== null) { continue; }
+                if (!is_array($raw) || ($raw['type'] ?? null) !== $type) { if ($signed !== '') { $stale = true; } continue; }
                 $node['raw'] = $raw;
                 $flat[$id] = $node;
                 continue;
@@ -417,9 +422,13 @@ class Builder extends Field
                 $item = $field->stateFromInput($fields, $languages);
                 $state[$name] = is_string($item) ? $item : '';
             }
-            $state = $block->acceptInput($state, $id);
-            // Someone without the HTML permission cannot add an HTML block (an empty one is dropped).
-            if ($block instanceof Html && !Html::allowed() && trim((string) ($state['html'] ?? '')) === '') { continue; }
+            $state = $block->acceptInput($state, $key . '|' . $id);
+            // A block the person may not add, or a signed copy that no longer matches, is not kept.
+            if (($state['_rejected'] ?? null) !== null) {
+                if ($state['_rejected'] === 'stale') { $stale = true; }
+                continue;
+            }
+            unset($state['_rejected']);
             foreach ($state as $name => $item) {
                 if (in_array($name, $this->settingNames($block), true)) { $node['settings'][$name] = $item; } else { $node['data'][$name] = $item; }
             }
@@ -578,12 +587,12 @@ class Builder extends Field
         }
         $errors = [];
         $this->validated = $this->lists($state);
-        // Fewer blocks arrived than the page sent: the server cut the request (max_input_vars).
-        $decoded = json_decode($state, true);
-        foreach (is_array($decoded['sent'] ?? null) ? $decoded['sent'] : [] as $key => $sent) {
-            if (isset($this->validated[$key]) && self::count($this->validated[$key]) < (int) $sent) {
-                return [$this->name => AdminLang::get('validation.builder_cut', ['attribute' => $this->getLabel(), 'max' => (string) ini_get('max_input_vars')])];
-            }
+        $problems = json_decode($state, true)['problems'] ?? [];
+        if (!empty($problems['cut'])) {
+            return [$this->name => AdminLang::get('validation.builder_cut', ['attribute' => $this->getLabel(), 'max' => (string) ini_get('max_input_vars')])];
+        }
+        if (!empty($problems['stale'])) {
+            return [$this->name => AdminLang::get('validation.builder_stale', ['attribute' => $this->getLabel()])];
         }
         foreach ($this->validated as $key => $nodes) {
             $walk = function (array $nodes) use (&$walk, &$errors, $key, $check): void {

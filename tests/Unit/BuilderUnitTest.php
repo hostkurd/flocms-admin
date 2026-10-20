@@ -198,7 +198,7 @@ final class BuilderUnitTest extends TestCase
             $_SESSION['role'] = 1;
             $field = Builder::make('content');
             self::assertFalse($field->canAdd($html));
-            $signed = $html->prepareState(['html' => '<iframe src="/map"></iframe>'], 'bh')['_signed'];
+            $signed = $html->prepareState(['html' => '<iframe src="/map"></iframe>'], '_|bh')['_signed'];
             $post = static fn (string $id, array $f): array => ['content' => ['_' => [$id => ['type' => 'html', 'f' => $f]]]];
             // Sent back unchanged by the same block: kept
             $kept = $field->stateFromInput($post('bh', ['html' => '<script>x</script>', '_signed' => $signed]), self::LANGS);
@@ -208,6 +208,13 @@ final class BuilderUnitTest extends TestCase
             foreach ([$post('bh', ['html' => '<script>x</script>', '_signed' => 'x|' . base64_encode('<script>x</script>')]), $post('bnew', ['_signed' => $signed]), $post('bnew', ['html' => '<script>x</script>'])] as $input) {
                 self::assertSame([], $field->lists($field->stateFromInput($input, self::LANGS))['_']);
             }
+            // An empty HTML block someone else saved is kept too; a changed copy asks for a reload
+            $empty = $html->prepareState(['html' => ''], '_|be')['_signed'];
+            $kept = $field->stateFromInput(['content' => ['_total' => ['_' => '1'], '_' => ['be' => ['type' => 'html', 'f' => ['_signed' => $empty]]]]], self::LANGS);
+            self::assertCount(1, $field->lists($kept)['_']);
+            self::assertSame([], $field->validateBlocks($kept, static fn (): array => []));
+            $stale = $field->stateFromInput(['content' => ['_total' => ['_' => '1'], '_' => ['bh' => ['type' => 'html', 'f' => ['_signed' => 'x|' . base64_encode('y')]]]]], self::LANGS);
+            self::assertStringContainsString('out of date', $field->validateBlocks($stale, static fn (): array => [])['content']);
             // The JSON path (an import, a forged draft) goes through the same checks
             foreach (['[{"id":"b1","type":"html","data":{"html":"<script>x</script>"}}]', '{"_state":1,"lists":{"_":[{"id":"b1","type":"html","data":{"html":"<script>x</script>"}}]}}'] as $json) {
                 self::assertNull($field->dehydrate($field->stateFromInput(['content' => $json], self::LANGS)));

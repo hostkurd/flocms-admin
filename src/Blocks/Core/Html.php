@@ -46,7 +46,11 @@ final class Html extends Block
     public function acceptInput(array $state, string $id = ''): array
     {
         if (!self::allowed()) {
-            $state['html'] = \FloCMS\Admin\Form\Fields\Builder::unsign((string) ($state['_signed'] ?? ''), 'html|' . $id) ?? '';
+            $signed = (string) ($state['_signed'] ?? '');
+            $html = \FloCMS\Admin\Form\Fields\Builder::unsign($signed, 'html|' . $id);
+            // No copy: a new HTML block, which only people with the permission add. A changed copy: reload.
+            if ($html === null) { $state['_rejected'] = $signed === '' ? 'new' : 'stale'; }
+            $state['html'] = $html ?? '';
         }
         unset($state['_signed']);
         return $state;

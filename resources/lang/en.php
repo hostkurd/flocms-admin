@@ -1621,4 +1621,5 @@ return [
     'validation.builder_required' => 'Add at least one block to :attribute.',
     'validation.builder_size' => ':attribute is too large (up to :max kB).',
     'validation.builder_cut' => ':attribute could not be saved: the server cut the request short (max_input_vars = :max). Nothing was saved; ask for a higher max_input_vars, or split the page.',
+    'validation.builder_stale' => ':attribute could not be saved because the page is out of date (it was opened in another session). Reload the page and make your changes again.',
 ];
