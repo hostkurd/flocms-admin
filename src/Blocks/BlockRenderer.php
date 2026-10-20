@@ -241,12 +241,40 @@ final class BlockRenderer
             self::$defaults[$block::class] = $defaults;
         }
         $fields += self::$defaults[$block::class];
+        $fields = self::safeLinks($fields);
         foreach ($fields as $name => $value) {
             if (is_bool($value)) { $fields[$name] = $value ? '1' : '0'; }
             elseif (is_int($value) || is_float($value)) { $fields[$name] = (string) $value; }
             elseif ($value === null) { $fields[$name] = ''; }
         }
         return $fields;
+    }
+
+    /**
+     * Links typed in blocks ("link", "link2", also inside a list's items) as
+     * the website may print them: http(s), mailto:, tel:, or an address on
+     * the site (/about, #team, ?page=2, contact); anything else (javascript:,
+     * data:) becomes ''.
+     */
+    public static function safeLinks(array $fields): array
+    {
+        foreach ($fields as $name => $value) {
+            if (is_array($value)) { $fields[$name] = self::safeLinks($value); continue; }
+            if (($name === 'link' || $name === 'link2') && is_string($value)) { $fields[$name] = self::safeUrl($value); }
+        }
+        return $fields;
+    }
+
+    public static function safeUrl(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') { return ''; }
+        // Browsers ignore tabs and newlines inside a scheme ("java\tscript:").
+        $plain = strtolower(preg_replace('/[\x00-\x20]+/', '', $url) ?? '');
+        if (preg_match('/^[a-z][a-z0-9+.-]*:/', $plain, $m) === 1) {
+            return in_array($m[0], ['http:', 'https:', 'mailto:', 'tel:'], true) ? $url : '';
+        }
+        return $url;
     }
 
     /** The wrapper's attributes: its classes from the shared settings, and the anchor. */

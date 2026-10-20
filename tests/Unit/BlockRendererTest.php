@@ -90,4 +90,17 @@ final class BlockRendererTest extends TestCase
         $video = blocks_data('[{"id":"b1","type":"video","data":{"url":"https://youtu.be/dQw4w9WgXcQ"}}]');
         self::assertSame('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $video[0]['fields']['embed']);
     }
+
+    public function testLinksCannotRunScripts(): void
+    {
+        $html = blocks(json_encode([
+            ['id' => 'b1', 'type' => 'call_to_action', 'data' => ['heading' => 'A', 'button' => 'Go', 'link' => " java\tscript:alert(1)"]],
+            ['id' => 'b2', 'type' => 'call_to_action', 'data' => ['heading' => 'B', 'button' => 'Mail', 'link' => 'mailto:hi@example.com']],
+            ['id' => 'b3', 'type' => 'cards', 'data' => ['cards' => [['title' => 'C', 'link' => 'data:text/html,x'], ['title' => 'D', 'link' => '/about']]]],
+        ]));
+        self::assertStringNotContainsString('script:', $html);
+        self::assertStringNotContainsString('data:text', $html);
+        self::assertStringContainsString('href="mailto:hi@example.com"', $html);
+        self::assertStringContainsString('href="/about"', $html);
+    }
 }
