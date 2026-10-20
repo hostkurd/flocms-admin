@@ -101,7 +101,7 @@ final class SearchRequestTest extends RequestTestCase
         $groups = self::groupsOf(self::search('cabin', $config));
         self::assertArrayNotHasKey('Hidden posts', $groups, '$globallySearchable = false');
         $archive = $groups['Archive']['items'][0];
-        self::assertSame('https://example.test/en/admin/archive?q=cabin', $archive['url'], 'not editable: the list, searched for the words');
+        self::assertSame('https://example.test/en/admin/archive/view/2', $archive['url'], 'not editable: its view page (0.27)');
         self::assertSame('Status: draft', $archive['detail'], 'searchDetails()');
     }
 

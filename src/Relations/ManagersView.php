@@ -36,8 +36,13 @@ final class ManagersView
             && Auth::can($manager->getResource()::permission('view'))));
     }
 
-    /** The card on the edit page of $parentId, or '' when there is nothing to show. */
-    public static function render(Resource $parent, string $parentId): string
+    /**
+     * The card on the edit page of $parentId, or '' when there is nothing to show.
+     * With $readOnly (the view page, 0.27) a manager the user may not edit in
+     * (they may view the parent but not edit it) is shown as a plain table of
+     * its first rows instead of being left out.
+     */
+    public static function render(Resource $parent, string $parentId, bool $readOnly = false): string
     {
         $managers = self::visible($parent);
         if ($managers === [] || $parent->parentScope() !== null) { return ''; }
@@ -51,7 +56,15 @@ final class ManagersView
             try {
                 $scope = ParentScope::resolve($slug, $parentId, $manager->getName(), $child::getSlug());
                 $count = (new RecordRepository((new $child())->withinParent($scope), App::db() ?? throw new \RuntimeException('Database required.'), Translations::store()))->newQuery()->count();
-            } catch (\FloCMS\Core\HttpException) { continue; }
+            } catch (\FloCMS\Core\HttpException) {
+                if (!$readOnly) { continue; }
+                try {
+                    $scope = ParentScope::forViewing($slug, $parentId, $manager->getName(), $child::getSlug());
+                    [$body, $count] = self::readOnlyTable($manager, $scope);
+                } catch (\FloCMS\Core\HttpException) { continue; }
+                $items[] = ['id' => 'fa-manager-' . $manager->getName(), 'label' => $manager->getLabel(), 'icon' => Icons::svg($manager->getIcon() ?? 'layers'), 'count' => $count, 'body' => $body];
+                continue;
+            }
             $key = 'rel-' . $manager->getName();
             $body = $reactive
                 ? \FloCMS\Reactive\Reactive::mount('flo-admin-resource', $key, [
@@ -81,6 +94,45 @@ final class ManagersView
         return $html . '<div class="fa-card fa-manager fa-tabs" id="fa-managers-tabs" data-admin-tabs>'
             . '<div class="fa-tab-list fa-manager-tabs" data-admin-tab-list aria-label="' . $title . '" hidden>' . $buttons . '</div>'
             . $panels . '</div></section>';
+    }
+
+    /**
+     * A manager for someone who may only view the parent (0.27): its first page
+     * of rows as a plain table, each title linked to the record's own page
+     * when they may open it; no actions, no search.
+     *
+     * @return array{0: string, 1: int} the HTML and the number of rows in all
+     */
+    private static function readOnlyTable(RelationManager $manager, ParentScope $scope): array
+    {
+        $class = $manager->getResource();
+        $child = (new $class())->withinParent($scope);
+        $plain = new $class();
+        $table = $scope->adjustTable($child->table(new \FloCMS\Admin\Table\Table()))->prepare($scope->adjustForm($child->form(new \FloCMS\Admin\Form\Form())));
+        $repository = new RecordRepository($child, App::db() ?? throw new \RuntimeException('Database required.'), Translations::store());
+        $perPage = $table->getPerPage() ?? 10;
+        $result = $repository->paginate($table, '', null, null, 1, $perPage, AdminLang::language());
+        $total = (int) ($result['pagination']['items_count'] ?? count($result['data']));
+        if ($result['data'] === []) {
+            return ['<p class="fa-view-related-empty">' . Str::e($manager->getEmptyText()) . '</p>', $total];
+        }
+        $primary = $table->primaryColumn();
+        // The columns the manager shows (none hidden by default, the person's own choice kept)
+        $columns = (new \FloCMS\Admin\Table\ColumnVisibility($table, $scope->columnsKey()))->visibleColumns();
+        $head = '';
+        foreach ($columns as $column) { $head .= '<th scope="col" class="' . Str::e($column->cellClass()) . '">' . Str::e($column->getLabel()) . '</th>'; }
+        $rows = '';
+        foreach ($result['data'] as $record) {
+            $rows .= '<tr>';
+            foreach ($columns as $name => $column) {
+                $html = $column->render($record);
+                if ($name === $primary) { $html = \FloCMS\Admin\Http\PageView::rowLink($plain, $record, $html); }
+                $rows .= '<td class="' . Str::e($column->cellClass() . ($name === $primary ? ' fa-cell-primary' : '')) . '" data-label="' . Str::e($column->getLabel()) . '">' . $html . '</td>';
+            }
+            $rows .= '</tr>';
+        }
+        $more = $total > count($result['data']) ? '<p class="fa-view-related-more">' . Str::e(AdminLang::get('relations.first_only', ['count' => count($result['data'])])) . '</p>' : '';
+        return ['<div class="fa-table-wrap fa-view-related"><table class="fa-table fa-table-list"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table></div>' . $more, $total];
     }
 
     /** The create page: a note that the managers come once the record is saved, or ''. */

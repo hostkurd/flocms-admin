@@ -36,6 +36,10 @@ final class ActionRenderer
                 $items .= $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'menu');
             }
         }
+        // The view page (0.27), when the title opens Edit: one click away in the menu.
+        if ($record !== null && $primary !== '' && $this->resource::rowOpens() === 'edit' && ($viewUrl = $this->resource->viewUrl($record)) !== null) {
+            $items = '<a class="fa-menu-item" data-admin-action="view" href="' . Str::e($viewUrl) . '">' . Icons::svg('eye') . '<span>' . Str::e(AdminLang::get('view.view')) . '</span></a>' . $items;
+        }
         // Destructive actions come last, after a divider.
         $menu = $items . ($items !== '' && $danger !== '' ? '<hr class="fa-menu-divider">' : '') . $danger;
         if ($primary === '' && $menu === '') { return ''; }
@@ -50,6 +54,23 @@ final class ActionRenderer
                 . '<div class="fa-menu-panel">' . $menu . '</div></details>';
         }
         return $html . '</div>';
+    }
+
+    /**
+     * The view page's More menu (0.27): the record's row actions the person may
+     * run, except Edit (a button of its own there), as links and forms that
+     * work without JavaScript; destructive ones last.
+     */
+    /** @return array{items: string, danger: string} */
+    public function menu(object $record, ?string $backUrl = null): array
+    {
+        $items = ''; $danger = '';
+        foreach ($this->allowed('row', $record) as $action) {
+            if ($action->getName() === 'edit') { continue; }
+            $item = $this->item($action, 'row', $record, false, 'fa-view', $backUrl, 'menu');
+            if ($action->getColor() === 'danger') { $danger .= $item; } else { $items .= $item; }
+        }
+        return ['items' => $items, 'danger' => $danger];
     }
 
     /** @return list<Action> */

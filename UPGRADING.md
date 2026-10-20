@@ -1,3 +1,16 @@
+# Upgrading to Admin 0.27.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.27.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **People with View permission can now open records.** Until now `content.<slug>.view` without `update` showed the list only; now the row title opens the record's view page, which shows every field except passwords, `Hidden` fields and fields marked `->hiddenOnView()`. Check your roles: if a field must stay out of sight of viewers, add `->hiddenOnView()`, refuse whole records with `canView()`, or turn the page off with `protected static bool $viewPage = false;`.
+- **Viewers can download a record's files** (`FileUpload` fields not marked `hiddenOnView()`), and see related records on the view page as a plain table.
+- **History** on a record is now also open to people with `activity.view` who may view the record (before: only to people who may edit it).
+- **The row title is a link now** (to Edit, or to the view page). A column that already renders its own link or button is left as it is. If your own JavaScript or tests click the title cell, they now follow the link.
+- **Links to records** in Ctrl+K search, recent records and the Activity page go to the view page for people who may not edit. A resource with `searchUrl()` keeps its own link.
+- **Translations**: the new `view.*` words in Arabic and Kurdish need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.26.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.26.0" -W` (this also brings **flocms-core 2.5**), run `php flo view:clear` and reload open Admin pages.

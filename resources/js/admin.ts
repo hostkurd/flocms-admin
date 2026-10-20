@@ -6,6 +6,7 @@ import { initializeSelection } from './selection';
 import { initializeLogin } from './login';
 import { initializeForms } from './forms';
 import { initializeEditors } from './editors';
+import { initializeView } from './view';
 import { initializeSettings } from './settings';
 import { initializeRelations } from './relations';
 import { initializeReorder } from './reorder';
@@ -61,6 +62,7 @@ function initialize(): void {
   initializeEditors(root);
   initializeSelection(root);
   initializeRecord(root);
+  initializeView(root);
   initializeSettings(root);
   initializeRelations(root);
   initializeRoles(root);

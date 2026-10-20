@@ -8,6 +8,7 @@ use FloCMS\Admin\Admin;
 use FloCMS\Admin\Resource;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Support\Icons;
+use FloCMS\Admin\Support\Str;
 use FloCMS\Admin\Table\Table;
 use FloCMS\Core\Csrf;
 use FloCMS\Core\TemplateEngine;
@@ -83,7 +84,9 @@ final class PageView
             $id = property_exists($record, $pk) ? (string) $record->{$pk} : '';
             $cells = [];
             foreach ($visible as $name => $column) {
-                $cells[] = ['html' => $column->render($record), 'class' => $column->cellClass() . ($name === $table->primaryColumn() ? ' fa-cell-primary' : ''), 'label' => $column->getLabel()];
+                $html = $column->render($record);
+                if ($name === $table->primaryColumn()) { $html = self::rowLink($definition, $record, $html, ['parent' => $scope?->token()]); }
+                $cells[] = ['html' => $html, 'class' => $column->cellClass() . ($name === $table->primaryColumn() ? ' fa-cell-primary' : ''), 'label' => $column->getLabel()];
             }
             $rows[] = [
                 'id' => $id,
@@ -254,6 +257,19 @@ final class PageView
             // Page-level translation (0.23): the switch, the note and the language shown first.
             'translation' => $translation,
         ]);
+    }
+
+    /**
+     * The row's title as a link to its record (0.27): Edit or the view page, as
+     * Resource::recordUrl() decides; left as it is when it holds a link already.
+     *
+     * @param array<string, string|null> $query
+     */
+    public static function rowLink(\FloCMS\Admin\Resource $resource, object $record, string $html, array $query = []): string
+    {
+        if ($html === '' || preg_match('/<(a|button)\b/i', $html) === 1) { return $html; }
+        $url = $resource->recordUrl($record, $query);
+        return $url === null ? $html : '<a class="fa-row-link" href="' . Str::e($url) . '">' . $html . '</a>';
     }
 
     /** The delete confirmation's text: "It goes to the trash for 30 days…" or "This cannot be undone." */

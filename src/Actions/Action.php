@@ -158,8 +158,13 @@ class Action
     }
     public function authorizePermission(Resource $resource): void
     {
+        Auth::authorize($this->permissionName($resource));
+    }
+    /** The permission this action needs: its own, else the resource's for its kind. */
+    public function permissionName(Resource $resource): string
+    {
         $ability = match ($this->kind) { 'edit' => 'update', 'custom' => $this->name, default => $this->kind };
-        Auth::authorize($this->permission ?? $resource::permission($ability));
+        return $this->permission ?? $resource::permission($ability);
     }
     public function authorizeRequest(Resource $resource, ?object $record): void
     {

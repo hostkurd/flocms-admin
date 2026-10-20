@@ -44,8 +44,11 @@ final class UploadsRequestTest extends RequestTestCase
     {
         [$token,$session]=$this->pending();$saved=self::post('/en/admin/assets/edit/1',['title'=>'Saved','attachment'=>$token],$this->options()+['session'=>$session]);
         $ok=self::request('GET','/en/admin/assets/file/1/attachment',$this->options()+['session'=>$saved['session']]);self::assertSame(200,$ok['status']);self::assertSame('Property document',$ok['body']);
-        $denied=self::request('GET','/en/admin/assets/file/1/attachment',$this->options()+['permissions'=>[1=>['content.assets.view']]]);self::assertSame(403,$denied['status']);
-        self::pdo()->exec("UPDATE assets SET title='Denied' WHERE id=1");self::assertSame(403,self::request('GET','/en/admin/assets/file/1/attachment',$this->options())['status']);
+        // 0.27: someone who may view the record (its view page) may download its files too.
+        $viewer=self::request('GET','/en/admin/assets/file/1/attachment',$this->options()+['permissions'=>[1=>['content.assets.view']]]);self::assertSame(200,$viewer['status']);
+        self::assertSame(403,self::request('GET','/en/admin/assets/file/1/attachment',$this->options()+['permissions'=>[1=>['content.posts.view']]])['status']);
+        self::pdo()->exec("UPDATE assets SET title='Denied' WHERE id=1");self::assertSame(200,self::request('GET','/en/admin/assets/file/1/attachment',$this->options())['status'],'not editable, still viewable');
+        self::pdo()->exec("UPDATE assets SET title='Hidden' WHERE id=1");self::assertSame(403,self::request('GET','/en/admin/assets/file/1/attachment',$this->options()+['permissions'=>[1=>['content.assets.view']]])['status'],'a viewer, canView() false');
     }
     public function testStandardDeleteCleansOnlyTheManagedFiles():void
     {

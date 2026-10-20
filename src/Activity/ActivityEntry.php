@@ -257,7 +257,11 @@ final class ActivityEntry
         return Admin::url($class::getSlug() . '/import/' . $id . '/result');
     }
 
-    /** Where the record can be opened, if it still exists and the user may edit it. */
+    /**
+     * Where the record can be opened: its edit page when the user may edit
+     * records of its kind, else its view page (0.27) when they may view them
+     * (the page itself checks canEdit()/canView() for the record).
+     */
     public function recordUrl(): ?string
     {
         if ($this->recordId === null || $this->recordId === '') { return null; }
@@ -274,8 +278,11 @@ final class ActivityEntry
             return \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('update') ? Admin::url('media/edit/' . $this->recordId) : null;
         }
         $class = $this->resourceClass();
-        if ($class === null || !\FloCMS\Core\Auth::can($class::permission('update')) || in_array($this->action, ['deleted', 'purged'], true)) { return null; }
-        return Admin::url($class::getSlug() . '/edit/' . $this->recordId);
+        if ($class === null || in_array($this->action, ['deleted', 'purged'], true)) { return null; }
+        $mayEdit = (new $class())->mayEditSome();
+        $mayView = $class::hasViewPage() && \FloCMS\Core\Auth::can($class::permission('view'));
+        if ($mayEdit && !($mayView && $class::rowOpens() === 'view')) { return Admin::url($class::getSlug() . '/edit/' . rawurlencode($this->recordId)); }
+        return $mayView ? Admin::url($class::getSlug() . '/view/' . rawurlencode($this->recordId)) : null;
     }
 
     private function listUrl(): ?string

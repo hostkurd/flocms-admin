@@ -2,6 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.27.0 - 2026-10-20
+
+**The view page.** Every record can be opened without editing it, at `/admin/<slug>/view/<id>`. Nothing to install. See [The view page](docs/view-page.md).
+
+- Built from the resource's form: the same sections, tabs and sidebar, each field shown as its value. Badges for options (the list's colours), Yes/No for toggles, email, phone and web addresses as links with a copy button, dates in the panel's language, colour swatches, related records as links, media thumbnails, files with their size and **Download**, repeaters as cards or a table, key-value lists as a table, rich text as it reads on the site. Passwords and `Hidden` fields are never shown.
+- The header shows who changed the record last and when, and **History**, **Edit** and **More** (the record's actions, **Print**, **Delete**), each following the person's permissions.
+- **Showing: EN · AR · KU** for translatable fields, starting in the panel's language. A field without text says **Not translated** (no other language stands in), and a dot marks languages with something missing. `?showing=ar` opens one directly.
+- **Print** (and Ctrl+P) prints the values only, with "Printed <date> by <name>" at the top.
+- **Related records** below, as on the edit page; someone who may view the parent but not edit it sees each manager as a plain table without buttons.
+- **The row title is now a link** in every list: to Edit for people who may edit the record, else to the view page. Rows get **View** in their menu. `$rowOpens = 'view'` opens the view page first, for editors too. Search, recent records, the Activity page, related fields and relation managers link the same way. "May edit" is the edit page's own check: the list's Edit action (its permission, `visible()`, `authorize()`) and `canEdit()`; a list without an Edit action opens the view page.
+- People with `content.<slug>.view` but not `update` can now open records, download their files, and (with `activity.view`) see their History.
+- On phones the buttons sit in a bar at the bottom, as on the edit page, and More opens upwards. Works without JavaScript (Print and Copy need it).
+- For resources: `$viewPage` (false turns the page off), `$rowOpens`, `canView($record)`, `view(Form $form)`, `recordUrl($record)`, `viewUrl($record)`. For fields: `->hiddenOnView()` and `->formatOnView(fn ($value, ?object $record): string)`.
+- New words in the panel's `en`, `ar` and `ku` files: `view.*`.
+
 ## 0.26.0 - 2026-10-19
 
 **Forgot password.** Needs flocms-core 2.5. New installations have it on; an existing site adds `'password_reset' => true` to `config/admin.php`, then runs `php flo admin:install` and `php flo migrate`. See [Forgot password](docs/password-reset.md).
