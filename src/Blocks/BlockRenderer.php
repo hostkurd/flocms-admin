@@ -410,8 +410,9 @@ final class BlockRenderer
                     $url = '/assets/flo-blocks/' . $name . '.' . $kind . '?v=' . substr(hash('sha256', (string) @filemtime($public) . (string) @filesize($public)), 0, 10);
                     $html .= $kind === 'css' ? '<link rel="stylesheet" href="' . $url . '">' . "\n" : '<script src="' . $url . '" defer></script>' . "\n";
                 } elseif (is_file($package)) {
-                    $code = (string) file_get_contents($package);
-                    $html .= $kind === 'css' ? '<style>' . str_replace('</style', '<\/style', $code) . '</style>' . "\n" : '<script>' . str_replace('</script', '<\/script', $code) . '</script>' . "\n";
+                    // From the package until the site copies them: a file of its own (cached, and fine with a strict Content-Security-Policy).
+                    $url = htmlspecialchars(\FloCMS\Admin\Assets::blockUrl($name, $kind), ENT_QUOTES, 'UTF-8');
+                    $html .= $kind === 'css' ? '<link rel="stylesheet" href="' . $url . '">' . "\n" : '<script src="' . $url . '" defer></script>' . "\n";
                 }
             }
         }

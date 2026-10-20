@@ -29,6 +29,10 @@ final class AssetController extends Controller
             return Response::make(\FloCMS\Admin\Support\Theme::css((string) \FloCMS\Admin\Support\Appearance::primaryColor()))
                 ->header('Content-Type', 'text/css; charset=utf-8')
                 ->header('Cache-Control', 'public, max-age=31536000, immutable')->header('X-Content-Type-Options', 'nosniff');
+        } elseif (preg_match('/^blocks-([a-z][a-z0-9-]{0,40})-v' . preg_quote(Admin::VERSION, '/') . '\.(css|js)$/D', $name, $block) === 1 && is_file($root . '/resources/site/' . $block[1] . '.' . $block[2])) {
+            // The blocks' own styles and scripts (0.29), until the site copies them (php flo admin:blocks).
+            $file = $root . '/resources/site/' . $block[1] . '.' . $block[2];
+            $type = $block[2] === 'js' ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8';
         } elseif (in_array($name, self::FONTS, true)) {
             // Fonts sit next to the stylesheet's URL, so its url() references stay relative.
             $file = $root . '/resources/fonts/' . $name;

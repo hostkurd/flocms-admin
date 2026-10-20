@@ -66,7 +66,8 @@ final class BlockRendererTest extends TestCase
         self::assertSame('', blocks_assets());
         blocks('[{"id":"b1","type":"heading","data":{"text":"Hi"}}]');
         $assets = blocks_assets();
-        self::assertStringContainsString('--flo-container', $assets, 'the base styles');
+        self::assertMatchesRegularExpression('~<link rel="stylesheet" href="[^"]*/flo-admin/asset/blocks-blocks-v[^"]+\.css">~', $assets, 'the base styles, as a file (a strict CSP allows it)');
+        self::assertStringNotContainsString('<style>', $assets);
         self::assertStringNotContainsString('flo-slider', $assets);
     }
 
