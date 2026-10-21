@@ -69,8 +69,9 @@ test('Preview opens the unsaved page in a new tab and saves nothing', async ({ p
 test('saving makes the address from the title and keeps a future time scheduled', async ({ page }) => {
   await page.goto('/en/admin/site-pages/create');
   await page.locator('[name="title[en]"]').fill('Our team');
-  // The type and the status refresh the form (the panel is inert meanwhile): wait for each before typing on.
-  await refreshed(page, () => page.locator('[data-field="type"] input[value="rich_text"]').check({ force: true }));
+  // The type switches the content field in place (0.32.1); the status refreshes the form (the panel is inert meanwhile).
+  await page.locator('[data-field="type"] input[value="rich_text"]').check({ force: true });
+  await expect(page.locator('[data-field="body"]')).toBeVisible();
   const text = page.locator('[data-field="body"] [contenteditable="true"]').first();
   await text.click();
   await page.keyboard.type('Meet the people.');
@@ -81,6 +82,37 @@ test('saving makes the address from the title and keeps a future time scheduled'
   const made = (await rows(page)).find(row => (row.title || '').includes('Our team'));
   expect(JSON.parse(made?.slug || '{}').en).toBe('our-team');
   expect(made?.status).toBe('scheduled');
+});
+
+test('switching the content type keeps what was typed, on a new page too (0.32.1)', async ({ page }) => {
+  await page.goto('/en/admin/site-pages/create');
+  await page.locator('[name="title[en]"]').fill('Kept');
+  const editor = page.locator('dialog[data-builder-edit-dialog][open]');
+  await page.locator('[data-field="blocks"] [data-builder-list="en"] .fa-builder-add-main > summary').click();
+  await page.locator('dialog[data-builder-add-dialog][open] [data-builder-choice="heading"]').click();
+  await editor.locator('[name$="[f][text]"]').fill('Kept heading');
+  await editor.getByRole('button', { name: 'Done' }).click();
+  await expect(editor).toHaveCount(0);
+  // No reload: the fields are switched in place
+  let reloaded = false;
+  page.on('request', request => { if (request.method() === 'POST') reloaded = true; });
+  const pick = (type: string) => page.locator(`[data-field="type"] input[value="${type}"]`).evaluate(el => (el as HTMLInputElement).click());
+  await pick('rich_text');
+  await expect(page.locator('[data-field="blocks"]')).toBeHidden();
+  await expect(page.locator('[data-field="body"]')).toBeVisible();
+  await page.locator('[data-field="body"] [contenteditable="true"]').first().click();
+  await page.keyboard.type('Some text');
+  await pick('builder');
+  await expect(page.locator('[data-field="blocks"] [data-builder-list="en"] [data-builder-title]')).toHaveText(['Kept heading']);
+  await pick('rich_text');
+  await expect(page.locator('[data-field="body"] [contenteditable="true"]').first()).toContainText('Some text');
+  expect(reloaded).toBe(false);
+  await pick('builder');
+  await page.getByRole('button', { name: 'Save and close' }).click();
+  await expect(page).toHaveURL(/\/admin\/site-pages(\?|$)/);
+  const made = (await rows(page)).find(row => (row.title || '').includes('Kept'));
+  expect(made?.type).toBe('builder');
+  expect(JSON.parse(made?.blocks || '{}').en[0].data.text).toBe('Kept heading');
 });
 
 test('a taken address is refused', async ({ page }) => {

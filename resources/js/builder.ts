@@ -253,6 +253,10 @@ function prepare(builder: HTMLElement, pane: HTMLElement): void {
   initializeRepeaters(pane);
   initializeMedia(pane);
   initializeEditors(pane);
+  // The rich editors start after their script loads; by then the edit dialog may have taken
+  // the block's fields out of its pane, so they are started on the fields too (0.32.1).
+  const fields = pane.querySelector<HTMLElement>(':scope > [data-builder-fields]');
+  if (fields) initializeEditors(fields);
   enhance(pane);
   const scope = builder.closest<HTMLElement>('[data-lang-scope].is-switching');
   if (scope) applyEditing(scope, scope.dataset.editing || scope.dataset.defaultLang || '');
@@ -1074,7 +1078,7 @@ function openEditor(list: HTMLElement, id: string): void {
 
 /**
  * The edit dialog keeps one height while it is open (0.32): as tall as the block's
- * tallest tab, at least 360px and at most 760px (or the window less 64px); what
+ * tallest tab, at least 560px and at most 760px (or the window less 64px); what
  * doesn't fit scrolls inside its body, so switching tabs or adding slides never
  * moves it. Each tab is shown for a moment, before the browser paints, to measure it.
  */
@@ -1099,7 +1103,8 @@ function fitDialog(dialog: HTMLDialogElement): void {
   optional.forEach(field => { field.hidden = true; });
   const chrome = dialog.offsetHeight - body.clientHeight;
   const most = Math.min(760, window.innerHeight - 64);
-  dialog.style.height = `${Math.max(Math.min(360, most), Math.min(most, tallest + chrome))}px`;
+  // At least 560px (0.32.1): a block whose lists are still empty doesn't open small and then grow.
+  dialog.style.height = `${Math.max(Math.min(560, most), Math.min(most, tallest + chrome))}px`;
 }
 
 /** The fields in the dialog go back to their block's pane. */

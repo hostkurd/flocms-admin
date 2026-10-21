@@ -54,7 +54,7 @@ test('the structure shows the blocks; a row shows its settings, Edit opens its f
   // One block per dialog (0.32), and one height whatever the tab
   await expect(editor(page).locator('[data-builder-dialog-nav]')).toHaveCount(0);
   const height = (await editor(page).boundingBox())!.height;
-  expect(height).toBeGreaterThanOrEqual(360);
+  expect(height).toBeGreaterThanOrEqual(560);
   expect(height).toBeLessThanOrEqual(760);
   await editor(page).getByRole('tab', { name: 'Slides' }).click();
   await expect(editor(page).locator('[data-repeater-item]')).toHaveCount(2);
@@ -430,6 +430,36 @@ test('blocks: options shown for one choice, a new slider opens on its slides, a 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(editor(page)).toBeVisible();
   await expect(editor(page).locator('[data-field="link"]')).toContainText('required');
+});
+
+test('a new rich text block has its editor; Show on and the spacing are the dialog\'s Display tab (0.32.1)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/en/admin/landings/edit/1');
+  await list(page).locator('.fa-builder-add-main > summary').click();
+  await adder(page).locator('[data-builder-choice="rich_text"]').click();
+  await expect(editor(page).locator('[contenteditable="true"]')).toHaveCount(1);
+  await expect(editor(page).locator('textarea[data-rich-source]')).toBeHidden();
+  await editor(page).locator('[contenteditable="true"]').click();
+  await page.keyboard.type('Typed in the editor');
+  await expect(editor(page).getByRole('tab')).toHaveText(['Content', 'Display']);
+  expect((await editor(page).boundingBox())!.height).toBeGreaterThanOrEqual(560);
+  await editor(page).getByRole('tab', { name: 'Display' }).click();
+  await expect(editor(page).locator('[data-field="devices"]')).toBeVisible();
+  await expect(editor(page).locator('[data-field="anchor"]')).toBeVisible();
+  await editor(page).locator('[data-field="devices"] input[value="phone"]').check({ force: true });
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  const added = top(page).last();
+  await expect(added.locator(':scope > .fa-builder-row [data-builder-state]')).toHaveText('Phones only');
+  // The panel keeps name, note, status and dates only
+  const id = await added.getAttribute('data-builder-node');
+  await expect(pane(page, id!).locator('[data-builder-settings] [data-field="devices"]')).toHaveCount(0);
+  await expect(pane(page, id!).locator('[data-builder-settings] [data-field="status"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Landing page saved.')).toBeVisible();
+  const content = await stored(page);
+  const last = content.en[content.en.length - 1];
+  expect(last.data.body).toContain('Typed in the editor');
+  expect(last.settings.devices).toBe('phone');
 });
 
 test('a block\'s name and note are for editors only', async ({ page }) => {

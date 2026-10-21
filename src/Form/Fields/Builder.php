@@ -183,22 +183,41 @@ class Builder extends Field
     /** @var array<string, Form> */
     private array $contentForms = [];
 
+    /** The shared settings that sit in the dialog's Display tab when a block has a dialog (0.32.1). */
+    public const DISPLAY = ['devices', 'width', 'space_above', 'space_below', 'anchor', 'class'];
+
     /**
-     * A block's own fields, for the edit dialog (0.31): its tabs (or one
-     * Content tab), without the settings every block shares.
+     * A block's own tabs (or one Content tab for loose fields), without its
+     * name, which sits in the block panel (Section, Columns, Slider).
+     *
+     * @return list<Tab>
+     */
+    private function ownTabs(Block $block): array
+    {
+        $tabs = [];
+        $loose = [];
+        $taken = null;
+        $own = $block->fields();
+        foreach (($block->nameField() !== null ? self::withoutField($own, $block->nameField(), $taken) : $own) as $item) {
+            if ($item instanceof Tab) { if ($item->children() !== []) { $tabs[] = $item; } } else { $loose[] = $item; }
+        }
+        if ($loose !== []) { array_unshift($tabs, Tab::make('content')->label(AdminLang::get('blocks.tab_content'))->columns(2)->schema($loose)); }
+        return $tabs;
+    }
+
+    /**
+     * The edit dialog (0.31): the block's own tabs, then Display (0.32.1):
+     * Show on, width, spacing, anchor and CSS class.
      */
     public function contentForm(Block $block, bool $readOnly = false): Form
     {
         $make = function () use ($block): Form {
-            $tabs = [];
-            $loose = [];
-            // A block's own "name" (Section, Columns, Slider) sits in the block panel instead.
-            $taken = null;
-            $own = $block->fields();
-            foreach (($block->nameField() !== null ? self::withoutField($own, $block->nameField(), $taken) : $own) as $item) {
-                if ($item instanceof Tab) { if ($item->children() !== []) { $tabs[] = $item; } } else { $loose[] = $item; }
+            $tabs = $this->ownTabs($block);
+            if ($tabs !== []) {
+                $display = array_values(array_filter(BlockSettings::fields($block), static fn (Field $field): bool => in_array($field->getName(), self::DISPLAY, true)));
+                usort($display, static fn (Field $a, Field $b): int => array_search($a->getName(), self::DISPLAY, true) <=> array_search($b->getName(), self::DISPLAY, true));
+                $tabs[] = Tab::make('display')->label(AdminLang::get('blocks.tab_display'))->columns(2)->schema($display);
             }
-            if ($loose !== []) { array_unshift($tabs, Tab::make('content')->label(AdminLang::get('blocks.tab_content'))->columns(2)->schema($loose)); }
             return (new Form())->columns(2)->schema($tabs === [] ? [] : [Tabs::make('block')->schema($tabs)]);
         };
         if ($readOnly) {
@@ -213,18 +232,21 @@ class Builder extends Field
     private array $settingsForms = [];
 
     /**
-     * The settings every block shares, for the block panel (0.31): name,
-     * note, status, dates and screens, then Advanced (folded).
+     * The block panel (0.31): name, note, status and dates. A block without a
+     * dialog (no fields of its own) also has Show on and Advanced (folded) here.
      */
     public function settingsForm(Block $block, bool $readOnly = false): Form
     {
-        $make = static function () use ($block): Form {
+        $make = function () use ($block): Form {
             $fields = [];
             foreach (BlockSettings::fields($block) as $item) { $fields[$item->getName()] = $item; }
             // The block's own name takes the place of the editors' one.
             $own = null;
             if ($block->nameField() !== null) { self::withoutField($block->fields(), $block->nameField(), $own); }
             if ($own instanceof Field) { $fields = [$own->getName() => $own] + array_diff_key($fields, ['_label' => true]); }
+            if ($this->hasContent($block)) {
+                return (new Form())->columns(1)->schema(array_values(array_diff_key($fields, array_flip(self::DISPLAY))));
+            }
             $advanced = array_values(array_intersect_key($fields, array_flip(['width', 'space_above', 'space_below', 'anchor', 'class'])));
             $main = array_values(array_diff_key($fields, array_flip(['width', 'space_above', 'space_below', 'anchor', 'class'])));
             return (new Form())->columns(1)->schema([...$main, Section::make('advanced')->label(AdminLang::get('blocks.advanced'))->columns(1)->collapsed()->schema($advanced)]);
@@ -267,9 +289,12 @@ class Builder extends Field
     }
 
     /** Whether a block has fields of its own (else it has nothing to edit in a dialog). */
+    /** @var array<string, bool> */
+    private array $hasContent = [];
+
     public function hasContent(Block $block): bool
     {
-        return $this->contentForm($block)->fields() !== [];
+        return $this->hasContent[$block::class] ??= array_filter($this->ownTabs($block), static fn (Tab $tab): bool => $tab->children() !== []) !== [];
     }
 
     /** @var array<string, list<string>> */

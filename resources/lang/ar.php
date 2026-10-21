@@ -1495,6 +1495,7 @@ return [
     'blocks.unknown_kind' => 'كتلة غير معروفة',
     'blocks.unknown_help' => 'هذه الكتلة («:type») لم تعد موجودة في هذا الموقع. تُركت كما هي؛ أزلها إن لم تعد بحاجة إليها.',
     'blocks.tab_content' => 'المحتوى',
+    'blocks.tab_display' => 'العرض',
     'blocks.tab_settings' => 'الإعدادات',
     'blocks.tab_slides' => 'الشرائح',
     'blocks.tab_cards' => 'البطاقات',

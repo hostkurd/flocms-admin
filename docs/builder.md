@@ -37,9 +37,8 @@ The field shows the page's **structure** on the left, one row per block, and the
 - **The panel**: **Edit content**, the same actions, then the settings every block shares:
   - **Name** and **Note**, for editors only, never printed on the website. The name replaces the block's first text in the structure. A Section, Columns and Slider show their own Name here instead; a Section's and a Slider's name also names it for screen readers on the website.
   - **Status** (Published, Draft) and **Show from / Show until**: a draft or a block outside its dates is not printed.
-  - **Show on** (all screens, desktop only, phones only).
-  - **Advanced** (folded): **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Anchor** (`team` makes `#team` link to the block) and an extra **CSS class**.
-- **Edit** (or a double click on the row, or Enter) opens the block's own fields in a dialog, in its tabs (a slider has **Content** and **Slides**), with **Done**. The dialog edits one block (0.32) and keeps one height while it is open: its tallest tab, 360–760 px; what doesn't fit scrolls inside it. Changes are kept until the page is saved. A new block opens there straight away; a new Slider opens on its Slides tab, and a block whose required list is still empty says "Nothing added yet" on its row. Options that matter for one choice only (a slider's pixel heights with Fixed, a Section's colour with a Colour background) appear when it is chosen.
+- **Display** (0.32.1), the last tab of the block's dialog: **Show on** (all screens, desktop only, phones only), **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Anchor** (`team` makes `#team` link to the block) and an extra **CSS class**. A block with no fields of its own has no dialog; it keeps these in the panel, under **Advanced**.
+- **Edit** (or a double click on the row, or Enter) opens the block's own fields in a dialog, in its tabs (a slider has **Content** and **Slides**), with **Done**. The dialog edits one block (0.32) and keeps one height while it is open: its tallest tab, 560–760 px (less on a short window); what doesn't fit scrolls inside it. Changes are kept until the page is saved. A new block opens there straight away; a new Slider opens on its Slides tab, and a block whose required list is still empty says "Nothing added yet" on its row. Options that matter for one choice only (a slider's pixel heights with Fixed, a Section's colour with a Colour background) appear when it is chosen.
 - **Add block** opens a dialog with search, categories (Media, Text, Layout, Marketing, Your site, and **Recently used**) and where the block will go ("After “Hero”", "In “2 columns”, column 2"). It closes with ×, Escape or a click outside. **+** on a row adds a block after it; **Add to column 2** or **Add a block inside** add one into a Section or Columns.
 - **Delete** asks first ("Delete “Services”? The 4 blocks inside it go too."), then **Undo** brings it back until you save.
 - **Copy and paste**: **Ctrl+C** on a row keeps the block (with the blocks inside it) in this browser; **Ctrl+V** on a row pastes it after that row, on this page or another, and **Add block** offers **Paste** where the block may sit. An HTML block pasted by someone without `blocks.html` arrives empty.
@@ -102,6 +101,15 @@ and the inside comes from **`views/blocks/<type>.html`** in the site, or the pac
 - The slider: the first slide loads at once, the others lazily; arrows, dots, swipe and arrow keys; autoplay pauses on hover, on focus and in a hidden tab, has a pause button, and is off with "reduce motion", which also keeps its videos still. Right-to-left pages slide the other way.
 - Videos that play by themselves (a Hero's background, a Video block with autoplay) stay still for visitors who ask for less motion (`motion.js`, 0.32); a Video block then shows its controls.
 - Quarters show two by two below 900 px (tablets).
+
+### Styling the blocks
+
+A site styles its blocks with its own CSS, in four ways, from the broadest:
+
+1. **The CSS variables** of `blocks.css`, set in the theme's stylesheet: `--flo-container`, `--flo-narrow`, `--flo-gutter`, `--flo-block-gap`, `--flo-radius`, `--flo-brand`, `--flo-brand-text`, `--flo-light`, `--flo-dark`, `--flo-muted`. They change every block at once, without touching the panel's files.
+2. **The classes every block prints**: the wrapper `flo-block flo-block-<type>` (`.flo-block-cards`, `.flo-block-hero`), its width (`is-boxed`, `is-full`), spacing (`flo-space-above-large`) and devices; inside, each template's own classes (`.flo-card`, `.flo-hero-heading`, `.flo-section.is-bg-dark`). Rules for these go in the site's stylesheet, loaded after `{!! blocks_assets() !!}`.
+3. **The CSS class** in a block's Display tab, for one block: `is-highlight` there, and `.flo-block.is-highlight { … }` in the stylesheet. Editors use the names developers give them; the anchor gives one block an `id` too.
+4. **The templates and styles themselves**: `php flo admin:blocks` copies them into the site (`views/blocks/`, `public/assets/flo-blocks/`), and from then on they are the site's to change, markup included. A site block from `php flo make:admin-block` has its own template and its `assets()` files.
 
 ## A slider on its own
 
