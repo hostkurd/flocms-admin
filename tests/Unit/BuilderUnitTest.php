@@ -29,6 +29,79 @@ final class BuilderUnitTest extends TestCase
         self::assertContains('width', $field->settingNames(BlockRegistry::find('heading')));
     }
 
+    public function testTheBlockPanelHasTheSharedSettingsAndTheDialogTheBlocksOwn(): void
+    {
+        $field = Builder::make('content');
+        $heading = BlockRegistry::find('heading');
+        self::assertSame(['_label', '_note', 'status', 'starts', 'ends', 'devices', 'width', 'space_above', 'space_below', 'anchor', 'class'], array_keys($field->settingsForm($heading)->fields()));
+        self::assertSame(['text', 'level'], array_values(array_intersect(['text', 'level'], array_keys($field->contentForm($heading)->fields()))));
+        self::assertNotContains('status', array_keys($field->contentForm($heading)->fields()));
+        // Section, Columns and Slider: their own name in the panel, in place of the panel's
+        $slider = BlockRegistry::find('slider');
+        self::assertSame('name', array_key_first($field->settingsForm($slider)->fields()));
+        self::assertNotContains('_label', array_keys($field->settingsForm($slider)->fields()));
+        self::assertNotContains('name', array_keys($field->contentForm($slider)->fields()));
+        self::assertContains('name', array_keys($field->blockForm($slider)->fields()), 'still checked and saved with the block');
+        self::assertTrue($field->hasContent($heading));
+    }
+
+    public function testAnEditorsNameComesFirstAndIsStoredAsASetting(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bh' => ['type' => 'heading', 'f' => ['text' => 'Our work', '_label' => 'Intro', '_note' => 'Ask Sara']],
+        ]]], self::LANGS);
+        $node = $field->lists($state)['_'][0];
+        self::assertSame('Intro', $node['settings']['_label']);
+        self::assertSame('Ask Sara', $node['settings']['_note']);
+        self::assertArrayNotHasKey('_label', $node['data']);
+        self::assertSame('Intro', $field->title($node));
+        $stored = json_decode((string) $field->dehydrate($state), true);
+        self::assertSame('Intro', $stored[0]['settings']['_label']);
+        self::assertSame('Our work', $field->title(['type' => 'heading', 'data' => ['text' => 'Our work'], 'settings' => ['_label' => '  ']]));
+    }
+
+    public function testEditorsNameAndNoteNeverReachTheWebsite(): void
+    {
+        $json = json_encode([['id' => 'bh', 'type' => 'heading', 'data' => ['text' => 'Hello', 'level' => 'h2'], 'settings' => ['_label' => 'Intro', '_note' => 'Ask Sara', 'anchor' => 'top']]]);
+        $data = blocks_data($json);
+        self::assertSame(['anchor' => 'top'], $data[0]['settings']);
+        $html = blocks($json);
+        self::assertStringContainsString('Hello', $html);
+        self::assertStringNotContainsString('Ask Sara', $html);
+        self::assertStringNotContainsString('Intro', $html);
+    }
+
+    public function testABlockMayNotNameItsOwnFieldsLikeThePanels(): void
+    {
+        $block = new class extends \FloCMS\Admin\Blocks\Block {
+            protected static string $type = 'clash';
+            public function fields(): array { return [\FloCMS\Admin\Form\Fields\TextInput::make('_label')]; }
+        };
+        $this->expectException(\LogicException::class);
+        Builder::make('content')->blockForm($block);
+    }
+
+    public function testTheEditorHasItsDialogsAndRowButtons(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bh' => ['type' => 'heading', 'f' => ['text' => 'Our work', 'status' => 'draft']],
+        ]]], self::LANGS);
+        $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        foreach (['data-builder-edit-dialog', 'data-builder-add-dialog', 'data-builder-confirm', 'data-builder-paste'] as $part) { self::assertStringContainsString($part, $html, $part); }
+        foreach (['edit', 'duplicate', 'toggle', 'remove', 'insert'] as $action) { self::assertStringContainsString('data-builder-action="' . $action . '"', $html, $action); }
+        self::assertStringContainsString('fa-builder-node is-draft', $html);
+        self::assertStringContainsString('aria-label="Show on the website"', $html);
+        self::assertStringContainsString('data-builder-fields="bh"', $html);
+        self::assertStringContainsString('data-builder-settings', $html);
+        // Read only: no Add, Delete or confirm; the dialog shows the fields
+        $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([Builder::make('content')->disabled()]));
+        self::assertStringContainsString('data-builder-edit-dialog', $html);
+        self::assertStringNotContainsString('data-builder-add-dialog', $html);
+        self::assertStringNotContainsString('data-builder-action="remove"', $html);
+    }
+
     public function testOnlyAndBlocksNarrowTheChoice(): void
     {
         self::assertSame(['section', 'columns'], array_keys(Builder::make('c')->only(['layout'])->available()));

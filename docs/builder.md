@@ -28,22 +28,26 @@ public function form(Form $form): Form
 
 ## The editor
 
-The field shows the page's **structure** on the left, one row per block, and the selected block's fields on the right.
+The field shows the page's **structure** on the left, one row per block, and the selected block's **panel** on the right. A block's own fields open in a dialog (0.31).
 
-- **Add block** opens a picker with search and categories (Media, Text, Layout, Marketing, Your site). **+** on a row adds a block after it; **Add to column 2** or **Add a block inside** add one into a Section or Columns.
-- **Drag** a block by its handle anywhere it may sit, or move it with **Alt + ↑ ↓**, and into the Section or Columns before it or out of its container with **Alt + → ←** (mirrored right to left). A Section sits at the top only; Columns sit at the top or in a Section; other blocks sit anywhere.
-- A block's own tabs come first (a slider has **Content** and **Slides**), then **Settings**, shared by every block:
-  - **Status** (Published, Draft) and **Show from / Show until**: a draft or a block outside its dates is not printed. The row says "Draft", "From 1 Nov" or "Ended".
-  - **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Show on** (all screens, desktop only, phones only).
-  - **Anchor** (`team` makes `#team` link to the block) and an extra **CSS class**.
-- **Duplicate**, **Remove** (with Undo until you save) and, with `->translatable()`, **Copy to another language**. An empty language offers **Copy all from English**.
+- **Rows** show the block's name, its kind, a short summary ("3 items" for a slider's slides) and its state ("Draft", "From 1 Nov", "Ended", "Desktop only", "Phones only"); a hidden block looks faded and a block changed since the page was opened has a dot. Pointing at a row (or reaching it with the keyboard) shows its buttons, icons with a name as a tooltip: **Edit**, **Duplicate**, **Copy to language** (with `->translatable()`), **Show / hide on the website** (Published ↔ Draft), **Delete** and **+** (add a block after it).
+- **The panel**: **Edit content**, the same actions, then the settings every block shares:
+  - **Name** and **Note**, for editors only, never printed on the website. The name replaces the block's first text in the structure. A Section, Columns and Slider show their own Name here instead.
+  - **Status** (Published, Draft) and **Show from / Show until**: a draft or a block outside its dates is not printed.
+  - **Show on** (all screens, desktop only, phones only).
+  - **Advanced** (folded): **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Anchor** (`team` makes `#team` link to the block) and an extra **CSS class**.
+- **Edit** (or a double click on the row, or Enter) opens the block's own fields in a dialog, in its tabs (a slider has **Content** and **Slides**), with **Previous / Next block** and **Done**. Changes are kept until the page is saved. A new block opens there straight away.
+- **Add block** opens a dialog with search, categories (Media, Text, Layout, Marketing, Your site, and **Recently used**) and where the block will go ("After “Hero”", "In “2 columns”, column 2"). It closes with ×, Escape or a click outside. **+** on a row adds a block after it; **Add to column 2** or **Add a block inside** add one into a Section or Columns.
+- **Delete** asks first ("Delete “Services”? The 4 blocks inside it go too."), then **Undo** brings it back until you save.
+- **Copy and paste**: **Ctrl+C** on a row keeps the block (with the blocks inside it) in this browser; **Ctrl+V** on a row pastes it after that row, on this page or another, and **Add block** offers **Paste** where the block may sit. An HTML block pasted by someone without `blocks.html` arrives empty.
+- **Keyboard**: Enter edits, Delete deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste; **Alt + ↑ ↓** moves a block, **Alt + → ←** moves it into the Section or Columns before it or out of its container (mirrored right to left). **Drag** a block by its handle anywhere it may sit. A Section sits at the top only; Columns sit at the top or in a Section; other blocks sit anywhere.
+- With `->translatable()`, **Copy to language** adds the block at the end of another language's list; an empty language offers **Copy all from English**.
 - Changing a Columns layout to fewer columns moves the blocks of the columns that go into the last one.
-- Errors open the block that has them; the message above the form says where: "Page content → Hero: Heading".
-- Without JavaScript every block's fields are shown one after another and the buttons send the form, as with [repeaters](repeaters.md).
-- A list inside a block (a slider's slides, cards) opens one item at a time: its fields fill the panel, with Back, "2 of 3" and the previous and next item.
+- Errors open the block that has them (in the dialog when the error is in its own fields); the message above the form says where: "Page content → Hero: Heading".
+- Without JavaScript every block's fields and settings are shown one after another and the buttons send the form, as with [repeaters](repeaters.md).
 - A form with a Builder opens as a page, never in a dialog (inside a [relation manager](relation-managers.md) it still opens over the parent's page).
 - **Large pages and `max_input_vars`**: every field of every block is sent with the form, about 20 per block (more with slides and cards), and PHP drops what goes past `max_input_vars` (1000 by default). The page notices a request cut short and saves nothing, with a message saying so. For pages of more than about 40 blocks set `max_input_vars = 5000` in `php.ini` or `.user.ini`; `admin:doctor` warns when it is lower than 3000.
-- On phones a block's fields open over the structure, with Close at the top.
+- On phones a tap on a row opens its panel over the structure (with Edit content and every action), and the dialogs fill the screen.
 
 `->translatable()` keeps **one list per language**, so each language may have different blocks. Without it there is one list for every language; the block fields themselves are never translatable.
 
@@ -138,8 +142,8 @@ final class LatestProjects extends Block
 }
 ```
 
-- `fields()` returns fields, or `Tab`s for several tabs. Any field works except uploads, many-to-many relations and another Builder; repeaters, media pickers and rich text work. Field names may not start with `_`.
-- `title(array $fields)` names the block in the structure (by default its first heading, name, text…), `defaultWidth()` (`'boxed'` or `'full'`), `allowedIn(string $parentType)` where it may sit, `assets()` the files in `public/assets/flo-blocks/` it needs, `cacheable()`, and `render(array $vars): ?string` to build the HTML in PHP instead of a template.
+- `fields()` returns fields, or `Tab`s for several tabs. Any field works except uploads, many-to-many relations and another Builder; repeaters, media pickers and rich text work. Field names may not start with `_` (the shared settings `_label` and `_note` use it).
+- `title(array $fields)` names the block in the structure (by default its first heading, name, text…; an editor's Name comes first), `nameField()` a field of its own shown as the panel's Name (Section, Columns and Slider return `'name'`), `defaultWidth()` (`'boxed'` or `'full'`), `allowedIn(string $parentType)` where it may sit, `assets()` the files in `public/assets/flo-blocks/` it needs, `cacheable()`, and `render(array $vars): ?string` to build the HTML in PHP instead of a template.
 - A block with the type of one of the panel's replaces it everywhere.
 - `BlockRenderer::rendering(fn (array $vars, Block $block): ?array => …)` runs before each block is printed, for sites that add data.
 - `php flo admin:doctor` checks the classes in `'blocks'` and the Builder columns' types.

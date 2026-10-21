@@ -132,7 +132,7 @@ final class BlockRenderer
             $extra = $block !== null ? $block->data($fields) : [];
             array_walk_recursive($extra, static function (mixed &$item): void { if (is_object($item) && method_exists($item, 'toArray')) { $item = $item->toArray(); } });
             $entry = ['id' => (string) ($node['id'] ?? ''), 'type' => (string) ($node['type'] ?? ''), 'fields' => $extra + $fields,
-                'settings' => is_array($node['settings'] ?? null) ? $node['settings'] : []];
+                'settings' => self::publicSettings($node['settings'] ?? null)];
             if ((int) ($node['column'] ?? 0) > 0) { $entry['column'] = (int) $node['column']; }
             if (is_array($node['children'] ?? null)) { $entry['children'] = self::data($node['children'], $lang); }
             $out[] = $entry;
@@ -199,7 +199,7 @@ final class BlockRenderer
         $fields = self::withDefaults($block, $fields);
         $vars = $block->data($fields) + $fields;
         $info = [
-            'id' => (string) ($node['id'] ?? ''), 'type' => $type, 'settings' => $settings, 'lang' => $lang,
+            'id' => (string) ($node['id'] ?? ''), 'type' => $type, 'settings' => self::publicSettings($settings), 'lang' => $lang,
             'anchor' => BlockSettings::anchor((string) ($settings['anchor'] ?? '')),
         ];
         if ($block instanceof Columns) {
@@ -225,6 +225,13 @@ final class BlockRenderer
 
     /** @var array<string, array<string, mixed>> */
     private static array $defaults = [];
+
+    /** A block's settings for the website: without the editors' own (_label, _note). */
+    private static function publicSettings(mixed $settings): array
+    {
+        if (!is_array($settings)) { return []; }
+        return array_filter($settings, static fn (mixed $key): bool => !is_string($key) || !str_starts_with($key, '_'), ARRAY_FILTER_USE_KEY);
+    }
 
     /**
      * A block's stored fields with every field present: missing ones get their

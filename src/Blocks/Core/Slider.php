@@ -27,6 +27,8 @@ final class Slider extends Block
 
     public const MAX_SLIDES = 20;
 
+    public function nameField(): ?string { return 'name'; }
+
     public function fields(): array
     {
         $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);

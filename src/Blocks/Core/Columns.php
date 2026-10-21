@@ -28,6 +28,8 @@ final class Columns extends Block
         '33-33-33' => [4, 4, 4], '25-50-25' => [3, 6, 3], '25-25-25-25' => [3, 3, 3, 3],
     ];
 
+    public function nameField(): ?string { return 'name'; }
+
     public function fields(): array
     {
         $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);
