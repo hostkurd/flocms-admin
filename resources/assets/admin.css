@@ -292,6 +292,7 @@ body:has(> .fa-panel){margin:0}
 
 /* Translatable fields: input + language badge */
 .fa-field{position:relative}
+.fa-field[hidden]{display:none !important}
 .fa-input-row{position:relative;display:block}
 /* The badge sits inside the input's end edge (top corner for long text). */
 /* The input may have another direction than the page (English text on an Arabic page): reserve the badge's room on the page's side. */
@@ -1102,6 +1103,7 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-node.is-draft > .fa-builder-row > :is(.fa-builder-kind-icon,.fa-builder-row-main){opacity:.5}
 .fa-builder-row-summary{flex:0 1000 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fa-faint)}
 .fa-builder-row-summary:empty{display:none}
+.fa-builder-row-summary.is-empty{color:var(--fa-warning)}
 .fa-builder-changed{flex:none;width:7px;height:7px;border-radius:50%;background:var(--fa-primary)}
 .fa-builder-row .fa-builder-copy-menu{position:absolute;inset-block-start:calc(100% + 4px);z-index:20;min-width:220px}
 .fa-builder-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0;list-style:none}

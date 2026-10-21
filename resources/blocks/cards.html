@@ -1,4 +1,4 @@
-@php /* Cards block (flocms-admin 0.29). */ $list = repeater_items($cards ?? []); @endphp
+@php /* Cards block (flocms-admin 0.29; 0.32: the whole card is the link, a button label, new tab). */ $list = repeater_items($cards ?? []); @endphp
 @if($list)
 <div class="flo-cards">
     @if($heading !== '')
@@ -6,21 +6,24 @@
     @endif
     <ul class="flo-cards-grid" style="--flo-cards-columns: {{ max(2, min(4, (int) $columns)) }}">
         @foreach($list as $card)
-        @php $item = media($card['media'] ?? null); $url = (string) ($card['link'] ?? ''); @endphp
-        <li class="flo-card">
+        @php $item = media($card['media'] ?? null); $url = (string) ($card['link'] ?? ''); $more = (string) ($card['button'] ?? ''); @endphp
+        <li class="flo-card{{ $url !== '' ? ' has-link' : '' }}">
             @if($item)
             <div class="flo-card-media">{!! $item->img(['sizes' => '(max-width: 640px) 100vw, 33vw']) !!}</div>
             @endif
             <div class="flo-card-body">
                 <h3 class="flo-card-title">
                     @if($url !== '')
-                    <a href="{{ $url }}">{{ $card['title'] ?? '' }}</a>
+                    <a class="flo-card-link" href="{{ $url }}"{!! ($card['new_tab'] ?? '') === '1' ? ' target="_blank" rel="noopener"' : '' !!}>{{ $card['title'] ?? '' }}</a>
                     @else
                     {{ $card['title'] ?? '' }}
                     @endif
                 </h3>
                 @if(($card['text'] ?? '') !== '')
                 <p>{{ $card['text'] }}</p>
+                @endif
+                @if($more !== '' && $url !== '')
+                <span class="flo-card-more" aria-hidden="true">{{ $more }}</span>
                 @endif
             </div>
         </li>

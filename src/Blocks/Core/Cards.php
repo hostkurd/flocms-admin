@@ -8,6 +8,7 @@ use FloCMS\Admin\Form\Fields\MediaPicker;
 use FloCMS\Admin\Form\Fields\Repeater;
 use FloCMS\Admin\Form\Fields\Select;
 use FloCMS\Admin\Form\Fields\TextInput;
+use FloCMS\Admin\Form\Fields\Toggle;
 use FloCMS\Admin\Form\Fields\Textarea;
 use FloCMS\Admin\Form\Layout\Tab;
 use FloCMS\Admin\Support\AdminLang;
@@ -34,7 +35,9 @@ final class Cards extends Block
                     MediaPicker::make('media')->label($t('image'))->columnSpan('full'),
                     TextInput::make('title')->label($t('card_title'))->required()->rules('max:160')->columnSpan('full'),
                     Textarea::make('text')->label($t('text'))->rows(3)->rules('max:600')->columnSpan('full'),
-                    TextInput::make('link')->label($t('link'))->rules('max:500')->columnSpan('full'),
+                    TextInput::make('link')->label($t('link'))->help($t('card_link_help'))->rules('max:500')->columnSpan('full'),
+                    TextInput::make('button')->label($t('button_text'))->help($t('card_button_help'))->rules('max:60'),
+                    Toggle::make('new_tab')->label($t('new_tab')),
                 ])->itemLabel('title')->addLabel($t('card_add'))->collapsed()->minItems(1)->maxItems(24),
             ]),
         ];

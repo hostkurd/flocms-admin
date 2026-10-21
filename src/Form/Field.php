@@ -34,6 +34,7 @@ abstract class Field
     protected int|string $columnSpan = 1;
     protected bool $hiddenFromActivity = false;
     private ?array $visibleCondition = null;
+    private ?array $shownCondition = null;
     private ?array $requiredCondition = null;
     private bool $visible = true;
     private bool $omitted = false;
@@ -55,6 +56,15 @@ abstract class Field
         foreach ((array) $values as $value) { if (!is_string($value)) { throw new InvalidArgumentException('Condition values must be strings.'); } }
         return [$field, array_values((array) $values)];
     }
+    /**
+     * Shown only while another field of the same form has one of these values (0.32),
+     * in the browser and without reloading the form: unlike visibleWhen(), the field
+     * is always on the page and sent, and its rules always apply (give it a valid
+     * default). Meant for options that only matter for one choice, in block dialogs.
+     */
+    public function shownWhen(string $field, string|array $values): static { $this->shownCondition = self::condition($field, $values); return $this; }
+    /** @return array{0: string, 1: list<string>}|null */
+    public function getShownWhen(): ?array { return $this->shownCondition; }
     public function dependencies(): array { return array_values(array_unique(array_filter([$this->visibleCondition[0] ?? null, $this->requiredCondition[0] ?? null]))); }
     public function isVisible(): bool { return $this->visible; }
     public function resolve(array $state): static

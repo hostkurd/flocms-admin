@@ -24,7 +24,7 @@ final class Columns extends Block
 
     /** layout => the columns' shares of 12 */
     public const LAYOUTS = [
-        '50-50' => [6, 6], '67-33' => [8, 4], '33-67' => [4, 8], '25-75' => [3, 9],
+        '50-50' => [6, 6], '67-33' => [8, 4], '33-67' => [4, 8], '25-75' => [3, 9], '75-25' => [9, 3], '40-60' => [5, 7], '60-40' => [7, 5],
         '33-33-33' => [4, 4, 4], '25-50-25' => [3, 6, 3], '25-25-25-25' => [3, 3, 3, 3],
     ];
 
@@ -33,7 +33,7 @@ final class Columns extends Block
     public function fields(): array
     {
         $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);
-        $labels = ['50-50' => '50 / 50', '67-33' => '67 / 33', '33-67' => '33 / 67', '25-75' => '25 / 75',
+        $labels = ['50-50' => '50 / 50', '67-33' => '67 / 33', '33-67' => '33 / 67', '25-75' => '25 / 75', '75-25' => '75 / 25', '40-60' => '40 / 60', '60-40' => '60 / 40',
             '33-33-33' => $t('layout_thirds'), '25-50-25' => '25 / 50 / 25', '25-25-25-25' => $t('layout_quarters')];
         return [
             TextInput::make('name')->label($t('section_name'))->help($t('section_name_help'))->rules('max:120')->columnSpan('full'),
@@ -41,7 +41,7 @@ final class Columns extends Block
             Select::make('gap')->label($t('columns_gap'))->options(['none' => $t('space_none'), 'small' => $t('space_small'), 'medium' => $t('space_medium'), 'large' => $t('space_large')])->default('medium')->segmented()->columnSpan('full'),
             Select::make('align')->label($t('columns_align'))->options(['top' => $t('align_top'), 'middle' => $t('align_middle'), 'bottom' => $t('align_bottom'), 'stretch' => $t('align_stretch')])->default('top')->segmented()->columnSpan('full'),
             Toggle::make('stack')->label($t('columns_stack'))->help($t('columns_stack_help'))->default('1')->columnSpan('full'),
-            Toggle::make('reverse')->label($t('columns_reverse'))->help($t('columns_reverse_help'))->columnSpan('full'),
+            Toggle::make('reverse')->label($t('columns_reverse'))->help($t('columns_reverse_help'))->shownWhen('stack', '1')->columnSpan('full'),
         ];
     }
 

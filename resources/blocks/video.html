@@ -1,10 +1,10 @@
-@php /* Video block (flocms-admin 0.29). */ $item = media($video ?? null); $cover = media($poster ?? null); @endphp
+@php /* Video block (flocms-admin 0.29; 0.32: Vimeo autoplay, reduced motion). */ $item = media($video ?? null); $cover = media($poster ?? null); @endphp
 @if($item || $embed)
 <figure class="flo-video">
     @if($item)
-    {!! $item->video(['poster' => $cover ? $cover->url() : null, 'autoplay' => $autoplay === '1', 'muted' => $autoplay === '1', 'loop' => $loop === '1']) !!}
+    {!! $item->video(['poster' => $cover ? $cover->url() : null, 'autoplay' => $autoplay === '1', 'muted' => $autoplay === '1', 'loop' => $loop === '1', 'data-flo-motion' => $autoplay === '1' ? 'controls' : null]) !!}
     @else
-    <div class="flo-video-frame"><iframe src="{{ $embed . ($autoplay === '1' ? '?autoplay=1&mute=1' : '') }}" title="{{ $caption !== '' ? $caption : 'Video' }}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+    <div class="flo-video-frame"><iframe src="{{ $embed . ($autoplay === '1' ? ($autoplay_query ?? '?autoplay=1&mute=1') : '') }}" title="{{ $caption !== '' ? $caption : \FloCMS\Admin\Support\AdminLang::get('blocks.video') }}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
     @endif
     @if($caption !== '')
     <figcaption>{{ $caption }}</figcaption>

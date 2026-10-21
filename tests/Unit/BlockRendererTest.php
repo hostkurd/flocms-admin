@@ -47,9 +47,43 @@ final class BlockRendererTest extends TestCase
         self::assertStringContainsString('flo-section-inner is-narrow', $html);
         self::assertMatchesRegularExpression('/--flo-column-share: 8">\s*<div class="flo-block flo-block-rich-text[^"]*"><div class="flo-rich-text"><p>Left<\/p>/', $html);
         self::assertMatchesRegularExpression('/--flo-column-share: 4">.*Right.*Lost column/s', $html, 'a block of a column that went is in the last one');
-        self::assertStringContainsString('flo-columns is-gap-medium is-align-top is-stacking', $html, 'toggles stored as 1/0 and defaults filled in');
+        self::assertStringContainsString('flo-columns is-count-2 is-gap-medium is-align-top is-stacking', $html, 'toggles stored as 1/0 and defaults filled in');
         self::assertStringContainsString('<a class="flo-button" href="/contact">Contact</a>', $html);
         self::assertSame(['heading', 'section', 'columns', 'rich_text', 'call_to_action'], BlockRenderer::printed());
+    }
+
+    public function testEmptyContainersAndSlidersPrintNothing(): void
+    {
+        $page = [
+            ['id' => 'b1', 'type' => 'section', 'data' => ['background' => 'dark', 'name' => 'Empty'], 'children' => []],
+            ['id' => 'b2', 'type' => 'columns', 'data' => ['layout' => '50-50'], 'children' => []],
+            ['id' => 'b3', 'type' => 'slider', 'data' => ['slides' => []]],
+            ['id' => 'b4', 'type' => 'section', 'data' => ['name' => 'Hidden only'], 'children' => [['id' => 'b5', 'type' => 'heading', 'data' => ['text' => 'Draft'], 'settings' => ['status' => 'draft']]]],
+        ];
+        self::assertSame('', trim(blocks(json_encode($page))));
+    }
+
+    public function testTheBlocksNewOptionsReachTheWebsite(): void
+    {
+        $page = [
+            ['id' => 'b1', 'type' => 'hero', 'data' => ['heading' => 'Hi', 'level' => 'h2', 'height_phone' => 'small', 'button' => 'Go', 'link' => '/go', 'new_tab' => '1']],
+            ['id' => 'b2', 'type' => 'heading', 'data' => ['text' => 'Title', 'align' => 'end', 'subtitle' => 'A line under it']],
+            ['id' => 'b3', 'type' => 'columns', 'data' => ['layout' => '25-25-25-25'], 'children' => [['id' => 'b4', 'type' => 'heading', 'data' => ['text' => 'One']]]],
+            ['id' => 'b5', 'type' => 'section', 'data' => ['background' => 'colour', 'colour' => '#ffeecc', 'tone' => 'dark'], 'children' => [['id' => 'b6', 'type' => 'heading', 'data' => ['text' => 'In']]]],
+            ['id' => 'b7', 'type' => 'cards', 'data' => ['cards' => [['title' => 'A', 'link' => '/a', 'button' => 'Read more']]]],
+            ['id' => 'b8', 'type' => 'video', 'data' => ['url' => 'https://vimeo.com/123456', 'autoplay' => '1']],
+        ];
+        $html = blocks(json_encode($page));
+        self::assertStringContainsString('<h2 class="flo-hero-heading">Hi</h2>', $html);
+        self::assertStringContainsString('flo-hero is-large is-align-start is-phone-small', $html);
+        self::assertStringContainsString('href="/go" target="_blank" rel="noopener"', $html);
+        self::assertStringContainsString('<p class="flo-subtitle is-align-end">A line under it</p>', $html);
+        self::assertStringContainsString('flo-columns is-count-4', $html);
+        self::assertStringContainsString('flo-section is-bg-colour is-tone-dark', $html);
+        self::assertStringContainsString('class="flo-card has-link"', $html);
+        self::assertStringContainsString('<span class="flo-card-more" aria-hidden="true">Read more</span>', $html);
+        self::assertStringContainsString('player.vimeo.com/video/123456?autoplay=1&amp;muted=1', $html);
+        self::assertMatchesRegularExpression('/(blocks-motion|flo-blocks\/motion)[^"]*\.js/', BlockRenderer::assets(), 'reduced motion for the hero and the video');
     }
 
     public function testListsPerLanguageFallBackToTheDefaultLanguage(): void

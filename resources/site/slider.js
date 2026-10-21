@@ -7,6 +7,10 @@
     var slides = [].slice.call(slider.querySelectorAll('.flo-slide'));
     var dots = [].slice.call(slider.querySelectorAll('[data-flo-dot]'));
     var pause = slider.querySelector('[data-flo-pause]');
+    // Less motion asked for (0.32): no video plays by itself, even a single slide's.
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      [].forEach.call(slider.querySelectorAll('video[data-flo-video]'), function (video) { video.autoplay = false; video.pause(); });
+    }
     if (slides.length < 2) return;
     var current = 0, timer = null, held = false, stopped = false;
     var interval = Math.max(3000, parseInt(slider.dataset.interval, 10) || 6000);
@@ -21,7 +25,7 @@
         var img = slide.querySelector('img[loading="lazy"]');
         if (img && Math.abs(i - index) <= 1) img.loading = 'eager';
         var video = slide.querySelector('video[data-flo-video]');
-        if (video) { if (i === index) { video.preload = 'auto'; var p = video.play(); if (p && p.catch) p.catch(function () {}); } else video.pause(); }
+        if (video) { if (i === index && !reduced) { video.preload = 'auto'; var p = video.play(); if (p && p.catch) p.catch(function () {}); } else video.pause(); }
       });
       dots.forEach(function (dot, i) { if (i === index) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current'); });
       current = index;

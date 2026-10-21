@@ -166,6 +166,13 @@ final class FormRenderer
                 }
                 if ($field instanceof Hidden) { $html .= $field->renderControl($this->prefix . 'f-' . $field->getName(), $this->inputName($field->getName()), $this->stringState($field)); continue; }
                 $rendered = $this->field($field, $columns);
+                if (($shown = $field->getShownWhen()) !== null) {
+                    // shownWhen() (0.32): forms.ts shows it while the other field has one of the values.
+                    [$other, $values] = $shown;
+                    $current = $this->state[$other] ?? '';
+                    $hidden = !in_array(is_string($current) ? $current : '', $values, true);
+                    $rendered = (string) preg_replace('/data-field=/', 'data-shown-when="' . Str::e($this->inputName($other)) . '" data-shown-values="' . Str::e(implode(' ', $values)) . '"' . ($hidden ? ' hidden' : '') . ' data-field=', $rendered, 1);
+                }
                 if (in_array($field->getName(), $live, true)) { $rendered = str_replace('data-field=', 'data-admin-live data-field=', $rendered); }
                 $html .= $rendered; continue;
             }

@@ -756,6 +756,10 @@ class Builder extends Field
                             }
                             $errors += $check($field, $value, $prefix . $name);
                         }
+                        // Checks across fields (0.32): a button and its link, a video's source…
+                        foreach ($block->check(array_map(static fn ($value): string => is_string($value) ? $value : '', $state)) as $where => $message) {
+                            $errors[$prefix . $where] ??= $message;
+                        }
                     }
                     $walk($node['children'] ?? []);
                 }

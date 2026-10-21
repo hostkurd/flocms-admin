@@ -1,10 +1,10 @@
-@php /* Image block (flocms-admin 0.29). */ $item = media($media ?? null); @endphp
+@php /* Image block (flocms-admin 0.29; 0.32: alt text, new tab). */ $item = media($media ?? null); $attrs = trim((string) ($alt ?? '')) !== '' ? ['alt' => trim((string) $alt)] : []; @endphp
 @if($item)
 <figure class="flo-image is-{{ $size }}">
     @if($link !== '')
-    <a href="{{ $link }}">{!! $item->html() !!}</a>
+    <a href="{{ $link }}"{!! ($new_tab ?? '') === '1' ? ' target="_blank" rel="noopener"' : '' !!}>{!! $item->html($attrs) !!}</a>
     @else
-    {!! $item->html() !!}
+    {!! $item->html($attrs) !!}
     @endif
     @if($caption !== '')
     <figcaption>{{ $caption }}</figcaption>

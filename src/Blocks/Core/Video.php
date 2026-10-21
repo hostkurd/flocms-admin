@@ -46,6 +46,20 @@ final class Video extends Block
 
     public function data(array $fields): array
     {
-        return ['embed' => self::embedUrl((string) ($fields['url'] ?? ''))];
+        $embed = self::embedUrl((string) ($fields['url'] ?? ''));
+        // Autoplay in an embed needs sound off: YouTube's "mute", Vimeo's "muted" (0.32).
+        $autoplay = $embed !== null && str_contains($embed, 'vimeo.com') ? '?autoplay=1&muted=1' : '?autoplay=1&mute=1';
+        return ['embed' => $embed, 'autoplay_query' => $autoplay];
+    }
+
+    public function assets(): array { return ['motion']; }
+
+    /** A file or a YouTube or Vimeo address (0.32). */
+    public function check(array $fields): array
+    {
+        $url = trim((string) ($fields['url'] ?? ''));
+        if ($url !== '' && self::embedUrl($url) === null) { return ['url' => AdminLang::get('blocks.video_url_unknown')]; }
+        if ($url === '' && trim((string) ($fields['video'] ?? '')) === '' ) { return ['video' => AdminLang::get('blocks.video_missing')]; }
+        return [];
     }
 }

@@ -214,7 +214,10 @@ function showState(list: HTMLElement, node: HTMLElement): void {
   const repeater = fields?.querySelector<HTMLElement>('[data-repeater]');
   if (summary && repeater) {
     const count = repeater.querySelectorAll(':scope > [data-repeater-items] > [data-repeater-item]').length;
-    summary.textContent = count > 0 ? text(builder.dataset.summaryItems, { count: String(count) }) : '';
+    // A list the block needs (a slider's slides) that is still empty says so (0.32).
+    const empty = count === 0 && Number(repeater.dataset.min || 0) > 0;
+    summary.textContent = count > 0 ? text(builder.dataset.summaryItems, { count: String(count) }) : empty ? builder.dataset.summaryEmpty || '' : '';
+    summary.classList.toggle('is-empty', empty);
   }
 }
 
@@ -296,7 +299,17 @@ function add(list: HTMLElement, type: string, target: Target): void {
   markChanged(made.node);
   const id = made.node.dataset.builderNode || '';
   // A new block opens to be filled in (one without fields of its own shows its settings).
-  if (fieldsOf(list, id)) openEditor(list, id);
+  if (fieldsOf(list, id)) {
+    openEditor(list, id);
+    // A list it needs that is empty (a slider's slides): its tab, with Add ready (0.32).
+    const needed = [...(fieldsOf(list, id)?.querySelectorAll<HTMLElement>('[data-repeater]') ?? [])]
+      .find(repeater => Number(repeater.dataset.min || 0) > 0 && !repeater.querySelector(':scope > [data-repeater-items] > [data-repeater-item]'));
+    const panel = needed?.closest<HTMLElement>('[data-admin-tab-panel]');
+    if (needed && panel) {
+      document.querySelector<HTMLElement>(`[data-admin-tab="${CSS.escape(panel.id)}"]`)?.click();
+      needed.querySelector<HTMLElement>('[data-repeater-add]')?.focus();
+    }
+  }
   else { select(list, id); made.node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus(); }
 }
 

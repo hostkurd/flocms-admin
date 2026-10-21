@@ -1,26 +1,26 @@
-@php /* Hero block (flocms-admin 0.29). */ $item = media($media ?? null); @endphp
-<div class="flo-hero is-{{ $height }} is-align-{{ $align }}" style="--flo-hero-overlay: {{ max(0, min(90, (int) $overlay)) / 100 }}">
+@php /* Hero block (flocms-admin 0.29; 0.32: heading level, height on phones, new tab, reduced motion). */ $item = media($media ?? null); $tag = ($level ?? 'h1') === 'h2' ? 'h2' : 'h1'; $phone = in_array($height_phone ?? 'same', ['medium', 'small'], true) ? ' is-phone-' . $height_phone : ''; $target = ($new_tab ?? '') === '1' ? ' target="_blank" rel="noopener"' : ''; @endphp
+<div class="flo-hero is-{{ $height }} is-align-{{ $align }}{{ $phone }}" style="--flo-hero-overlay: {{ max(0, min(90, (int) $overlay)) / 100 }}">
     @if($item)
     <div class="flo-hero-media">
         @if($item->isVideo())
-        {!! $item->video(['controls' => false, 'muted' => true, 'loop' => true, 'autoplay' => true]) !!}
+        {!! $item->video(['controls' => false, 'muted' => true, 'loop' => true, 'autoplay' => true, 'data-flo-motion' => '1']) !!}
         @else
         {!! $item->img(['loading' => 'eager', 'fetchpriority' => 'high', 'sizes' => '100vw']) !!}
         @endif
     </div>
     @endif
     <div class="flo-hero-text">
-        <h1 class="flo-hero-heading">{{ $heading }}</h1>
+        <{{ $tag }} class="flo-hero-heading">{{ $heading }}</{{ $tag }}>
         @if($text !== '')
         <p class="flo-hero-lead">{{ $text }}</p>
         @endif
         @if(($button !== '' && $link !== '') || ($button2 !== '' && $link2 !== ''))
         <div class="flo-buttons">
             @if($button !== '' && $link !== '')
-            <a class="flo-button" href="{{ $link }}">{{ $button }}</a>
+            <a class="flo-button" href="{{ $link }}"{!! $target !!}>{{ $button }}</a>
             @endif
             @if($button2 !== '' && $link2 !== '')
-            <a class="flo-button is-secondary" href="{{ $link2 }}">{{ $button2 }}</a>
+            <a class="flo-button is-secondary" href="{{ $link2 }}"{!! $target !!}>{{ $button2 }}</a>
             @endif
         </div>
         @endif

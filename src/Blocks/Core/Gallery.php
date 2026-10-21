@@ -15,7 +15,7 @@ final class Gallery extends Block
 {
     protected static string $type = 'gallery';
     protected static string $category = 'media';
-    protected static string $icon = 'grid';
+    protected static string $icon = 'gallery';
     protected static ?string $label = 'blocks.gallery';
     protected static ?string $description = 'blocks.gallery_help';
 

@@ -421,6 +421,42 @@ final class BuilderUnitTest extends TestCase
         }
     }
 
+    public function testChecksAcrossABlocksFields(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bh' => ['type' => 'hero', 'f' => ['heading' => 'Hi', 'button' => 'Go', 'link2' => '/two']],
+            'bs' => ['type' => 'slider', 'f' => ['slides' => ['k1' => ['media' => '1', 'button' => 'More'], 'k2' => ['media' => '2', 'link' => '/x', 'button' => 'Fine']]]],
+            'bv' => ['type' => 'video', 'f' => []],
+            'bw' => ['type' => 'video', 'f' => ['url' => 'https://example.com/clip.mp4']],
+            'bok' => ['type' => 'video', 'f' => ['url' => 'https://youtu.be/abcdefghijk']],
+        ]]], self::LANGS);
+        $errors = $field->validateBlocks($state, static fn (): array => []);
+        self::assertStringContainsString('Add a link', $errors['content._.bh.link'] ?? '');
+        self::assertStringContainsString('Add the button', $errors['content._.bh.button2'] ?? '');
+        self::assertStringContainsString('Add a link', $errors['content._.bs.slides.0.link'] ?? '');
+        self::assertArrayNotHasKey('content._.bs.slides.1.link', $errors);
+        self::assertStringContainsString('Choose a video file', $errors['content._.bv.video'] ?? '');
+        self::assertStringContainsString('YouTube and Vimeo', $errors['content._.bw.url'] ?? '');
+        self::assertSame([], array_filter(array_keys($errors), static fn (string $key): bool => str_contains($key, '.bok.')));
+    }
+
+    public function testFieldsShownForOneChoiceAreAlwaysOnThePage(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bs' => ['type' => 'slider', 'f' => ['height' => 'screen', 'height_px' => '700', 'autoplay' => '1']],
+            'bf' => ['type' => 'slider', 'f' => ['height' => 'fixed', 'autoplay' => '0']],
+        ]]], self::LANGS);
+        $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        // Full screen: the pixel heights are there but hidden; Fixed: shown. The interval follows Play automatically.
+        self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bs\]\[f\]\[height\]" data-shown-values="fixed" hidden data-field="height_px"/', $html);
+        self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bf\]\[f\]\[height\]" data-shown-values="fixed" data-field="height_px"/', $html);
+        self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bf\]\[f\]\[autoplay\]" data-shown-values="1" hidden data-field="interval"/', $html);
+        // Hidden or not, a field keeps its value
+        self::assertSame('700', $field->lists($state)['_'][0]['data']['height_px']);
+    }
+
     public function testACutRequestIsNotSaved(): void
     {
         $field = Builder::make('content');

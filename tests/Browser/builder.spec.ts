@@ -392,6 +392,40 @@ test('the ⋯ menu repeats the actions and moves a block to any place it may go 
   await expect(menu).toBeHidden();
 });
 
+test('blocks: options shown for one choice, a new slider opens on its slides, a button needs its link (0.32)', async ({ page }) => {
+  await page.goto('/en/admin/landings/edit/1');
+  // Height (px) and the interval only show when they matter, without reloading the form
+  await row(page, 'bslider1').locator(':scope > .fa-builder-row .fa-builder-row-main').dblclick();
+  const px = editor(page).locator('[data-field="height_px"]');
+  const interval = editor(page).locator('[data-field="interval"]');
+  await expect(px).toBeHidden();
+  await expect(interval).toBeVisible();
+  await editor(page).locator('[data-field="height"] input[value="fixed"]').check({ force: true });
+  await expect(px).toBeVisible();
+  await expect(editor(page).locator('[data-field="height_phone"]')).toBeVisible();
+  await editor(page).locator('[data-field="autoplay"] input[type="checkbox"]').uncheck({ force: true });
+  await expect(interval).toBeHidden();
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  // A new slider: its Slides tab, with Add slide ready; its row says it still needs some
+  await list(page).locator('.fa-builder-add-main > summary').click();
+  await adder(page).locator('[data-builder-choice="slider"]').click();
+  await expect(editor(page)).toBeVisible();
+  await expect(editor(page).getByRole('tab', { name: 'Slides' })).toHaveAttribute('aria-selected', 'true');
+  await expect(editor(page).locator('[data-repeater-add]')).toBeFocused();
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await expect(top(page).last().locator(':scope > .fa-builder-row [data-builder-summary]')).toHaveText('Nothing added yet');
+  await top(page).last().locator(':scope > .fa-builder-row').hover();
+  await top(page).last().locator(':scope > .fa-builder-row [data-builder-action="remove"]').click();
+  await confirm(page).getByRole('button', { name: 'Delete' }).click();
+  // A call to action's button without its link: the error opens the block
+  await row(page, 'bcta1').locator(':scope > .fa-builder-row .fa-builder-row-main').dblclick();
+  await editor(page).locator('[name$="[f][link]"]').fill('');
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(editor(page)).toBeVisible();
+  await expect(editor(page).locator('[data-field="link"]')).toContainText('required');
+});
+
 test('a block\'s name and note are for editors only', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
   await row(page, 'bhead1').locator('[data-builder-select]').first().click();
