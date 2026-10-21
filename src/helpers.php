@@ -235,3 +235,55 @@ if (!function_exists('slider')) {
         return \FloCMS\Admin\Blocks\BlockRenderer::slider($slides, $options);
     }
 }
+
+if (!function_exists('home_page')) {
+    /**
+     * The page set as home page (0.30), when it is published, else null. The
+     * site's home controller starts with it:
+     *
+     *     public function index() { if ($page = home_page()) { return $page->response(); } … }
+     */
+    function home_page(?string $lang = null): ?\FloCMS\Admin\Pages\Page
+    {
+        return \FloCMS\Admin\Pages\Pages::home($lang);
+    }
+}
+
+if (!function_exists('current_page')) {
+    /** The page being shown (0.30), or null on the site's other pages. */
+    function current_page(): ?\FloCMS\Admin\Pages\Page
+    {
+        return \FloCMS\Admin\Pages\Pages::current();
+    }
+}
+
+if (!function_exists('page_meta')) {
+    /**
+     * The <head> tags of the page being shown (0.30): title, description,
+     * canonical, hreflang, Open Graph, robots. '' on the site's other pages.
+     *
+     *     <head> … {!! page_meta() !!} </head>
+     */
+    function page_meta(?\FloCMS\Admin\Pages\Page $page = null): string
+    {
+        $page ??= \FloCMS\Admin\Pages\Pages::current();
+        return $page === null ? '' : $page->meta();
+    }
+}
+
+if (!function_exists('pages_menu')) {
+    /**
+     * The published pages marked "Show in menu" (0.30), in their order and
+     * nesting, for the site's header:
+     *
+     *     @foreach(pages_menu() as $item)
+     *         <a href="{{ $item['url'] }}"{!! $item['current'] ? ' aria-current="page"' : '' !!}>{{ $item['title'] }}</a>
+     *     @endforeach
+     *
+     * @return list<array{id: int, title: string, url: string, current: bool, children: list<array<string, mixed>>}>
+     */
+    function pages_menu(?string $lang = null): array
+    {
+        return \FloCMS\Admin\Pages\Pages::menu($lang);
+    }
+}

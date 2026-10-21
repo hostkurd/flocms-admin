@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.29.0';
+    public const VERSION = '0.30.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -45,6 +45,10 @@ final class Admin
             App::allowGuestAdminActions('mailings', ['admin_unsubscribe'], \FloCMS\Admin\Http\MailingsController::class);
         }
         \FloCMS\Admin\Auth\PasswordStamp::boot();
+        // Pages (0.30, flocms-core 2.6+): addresses no controller answers may be pages.
+        if (method_exists(App::class, 'fallbackUsing')) {
+            App::fallbackUsing(static fn (string $path, \FloCMS\Core\Http\Request $request): ?\FloCMS\Core\Http\Response => \FloCMS\Admin\Pages\PageFallback::handle($path, $request));
+        }
         if (Config::get('auth.login_view') === null) { Config::set('auth.login_view', static fn (): ?string => \FloCMS\Admin\Auth\LoginView::render()); }
 
         // Where the skeleton's /admin page sends logged-in users (skeleton 1.8+).
@@ -115,6 +119,10 @@ final class Admin
         // Roles and permissions (0.21); a site resource with that slug keeps it.
         if ($controller === 'roles' && $config->roles()['enabled']) {
             return \FloCMS\Admin\Http\RolesController::class;
+        }
+        // A page's preview (0.30)
+        if ($controller === 'page-preview' && $config->pages()['enabled']) {
+            return \FloCMS\Admin\Http\PagePreviewController::class;
         }
         // Ctrl+K search (0.20); a site resource with that slug keeps it.
         if ($controller === 'search' && $config->search()['enabled']) {

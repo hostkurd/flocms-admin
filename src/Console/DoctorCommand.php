@@ -128,6 +128,7 @@ final class DoctorCommand extends Command
         $this->checkRoles($config, $db, $project);
         $this->checkImports($config, $db, $project);
         $this->checkPasswordReset($config, $db, $project);
+        $this->checkPages($config, $db, $project);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -764,6 +765,64 @@ final class DoctorCommand extends Command
             $this->caution('APP_KEY is empty or short: the stored hashes of addresses and IP addresses use a fixed key. Set a long random APP_KEY in .env.');
         }
         $this->line('  Links work once, for ' . $reset['expires'] . ' minutes; ' . $reset['per_email'] . ' requests an hour per address, ' . $reset['per_ip'] . ' per IP address.');
+    }
+
+    /** Website pages (config 'pages', 0.30): core 2.6, the table, addresses that something else answers, templates, the home page line and page_meta(). */
+    private function checkPages(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        $pages = $config->pages();
+        $this->section('Pages  (/admin/site-pages)');
+        if (!$pages['enabled']) { $this->line('  Off: add \'pages\' => true to config/admin.php to manage the website\'s pages in the panel.'); return; }
+        if (!method_exists(\FloCMS\Core\App::class, 'fallbackUsing')) {
+            $this->bad('Needs flocms-core 2.6 or later, so pages answer their addresses: composer require hostkurd/flocms-core:^2.6');
+        }
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the pages table was not checked.'); $db = null; }
+        }
+        if ($db !== null) {
+            $found = $this->columns($db, $pages['table']);
+            if ($found === null) {
+                $this->bad('Table "' . $pages['table'] . '" not found: run php flo admin:install, then php flo migrate.');
+            } elseif (($missing = array_values(array_diff(['id', 'title', 'slug', 'type', 'blocks', 'html', 'body', 'status', 'publish_at', 'unpublish_at', 'parent_id', 'is_home'], array_keys($found)))) !== []) {
+                $this->bad('Table "' . $pages['table'] . '" exists but is not the pages table (missing ' . implode(', ', $missing) . '). Name another in config/admin.php: \'pages\' => [\'table\' => …].');
+            } else {
+                try { $rows = $db->table($pages['table'])->select(['id', 'title', 'slug', 'parent_id', 'is_home'])->get(); } catch (Throwable) { $rows = []; }
+                $home = 0;
+                foreach ($rows as $row) {
+                    if ((int) ($row->is_home ?? 0) === 1) { $home++; continue; }
+                    if ((int) ($row->parent_id ?? 0) > 0) {
+                        if (!in_array((int) $row->parent_id, array_map(static fn (object $other): int => (int) $other->id, $rows), true)) {
+                            $this->caution('Page "' . \FloCMS\Admin\Translation\Translations::get($row->title ?? '', \FloCMS\Admin\Translation\Languages::default()) . '" is under a page that was deleted: it is not shown. Choose another parent page, or restore that page from the trash.');
+                        }
+                        continue;
+                    }
+                    foreach (\FloCMS\Admin\Translation\Translations::all($row->slug ?? '') as $lang => $slug) {
+                        $first = explode('/', (string) $slug)[0];
+                        if ($first !== '' && ($taken = \FloCMS\Admin\Pages\Pages::reservedSegment($first)) !== null) {
+                            $this->caution('Page "' . \FloCMS\Admin\Translation\Translations::get($row->title ?? '', (string) $lang) . '" (' . $lang . ') has the address /' . $first . ', which ' . (str_contains($taken, '\\') ? $taken : 'the panel or the framework') . ' answers first: the page is not shown. Change its address.');
+                        }
+                    }
+                }
+                $this->ok('Table "' . $pages['table'] . '": ' . count($rows) . ' page' . (count($rows) === 1 ? '' : 's') . ($home > 0 ? ', with a home page' : ''));
+                if ($home > 1) { $this->caution($home . ' pages are marked as the home page: only the first is shown.'); }
+                if ($home > 0) {
+                    $controller = $project->path('controllers/PagesController.php');
+                    if (is_file($controller) && !str_contains((string) file_get_contents($controller), 'home_page(')) {
+                        $this->caution('A page is marked as the home page, but the site\'s PagesController::index() does not show it. Add as its first line: if ($page = home_page()) { return $page->response(); }');
+                    }
+                }
+            }
+        }
+        $templates = \FloCMS\Admin\Pages\Templates::all();
+        $this->ok('Page templates: ' . implode(', ', array_keys($templates)) . (count($templates) === 1 ? ' (add your own as views/page-templates/<name>.html)' : ''));
+        $template = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $project->env('APP_TEMPLATE', 'default')) ?: 'default';
+        $layout = $project->path('templates/' . $template . '/layouts/default.html');
+        if (is_file($layout) && !str_contains((string) file_get_contents($layout), 'page_meta(')) {
+            $this->caution('templates/' . $template . '/layouts/default.html does not print {!! page_meta() !!} in <head>: pages have no title, description or language links for search engines.');
+        }
+        $cache = $project->path('storage/cache');
+        if (is_dir($cache) && !is_writable($cache)) { $this->bad('storage/cache is not writable: page previews cannot be made.'); }
+        $this->line('  Sitemap: ' . ($pages['sitemap'] ? '/sitemap.xml' : 'off') . '; a missing translation ' . ($pages['missing'] === '404' ? 'is not found (404)' : 'shows the default language\'s page') . '.');
     }
 
     private function checkRoles(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void

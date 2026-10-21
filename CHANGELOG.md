@@ -2,6 +2,23 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.30.0 - 2026-10-21
+
+**Pages.** The website's pages in the panel, at **Site → Pages** (`/admin/site-pages`). Needs **flocms-core 2.6**. Turn on with `'pages' => true` in `config/admin.php`, then `php flo admin:install` and `php flo migrate`. See [Pages](docs/pages.md).
+
+- **A page** is built from **blocks** (the Builder), written as **HTML** or typed as **rich text**, and is shown at its address without a controller: `/en/about-us`, `/en/services/web-design` under a parent page, `/ar/من-نحن` in another language. Addresses are made from the title, are checked against the panel's, the framework's and the site's controllers, and are unique under each parent.
+- **The editor** works one language at a time (the "Editing" switch). Tabs **Content**, **SEO** (title and description for search engines, image when shared, Hide from search engines, live previews of the search result and the social card) and **Settings** (template, parent page, Show in menu, order, CSS class). A **Publish** card with Draft, Published or Scheduled, Publish at and Unpublish at, **Preview** (the page as edited, saved or not, in a new tab; a link that works for 30 minutes without an account) and View on site; a **Page** card with the address and Copy, the dates and History.
+- **The list**: All / Published / Drafts / Scheduled tabs, the address under each title, the translations, **Reorder**, **Duplicate** (a draft copy) and **Set as home page**.
+- **The home page**: one line at the start of the site's home controller shows it: `if ($page = home_page()) { return $page->response(); }` (skeleton 1.8.8 has it).
+- **On the website**: `{!! page_meta() !!}` in the layout's `<head>` prints the title, description, canonical address, `hreflang` with `x-default`, Open Graph and robots; `pages_menu()` gives the menu with nesting and the current page; `current_page()`; **`/sitemap.xml`** with the other languages as alternates. A page not translated shows the default language's, with the canonical pointing there, or a 404 with `'missing' => '404'`.
+- **Templates**: `views/page-templates/<name>.html`, offered by their names; `php flo admin:blocks` copies the default one there.
+- **Permissions**: `content.site-pages.*`, **`pages.publish`** (publish, schedule, Set as home page, and change or delete live pages; without it people write drafts and live pages are read-only) and `blocks.html` for HTML pages.
+- **`CodeEditor`** field: line numbers, highlighting, Tab and Shift+Tab, Escape then Tab to leave, **Format**. Used by HTML pages; usable in any form.
+- **Block styles and scripts** from the package (before `php flo admin:blocks` copies them) are now linked as files at `/flo-admin/asset/…` instead of printed inline, so they work with a strict Content-Security-Policy and are cached.
+- `admin:doctor` checks pages: flocms-core 2.6, the table, addresses that something else answers, more than one home page, the home page line, `page_meta()` in the layout, templates.
+- For developers: `App::fallbackUsing()` from core 2.6 is used by `PageFallback`; `Pages`, `Page`, `PageRenderer`, `Templates`, `Sitemap`; `FormSubmission::values()`; `BlockRenderer::evaluate()`; `Assets::blockUrl()`.
+- New words in the panel's `en`, `ar` and `ku` files: `pages.*`, `code.format`, `roles.perm.pages_publish*`.
+
 ## 0.29.0 - 2026-10-21
 
 **Builder: blocks and sliders.** Nothing to install: add a `Builder` field and a JSON (or LONGTEXT) column. See [Builder: blocks and sliders](docs/builder.md).

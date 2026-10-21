@@ -1,3 +1,18 @@
+# Upgrading to Admin 0.30.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.30.0" "hostkurd/flocms-core:^2.6" -W`, run `php flo view:clear` and reload open Admin pages. Admin 0.30 needs **flocms-core 2.6**.
+
+- **Nothing changes until you turn pages on.** Add `'pages' => true` to `config/admin.php`, then run `php flo admin:install` and `php flo migrate` for the `admin_pages` table. Pages are at **Site → Pages** (`/admin/site-pages`).
+- **Your layout**: put `{!! page_meta() !!}` in the `<head>` of `layouts/default.html` (it prints nothing on your other pages, so keep your own `<title>` for them) and, for a menu, loop over `pages_menu()`. See [Pages](docs/pages.md).
+- **The home page**: to show a page at the main address, start your home controller's `index()` with `if ($page = home_page()) { return $page->response(); }`.
+- **Your controllers win**: a page can't take an address your site's controllers answer (a page called `contact` next to a `ContactController`). `php flo admin:doctor` lists any that clash.
+- **`/sitemap.xml`** is answered by the panel when pages are on. A `sitemap.xml` file in `public/` keeps working; `'pages' => ['sitemap' => false]` turns the panel's off.
+- **Tick `pages.publish`** on the Roles page (System) for the people who may publish pages. Without it they can write drafts, and pages visitors see are read-only for them. Super Admins have it (`*`).
+- **Block styles and scripts**, when the site hasn't copied them with `php flo admin:blocks`, are now linked as files from `/flo-admin/asset/` instead of printed in the page. Nothing to do; a strict Content-Security-Policy no longer blocks them.
+- **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.29.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.29.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: the Builder needs only a column on the tables that use it.

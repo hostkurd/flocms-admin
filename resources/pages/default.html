@@ -1,0 +1,13 @@
+@php /* The default page template (flocms-admin 0.30). A site adds its own in views/page-templates/<name>.html; php flo admin:blocks copies this one to views/page-templates/default.html. */ @endphp
+<main class="flo-page flo-page-{{ $page->type() }}{{ $page->cssClass() !== '' ? ' ' . $page->cssClass() : '' }}" id="main">
+    @if($page->type() !== 'builder')
+    <div class="flo-block is-boxed flo-space-above-large flo-space-below-medium">
+        <h1 class="flo-page-title">{{ $page->title() }}</h1>
+    </div>
+    <div class="flo-block is-boxed flo-space-below-large">
+        {!! $content !!}
+    </div>
+    @else
+    {!! $content !!}
+    @endif
+</main>

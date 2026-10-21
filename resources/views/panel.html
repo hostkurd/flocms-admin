@@ -15,8 +15,11 @@
             @endforeach
             @if($mediaUrl !== null)<a class="fa-nav-link{{ $mediaActive ? ' is-active' : '' }}" href="{{ $mediaUrl }}"@if($mediaActive) aria-current="page"@endif>{!! $mediaIcon !!}<span>{{ $t('media.title') }}</span></a>@endif
             @endif
-            @if($usersUrl !== null || $rolesUrl !== null || $settingsUrl !== null || $activityUrl !== null || $trashUrl !== null || $importsUrl !== null || $mailingsUrl !== null)
+            @if($pagesUrl !== null || $usersUrl !== null || $rolesUrl !== null || $settingsUrl !== null || $activityUrl !== null || $trashUrl !== null || $importsUrl !== null || $mailingsUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
+            @endif
+            @if($pagesUrl !== null)
+            <a class="fa-nav-link{{ $pagesActive ? ' is-active' : '' }}" href="{{ $pagesUrl }}"@if($pagesActive) aria-current="page"@endif>{!! $pagesIcon !!}<span>{{ $t('pages.plural') }}</span></a>
             @endif
             @if($usersUrl !== null)
             <a class="fa-nav-link{{ $usersActive ? ' is-active' : '' }}" href="{{ $usersUrl }}"@if($usersActive) aria-current="page"@endif>{!! $usersIcon !!}<span>{{ $t('nav.users') }}</span></a>

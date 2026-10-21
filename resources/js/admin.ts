@@ -18,6 +18,8 @@ import { initializeImports } from './import';
 import { updateManagerCounts } from './managers';
 import { initialize as initializeRepeaters } from './repeater';
 import { initializeBuilders } from './builder';
+import { initializeCodeEditors } from './code-editor';
+import { initializePages } from './pages';
 import './popovers';
 import './dialogs';
 import './search';
@@ -62,6 +64,8 @@ function initialize(): void {
   initializeTranslations(root);
   initializeRepeaters(root);
   initializeBuilders(root);
+  initializeCodeEditors(root);
+  initializePages(root);
   initializeEditors(root);
   initializeSelection(root);
   initializeRecord(root);

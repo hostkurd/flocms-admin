@@ -10,6 +10,8 @@ define('TEMPLATES_PATH', ROOT . '/templates');
 define('SITE_URI', '');
 foreach (['views', 'public', 'lang', 'templates/default/layouts'] as $dir) { if (!is_dir(ROOT . '/' . $dir)) mkdir(ROOT . '/' . $dir, 0700, true); }
 file_put_contents(ROOT . '/public/conf_global.php', '<?php define("ACTIVE_LANG", \\FloCMS\\Core\\App::getRouter()->getLanguage());');
+// The website's layout, as a site has it: page_meta() and blocks_assets() in the head, pages_menu() in the header (0.30).
+file_put_contents(TEMPLATES_PATH . '/default/layouts/default.html', '<!doctype html><html lang="<?= ACTIVE_LANG ?>" dir="<?= ACTIVE_LANG === "en" ? "ltr" : "rtl" ?>"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><?= page_meta() ?><?= blocks_assets() ?><style>body{margin:0;font-family:system-ui,sans-serif;color:#101828}.site-head{display:flex;gap:18px;align-items:center;padding:16px 24px;border-bottom:1px solid #e4e7ec}.site-head a{color:#101828;text-decoration:none}.site-head a[aria-current]{font-weight:700}</style></head><body><header class="site-head"><strong>Your Company</strong><?php foreach (pages_menu() as $item): ?><a href="<?= htmlspecialchars($item["url"]) ?>"<?= $item["current"] ? " aria-current=\"page\"" : "" ?>><?= htmlspecialchars($item["title"]) ?></a><?php endforeach; ?></header><?= $data["content"] ?></body></html>');
 file_put_contents(TEMPLATES_PATH . '/default/layouts/admin.html', '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin</title></head><body><?= $data["content"] ?></body></html>');
 $demoLabels = [
     'en' => ['demo.publish' => 'Publish', 'demo.unpublish' => 'Unpublish', 'demo.reason' => 'Reason', 'demo.published' => 'Post published.', 'demo.unpublished' => 'Post unpublished.', 'demo.announce' => 'Announcement', 'demo.ready' => 'Review pending drafts.', 'demo.help' => 'Publishing guide', 'demo.help_title' => 'Publishing guide', 'demo.help_body' => 'Publish a draft after reviewing its content.'],
@@ -51,7 +53,7 @@ if (!Session::get('fixture')) {
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EstateResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\UnitResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\VillaResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Builder\LandingResource::class, \FloCMS\Admin\Tests\Fixtures\ImportExport\ProductResource::class]), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'password_reset' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EstateResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\UnitResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\VillaResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Builder\LandingResource::class, \FloCMS\Admin\Tests\Fixtures\ImportExport\ProductResource::class]), 'pages' => (bool) Session::get('pages_demo'), 'brand' => 'FloCMS Studio', 'login_theme' => true, 'password_reset' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
 $pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
@@ -175,6 +177,30 @@ $seedApartments = static function (PDO $pdo): void {
     $pdo->prepare('INSERT INTO apartments (title, rooms, specs, hours) VALUES (?, ?, ?, ?)')->execute([json_encode(['en' => 'Harbour apartment']), $rooms, $specs, $hours]);
 };
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='apartments'")->fetchColumn()) { $seedApartments($pdo); }
+// Pages (0.30): on after /__test/pages
+$seedPages = static function (PDO $pdo): void {
+    $pdo->exec('DROP TABLE IF EXISTS admin_pages');
+    $file = ROOT . '/pages-migration.php';
+    file_put_contents($file, \FloCMS\Admin\Console\Stub::render('pages-migration', ['table' => 'admin_pages']));
+    (require $file)->up(App::$db);
+    $home = json_encode(['en' => [
+        ['id' => 'bh1', 'type' => 'hero', 'data' => ['heading' => 'Design that works', 'text' => 'Websites and apps for growing teams.', 'button' => 'Our services', 'link' => '/en/services', 'height' => 'medium', 'align' => 'start', 'overlay' => '35']],
+        ['id' => 'bc1', 'type' => 'cards', 'data' => ['heading' => 'What we do', 'columns' => '3', 'cards' => [['title' => 'Strategy', 'text' => 'Research and planning.'], ['title' => 'Design', 'text' => 'Interfaces people enjoy.'], ['title' => 'Development', 'text' => 'Fast, accessible sites.']]]],
+        ['id' => 'bt1', 'type' => 'call_to_action', 'data' => ['heading' => 'Start a project', 'text' => 'Tell us what you need.', 'button' => 'Contact us', 'link' => '/en/contact', 'style' => 'brand']],
+    ]], JSON_UNESCAPED_UNICODE);
+    $insert = $pdo->prepare('INSERT INTO admin_pages (title, slug, type, blocks, html, body, status, publish_at, parent_id, menu, sort, meta_title, meta_description, is_home, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $now = date('Y-m-d H:i:s');
+    foreach ([
+        ['{"en":"Home","ar":"الرئيسية"}', '{"en":"home","ar":"home"}', 'builder', $home, null, null, 'published', null, null, 0, 0, '{"en":"Your Company"}', '{"en":"Websites and apps for growing teams."}', 1],
+        ['{"en":"About us","ar":"من نحن"}', '{"en":"about-us","ar":"من-نحن"}', 'rich_text', null, null, '{"en":"<p>We are a small studio that builds websites.</p>","ar":"<p>نحن استوديو صغير يبني المواقع.</p>"}', 'published', null, null, 1, 1, null, '{"en":"Who we are and how we work."}', 0],
+        ['{"en":"Services"}', '{"en":"services"}', 'rich_text', null, null, '{"en":"<p>Strategy, design and development.</p>"}', 'published', null, null, 1, 2, null, null, 0],
+        ['{"en":"Web design"}', '{"en":"web-design"}', 'html', null, '{"en":"<section class=\"custom\">\n  <h2>Web design</h2>\n  <p>Sites that work on every screen.</p>\n</section>"}', null, 'published', null, 3, 1, 0, null, null, 0],
+        ['{"en":"Careers"}', '{"en":"careers"}', 'rich_text', null, null, '{"en":"<p>Join us.</p>"}', 'draft', null, null, 1, 3, null, null, 0],
+        ['{"en":"Winter offer"}', '{"en":"winter-offer"}', 'rich_text', null, null, '{"en":"<p>Soon.</p>"}', 'scheduled', '2099-12-01 09:00:00', null, 0, 4, null, null, 0],
+    ] as $row) { $insert->execute([...$row, $now, $now]); }
+    array_map('unlink', glob(ROOT . '/storage/cache/blocks/*.json') ?: []);
+};
+if (Session::get('pages_demo') && !(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='admin_pages'")->fetchColumn()) { $seedPages($pdo); }
 // The Builder field (0.29)
 $seedLandings = static function (PDO $pdo): void {
     $pdo->exec('DROP TABLE IF EXISTS landings');
@@ -293,6 +319,9 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             echo json_encode(['path' => $links[1] === [] ? null : end($links[1]), 'mails' => substr_count((string) @file_get_contents(ROOT . '/storage/logs/admin-mail.log'), '==== ')]); exit;
         case '/__test/managers': $seedManagers($pdo); break;
         case '/__test/apartments': $seedApartments($pdo); break;
+        case '/__test/pages': Session::set('pages_demo', true); $seedPages($pdo); break;
+        case '/__test/pages-off': Session::set('pages_demo', false); break;
+        case '/__test/pages-state': header('Content-Type: application/json'); echo json_encode($pdo->query('SELECT * FROM admin_pages ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)); exit;
         case '/__test/landings': $seedLandings($pdo); array_map('unlink', glob(ROOT . '/storage/cache/blocks/*.json') ?: []); break;
         case '/__test/landing-view':
             // The website side (0.29): a page that prints a landing's blocks, as a site's layout would.

@@ -23,6 +23,12 @@ final class Assets
         return $base . '/' . $lang . 'flo-admin/asset/admin-editor-v' . Admin::VERSION . '.js';
     }
 
+    /** A block's style or script from the package (0.30): /flo-admin/asset/blocks-<name>-v<version>.<css|js>. */
+    public static function blockUrl(string $name, string $kind): string
+    {
+        return preg_replace('~rich-text-v[^/]+\.css$~', 'blocks-' . $name . '-v' . Admin::VERSION . '.' . $kind, self::richTextUrl()) ?? '';
+    }
+
     /** The rich text stylesheet for the website (RichText::stylesheet() prints its tag). */
     public static function richTextUrl(): string
     {

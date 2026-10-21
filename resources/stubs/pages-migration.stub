@@ -1,0 +1,57 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * Pages (flocms-admin 0.30): one row per page of the website.
+ *
+ * Words that differ per language (title, address, content, SEO) are JSON
+ * objects by language, {"en": "About", "ar": "…"}; "blocks" holds one list
+ * of blocks per language (the Builder field).
+ */
+return new class extends Migration
+{
+    public bool $transactional = false;
+
+    public function up(Database $db): void
+    {
+        $long = $db->driver() === 'mysql' ? 'LONGTEXT' : 'TEXT';
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
+            ' . $this->id($db) . ',
+            `title` TEXT NOT NULL,
+            `slug` TEXT NOT NULL,
+            `type` VARCHAR(20) NOT NULL DEFAULT \'builder\',
+            `blocks` ' . $long . ' NULL,
+            `html` ' . $long . ' NULL,
+            `body` ' . $long . ' NULL,
+            `status` VARCHAR(20) NOT NULL DEFAULT \'draft\',
+            `publish_at` DATETIME NULL,
+            `unpublish_at` DATETIME NULL,
+            `template` VARCHAR(60) NULL,
+            `parent_id` INTEGER NULL,
+            `menu` SMALLINT NOT NULL DEFAULT 0,
+            `sort` INTEGER NOT NULL DEFAULT 0,
+            `css_class` VARCHAR(190) NULL,
+            `meta_title` TEXT NULL,
+            `meta_description` TEXT NULL,
+            `social_image` VARCHAR(40) NULL,
+            `noindex` SMALLINT NOT NULL DEFAULT 0,
+            `is_home` SMALLINT NOT NULL DEFAULT 0,
+            `created_at` DATETIME NULL,
+            `updated_at` DATETIME NULL
+        )' . $this->tableOptions($db));
+        foreach ([
+            '{{ table }}_status_index' => '`{{ table }}` (`status`)',
+            '{{ table }}_parent_index' => '`{{ table }}` (`parent_id`, `sort`)',
+        ] as $index => $on) {
+            try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }
+        }
+    }
+
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ table }}`');
+    }
+};
