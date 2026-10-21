@@ -4,6 +4,14 @@ import { test, expect, Page } from '@playwright/test';
 const lang = (page: Page, code: string) => page.locator(`form[data-lang-scope] .fa-lang-switch .fa-seg-btn[data-lang="${code}"]`);
 const rows = async (page: Page) => (await (await page.request.post('/__test/pages-state')).json()) as Record<string, string | null>[];
 
+/** Runs a change that refreshes the form and waits until the new form is in place. */
+async function refreshed(page: Page, change: () => Promise<unknown>) {
+  const response = page.waitForResponse(r => r.request().method() === 'POST' && r.url().includes('/admin/site-pages/'));
+  await change();
+  await response;
+  await expect(page.locator('.fa-panel')).not.toHaveAttribute('aria-busy', 'true');
+}
+
 test.beforeEach(async ({ page }) => {
   await page.request.post('/__test/pages');
 });
@@ -61,11 +69,12 @@ test('Preview opens the unsaved page in a new tab and saves nothing', async ({ p
 test('saving makes the address from the title and keeps a future time scheduled', async ({ page }) => {
   await page.goto('/en/admin/site-pages/create');
   await page.locator('[name="title[en]"]').fill('Our team');
-  await page.locator('[data-field="type"] input[value="rich_text"]').check({ force: true });
+  // The type and the status refresh the form (the panel is inert meanwhile): wait for each before typing on.
+  await refreshed(page, () => page.locator('[data-field="type"] input[value="rich_text"]').check({ force: true }));
   const text = page.locator('[data-field="body"] [contenteditable="true"]').first();
   await text.click();
   await page.keyboard.type('Meet the people.');
-  await page.locator('[name="status"]').selectOption('published');
+  await refreshed(page, () => page.locator('[name="status"]').selectOption('published'));
   await page.locator('[name="publish_at"]').fill('2099-05-01T09:00');
   await page.getByRole('button', { name: 'Save and close' }).click();
   await expect(page).toHaveURL(/\/admin\/site-pages(\?|$)/);
