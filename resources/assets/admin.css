@@ -1053,9 +1053,22 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-tool:hover{background:var(--fa-surface-3);color:var(--fa-text)}
 .fa-builder-tool.is-danger:hover{background:var(--fa-danger-soft);color:var(--fa-danger)}
 .fa-builder-tool:disabled{opacity:.35;cursor:default;background:transparent}
-.fa-builder-insert{opacity:0}
-.fa-builder-row:hover .fa-builder-insert,.fa-builder-insert:focus-visible,.fa-builder-node.is-selected > .fa-builder-row .fa-builder-insert{opacity:1}
-@media (hover:none){.fa-builder-insert{opacity:1}}
+/* Row buttons (0.31): icon only, shown on hover, keyboard focus and the selected row; always on touch screens */
+.fa-builder-row-tools{display:flex;align-items:center;gap:1px;flex:none;opacity:0;transition:opacity .12s}
+.fa-builder-row-tools[hidden]{display:none}
+.fa-builder-row:hover > .fa-builder-row-tools,.fa-builder-row:focus-within > .fa-builder-row-tools,.fa-builder-node.is-selected > .fa-builder-row > .fa-builder-row-tools{opacity:1}
+@media (hover:none){.fa-builder-row-tools{opacity:1}}
+.fa-builder-row-tools .fa-builder-tool{width:30px;height:30px}
+.fa-builder-insert{margin-inline-start:2px;border-inline-start:1px solid var(--fa-border);border-radius:0 var(--fa-radius) var(--fa-radius) 0}
+[dir="rtl"] .fa-builder-insert{border-radius:var(--fa-radius) 0 0 var(--fa-radius)}
+.fa-builder-toggle .fa-builder-icon-hidden,.fa-builder-toggle[aria-pressed="true"] .fa-builder-icon-shown{display:none}
+.fa-builder-toggle[aria-pressed="true"] .fa-builder-icon-hidden{display:block}
+.fa-builder-toggle[aria-pressed="true"]{color:var(--fa-warning)}
+.fa-builder-node.is-draft > .fa-builder-row > :is(.fa-builder-kind-icon,.fa-builder-row-main){opacity:.5}
+.fa-builder-row-summary{flex:0 1000 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fa-faint)}
+.fa-builder-row-summary:empty{display:none}
+.fa-builder-changed{flex:none;width:7px;height:7px;border-radius:50%;background:var(--fa-primary)}
+.fa-builder-row .fa-builder-copy-menu{position:absolute;inset-block-start:calc(100% + 4px);z-index:20;min-width:220px}
 .fa-builder-list.is-collapsed .fa-builder-node[data-holds] > :is(.fa-builder-tree,.fa-builder-cols,.fa-builder-add){display:none}
 .fa-builder-cols{display:flex;flex-direction:column;gap:6px;margin:6px 0 0;padding:0 0 0 14px;padding-inline:14px 0;list-style:none;border-inline-start:2px solid var(--fa-border)}
 .fa-builder-col{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -1116,6 +1129,43 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-pane-kind{font-size:12px;color:var(--fa-muted)}
 .fa-builder-pane-title{margin:0;font-size:14.5px;font-weight:600;color:var(--fa-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;unicode-bidi:plaintext}
 .fa-builder-pane-body{padding:14px 16px 18px}
+/* The block panel (0.31): Edit, the actions, then the settings every block shares; the block's own fields open in a dialog */
+.fa-builder.is-ready .fa-builder-pane > [data-builder-fields]{display:none}
+.fa-builder-pane-actions{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-block-end:1px solid var(--fa-border)}
+.fa-builder-pane-actions[hidden]{display:none}
+.fa-panel .fa-builder-edit{width:100%;justify-content:center}
+.fa-builder-pane-buttons{display:flex;align-items:center;gap:4px}
+.fa-builder-pane-buttons .fa-builder-tool{width:36px;height:36px;border:1px solid var(--fa-border);background:var(--fa-surface)}
+.fa-builder-pane-buttons .fa-builder-tool.is-danger{margin-inline-start:auto}
+.fa-builder-pane-error{margin:0}
+.fa-builder-pane-settings{padding:14px 16px 18px}
+.fa-builder:not(.is-ready) .fa-builder-pane{display:flex;flex-direction:column}
+.fa-builder:not(.is-ready) .fa-builder-pane > .fa-builder-pane-head{order:0}
+.fa-builder:not(.is-ready) .fa-builder-pane > [data-builder-fields]{order:1}
+.fa-builder:not(.is-ready) .fa-builder-pane > .fa-builder-pane-settings{order:2;border-block-start:1px solid var(--fa-border)}
+/* Dialogs (0.31): a block's fields, Add block, Delete */
+.fa-panel dialog.fa-builder-dialog{width:min(880px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--fa-border);overflow:hidden}
+.fa-panel dialog.fa-builder-dialog[open]{display:flex;flex-direction:column}
+.fa-builder-dialog-head{display:flex;align-items:center;gap:12px;padding:14px 16px 14px 20px;border-block-end:1px solid var(--fa-border)}
+[dir="rtl"] .fa-builder-dialog-head{padding:14px 20px 14px 16px}
+.fa-builder-dialog-head .fa-dialog-title{margin:0;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;unicode-bidi:plaintext}
+.fa-builder-dialog-nav{display:flex;gap:2px}
+[dir="rtl"] .fa-builder-dialog-nav svg{transform:scaleX(-1)}
+.fa-panel .fa-builder-dialog-body{flex:1;min-height:0;max-height:none;overflow:auto;padding:18px 20px}
+.fa-builder-dialog-body > [data-builder-fields]{display:block;padding:0}
+.fa-builder-dialog .fa-dialog-foot{justify-content:space-between}
+.fa-builder-dialog-hint{font-size:12.5px;color:var(--fa-muted)}
+.fa-panel dialog.fa-builder-add-dialog{width:min(760px,calc(100vw - 32px));height:min(600px,calc(100dvh - 32px))}
+.fa-builder-add-dialog .fa-builder-picker{display:flex;flex-direction:column;gap:10px;height:100%;padding:0}
+.fa-builder-add-dialog .fa-builder-picker-main{flex:1}
+.fa-builder-add-dialog .fa-builder-dialog-body{display:flex;flex-direction:column;overflow:hidden}
+.fa-panel dialog.fa-builder-confirm{width:min(440px,calc(100vw - 32px))}
+.fa-builder-confirm .fa-dialog-body{padding:16px 20px}
+.fa-builder-confirm-text{margin:0;color:var(--fa-text-2)}
+@media (max-width:700px){
+  .fa-panel dialog.fa-builder-dialog:not(.fa-builder-confirm){width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;border:0}
+  .fa-builder-dialog-hint{display:none}
+}
 .fa-builder-pane-body > .fa-form-grid > .fa-tabs > .fa-tab-list{margin-block-end:12px}
 .fa-builder-copy{position:relative;display:inline-flex}
 .fa-builder-copy[hidden]{display:none}

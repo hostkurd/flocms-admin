@@ -23,6 +23,8 @@ final class Section extends Block
     protected static ?string $label = 'blocks.section';
     protected static ?string $description = 'blocks.section_help';
 
+    public function nameField(): ?string { return 'name'; }
+
     public function fields(): array
     {
         $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);

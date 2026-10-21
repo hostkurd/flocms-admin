@@ -133,6 +133,13 @@ abstract class Block
      */
     public function acceptInput(array $state, string $id = ''): array { return $state; }
 
+    /**
+     * A field of the block's own that names it for editors (0.31): shown in the
+     * block panel in place of the panel's own Name (Section, Columns and Slider
+     * return 'name'). null: the panel's Name.
+     */
+    public function nameField(): ?string { return null; }
+
     /** Layout blocks hold other blocks (Section, Columns). */
     public function holdsBlocks(): bool { return false; }
 

@@ -9,6 +9,7 @@ use FloCMS\Admin\Blocks\BlockSettings;
 use FloCMS\Admin\Blocks\Core\Html;
 use FloCMS\Admin\Form\Field;
 use FloCMS\Admin\Form\Form;
+use FloCMS\Admin\Form\Layout\Section;
 use FloCMS\Admin\Form\Layout\Tab;
 use FloCMS\Admin\Form\Layout\Tabs;
 use FloCMS\Admin\Support\AdminLang;
@@ -168,7 +169,7 @@ class Builder extends Field
         $tabs[] = Tab::make('settings')->label(AdminLang::get('blocks.tab_settings'))->columns(2)->schema(BlockSettings::fields($block));
         $form = (new Form())->columns(2)->schema([Tabs::make('block')->schema($tabs)]);
         foreach (array_keys($form->fields()) as $name) {
-            if ($name === 'f' || str_starts_with($name, '_') && $name !== '_signed') { throw new \LogicException('Block "' . $block::type() . '": field names may not start with "_".'); }
+            if ($name === 'f' || str_starts_with($name, '_') && $name !== '_signed' && !in_array($name, BlockSettings::NAMES, true)) { throw new \LogicException('Block "' . $block::type() . '": field names may not start with "_".'); }
         }
         foreach ($form->fields() as $field) {
             if ($field->isTranslatable()) { throw new \LogicException('Block "' . $block::type() . '": "' . $field->getName() . '" cannot be translatable; use ->translatable() on the Builder for one list per language.'); }
@@ -177,6 +178,87 @@ class Builder extends Field
             }
         }
         return $form;
+    }
+
+    /** @var array<string, Form> */
+    private array $contentForms = [];
+
+    /**
+     * A block's own fields, for the edit dialog (0.31): its tabs (or one
+     * Content tab), without the settings every block shares.
+     */
+    public function contentForm(Block $block, bool $readOnly = false): Form
+    {
+        $make = function () use ($block): Form {
+            $tabs = [];
+            $loose = [];
+            // A block's own "name" (Section, Columns, Slider) sits in the block panel instead.
+            $taken = null;
+            $own = $block->fields();
+            foreach (($block->nameField() !== null ? self::withoutField($own, $block->nameField(), $taken) : $own) as $item) {
+                if ($item instanceof Tab) { if ($item->children() !== []) { $tabs[] = $item; } } else { $loose[] = $item; }
+            }
+            if ($loose !== []) { array_unshift($tabs, Tab::make('content')->label(AdminLang::get('blocks.tab_content'))->columns(2)->schema($loose)); }
+            return (new Form())->columns(2)->schema($tabs === [] ? [] : [Tabs::make('block')->schema($tabs)]);
+        };
+        if ($readOnly) {
+            $form = $make();
+            foreach ($form->fields() as $item) { $item->disabled(); }
+            return $form;
+        }
+        return $this->contentForms[$block::class] ??= $make();
+    }
+
+    /** @var array<string, Form> */
+    private array $settingsForms = [];
+
+    /**
+     * The settings every block shares, for the block panel (0.31): name,
+     * note, status, dates and screens, then Advanced (folded).
+     */
+    public function settingsForm(Block $block, bool $readOnly = false): Form
+    {
+        $make = static function () use ($block): Form {
+            $fields = [];
+            foreach (BlockSettings::fields($block) as $item) { $fields[$item->getName()] = $item; }
+            // The block's own name takes the place of the editors' one.
+            $own = null;
+            if ($block->nameField() !== null) { self::withoutField($block->fields(), $block->nameField(), $own); }
+            if ($own instanceof Field) { $fields = [$own->getName() => $own] + array_diff_key($fields, ['_label' => true]); }
+            $advanced = array_values(array_intersect_key($fields, array_flip(['width', 'space_above', 'space_below', 'anchor', 'class'])));
+            $main = array_values(array_diff_key($fields, array_flip(['width', 'space_above', 'space_below', 'anchor', 'class'])));
+            return (new Form())->columns(1)->schema([...$main, Section::make('advanced')->label(AdminLang::get('blocks.advanced'))->columns(1)->collapsed()->schema($advanced)]);
+        };
+        if ($readOnly) {
+            $form = $make();
+            foreach ($form->fields() as $item) { $item->disabled(); }
+            return $form;
+        }
+        return $this->settingsForms[$block::class] ??= $make();
+    }
+
+    /**
+     * The items without the field of that name (looked for inside layouts too);
+     * $taken gets the field.
+     *
+     * @param list<Field|\FloCMS\Admin\Form\Layout\Layout> $items
+     * @return list<Field|\FloCMS\Admin\Form\Layout\Layout>
+     */
+    private static function withoutField(array $items, string $name, ?Field &$taken): array
+    {
+        $out = [];
+        foreach ($items as $item) {
+            if ($item instanceof Field && $item->getName() === $name) { $taken = $item; continue; }
+            if ($item instanceof \FloCMS\Admin\Form\Layout\Layout) { $item->schema(self::withoutField($item->children(), $name, $taken)); }
+            $out[] = $item;
+        }
+        return $out;
+    }
+
+    /** Whether a block has fields of its own (else it has nothing to edit in a dialog). */
+    public function hasContent(Block $block): bool
+    {
+        return $this->contentForm($block)->fields() !== [];
     }
 
     /** @var array<string, list<string>> */
@@ -799,6 +881,9 @@ class Builder extends Field
     {
         $block = $this->block((string) $node['type']);
         if ($block === null) { return AdminLang::get('blocks.unknown', ['type' => mb_substr((string) $node['type'], 0, 40)]); }
+        // An editor's name for the block comes first (0.31).
+        $label = trim((string) ($node['settings']['_label'] ?? ''));
+        if ($label !== '') { return mb_substr($label, 0, 80); }
         try { return $block->title($node['data'] ?? []); } catch (\Throwable) { return $block::label(); }
     }
 

@@ -10,13 +10,14 @@ use FloCMS\Admin\Form\Fields\TextInput;
 use FloCMS\Admin\Support\AdminLang;
 
 /**
- * The settings every block has (0.29), on the inspector's Settings tab and
- * in the stored JSON under "settings": whether and when it is shown, its
- * width and spacing, on which screens, an anchor and an extra CSS class.
+ * The settings every block has (0.29), in the block panel beside the
+ * structure (0.31) and in the stored JSON under "settings": a name and a note
+ * for editors, whether and when it is shown, on which screens, and (under
+ * Advanced) its width and spacing, an anchor and an extra CSS class.
  */
 final class BlockSettings
 {
-    public const NAMES = ['status', 'starts', 'ends', 'width', 'space_above', 'space_below', 'devices', 'anchor', 'class'];
+    public const NAMES = ['_label', '_note', 'status', 'starts', 'ends', 'width', 'space_above', 'space_below', 'devices', 'anchor', 'class'];
 
     /** @return list<Field> */
     public static function fields(Block $block): array
@@ -24,6 +25,10 @@ final class BlockSettings
         $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);
         $space = ['none' => $t('space_none'), 'small' => $t('space_small'), 'medium' => $t('space_medium'), 'large' => $t('space_large')];
         $fields = [
+            // For editors only (0.31): the block's name in the structure and a note; never printed on the website.
+            // Their names start with "_" so they never clash with a block's own fields.
+            TextInput::make('_label')->label($t('label'))->help($t('label_help'))->rules('max:80')->columnSpan('full'),
+            \FloCMS\Admin\Form\Fields\Textarea::make('_note')->label($t('note'))->help($t('note_help'))->rows(2)->rules('max:500')->columnSpan('full'),
             Select::make('status')->label($t('status'))->options(['published' => $t('status_published'), 'draft' => $t('status_draft')])->default('published')->segmented()->columnSpan('full'),
             DateTime::make('starts')->label($t('starts'))->help($t('starts_help')),
             DateTime::make('ends')->label($t('ends')),
