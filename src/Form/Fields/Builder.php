@@ -474,8 +474,11 @@ class Builder extends Field
     }
 
     /** The most name/value pairs one packed value may carry, and how deep a name may go. */
-    public const PACKED_PAIRS = 60000;
-    public const PACKED_DEPTH = 16;
+    public const PACKED_PAIRS = 30000;
+    /** [lang][id][f][list][key][field][lang] is the deepest name the editor sends. */
+    public const PACKED_DEPTH = 8;
+    /** The most arrays unpacking may create: far above a real page, well below a memory problem. */
+    public const PACKED_ARRAYS = 20000;
 
     /**
      * The editor's packed fields (0.32): {"_form":1,"pairs":[["[en][b1][f][title]","Hello"], …]},
@@ -499,22 +502,31 @@ class Builder extends Field
             return false;
         }
         $out = [];
-        foreach ($decoded['pairs'] as $pair) {
-            if (!is_array($pair) || !array_is_list($pair) || count($pair) !== 2 || !is_string($pair[0]) || !is_string($pair[1])) { return false; }
-            if (preg_match('/^(?:\[[^\[\]]*\]){1,' . self::PACKED_DEPTH . '}$/D', $pair[0]) !== 1) { return false; }
-            preg_match_all('/\[([^\[\]]*)\]/', $pair[0], $parts);
-            $at = &$out;
-            $last = count($parts[1]) - 1;
-            foreach ($parts[1] as $i => $part) {
-                if ($i === $last) {
-                    if ($part === '') { $at[] = $pair[1]; } else { $at[$part] = $pair[1]; }
-                    break;
+        $arrays = 0;
+        try {
+            foreach ($decoded['pairs'] as $pair) {
+                if (!is_array($pair) || !array_is_list($pair) || count($pair) !== 2 || !is_string($pair[0]) || !is_string($pair[1])) { return false; }
+                // Names of up to PACKED_DEPTH parts; "[]" (append) only as the last one, as the editor sends it.
+                if (preg_match('/^(?:\[[^\[\]]+\]){0,' . (self::PACKED_DEPTH - 1) . '}\[[^\[\]]*\]$/D', $pair[0]) !== 1) { return false; }
+                preg_match_all('/\[([^\[\]]*)\]/', $pair[0], $parts);
+                $at = &$out;
+                $last = count($parts[1]) - 1;
+                foreach ($parts[1] as $i => $part) {
+                    if ($i === $last) {
+                        if ($part === '') { $at[] = $pair[1]; } else { $at[$part] = $pair[1]; }
+                        break;
+                    }
+                    if (!isset($at[$part]) || !is_array($at[$part])) {
+                        if (++$arrays > self::PACKED_ARRAYS) { return false; }
+                        $at[$part] = [];
+                    }
+                    $at = &$at[$part];
                 }
-                if ($part === '') { $at[] = []; $part = array_key_last($at); }
-                if (!isset($at[$part]) || !is_array($at[$part])) { $at[$part] = []; }
-                $at = &$at[$part];
+                unset($at);
             }
-            unset($at);
+        } catch (\Error) {
+            // An array that can't take another item (a key of PHP_INT_MAX before "[]"): refused like any other.
+            return false;
         }
         return $out;
     }

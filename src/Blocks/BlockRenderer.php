@@ -272,6 +272,8 @@ final class BlockRenderer
     public static function safeLinks(array $fields): array
     {
         foreach ($fields as $name => $value) {
+            // A list kept as JSON (written by hand or imported): its links are cleaned too.
+            if (is_string($value) && str_starts_with(ltrim($value), '[') && is_array($list = json_decode($value, true))) { $value = $list; }
             if (is_array($value)) { $fields[$name] = self::safeLinks($value); continue; }
             if (($name === 'link' || $name === 'link2') && is_string($value)) { $fields[$name] = self::safeUrl($value); }
         }

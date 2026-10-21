@@ -86,6 +86,14 @@ final class BlockRendererTest extends TestCase
         self::assertMatchesRegularExpression('/(blocks-motion|flo-blocks\/motion)[^"]*\.js/', BlockRenderer::assets(), 'reduced motion for the hero and the video');
     }
 
+    public function testLinksInListsKeptAsJsonAreCleanedToo(): void
+    {
+        $page = [['id' => 'b1', 'type' => 'cards', 'data' => ['cards' => json_encode([['title' => 'A', 'link' => 'javascript:alert(1)'], ['title' => 'B', 'link' => '/b']])]]];
+        $html = blocks(json_encode($page));
+        self::assertStringNotContainsString('javascript:', $html);
+        self::assertStringContainsString('href="/b"', $html);
+    }
+
     public function testListsPerLanguageFallBackToTheDefaultLanguage(): void
     {
         $value = json_encode(['en' => [['id' => 'b1', 'type' => 'heading', 'data' => ['text' => 'Hello']]], 'ar' => [['id' => 'b2', 'type' => 'heading', 'data' => ['text' => 'مرحبا']]]]);

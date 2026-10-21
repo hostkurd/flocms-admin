@@ -170,7 +170,8 @@ final class FormRenderer
                     // shownWhen() (0.32): forms.ts shows it while the other field has one of the values.
                     [$other, $values] = $shown;
                     $current = $this->state[$other] ?? '';
-                    $hidden = !in_array(is_string($current) ? $current : '', $values, true);
+                    // A field with an error is shown whatever the choice, so the error can be seen and fixed.
+                    $hidden = !in_array(is_string($current) ? $current : '', $values, true) && !str_contains($rendered, 'has-error');
                     $rendered = (string) preg_replace('/data-field=/', 'data-shown-when="' . Str::e($this->inputName($other)) . '" data-shown-values="' . Str::e(implode(' ', $values)) . '"' . ($hidden ? ' hidden' : '') . ' data-field=', $rendered, 1);
                 }
                 if (in_array($field->getName(), $live, true)) { $rendered = str_replace('data-field=', 'data-admin-live data-field=', $rendered); }

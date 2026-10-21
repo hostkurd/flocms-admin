@@ -364,6 +364,12 @@ test('the ⋯ menu repeats the actions and moves a block to any place it may go 
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(tool(page, 'btext1', 'more')).toBeFocused();
+  // Tab closes it too, back on the button; Move to is a named group
+  await page.keyboard.press('Enter');
+  await expect(menu.getByRole('group', { name: 'Move to' })).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(menu).toBeHidden();
+  await expect(tool(page, 'btext1', 'more')).toBeFocused();
   // Move to: column 2
   await page.keyboard.press('Enter');
   await menu.getByRole('menuitem', { name: 'Column 2' }).click();

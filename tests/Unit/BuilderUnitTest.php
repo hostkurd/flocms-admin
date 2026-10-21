@@ -396,7 +396,13 @@ final class BuilderUnitTest extends TestCase
             '{"_form":1,"pairs":[["_][b1","x"]]}',                       // not a name
             '{"_form":1,"pairs":[["' . $deep . '","x"]]}',               // too deep
             '{"_form":1,"pairs":[["[_][b1][f][text]","' . str_repeat('x', Builder::MAX_BYTES * 4) . '"]]}', // too large
+            '{"_form":1,"pairs":[["[_][9223372036854775807]","x"],["[_][]","y"]]}', // an array that can't take another item
+            '{"_form":1,"pairs":[["[_][][b1]","x"]]}',                     // "[]" before the end
         ];
+        // Too many arrays for any real page: refused before it uses much memory
+        $pairs = [];
+        for ($i = 0; $i <= Builder::PACKED_ARRAYS; $i++) { $pairs[] = ['[_][b' . $i . '][f][x]', '1']; }
+        $bad[] = json_encode(['_form' => 1, 'pairs' => $pairs]);
         foreach ($bad as $json) {
             $state = $field->stateFromInput(['content' => $json], self::LANGS);
             $errors = $field->validateBlocks($state, static fn (): array => []);
@@ -455,6 +461,9 @@ final class BuilderUnitTest extends TestCase
         self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bf\]\[f\]\[autoplay\]" data-shown-values="1" hidden data-field="interval"/', $html);
         // Hidden or not, a field keeps its value
         self::assertSame('700', $field->lists($state)['_'][0]['data']['height_px']);
+        // A hidden field with an error is shown, so the error can be fixed
+        $html = (new FormRenderer(['content' => $state], ['content._.bs.height_px' => 'Too small.'], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        self::assertMatchesRegularExpression('/data-shown-when="content\\[_\\]\\[bs\\]\\[f\\]\\[height\\]" data-shown-values="fixed" data-field="height_px"/', $html);
     }
 
     public function testACutRequestIsNotSaved(): void

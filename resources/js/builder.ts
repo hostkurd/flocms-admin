@@ -844,7 +844,7 @@ function openMenu(list: HTMLElement, node: HTMLElement, button: HTMLElement): vo
     made.append(span);
     return made;
   };
-  const heading = (label: string) => { const made = document.createElement('p'); made.className = 'fa-builder-menu-heading'; made.setAttribute('role', 'presentation'); made.textContent = label; return made; };
+  const heading = (label: string) => { const made = document.createElement('p'); made.className = 'fa-builder-menu-heading'; made.setAttribute('aria-hidden', 'true'); made.textContent = label; return made; };
   const rule = () => { const made = document.createElement('hr'); made.className = 'fa-builder-menu-rule'; return made; };
   const parts: HTMLElement[] = [];
   ['edit', 'duplicate', 'toggle'].forEach(action => {
@@ -860,8 +860,12 @@ function openMenu(list: HTMLElement, node: HTMLElement, button: HTMLElement): vo
   });
   const places = movePlaces(list, node);
   if (places.length) {
-    parts.push(rule(), heading(builder.dataset.moveToText || ''));
-    places.forEach((place, index) => parts.push(item(place.label, '', 'move:' + index)));
+    // Move to: a named group, so screen readers say what the places are for.
+    const group = document.createElement('div');
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', builder.dataset.moveToText || '');
+    places.forEach((place, index) => group.append(item(place.label, '', 'move:' + index)));
+    parts.push(rule(), heading(builder.dataset.moveToText || ''), group);
   }
   const remove = tools?.querySelector<HTMLElement>(':scope > [data-builder-action="remove"]');
   if (remove) parts.push(rule(), item(remove.getAttribute('aria-label') || '', remove.querySelector('svg')?.outerHTML ?? '', 'click:remove', true));
@@ -893,7 +897,7 @@ function menuChoose(builder: HTMLElement, choice: HTMLElement): void {
   if (kind === 'copy') { copyTo(list, node, value); return; }
   if (kind === 'move') {
     const place = job.places[Number(value)];
-    if (!place || !node.isConnected) return;
+    if (!place || !node.isConnected || !place.slot.isConnected || (place.after && !place.after.isConnected)) return;
     if (place.after) place.after.after(node); else place.slot.append(node);
     reveal(list, node);
     changed(list);
@@ -910,7 +914,7 @@ document.addEventListener('keydown', event => {
   const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
   const at = items.indexOf(event.target as HTMLElement);
   if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeMenu(builder, true); return; }
-  if (event.key === 'Tab') { closeMenu(builder); return; }
+  if (event.key === 'Tab') { event.preventDefault(); closeMenu(builder, true); return; }
   const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
   if (step) { event.preventDefault(); items[(at + step + items.length) % items.length]?.focus(); return; }
   if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); (event.key === 'Home' ? items[0] : items[items.length - 1])?.focus(); }
