@@ -2,9 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
-## Unreleased
+## 0.32.0 - 2026-10-21
 
+**The Builder: saved as one value, a real canvas, drag and drop that goes anywhere, and better blocks.** Nothing to install or migrate: stored blocks don't change. See [Builder: blocks and sliders](docs/builder.md).
+
+- **Saved as one value**: the editor sends all of a Builder's fields as one JSON value, so `max_input_vars` no longer limits a page, however many blocks it has. The server reads the same names and values as before (`Builder::unpack()`) and checks every block the same way; a value it can't read is refused and nothing is saved. Without JavaScript the fields are sent one by one, as before. `admin:doctor` no longer warns about `max_input_vars` for this.
+- **Columns side by side**: a Columns block shows its columns next to each other, as wide as its layout (67/33, thirds, quarters…), each with its name and width; they stack when the structure is narrower than 480 px.
+- **Framed containers that fold**: Section and Columns are cards with their blocks inside; a chevron folds them ("Services · 4 inside"), remembered per page in the browser; **Collapse all** folds them all.
+- **Drag and drop, rebuilt**: the block stays in place while a line shows where it will land; every Section and column is a target as a whole, so blocks go into, out of and between columns. A place it may not go shows a red line; Escape cancels; the page scrolls near the edges; a folded container opens when a block is held over it; on touch screens press and hold a row.
+- **⋯ on every row**: the row's actions again, **Move to** (every place the block may go) and Delete. A **+** in the gap between blocks adds one there.
+- **The edit dialog** edits one block (Previous / Next are gone) and keeps one height while it is open: its tallest tab, 360–760 px, the rest scrolling inside.
+- **Blocks, fixed**: options that matter for one choice only appear when it is chosen (a slider's pixel heights and interval, a Section's colour and image, Columns' "last column first"); empty Slider, Section and Columns blocks print nothing; a new Slider opens on its Slides tab and an empty required list says "Nothing added yet"; a button's text and link need each other (Hero, slides); Image's Wide and Full sizes have styles and an optional **Alt text**; a Video needs a file or a YouTube / Vimeo address, and Vimeo autoplay works; background and autoplaying videos stay still for "reduce motion"; help texts corrected; Hero moves to Marketing; Gallery has its own icon.
+- **Blocks, new options** (defaults keep pages as they were): Hero heading level (H1 / H2) and height on phones; Heading "End" alignment and a subtitle; Columns 75/25, 40/60, 60/40, and quarters two by two on tablets; **Open in a new tab** on every link; Cards open as a whole, with an optional button text; Section text colour and image overlay.
 - Rich text: after a failed save, the invalid editor keeps the focus on fast machines (focus was sometimes restored to the Save button a moment later).
+- For developers: `Field::shownWhen($field, $values)` (shown in the browser without a reload, always sent); `Block::check(array $fields)` for checks across fields and `Block::buttonPair()`; the site script `motion.js`; icon `gallery`.
+- New words in the panel's `en`, `ar` and `ku` files: `blocks.fold`, `blocks.unfold`, `blocks.inside_count`, `blocks.moved_column`, `blocks.not_here`, `blocks.more`, `blocks.move_to`, `blocks.move_top`, `blocks.needs_link`, `blocks.needs_button`, `blocks.new_tab`, `blocks.overlay_help`, `blocks.hero_level_help`, `blocks.height_on_phones`, `blocks.same_as_desktop`, `blocks.size_small`, `blocks.alt_text*`, `blocks.video_url_unknown`, `blocks.video_missing`, `blocks.align_end`, `blocks.subtitle*`, `blocks.card_link_help`, `blocks.card_button_help`, `blocks.tone_auto`, `blocks.summary_empty`, `validation.builder_unreadable`; changed: `blocks.slider_overlay`, `blocks.slider_name_help`, `blocks.section_name_help`, `blocks.hero_help`, `blocks.cards_help`; removed: `blocks.previous_block`, `blocks.next_block`, `blocks.bg_colour_help`, `blocks.bg_image_help`.
 
 ## 0.31.0 - 2026-10-21
 
