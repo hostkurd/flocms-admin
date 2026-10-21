@@ -1,4 +1,5 @@
-@php /* Slider block (flocms-admin 0.29). Yours to change once php flo admin:blocks has copied it to views/blocks. */ @endphp
+@php /* Slider block (flocms-admin 0.29; 0.32: nothing without slides, new tab). Yours to change once php flo admin:blocks has copied it to views/blocks. */ @endphp
+@if($slides)
 <div class="flo-slider is-{{ $effect }} is-height-{{ $height }} is-fit-{{ $fit }}" data-flo-slider data-interval="{{ max(3, (int) $interval) * 1000 }}" data-autoplay="{{ $autoplay === '1' ? '1' : '0' }}"
      style="--flo-slider-height: {{ max(120, (int) $height_px) }}px; --flo-slider-height-phone: {{ max(120, (int) $height_phone) }}px; --flo-slider-overlay: {{ max(0, min(90, (int) $overlay)) / 100 }}"
      role="region" aria-roledescription="carousel" aria-label="{{ $name !== '' ? $name : \FloCMS\Admin\Support\AdminLang::get('blocks.site_slider') }}">
@@ -21,7 +22,7 @@
                 <p class="flo-slide-lead">{{ $slide['text'] }}</p>
                 @endif
                 @if($slide['button'] !== '' && $slide['link'] !== '')
-                <a class="flo-button" href="{{ $slide['link'] }}">{{ $slide['button'] }}</a>
+                <a class="flo-button" href="{{ $slide['link'] }}"{!! ($slide['new_tab'] ?? '') === '1' ? ' target="_blank" rel="noopener"' : '' !!}>{{ $slide['button'] }}</a>
                 @endif
             </div>
             @endif
@@ -45,3 +46,4 @@
     @endif
     @endif
 </div>
+@endif

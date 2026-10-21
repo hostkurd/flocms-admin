@@ -7,7 +7,31 @@ function activate(group: HTMLElement, id: string, focus = false): void {
   activeTabs.set(group.id, id);
   if (focus) tabs.find(tab => tab.dataset.adminTab === id)?.focus();
 }
+/**
+ * shownWhen() (0.32): a field shown only while another field has one of some
+ * values, switched here without reloading the form (block dialogs).
+ */
+function valueByName(name: string): string {
+  const controls = [...document.getElementsByName(name)] as HTMLInputElement[];
+  const radio = controls.find(control => control.type === 'radio');
+  if (radio) return controls.find(control => control.type === 'radio' && control.checked)?.value ?? '';
+  const box = controls.find(control => control.type === 'checkbox');
+  if (box) return box.checked ? box.value : (controls.find(control => control.type === 'hidden')?.value ?? '');
+  return controls[0]?.value ?? '';
+}
+export function applyShown(root: ParentNode, name?: string): void {
+  root.querySelectorAll<HTMLElement>(name ? `[data-shown-when="${CSS.escape(name)}"]` : '[data-shown-when]').forEach(field => {
+    const values = (field.dataset.shownValues || '').split(' ');
+    field.hidden = !values.includes(valueByName(field.dataset.shownWhen || ''));
+  });
+}
+document.addEventListener('change', event => {
+  const target = event.target;
+  if ((target instanceof HTMLInputElement || target instanceof HTMLSelectElement) && target.name) applyShown(document, target.name);
+});
+
 export function initializeForms(root: HTMLElement): void {
+  applyShown(root);
   root.querySelectorAll<HTMLElement>('[data-admin-tabs]').forEach(group => {
     const list = group.querySelector<HTMLElement>(':scope > [data-admin-tab-list]');
     const tabs = [...group.querySelectorAll<HTMLButtonElement>(':scope > [data-admin-tab-list] > [data-admin-tab]')];

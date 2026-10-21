@@ -6,6 +6,7 @@ namespace FloCMS\Admin\Blocks\Core;
 use FloCMS\Admin\Blocks\Block;
 use FloCMS\Admin\Form\Fields\Select;
 use FloCMS\Admin\Form\Fields\TextInput;
+use FloCMS\Admin\Form\Fields\Toggle;
 use FloCMS\Admin\Form\Fields\Textarea;
 use FloCMS\Admin\Support\AdminLang;
 
@@ -26,6 +27,7 @@ final class CallToAction extends Block
             Textarea::make('text')->label($t('text'))->rows(2)->rules('max:400')->columnSpan('full'),
             TextInput::make('button')->label($t('button_text'))->required()->rules('max:60'),
             TextInput::make('link')->label($t('button_link'))->required()->rules('max:500'),
+            Toggle::make('new_tab')->label($t('new_tab'))->columnSpan('full'),
             Select::make('style')->label($t('cta_style'))->options(['brand' => $t('style_brand'), 'light' => $t('style_light'), 'dark' => $t('style_dark')])->default('brand')->segmented()->columnSpan('full'),
         ];
     }

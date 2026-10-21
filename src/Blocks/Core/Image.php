@@ -7,6 +7,7 @@ use FloCMS\Admin\Blocks\Block;
 use FloCMS\Admin\Form\Fields\MediaPicker;
 use FloCMS\Admin\Form\Fields\Select;
 use FloCMS\Admin\Form\Fields\TextInput;
+use FloCMS\Admin\Form\Fields\Toggle;
 use FloCMS\Admin\Media\MediaLibrary;
 use FloCMS\Admin\Support\AdminLang;
 
@@ -24,8 +25,10 @@ final class Image extends Block
         $t = static fn (string $key): string => AdminLang::get('blocks.' . $key);
         return [
             MediaPicker::make('media')->label($t('image'))->required()->columnSpan('full'),
+            TextInput::make('alt')->label($t('alt_text'))->help($t('alt_text_help'))->rules('max:300')->columnSpan('full'),
             TextInput::make('caption')->label($t('caption'))->rules('max:300')->columnSpan('full'),
             TextInput::make('link')->label($t('link'))->rules('max:500'),
+            Toggle::make('new_tab')->label($t('new_tab')),
             Select::make('size')->label($t('image_size'))->options(['content' => $t('size_content'), 'wide' => $t('size_wide'), 'full' => $t('width_full')])->default('content')->segmented(),
         ];
     }

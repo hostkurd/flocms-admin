@@ -1,4 +1,7 @@
-@php /* Heading block (flocms-admin 0.29). */ $tag = in_array($level, ['h1', 'h2', 'h3', 'h4'], true) ? $level : 'h2'; @endphp
+@php /* Heading block (flocms-admin 0.29; 0.32: end alignment, subtitle). */ $tag = in_array($level, ['h1', 'h2', 'h3', 'h4'], true) ? $level : 'h2'; $align = in_array($align, ['start', 'center', 'end'], true) ? $align : 'start'; @endphp
 @if($text !== '')
 <{{ $tag }} class="flo-heading is-align-{{ $align }}">{{ $text }}</{{ $tag }}>
+@if(($subtitle ?? '') !== '')
+<p class="flo-subtitle is-align-{{ $align }}">{{ $subtitle }}</p>
+@endif
 @endif

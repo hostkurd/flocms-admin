@@ -95,6 +95,21 @@ final class BuilderUnitTest extends TestCase
         self::assertStringContainsString('aria-label="Show on the website"', $html);
         self::assertStringContainsString('data-builder-fields="bh"', $html);
         self::assertStringContainsString('data-builder-settings', $html);
+        // 0.32: one block per dialog; the ⋯ menu; a + between blocks
+        self::assertStringNotContainsString('data-builder-dialog-nav', $html);
+        self::assertStringContainsString('data-builder-action="more"', $html);
+        self::assertStringContainsString('fa-builder-inserter', $html);
+        // Containers fold; Columns are a grid as wide as their layout, each column with its width
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bc' => ['type' => 'columns', 'f' => ['layout' => '67-33']],
+            'bt' => ['type' => 'heading', 'parent' => 'bc', 'column' => '1', 'f' => ['text' => 'Right']],
+        ]]], self::LANGS);
+        $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        self::assertStringContainsString('data-builder-action="fold"', $html);
+        self::assertStringContainsString('data-builder-cols data-count="2" data-layout="67-33"', $html);
+        self::assertStringContainsString('data-builder-col-width>33%<', $html);
+        self::assertStringContainsString('data-builder-col-width>67%<', $html);
+        self::assertStringContainsString('aria-label="Add to column 2"', $html);
         // Read only: no Add, Delete or confirm; the dialog shows the fields
         $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([Builder::make('content')->disabled()]));
         self::assertStringContainsString('data-builder-edit-dialog', $html);
@@ -326,6 +341,129 @@ final class BuilderUnitTest extends TestCase
         $moved = $field->lists((string) $field->applyOperation($state, 'content:block:up:_:bd'))['_'][0]['children'];
         self::assertSame(['bd', 'bb', 'ba'], array_column($moved, 'id'));
         self::assertSame(['C', 'A'], array_values(array_map(static fn (array $n): string => $n['data']['text'], array_filter($moved, static fn (array $n): bool => $n['column'] === 0))));
+    }
+
+    /** The names and values a browser would post for $input under "content", packed as the editor sends them (0.32). */
+    private static function packed(array $input): string
+    {
+        $pairs = [];
+        $walk = static function (array $values, string $prefix) use (&$walk, &$pairs): void {
+            foreach ($values as $key => $value) {
+                if (is_array($value)) { $walk($value, $prefix . '[' . $key . ']'); } else { $pairs[] = [$prefix . '[' . $key . ']', (string) $value]; }
+            }
+        };
+        $walk($input, '');
+        return json_encode(['_form' => 1, 'pairs' => $pairs], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function testThePackedValueIsReadLikeTheFormFields(): void
+    {
+        $input = ['_sent' => '1', '_total' => ['en' => '4', 'ar' => '1'],
+            'en' => [
+                'bsec' => ['type' => 'section', 'order' => '0', 'f' => ['name' => 'Intro', 'width' => 'narrow']],
+                'bcol' => ['type' => 'columns', 'parent' => 'bsec', 'order' => '0', 'f' => ['layout' => '33-33-33']],
+                'bh1' => ['type' => 'heading', 'parent' => 'bcol', 'column' => '2', 'order' => '0', 'f' => ['text' => 'Right "quoted" & <b>', 'level' => 'h3']],
+                'btxt' => ['type' => 'rich_text', 'order' => '1', 'f' => ['body' => '<p onclick="x()">Hi</p><script>alert(1)</script>']],
+            ],
+            'ar' => ['bar' => ['type' => 'heading', 'f' => ['text' => 'مرحبا']]],
+        ];
+        $field = Builder::make('content')->translatable();
+        $fields = $field->stateFromInput(['content' => $input], self::LANGS);
+        $packed = $field->stateFromInput(['content' => self::packed($input)], self::LANGS);
+        self::assertSame($fields, $packed, 'the same state as the fields posted one by one');
+        $stored = (string) $field->dehydrate($packed);
+        self::assertStringContainsString('Right \"quoted\" & <b>', $stored);
+        self::assertStringNotContainsString('<script', $stored, 'rich text is cleaned as before');
+        self::assertStringContainsString('مرحبا', $stored);
+        self::assertSame([], $field->validateBlocks($packed, static fn (): array => []));
+
+        // "[]" appends, as PHP's own form parsing does
+        self::assertSame(['a' => ['x', 'y'], 'b' => ['c' => '1']], Builder::unpack('{"_form":1,"pairs":[["[a][]","x"],["[a][]","y"],["[b][c]","1"]]}', 1000));
+        // Not a packed value: an import's stored blocks, read as before
+        self::assertNull(Builder::unpack('[{"id":"b1","type":"heading","data":{"text":"Hi"}}]', 1000));
+        self::assertSame('Hi', $field->lists($field->stateFromInput(['content' => '[{"id":"b1","type":"heading","data":{"text":"Hi"}}]'], self::LANGS))['en'][0]['data']['text']);
+    }
+
+    public function testAPackedValueThatCantBeReadIsRefused(): void
+    {
+        $field = Builder::make('content');
+        $deep = '[' . implode('][', array_fill(0, Builder::PACKED_DEPTH + 1, 'a')) . ']';
+        $bad = [
+            '{"_form":1,"pairs":[["[_][b1][type]","heading"]',          // cut off
+            '{"_form":2,"pairs":[]}',                                    // unknown version
+            '{"_form":1,"pairs":{"a":["[_]","x"]}}',                     // not a list
+            '{"_form":1,"pairs":[["[_][b1][type]",1]]}',                 // not a string
+            '{"_form":1,"pairs":[["_][b1","x"]]}',                       // not a name
+            '{"_form":1,"pairs":[["' . $deep . '","x"]]}',               // too deep
+            '{"_form":1,"pairs":[["[_][b1][f][text]","' . str_repeat('x', Builder::MAX_BYTES * 4) . '"]]}', // too large
+            '{"_form":1,"pairs":[["[_][9223372036854775807]","x"],["[_][]","y"]]}', // an array that can't take another item
+            '{"_form":1,"pairs":[["[_][][b1]","x"]]}',                     // "[]" before the end
+        ];
+        // Too many arrays for any real page: refused before it uses much memory
+        $pairs = [];
+        for ($i = 0; $i <= Builder::PACKED_ARRAYS; $i++) { $pairs[] = ['[_][b' . $i . '][f][x]', '1']; }
+        $bad[] = json_encode(['_form' => 1, 'pairs' => $pairs]);
+        foreach ($bad as $json) {
+            $state = $field->stateFromInput(['content' => $json], self::LANGS);
+            $errors = $field->validateBlocks($state, static fn (): array => []);
+            self::assertStringContainsString("can't read", $errors['content'] ?? '', substr($json, 0, 40));
+            self::assertNull($field->dehydrate($state));
+        }
+    }
+
+    public function testPackedHtmlBlocksKeepTheirSignatureCheck(): void
+    {
+        $session = $_SESSION ?? [];
+        try {
+            \FloCMS\Core\Config::set('permissions', [1 => []]);
+            $_SESSION = ['role' => 1];
+            $field = Builder::make('content');
+            $forged = ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<script>x</script>']]]];
+            self::assertSame([], $field->lists($field->stateFromInput(['content' => self::packed($forged)], self::LANGS))['_']);
+            $raw = ['_' => ['b2' => ['type' => 'gone', 'raw' => '{"id":"b2","type":"html","data":{"html":"<script>"}}']]];
+            self::assertSame([], $field->lists($field->stateFromInput(['content' => self::packed($raw)], self::LANGS))['_']);
+        } finally {
+            $_SESSION = $session;
+        }
+    }
+
+    public function testChecksAcrossABlocksFields(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bh' => ['type' => 'hero', 'f' => ['heading' => 'Hi', 'button' => 'Go', 'link2' => '/two']],
+            'bs' => ['type' => 'slider', 'f' => ['slides' => ['k1' => ['media' => '1', 'button' => 'More'], 'k2' => ['media' => '2', 'link' => '/x', 'button' => 'Fine']]]],
+            'bv' => ['type' => 'video', 'f' => []],
+            'bw' => ['type' => 'video', 'f' => ['url' => 'https://example.com/clip.mp4']],
+            'bok' => ['type' => 'video', 'f' => ['url' => 'https://youtu.be/abcdefghijk']],
+        ]]], self::LANGS);
+        $errors = $field->validateBlocks($state, static fn (): array => []);
+        self::assertStringContainsString('Add a link', $errors['content._.bh.link'] ?? '');
+        self::assertStringContainsString('Add the button', $errors['content._.bh.button2'] ?? '');
+        self::assertStringContainsString('Add a link', $errors['content._.bs.slides.0.link'] ?? '');
+        self::assertArrayNotHasKey('content._.bs.slides.1.link', $errors);
+        self::assertStringContainsString('Choose a video file', $errors['content._.bv.video'] ?? '');
+        self::assertStringContainsString('YouTube and Vimeo', $errors['content._.bw.url'] ?? '');
+        self::assertSame([], array_filter(array_keys($errors), static fn (string $key): bool => str_contains($key, '.bok.')));
+    }
+
+    public function testFieldsShownForOneChoiceAreAlwaysOnThePage(): void
+    {
+        $field = Builder::make('content');
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bs' => ['type' => 'slider', 'f' => ['height' => 'screen', 'height_px' => '700', 'autoplay' => '1']],
+            'bf' => ['type' => 'slider', 'f' => ['height' => 'fixed', 'autoplay' => '0']],
+        ]]], self::LANGS);
+        $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        // Full screen: the pixel heights are there but hidden; Fixed: shown. The interval follows Play automatically.
+        self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bs\]\[f\]\[height\]" data-shown-values="fixed" hidden data-field="height_px"/', $html);
+        self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bf\]\[f\]\[height\]" data-shown-values="fixed" data-field="height_px"/', $html);
+        self::assertMatchesRegularExpression('/data-shown-when="content\[_\]\[bf\]\[f\]\[autoplay\]" data-shown-values="1" hidden data-field="interval"/', $html);
+        // Hidden or not, a field keeps its value
+        self::assertSame('700', $field->lists($state)['_'][0]['data']['height_px']);
+        // A hidden field with an error is shown, so the error can be fixed
+        $html = (new FormRenderer(['content' => $state], ['content._.bs.height_px' => 'Too small.'], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        self::assertMatchesRegularExpression('/data-shown-when="content\\[_\\]\\[bs\\]\\[f\\]\\[height\\]" data-shown-values="fixed" data-field="height_px"/', $html);
     }
 
     public function testACutRequestIsNotSaved(): void

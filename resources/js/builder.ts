@@ -159,6 +159,8 @@ function sync(list: HTMLElement): void {
     if (heading && title) heading.textContent = title;
     const handle = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-handle]');
     if (handle) handle.setAttribute('aria-label', text(builder.dataset.dragText, { block: title }) || title);
+    const inside = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-inside]');
+    if (inside) { const count = nodes(node).length; inside.textContent = count > 0 ? text(builder.dataset.insideText, { count: String(count) }) : ''; }
     showState(list, node);
   });
   const count = nodes(list).length;
@@ -212,7 +214,10 @@ function showState(list: HTMLElement, node: HTMLElement): void {
   const repeater = fields?.querySelector<HTMLElement>('[data-repeater]');
   if (summary && repeater) {
     const count = repeater.querySelectorAll(':scope > [data-repeater-items] > [data-repeater-item]').length;
-    summary.textContent = count > 0 ? text(builder.dataset.summaryItems, { count: String(count) }) : '';
+    // A list the block needs (a slider's slides) that is still empty says so (0.32).
+    const empty = count === 0 && Number(repeater.dataset.min || 0) > 0;
+    summary.textContent = count > 0 ? text(builder.dataset.summaryItems, { count: String(count) }) : empty ? builder.dataset.summaryEmpty || '' : '';
+    summary.classList.toggle('is-empty', empty);
   }
 }
 
@@ -287,13 +292,24 @@ function add(list: HTMLElement, type: string, target: Target): void {
   const made = fromTemplate(builder, type, list.dataset.builderList || '', newId());
   if (!made) return;
   insert(list, made.node, made.pane, slot, target.after);
+  reveal(list, made.node);
   prepare(builder, made.pane);
   enhance(made.node);
   changed(list);
   markChanged(made.node);
   const id = made.node.dataset.builderNode || '';
   // A new block opens to be filled in (one without fields of its own shows its settings).
-  if (fieldsOf(list, id)) openEditor(list, id);
+  if (fieldsOf(list, id)) {
+    openEditor(list, id);
+    // A list it needs that is empty (a slider's slides): its tab, with Add ready (0.32).
+    const needed = [...(fieldsOf(list, id)?.querySelectorAll<HTMLElement>('[data-repeater]') ?? [])]
+      .find(repeater => Number(repeater.dataset.min || 0) > 0 && !repeater.querySelector(':scope > [data-repeater-items] > [data-repeater-item]'));
+    const panel = needed?.closest<HTMLElement>('[data-admin-tab-panel]');
+    if (needed && panel) {
+      document.querySelector<HTMLElement>(`[data-admin-tab="${CSS.escape(panel.id)}"]`)?.click();
+      needed.querySelector<HTMLElement>('[data-repeater-add]')?.focus();
+    }
+  }
   else { select(list, id); made.node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus(); }
 }
 
@@ -379,7 +395,7 @@ function build(list: HTMLElement, data: Snapshot, slot: HTMLElement, after: HTML
   });
   insert(list, made.node, made.pane, slot, after);
   // Columns: the same number of columns before the blocks in them.
-  if (data.type === 'columns' && data.columns > 0) setColumns(list, made.node, data.columns);
+  if (data.type === 'columns' && data.columns > 0) setColumns(list, made.node, valueOf(list, id, 'layout') || Array(data.columns).fill(Math.round(100 / data.columns)).join('-'));
   prepare(builder, made.pane);
   enhance(made.node);
   data.children.forEach(child => {
@@ -541,72 +557,195 @@ function move(list: HTMLElement, node: HTMLElement, by: number): void {
   announce(builder, text(builder.dataset.movedText, { block: titleOf(list, node), position: String(target + 1) }));
 }
 
-/** Drag a block by its handle into any place it may sit. */
-function drag(list: HTMLElement, node: HTMLElement, event: PointerEvent): void {
-  const handle = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-builder-handle]') : null;
-  if (!handle) return;
-  event.preventDefault();
-  const pointer = event.pointerId;
-  const type = node.dataset.type || '';
-  const startSlot = slotOf(node);
-  const startNext = node.nextElementSibling;
-  node.classList.add('is-dragging');
-  list.classList.add('is-dragging');
-  const onMove = (moved: PointerEvent) => {
-    if (moved.pointerId !== pointer) return;
-    const under = document.elementFromPoint(moved.clientX, moved.clientY);
-    if (!under || node.contains(under)) return;
-    const row = under.closest<HTMLElement>('[data-builder-node]');
-    const emptySlot = under.closest<HTMLElement>('[data-builder-slot]');
-    if (row && list.contains(row) && !node.contains(row)) {
-      const slot = slotOf(row);
-      const box = row.querySelector<HTMLElement>(':scope > .fa-builder-row')!.getBoundingClientRect();
-      // Over a container's own row: into it when it has room for this kind.
-      if (row.hasAttribute('data-holds') && moved.clientY > box.top + box.height * 0.3 && moved.clientY < box.bottom) {
-        const inner = row.querySelector<HTMLElement>(':scope > [data-builder-slot], :scope > [data-builder-cols] > [data-builder-col] > [data-builder-slot]');
-        if (inner && allowed(list, type, inner) && childNodes(inner).length === 0) { inner.append(node); return; }
-      }
-      if (!allowed(list, type, slot) || moved.clientY > box.bottom) return;
-      if (moved.clientY < box.top + box.height / 2) { if (row.previousElementSibling !== node) row.before(node); }
-      else if (row.nextElementSibling !== node) row.after(node);
-      return;
-    }
-    if (emptySlot && list.contains(emptySlot) && !node.contains(emptySlot) && childNodes(emptySlot).length === 0 && allowed(list, type, emptySlot)) emptySlot.append(node);
-  };
-  const onUp = (up: PointerEvent) => {
-    if (up.pointerId !== pointer) return;
-    document.removeEventListener('pointermove', onMove);
-    document.removeEventListener('pointerup', onUp);
-    document.removeEventListener('pointercancel', onUp);
-    node.classList.remove('is-dragging');
-    list.classList.remove('is-dragging');
-    if (up.type === 'pointercancel') { if (startNext && startNext.parentElement === startSlot) startSlot.insertBefore(node, startNext); else startSlot.append(node); }
-    if (slotOf(node) !== startSlot || node.nextElementSibling !== startNext) {
-      changed(list);
-      markChanged(node);
-      const builder = builderOf(list)!;
-      announce(builder, text(builder.dataset.movedText, { block: titleOf(list, node), position: String(childNodes(slotOf(node)).indexOf(node) + 1) }));
-    }
-    handle.focus();
-  };
-  document.addEventListener('pointermove', onMove);
-  document.addEventListener('pointerup', onUp);
-  document.addEventListener('pointercancel', onUp);
+/* Drag and drop (0.32) ----------------------------------------------------
+ * The block stays where it is while it is dragged: a line shows where it will
+ * land, and it moves when it is let go. Every container is a target as a whole
+ * (its padding, labels, Add button and the gaps between its blocks); the innermost
+ * one under the pointer wins. A place the block may not go shows a red line and
+ * nothing moves. Near the window's edges the page scrolls; Escape cancels; a
+ * folded container opens when a block is held over it.
+ */
+type Drop = { slot: HTMLElement; before: HTMLElement | null; ok: boolean };
+let dragging: { list: HTMLElement; node: HTMLElement; cancel: () => void } | null = null;
+
+/** The area that belongs to a slot: the whole structure, a column, or a container's body (not its header). */
+function zoneOf(list: HTMLElement, slot: HTMLElement): DOMRect | null {
+  if (!slot.dataset.parent) return list.querySelector<HTMLElement>(':scope > [data-builder-outline]')?.getBoundingClientRect() ?? null;
+  const column = slot.closest<HTMLElement>('[data-builder-col]');
+  if (column && slot.parentElement === column) return column.getBoundingClientRect();
+  const container = slot.closest<HTMLElement>('[data-builder-node]');
+  if (!container || container.classList.contains('is-folded')) return null;
+  const box = container.getBoundingClientRect();
+  const head = container.querySelector<HTMLElement>(':scope > .fa-builder-row')?.getBoundingClientRect();
+  return head ? new DOMRect(box.x, head.bottom, box.width, Math.max(0, box.bottom - head.bottom)) : box;
 }
 
+/** Where a dragged block would land for a pointer position, or null outside the structure. */
+function dropAt(list: HTMLElement, node: HTMLElement, x: number, y: number): Drop | null {
+  const type = node.dataset.type || '';
+  let best: { slot: HTMLElement; depth: number } | null = null;
+  list.querySelectorAll<HTMLElement>('[data-builder-slot]').forEach(slot => {
+    if (node.contains(slot)) return;
+    const zone = zoneOf(list, slot);
+    if (!zone || x < zone.left || x > zone.right || y < zone.top || y > zone.bottom) return;
+    // The innermost place wins: the more blocks around it, the deeper it is.
+    const depth = [...ancestors(slot)].length;
+    if (!best || depth > best.depth) best = { slot, depth };
+  });
+  if (!best) return null;
+  const slot = (best as { slot: HTMLElement }).slot;
+  const before = childNodes(slot).filter(child => child !== node).find(child => {
+    const box = child.getBoundingClientRect();
+    return y < box.top + box.height / 2;
+  }) ?? null;
+  return { slot, before, ok: allowed(list, type, slot) };
+}
+
+/** The drop line: between two blocks, after the last one, or at the top of an empty place. */
+function showDrop(list: HTMLElement, node: HTMLElement, drop: Drop | null): void {
+  const line = list.querySelector<HTMLElement>(':scope > [data-builder-outline] > [data-builder-drop]')
+    ?? (() => { const made = document.createElement('div'); made.className = 'fa-builder-drop'; made.dataset.builderDrop = ''; made.setAttribute('aria-hidden', 'true'); list.querySelector(':scope > [data-builder-outline]')!.append(made); return made; })();
+  list.querySelectorAll('.is-drop-zone, .is-drop-refused').forEach(element => element.classList.remove('is-drop-zone', 'is-drop-refused'));
+  if (!drop) { line.hidden = true; return; }
+  const outline = list.querySelector<HTMLElement>(':scope > [data-builder-outline]')!.getBoundingClientRect();
+  const others = childNodes(drop.slot).filter(child => child !== node);
+  let top: number; let left: number; let width: number;
+  const zoneElement = drop.slot.closest<HTMLElement>('[data-builder-col]') ?? (drop.slot.dataset.parent ? drop.slot.closest<HTMLElement>('[data-builder-node]') : null);
+  if (others.length) {
+    const reference = drop.before ?? others[others.length - 1];
+    const box = reference.getBoundingClientRect();
+    top = drop.before ? box.top - 4 : box.bottom + 3;
+    left = box.left; width = box.width;
+  } else {
+    const zone = zoneOf(list, drop.slot)!;
+    const add = zoneElement?.querySelector<HTMLElement>(':scope > [data-builder-add], :scope > .fa-builder-add');
+    const box = add?.getBoundingClientRect();
+    top = box ? box.top - 4 : zone.top + 8;
+    left = box ? box.left : zone.left + 8; width = box ? box.width : zone.width - 16;
+  }
+  line.hidden = false;
+  line.classList.toggle('is-refused', !drop.ok);
+  line.style.top = `${top - outline.top}px`;
+  line.style.left = `${left - outline.left}px`;
+  line.style.width = `${width}px`;
+  zoneElement?.classList.add(drop.ok ? 'is-drop-zone' : 'is-drop-refused');
+}
+
+function drag(list: HTMLElement, node: HTMLElement, event: PointerEvent, touch = false): void {
+  if (dragging) return;
+  const builder = builderOf(list)!;
+  const handle = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-handle]');
+  const pointer = event.pointerId;
+  const startX = event.clientX; const startY = event.clientY;
+  let started = touch;
+  let x = startX; let y = startY;
+  let drop: Drop | null = null;
+  let ghost: HTMLElement | null = null;
+  let scroller = 0;
+  let opener = 0; let opening: HTMLElement | null = null;
+  const begin = () => {
+    started = true;
+    node.classList.add('is-drag-source');
+    list.classList.add('is-dragging');
+    const row = node.querySelector<HTMLElement>(':scope > .fa-builder-row')!;
+    ghost = row.cloneNode(true) as HTMLElement;
+    ghost.classList.add('fa-builder-ghost');
+    ghost.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.style.width = `${Math.min(row.offsetWidth, 360)}px`;
+    builder.append(ghost);
+  };
+  const place = () => {
+    if (!ghost) return;
+    ghost.style.left = `${x + 12}px`;
+    ghost.style.top = `${y - 18}px`;
+    drop = dropAt(list, node, x, y);
+    showDrop(list, node, drop);
+    // Held over a folded container: it opens after half a second.
+    const over = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-builder-node].is-folded');
+    if (over !== opening) {
+      window.clearTimeout(opener); opening = over ?? null;
+      if (over && !node.contains(over)) opener = window.setTimeout(() => { setFolded(list, over, false); place(); }, 500);
+    }
+  };
+  const scroll = () => {
+    const edge = 60;
+    const step = y < edge ? -Math.ceil((edge - y) / 4) : y > window.innerHeight - edge ? Math.ceil((y - window.innerHeight + edge) / 4) : 0;
+    if (step) { window.scrollBy(0, step); place(); }
+    scroller = requestAnimationFrame(scroll);
+  };
+  const onMove = (moved: PointerEvent) => {
+    if (moved.pointerId !== pointer) return;
+    x = moved.clientX; y = moved.clientY;
+    if (!started) {
+      if (Math.hypot(x - startX, y - startY) < 4) return;
+      begin();
+      scroller = requestAnimationFrame(scroll);
+    }
+    moved.preventDefault();
+    place();
+  };
+  const finish = (apply: boolean) => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onCancel);
+    document.removeEventListener('keydown', onKey, true);
+    cancelAnimationFrame(scroller);
+    window.clearTimeout(opener);
+    dragging = null;
+    if (!started) return;
+    ghost?.remove();
+    node.classList.remove('is-drag-source');
+    list.classList.remove('is-dragging');
+    showDrop(list, node, null);
+    const target = drop;
+    if (apply && target && target.ok) {
+      const from = slotOf(node); const next = node.nextElementSibling;
+      if (target.before) target.slot.insertBefore(node, target.before); else target.slot.append(node);
+      if (slotOf(node) !== from || node.nextElementSibling !== next) {
+        reveal(list, node);
+        changed(list);
+        markChanged(node);
+        announce(builder, text(builder.dataset.movedText, { block: titleOf(list, node), position: String(childNodes(slotOf(node)).indexOf(node) + 1) }));
+      }
+    } else if (apply && target && !target.ok) {
+      announce(builder, text(builder.dataset.notHereText, { block: titleOf(list, node) }));
+    }
+    (handle ?? node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]'))?.focus({ preventScroll: true });
+  };
+  const onUp = (up: PointerEvent) => { if (up.pointerId === pointer) finish(true); };
+  const onCancel = (up: PointerEvent) => { if (up.pointerId === pointer) finish(false); };
+  const onKey = (key: KeyboardEvent) => { if (key.key === 'Escape') { key.preventDefault(); key.stopPropagation(); finish(false); } };
+  dragging = { list, node, cancel: () => finish(false) };
+  document.addEventListener('pointermove', onMove, { passive: false });
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onCancel);
+  document.addEventListener('keydown', onKey, true);
+  if (touch) { begin(); place(); scroller = requestAnimationFrame(scroll); }
+}
+
+// While a block is dragged by touch, the page does not scroll under the finger.
+document.addEventListener('touchmove', event => { if (dragging) event.preventDefault(); }, { passive: false });
+
 /**
- * A Columns block's columns in the structure follow its layout: a column
- * that goes away gives its blocks to the last remaining one.
+ * A Columns block's columns in the structure follow its layout ("67-33"): as many
+ * columns, as wide (admin.css draws a grid per layout); a column that goes away gives
+ * its blocks to the last remaining one.
  */
-function setColumns(list: HTMLElement, node: HTMLElement, count: number): void {
+function setColumns(list: HTMLElement, node: HTMLElement, layout: string): void {
   const holder = node.querySelector<HTMLElement>(':scope > [data-builder-cols]');
+  const widths = layout.split('-').map(Number).filter(width => width > 0);
+  const count = widths.length;
   if (!holder || count < 1) return;
   const builder = builderOf(list)!;
+  holder.dataset.layout = layout;
+  holder.dataset.count = String(count);
   let columns = [...holder.querySelectorAll<HTMLElement>(':scope > [data-builder-col]')];
+  let moved = 0;
   while (columns.length > count) {
     const last = columns.pop()!;
     const keep = columns[columns.length - 1].querySelector<HTMLElement>(':scope > [data-builder-slot]')!;
-    childNodes(last.querySelector<HTMLElement>(':scope > [data-builder-slot]')!).forEach(child => keep.append(child));
+    childNodes(last.querySelector<HTMLElement>(':scope > [data-builder-slot]')!).forEach(child => { keep.append(child); moved++; });
     last.remove();
   }
   while (columns.length < count) {
@@ -620,15 +759,212 @@ function setColumns(list: HTMLElement, node: HTMLElement, count: number): void {
     if (label) label.textContent = text(builder.dataset.columnText, { number: String(index + 1) });
     copy.querySelectorAll<HTMLElement>('[data-builder-add]').forEach(add => {
       add.dataset.column = String(index);
-      add.dataset.columnLabel = builder.dataset.addColumnText || '';
       add.removeAttribute('open');
       add.querySelectorAll<HTMLButtonElement>('button[value]').forEach(button => { button.value = button.value.replace(/:\d+$/, ':' + index); });
-      const span = add.querySelector<HTMLElement>(':scope > summary > span');
-      if (span && add.dataset.columnLabel) span.textContent = text(add.dataset.columnLabel, { number: String(index + 1) });
+      add.querySelector(':scope > summary')?.setAttribute('aria-label', text(builder.dataset.addColumnText, { number: String(index + 1) }));
     });
     holder.append(copy);
     columns.push(copy);
   }
+  columns.forEach((column, index) => {
+    const width = column.querySelector<HTMLElement>('[data-builder-col-width]');
+    if (width) width.textContent = `${widths[index] ?? ''}%`;
+  });
+  if (moved > 0) announce(builder, text(builder.dataset.movedColumnText, { count: String(moved), number: String(count) }));
+}
+
+/* The ⋯ menu of a block (0.32): its actions again, Move to… and Delete ---------
+ * One menu per Builder, filled when it opens. Each action clicks the row's own
+ * button, so the menu and the row always do the same; Move to… lists every place
+ * the block may go (a container's body or a column, or the top level after the
+ * container it is in). Arrow keys move through it; Escape closes it. */
+type Place = { label: string; slot: HTMLElement; after: HTMLElement | null };
+const menus = new WeakMap<HTMLElement, { list: HTMLElement; node: HTMLElement; button: HTMLElement; places: Place[] }>();
+
+function movePlaces(list: HTMLElement, node: HTMLElement): Place[] {
+  const builder = builderOf(list)!;
+  const type = node.dataset.type || '';
+  const current = slotOf(node);
+  const places: Place[] = [];
+  const outer = [...ancestors(node)].pop();
+  const topSlot = slotFor(list, '', 0);
+  if (outer && topSlot && allowed(list, type, topSlot)) places.push({ label: text(builder.dataset.moveTopText, { block: titleOf(list, outer) }), slot: topSlot, after: outer });
+  const parent = node.parentElement?.closest<HTMLElement>('[data-builder-node]') ?? null;
+  list.querySelectorAll<HTMLElement>('[data-builder-slot]').forEach(slot => {
+    if (!slot.dataset.parent || slot === current || node.contains(slot) || !allowed(list, type, slot)) return;
+    const container = nodeOf(list, slot.dataset.parent);
+    if (!container) return;
+    const number = String(Number(slot.dataset.column || 0) + 1);
+    const inColumn = slot.parentElement?.hasAttribute('data-builder-col') ?? false;
+    const label = !inColumn ? text(builder.dataset.whereIn, { block: titleOf(list, container) })
+      : container === parent ? text(builder.dataset.columnText, { number }) : text(builder.dataset.whereColumn, { block: titleOf(list, container), number });
+    places.push({ label, slot, after: null });
+  });
+  return places;
+}
+
+function menuOf(builder: HTMLElement): HTMLElement {
+  let menu = builder.querySelector<HTMLElement>(':scope > [data-builder-menu]');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.className = 'fa-menu-panel fa-builder-menu';
+    menu.dataset.builderMenu = '';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    builder.append(menu);
+  }
+  return menu;
+}
+
+function closeMenu(builder: HTMLElement, focus = false): void {
+  const menu = builder.querySelector<HTMLElement>(':scope > [data-builder-menu]');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  const job = menus.get(menu);
+  job?.button.setAttribute('aria-expanded', 'false');
+  if (focus) job?.button.focus();
+}
+
+function openMenu(list: HTMLElement, node: HTMLElement, button: HTMLElement): void {
+  const builder = builderOf(list)!;
+  const menu = menuOf(builder);
+  if (!menu.hidden && menus.get(menu)?.button === button) { closeMenu(builder, true); return; }
+  closeMenu(builder);
+  const tools = node.querySelector<HTMLElement>(':scope > .fa-builder-row .fa-builder-row-tools');
+  const item = (label: string, icon: string, act: string, danger = false) => {
+    const made = document.createElement('button');
+    made.type = 'button';
+    made.className = 'fa-menu-item' + (danger ? ' is-danger' : '');
+    made.setAttribute('role', 'menuitem');
+    made.tabIndex = -1;
+    made.dataset.menuAct = act;
+    made.innerHTML = icon;
+    const span = document.createElement('span');
+    span.textContent = label;
+    made.append(span);
+    return made;
+  };
+  const heading = (label: string) => { const made = document.createElement('p'); made.className = 'fa-builder-menu-heading'; made.setAttribute('aria-hidden', 'true'); made.textContent = label; return made; };
+  const rule = () => { const made = document.createElement('hr'); made.className = 'fa-builder-menu-rule'; return made; };
+  const parts: HTMLElement[] = [];
+  ['edit', 'duplicate', 'toggle'].forEach(action => {
+    const source = tools?.querySelector<HTMLElement>(`:scope > [data-builder-action="${action}"]`);
+    if (!source) return;
+    const pressed = source.getAttribute('aria-pressed') === 'true';
+    const svg = action === 'toggle' ? source.querySelector(pressed ? '.fa-builder-icon-hidden' : '.fa-builder-icon-shown')?.outerHTML ?? '' : source.querySelector('svg')?.outerHTML ?? '';
+    parts.push(item(source.getAttribute('aria-label') || '', svg, 'click:' + action));
+  });
+  tools?.querySelectorAll<HTMLElement>('[data-builder-copy-to]').forEach(copy => {
+    if (copy.dataset.builderCopyTo === list.dataset.builderList) return;
+    parts.push(item(copy.textContent || '', tools.querySelector('[data-builder-action="copy-menu"] svg')?.outerHTML ?? '', 'copy:' + (copy.dataset.builderCopyTo || '')));
+  });
+  const places = movePlaces(list, node);
+  if (places.length) {
+    // Move to: a named group, so screen readers say what the places are for.
+    const group = document.createElement('div');
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', builder.dataset.moveToText || '');
+    places.forEach((place, index) => group.append(item(place.label, '', 'move:' + index)));
+    parts.push(rule(), heading(builder.dataset.moveToText || ''), group);
+  }
+  const remove = tools?.querySelector<HTMLElement>(':scope > [data-builder-action="remove"]');
+  if (remove) parts.push(rule(), item(remove.getAttribute('aria-label') || '', remove.querySelector('svg')?.outerHTML ?? '', 'click:remove', true));
+  menu.replaceChildren(...parts);
+  menu.setAttribute('aria-label', button.getAttribute('aria-label') || '');
+  menus.set(menu, { list, node, button, places });
+  menu.hidden = false;
+  button.setAttribute('aria-expanded', 'true');
+  // Under the button, its end edges lined up; above it when there is no room below.
+  const at = button.getBoundingClientRect();
+  const rtl = getComputedStyle(list).direction === 'rtl';
+  const width = menu.offsetWidth; const height = menu.offsetHeight;
+  const left = rtl ? Math.max(8, at.left) : Math.max(8, at.right - width);
+  const below = at.bottom + 4 + height <= window.innerHeight - 8;
+  menu.style.left = `${Math.min(left, window.innerWidth - width - 8)}px`;
+  menu.style.top = `${below ? at.bottom + 4 : Math.max(8, at.top - 4 - height)}px`;
+  menu.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+}
+
+function menuChoose(builder: HTMLElement, choice: HTMLElement): void {
+  const menu = choice.closest<HTMLElement>('[data-builder-menu]');
+  const job = menu ? menus.get(menu) : undefined;
+  if (!job) return;
+  const [kind, value] = (choice.dataset.menuAct || '').split(':');
+  closeMenu(builder);
+  const { list, node } = job;
+  const tools = node.querySelector<HTMLElement>(':scope > .fa-builder-row .fa-builder-row-tools');
+  if (kind === 'click') { tools?.querySelector<HTMLElement>(`:scope > [data-builder-action="${value}"]`)?.click(); return; }
+  if (kind === 'copy') { copyTo(list, node, value); return; }
+  if (kind === 'move') {
+    const place = job.places[Number(value)];
+    if (!place || !node.isConnected || !place.slot.isConnected || (place.after && !place.after.isConnected)) return;
+    if (place.after) place.after.after(node); else place.slot.append(node);
+    reveal(list, node);
+    changed(list);
+    markChanged(node);
+    announce(builder, text(builder.dataset.movedText, { block: titleOf(list, node), position: String(childNodes(slotOf(node)).indexOf(node) + 1) }));
+    node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus();
+  }
+}
+
+document.addEventListener('keydown', event => {
+  const menu = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-builder-menu]') : null;
+  if (!menu) return;
+  const builder = builderOf(menu)!;
+  const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+  const at = items.indexOf(event.target as HTMLElement);
+  if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeMenu(builder, true); return; }
+  if (event.key === 'Tab') { event.preventDefault(); closeMenu(builder, true); return; }
+  const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
+  if (step) { event.preventDefault(); items[(at + step + items.length) % items.length]?.focus(); return; }
+  if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); (event.key === 'Home' ? items[0] : items[items.length - 1])?.focus(); }
+}, true);
+
+/* Fold and unfold containers (0.32), remembered per page in this browser. */
+const FOLD_KEY = 'flo-admin-builder-folds';
+const foldPlace = (list: HTMLElement) => `${location.pathname}|${builderOf(list)?.dataset.name || ''}|${list.dataset.builderList || ''}`;
+function readFolds(): Record<string, string[]> {
+  try { const value = JSON.parse(localStorage.getItem(FOLD_KEY) || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch { return {}; }
+}
+function saveFolds(list: HTMLElement): void {
+  const all = readFolds();
+  const place = foldPlace(list);
+  const ids = nodes(list).filter(node => node.classList.contains('is-folded')).map(node => node.dataset.builderNode || '');
+  delete all[place];
+  if (ids.length) all[place] = ids;
+  const places = Object.keys(all);
+  places.slice(0, Math.max(0, places.length - 40)).forEach(old => { delete all[old]; });
+  try { localStorage.setItem(FOLD_KEY, JSON.stringify(all)); } catch { /* private window */ }
+}
+const containersOf = (list: HTMLElement) => nodes(list).filter(node => node.hasAttribute('data-holds'));
+function setFolded(list: HTMLElement, node: HTMLElement, folded: boolean, save = true): void {
+  if (!node.hasAttribute('data-holds')) return;
+  node.classList.toggle('is-folded', folded);
+  const button = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-action="fold"]');
+  if (button) {
+    const builder = builderOf(list)!;
+    const label = text(folded ? builder.dataset.unfoldText : builder.dataset.foldText, { block: titleOf(list, node) });
+    button.setAttribute('aria-expanded', String(!folded));
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  }
+  if (save) { saveFolds(list); showCollapseAll(list); }
+}
+/** The containers around a block open (a block added, pasted or moved into a folded one is seen). */
+function reveal(list: HTMLElement, node: HTMLElement): void {
+  let changedAny = false;
+  for (const parent of ancestors(node)) { if (parent.classList.contains('is-folded')) { setFolded(list, parent, false, false); changedAny = true; } }
+  if (changedAny) { saveFolds(list); showCollapseAll(list); }
+}
+/** "Collapse all" folds every container; when all are folded it reads "Expand all". */
+function showCollapseAll(list: HTMLElement): void {
+  const button = list.querySelector<HTMLElement>('[data-builder-action="collapse-all"]');
+  if (!button) return;
+  const containers = containersOf(list);
+  const all = containers.length > 0 && containers.every(node => node.classList.contains('is-folded'));
+  button.hidden = containers.length === 0;
+  button.setAttribute('aria-pressed', String(all));
+  if (button.dataset.expandText && button.dataset.collapseText) button.textContent = all ? button.dataset.expandText : button.dataset.collapseText;
 }
 
 /** Where the picker's block will go, in words ("After “Hero”", "In “Columns”, column 2"). */
@@ -709,7 +1045,7 @@ function returnPicker(builder: HTMLElement): void {
   list?.querySelector(':scope > [data-builder-outline] > .fa-builder-add-main')?.append(picker);
 }
 
-/** Edit (0.31): a block's own fields in a dialog, with its name, Previous and Next. */
+/** Edit (0.31): a block's own fields in a dialog, with its name (0.32: one block per dialog, one height). */
 function openEditor(list: HTMLElement, id: string): void {
   const builder = builderOf(list)!;
   const dialog = dialogOf(builder, 'edit');
@@ -729,21 +1065,41 @@ function openEditor(list: HTMLElement, id: string): void {
   const node = nodeOf(list, id);
   const title = dialog.querySelector<HTMLElement>('[data-builder-dialog-title]');
   if (title && node) title.textContent = titleOf(list, node);
-  const editable = editableIds(list);
-  const index = editable.indexOf(id);
-  dialog.querySelectorAll<HTMLButtonElement>('[data-builder-dialog-nav]').forEach(button => {
-    const step = Number(button.dataset.builderDialogNav);
-    button.disabled = index < 0 || !editable[index + step];
-  });
   if (!dialog.open) dialog.showModal();
+  fitDialog(dialog);
   dialog.querySelector('[data-builder-dialog-body]')!.scrollTop = 0;
   const invalid = fields.querySelector<HTMLElement>('[aria-invalid="true"]');
   (invalid ?? fields.querySelector<HTMLElement>('input:not([type="hidden"]):not([type="radio"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"]'))?.focus();
 }
 
-/** The blocks of a list that have fields to edit, in the order they are on the page. */
-function editableIds(list: HTMLElement): string[] {
-  return nodes(list).map(node => node.dataset.builderNode || '').filter(id => fieldsOf(list, id) !== null);
+/**
+ * The edit dialog keeps one height while it is open (0.32): as tall as the block's
+ * tallest tab, at least 360px and at most 760px (or the window less 64px); what
+ * doesn't fit scrolls inside its body, so switching tabs or adding slides never
+ * moves it. Each tab is shown for a moment, before the browser paints, to measure it.
+ */
+function fitDialog(dialog: HTMLDialogElement): void {
+  const body = dialog.querySelector<HTMLElement>('[data-builder-dialog-body]');
+  if (!body) return;
+  dialog.style.removeProperty('height');
+  // Options shown for one choice count too, so choosing it later doesn't need a scroll.
+  const optional = [...body.querySelectorAll<HTMLElement>('[data-shown-when][hidden]')];
+  optional.forEach(field => { field.hidden = false; });
+  let tallest = body.scrollHeight;
+  const group = body.querySelector<HTMLElement>('[data-admin-tabs]');
+  const panels = group ? [...group.querySelectorAll<HTMLElement>(':scope > [data-admin-tab-panel]')] : [];
+  if (panels.length > 1) {
+    const hidden = panels.map(panel => panel.hidden);
+    panels.forEach(shown => {
+      panels.forEach(panel => { panel.hidden = panel !== shown; });
+      tallest = Math.max(tallest, body.scrollHeight);
+    });
+    panels.forEach((panel, index) => { panel.hidden = hidden[index]; });
+  }
+  optional.forEach(field => { field.hidden = true; });
+  const chrome = dialog.offsetHeight - body.clientHeight;
+  const most = Math.min(760, window.innerHeight - 64);
+  dialog.style.height = `${Math.max(Math.min(360, most), Math.min(most, tallest + chrome))}px`;
 }
 
 /** The fields in the dialog go back to their block's pane. */
@@ -825,11 +1181,43 @@ function filter(picker: HTMLElement): void {
 
 /** The parts that need JavaScript appear; the no-JavaScript buttons go. */
 function enhance(root: ParentNode): void {
-  root.querySelectorAll<HTMLElement>('[data-builder-handle], [data-builder-js], [data-builder-action="collapse-all"]').forEach(element => {
+  root.querySelectorAll<HTMLElement>('[data-builder-handle], [data-builder-js]').forEach(element => {
     if (!element.closest('template')) element.hidden = false;
   });
   root.querySelectorAll<HTMLElement>('[data-builder] [data-nojs-only], [data-builder-node] [data-nojs-only]').forEach(element => {
     if (!element.closest('[data-repeater]')) element.hidden = true;
+  });
+}
+
+/**
+ * Saving as one value (0.32): when the form is sent (Save, preview, drafts, the
+ * panel's page navigation all build their FormData from it), each Builder's fields
+ * leave as one value, content = {"_form":1,"pairs":[["[en][b1][f][title]","Hello"], …]},
+ * so max_input_vars never cuts a long page short. The server unpacks the same names
+ * and values (Builder::unpack) and checks them as before. Without the formdata event
+ * the fields are sent one by one, as in 0.31.
+ */
+const packing = new WeakSet<HTMLFormElement>();
+function packOnSubmit(builder: HTMLElement): void {
+  const form = builder.closest('form');
+  if (!form || packing.has(form) || typeof FormDataEvent === 'undefined') return;
+  packing.add(form);
+  form.addEventListener('formdata', event => {
+    form.querySelectorAll<HTMLElement>('[data-builder][data-name]').forEach(item => {
+      const name = item.dataset.name || '';
+      if (!name) return;
+      const prefix = name + '[';
+      const pairs: [string, string][] = [];
+      const names = new Set<string>();
+      for (const [key, value] of event.formData) {
+        if (!key.startsWith(prefix) || typeof value !== 'string') continue;
+        pairs.push([key.slice(name.length), value]);
+        names.add(key);
+      }
+      if (pairs.length === 0) return;
+      names.forEach(key => event.formData.delete(key));
+      event.formData.append(name, JSON.stringify({ _form: 1, pairs }));
+    });
   });
 }
 
@@ -847,6 +1235,7 @@ export function initializeBuilders(root: ParentNode): void {
     ready.add(builder);
     builder.classList.add('is-ready');
     enhance(builder);
+    packOnSubmit(builder);
     const switching = builder.closest('[data-lang-scope]');
     const langs = builder.querySelector<HTMLElement>(':scope > [data-builder-langs]');
     if (langs && !switching) {
@@ -855,10 +1244,9 @@ export function initializeBuilders(root: ParentNode): void {
       showLanguage(builder, builder.querySelector<HTMLElement>('[data-builder-lang][aria-pressed="true"]')?.dataset.builderLang || builder.dataset.defaultLang || '');
     }
     builder.querySelectorAll<HTMLElement>('[data-builder-list]').forEach(list => {
-      // The nested Add buttons open the main picker (their own lists are for no JavaScript).
-      list.querySelectorAll<HTMLElement>('.fa-builder-add-in').forEach(add => {
-        if (add.closest('[data-builder-col]')) add.dataset.columnLabel = builder.dataset.addColumnText || '';
-      });
+      const folded = readFolds()[foldPlace(list)] || [];
+      folded.forEach(id => { const node = nodeOf(list, id); if (node && !node.querySelector('.has-error')) setFolded(list, node, true, false); });
+      showCollapseAll(list);
       sync(list);
       const invalid = list.querySelector<HTMLElement>('[data-builder-node].has-error');
       select(list, invalid?.dataset.builderNode || null);
@@ -883,6 +1271,7 @@ function wireDialogs(builder: HTMLElement): void {
   dialogOf(builder, 'edit')?.addEventListener('close', () => {
     const dialog = dialogOf(builder, 'edit')!;
     if (dialog.open) return;
+    dialog.style.removeProperty('height');
     const list = listByKey(builder, dialog.dataset.list || '');
     returnFields(builder);
     focusRow(list, dialog.dataset.block || '', '[data-builder-action="edit"]');
@@ -908,7 +1297,7 @@ function wireDialogs(builder: HTMLElement): void {
   });
 }
 
-/** Dialogs: their close buttons, a click on the backdrop, Delete's answer, Previous and Next. */
+/** Dialogs: their close buttons, a click on the backdrop, Delete's answer. */
 function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): boolean {
   const dialog = target.closest<HTMLDialogElement>('dialog.fa-builder-dialog');
   if (!dialog || builderOf(dialog) !== builder) return false;
@@ -924,16 +1313,6 @@ function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): 
     pending.delete(builder);
     dialog.close();
     if (job && job.node.isConnected) remove(job.list, job.node);
-    return true;
-  }
-  const nav = target.closest<HTMLButtonElement>('[data-builder-dialog-nav]');
-  if (nav) {
-    event.preventDefault();
-    const list = listByKey(builder, dialog.dataset.list || '');
-    if (!list || nav.disabled) return true;
-    const editable = editableIds(list);
-    const next = editable[editable.indexOf(dialog.dataset.block || '') + Number(nav.dataset.builderDialogNav)];
-    if (next) openEditor(list, next);
     return true;
   }
   if (dialog.matches('[data-builder-add-dialog]')) {
@@ -982,10 +1361,16 @@ function closeCopyMenus(except: Element | null = null): void {
 
 document.addEventListener('click', event => {
   if (!(event.target instanceof Element)) return;
+  // A click anywhere else closes an open ⋯ menu.
+  if (!event.target.closest('[data-builder-menu], [data-builder-action="more"]')) {
+    document.querySelectorAll<HTMLElement>('[data-builder-menu]:not([hidden])').forEach(menu => { const owner = builderOf(menu); if (owner) closeMenu(owner); });
+  }
   const builder = builderOf(event.target);
   if (!builder || !builder.classList.contains('is-ready') || event.target.closest('template')) return;
   closeCopyMenus(event.target.closest('[data-builder-action="copy-menu"]') ? event.target.closest('.fa-builder-copy') : event.target);
   if (dialogClick(builder, event, event.target)) return;
+  const choice = event.target.closest<HTMLElement>('[data-builder-menu] [data-menu-act]');
+  if (choice) { event.preventDefault(); menuChoose(builder, choice); return; }
   const list = listOf(event.target);
 
   const undoButton = event.target.closest('[data-builder-undo-button]');
@@ -1026,12 +1411,15 @@ document.addEventListener('click', event => {
   if (action.disabled) return;
   switch (action.dataset.builderAction) {
     case 'collapse-all': {
-      const collapse = !list.classList.contains('is-collapsed');
-      list.classList.toggle('is-collapsed', collapse);
-      action.setAttribute('aria-pressed', String(collapse));
-      if (action.dataset.expandText && action.dataset.collapseText) action.textContent = collapse ? action.dataset.expandText : action.dataset.collapseText;
+      const containers = containersOf(list);
+      const fold = !containers.every(container => container.classList.contains('is-folded'));
+      containers.forEach(container => setFolded(list, container, fold, false));
+      saveFolds(list);
+      showCollapseAll(list);
       break;
     }
+    case 'fold': if (node) setFolded(list, node, !node.classList.contains('is-folded')); break;
+    case 'more': if (node) openMenu(list, node, action); break;
     case 'close': select(list, null); node?.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus(); break;
     case 'edit': if (node) openEditor(list, node.dataset.builderNode || ''); break;
     case 'remove': if (node) confirmRemove(list, node); break;
@@ -1070,11 +1458,30 @@ document.addEventListener('dblclick', event => {
 
 document.addEventListener('pointerdown', event => {
   if (!(event.target instanceof Element) || event.button !== 0) return;
-  const handle = event.target.closest<HTMLElement>('[data-builder-handle]');
-  const node = handle?.closest<HTMLElement>('[data-builder-node]');
+  const handle = event.target.closest<HTMLElement>('.fa-builder.is-ready [data-builder-handle]');
+  if (handle) {
+    const node = handle.closest<HTMLElement>('[data-builder-node]');
+    const list = node ? listOf(node) : null;
+    if (node && list) { event.preventDefault(); drag(list, node, event, event.pointerType === 'touch'); }
+    return;
+  }
+  // Touch (0.32): press and hold a block's row to drag it; a tap still selects it.
+  if (event.pointerType !== 'touch') return;
+  const row = event.target.closest<HTMLElement>('.fa-builder.is-ready:not([data-fixed]) .fa-builder-row');
+  if (!row || event.target.closest('button, input, select, textarea')) return;
+  const node = row.closest<HTMLElement>('[data-builder-node]');
   const list = node ? listOf(node) : null;
-  if (handle && node && list) drag(list, node, event);
+  if (!node || !list) return;
+  const startX = event.clientX; const startY = event.clientY;
+  const stop = () => { window.clearTimeout(timer); document.removeEventListener('pointermove', moved); document.removeEventListener('pointerup', stop); document.removeEventListener('pointercancel', stop); };
+  const moved = (move: PointerEvent) => { if (Math.hypot(move.clientX - startX, move.clientY - startY) > 8) stop(); };
+  const timer = window.setTimeout(() => { stop(); navigator.vibrate?.(10); drag(list, node, event, true); }, 450);
+  document.addEventListener('pointermove', moved);
+  document.addEventListener('pointerup', stop);
+  document.addEventListener('pointercancel', stop);
 });
+// A long press opens no menu on a block being dragged.
+document.addEventListener('contextmenu', event => { if (dragging || (event.target instanceof Element && event.target.closest('.fa-builder.is-ready .fa-builder-row') && (event as PointerEvent).pointerType === 'touch')) event.preventDefault(); });
 
 document.addEventListener('keydown', event => {
   if (!(event.target instanceof HTMLElement)) return;
@@ -1171,7 +1578,7 @@ document.addEventListener('change', event => {
   const node = nodeOf(list, id);
   // A Columns block's layout: its columns in the structure follow.
   if (node?.dataset.type === 'columns' && event.target.name.endsWith('[f][layout]') && event.target instanceof HTMLInputElement && event.target.checked) {
-    setColumns(list, node, event.target.value.split('-').length);
+    setColumns(list, node, event.target.value);
   }
   sync(list);
   markChanged(node);

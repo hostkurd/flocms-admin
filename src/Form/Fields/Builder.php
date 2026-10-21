@@ -416,7 +416,12 @@ class Builder extends Field
     public function stateFromInput(array $input, array $languages): string|array
     {
         $value = $input[$this->name] ?? [];
-        if (is_string($value)) { $value = $this->flatFromStored($value); }
+        if (is_string($value)) {
+            // The editor sends its fields as one packed value (0.32); an import's cell is stored blocks.
+            $packed = self::unpack($value, self::MAX_BYTES * 4 * max(1, count($this->listKeys())));
+            if ($packed === false) { return $this->encodeState(array_fill_keys($this->listKeys(), []), ['unreadable' => true]); }
+            $value = $packed ?? $this->flatFromStored($value);
+        }
         $value = is_array($value) ? $value : [];
         $lists = [];
         $problems = [];
@@ -466,6 +471,64 @@ class Builder extends Field
             $flat[$key] = $entries;
         }
         return $flat;
+    }
+
+    /** The most name/value pairs one packed value may carry, and how deep a name may go. */
+    public const PACKED_PAIRS = 30000;
+    /** [lang][id][f][list][key][field][lang] is the deepest name the editor sends. */
+    public const PACKED_DEPTH = 8;
+    /** The most arrays unpacking may create: far above a real page, well below a memory problem. */
+    public const PACKED_ARRAYS = 20000;
+
+    /**
+     * The editor's packed fields (0.32): {"_form":1,"pairs":[["[en][b1][f][title]","Hello"], …]},
+     * each pair a name after the field's own (content[en][b1][f][title]) and its value,
+     * exactly as the browser would have posted them. The editor sends them as one value so
+     * a page with many blocks is not cut short by max_input_vars. They become the same
+     * arrays PHP would have made ("[]" appends), and go through the same checks.
+     *
+     * @return array<array-key, mixed>|false|null null: not a packed value; false: one that can't be read
+     */
+    public static function unpack(string $json, int $maxBytes): array|false|null
+    {
+        if (!str_starts_with(ltrim($json), '{"_form"')) { return null; }
+        if (strlen($json) > $maxBytes) { return false; }
+        try {
+            $decoded = json_decode($json, true, 4, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return false;
+        }
+        if (!is_array($decoded) || ($decoded['_form'] ?? null) !== 1 || !is_array($decoded['pairs'] ?? null) || !array_is_list($decoded['pairs']) || count($decoded['pairs']) > self::PACKED_PAIRS) {
+            return false;
+        }
+        $out = [];
+        $arrays = 0;
+        try {
+            foreach ($decoded['pairs'] as $pair) {
+                if (!is_array($pair) || !array_is_list($pair) || count($pair) !== 2 || !is_string($pair[0]) || !is_string($pair[1])) { return false; }
+                // Names of up to PACKED_DEPTH parts; "[]" (append) only as the last one, as the editor sends it.
+                if (preg_match('/^(?:\[[^\[\]]+\]){0,' . (self::PACKED_DEPTH - 1) . '}\[[^\[\]]*\]$/D', $pair[0]) !== 1) { return false; }
+                preg_match_all('/\[([^\[\]]*)\]/', $pair[0], $parts);
+                $at = &$out;
+                $last = count($parts[1]) - 1;
+                foreach ($parts[1] as $i => $part) {
+                    if ($i === $last) {
+                        if ($part === '') { $at[] = $pair[1]; } else { $at[$part] = $pair[1]; }
+                        break;
+                    }
+                    if (!isset($at[$part]) || !is_array($at[$part])) {
+                        if (++$arrays > self::PACKED_ARRAYS) { return false; }
+                        $at[$part] = [];
+                    }
+                    $at = &$at[$part];
+                }
+                unset($at);
+            }
+        } catch (\Error) {
+            // An array that can't take another item (a key of PHP_INT_MAX before "[]"): refused like any other.
+            return false;
+        }
+        return $out;
     }
 
     /** The default language's list of a value stored with one list per language (or the first one there is). */
@@ -684,6 +747,9 @@ class Builder extends Field
         if (!empty($problems['cut'])) {
             return [$this->name => AdminLang::get('validation.builder_cut', ['attribute' => $this->getLabel(), 'max' => (string) ini_get('max_input_vars')])];
         }
+        if (!empty($problems['unreadable'])) {
+            return [$this->name => AdminLang::get('validation.builder_unreadable', ['attribute' => $this->getLabel()])];
+        }
         if (!empty($problems['stale'])) {
             return [$this->name => AdminLang::get('validation.builder_stale', ['attribute' => $this->getLabel()])];
         }
@@ -701,6 +767,10 @@ class Builder extends Field
                                 continue;
                             }
                             $errors += $check($field, $value, $prefix . $name);
+                        }
+                        // Checks across fields (0.32): a button and its link, a video's source…
+                        foreach ($block->check(array_map(static fn ($value): string => is_string($value) ? $value : '', $state)) as $where => $message) {
+                            $errors[$prefix . $where] ??= $message;
                         }
                     }
                     $walk($node['children'] ?? []);

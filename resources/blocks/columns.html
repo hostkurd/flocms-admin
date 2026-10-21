@@ -1,8 +1,10 @@
-@php /* Columns block (flocms-admin 0.29): $columns lists each column's share of 12 and its blocks' HTML. */ @endphp
-<div class="flo-columns is-gap-{{ $gap }} is-align-{{ $align }}{{ $stack === '1' ? ' is-stacking' : '' }}{{ $reverse === '1' ? ' is-reversed' : '' }}">
+@php /* Columns block (flocms-admin 0.29; 0.32: nothing when every column is empty, a tablet step): $columns lists each column's share of 12 and its blocks' HTML. */ $filled = array_filter($columns, static fn (array $column): bool => trim((string) $column['html']) !== ''); @endphp
+@if($filled)
+<div class="flo-columns is-count-{{ count($columns) }} is-gap-{{ $gap }} is-align-{{ $align }}{{ $stack === '1' ? ' is-stacking' : '' }}{{ $reverse === '1' ? ' is-reversed' : '' }}">
     @foreach($columns as $column)
     <div class="flo-column" style="--flo-column-share: {{ (int) $column['share'] }}">
         {!! $column['html'] !!}
     </div>
     @endforeach
 </div>
+@endif

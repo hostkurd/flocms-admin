@@ -480,6 +480,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.28: users with photos, row and bulk actions (Suspend, Activate, Send reset link), direct emails and mailings (0.28.1: user page sidebar, bio, email-style To field)
 - 0.29: the `Builder` field (blocks, sections and columns, the block picker, templates owned by the site, `blocks()`, `blocks_assets()`, `make:admin-block`, `admin:blocks`) and the `Slider` field
 - 0.31: the Builder editor reworked (row buttons, block panel with Name and Note, Edit and Add block dialogs, delete confirmation, copy and paste between pages)
+- 0.32: the Builder saved as one value (no `max_input_vars` limit), columns side by side, folding containers, drag and drop into and out of columns, ⋯ menus with Move to, a steady edit dialog, and block fixes and options (`shownWhen()`, `Block::check()`, open in a new tab, alt text, heading levels)
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development

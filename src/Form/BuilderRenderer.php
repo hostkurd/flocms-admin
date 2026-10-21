@@ -73,9 +73,12 @@ final class BuilderRenderer
             . ' data-item-of-text="' . Str::e(self::t('item_of', ['number' => ':number', 'count' => ':count'])) . '"'
             . ' data-back-text="' . Str::e(self::t('back')) . '" data-previous-text="' . Str::e(self::t('previous')) . '" data-next-text="' . Str::e(self::t('next')) . '"'
             . ' data-state-draft="' . Str::e(self::t('state_draft')) . '" data-state-ended="' . Str::e(self::t('state_ended')) . '" data-state-from="' . Str::e(self::t('state_from', ['date' => ':date'])) . '"'
-            . ' data-state-desktop="' . Str::e(self::t('state_desktop')) . '" data-state-phone="' . Str::e(self::t('state_phone')) . '" data-summary-items="' . Str::e(self::t('summary_items', ['count' => ':count'])) . '"'
+            . ' data-state-desktop="' . Str::e(self::t('state_desktop')) . '" data-state-phone="' . Str::e(self::t('state_phone')) . '" data-summary-items="' . Str::e(self::t('summary_items', ['count' => ':count'])) . '" data-summary-empty="' . Str::e(self::t('summary_empty')) . '"'
             . ' data-where-top="' . Str::e(self::t('add_where_top')) . '" data-where-after="' . Str::e(self::t('add_where_after', ['block' => ':block'])) . '" data-where-in="' . Str::e(self::t('add_where_in', ['block' => ':block'])) . '" data-where-column="' . Str::e(self::t('add_where_column', ['block' => ':block', 'number' => ':number'])) . '"'
             . ' data-changed-text="' . Str::e(self::t('changed')) . '" data-copied-block-text="' . Str::e(self::t('copied_block')) . '" data-pasted-text="' . Str::e(self::t('pasted', ['block' => ':block'])) . '" data-recent-text="' . Str::e(self::t('recent')) . '"'
+            . ' data-fold-text="' . Str::e(self::t('fold', ['block' => ':block'])) . '" data-unfold-text="' . Str::e(self::t('unfold', ['block' => ':block'])) . '" data-inside-text="' . Str::e(self::t('inside_count', ['count' => ':count'])) . '" data-moved-column-text="' . Str::e(self::t('moved_column', ['count' => ':count', 'number' => ':number'])) . '"'
+            . ' data-not-here-text="' . Str::e(self::t('not_here', ['block' => ':block'])) . '"'
+            . ' data-move-to-text="' . Str::e(self::t('move_to')) . '" data-move-top-text="' . Str::e(self::t('move_top', ['block' => ':block'])) . '"'
             . ' data-full-text="' . Str::e(self::t('full', ['max' => (string) $field->getMaxBlocks()])) . '">';
         $html .= '<div class="fa-builder-head"><span class="fa-label" id="' . Str::e($this->id) . '-label">' . $label . '</span></div>';
         if (($help = $field->getHelp()) !== null) { $html .= '<p class="fa-help" id="' . Str::e($this->id) . '-help">' . Str::e($help) . '</p>'; }
@@ -186,11 +189,18 @@ final class BuilderRenderer
         if ($writable) {
             $html .= '<button type="button" class="fa-builder-handle" data-builder-handle aria-label="' . Str::e(self::t('drag', ['block' => $title])) . '" hidden>' . Icons::svg('grip') . '</button>';
         }
+        $holds = $block !== null && $block->holdsBlocks();
+        if ($holds) {
+            // Fold and unfold (0.32): builder.ts shows it and remembers it per page.
+            $html .= '<button type="button" class="fa-builder-fold" data-builder-action="fold" aria-expanded="true" aria-label="' . Str::e(self::t('fold', ['block' => $title])) . '"'
+                . ' title="' . Str::e(self::t('fold', ['block' => $title])) . '" data-builder-js hidden>' . Icons::svg('chevron-down') . '</button>';
+        }
         $html .= '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block !== null ? $block::icon() : 'square') . '</span>'
             . '<a class="fa-builder-row-main" href="#' . Str::e($pane) . '" data-builder-select aria-controls="' . Str::e($pane) . '">'
             . '<strong class="fa-builder-row-title" data-builder-title>' . Str::e($title) . '</strong>'
             . '<span class="fa-builder-row-kind">' . Str::e($kind) . '</span>'
-            . '<span class="fa-builder-row-summary" data-builder-summary>' . Str::e($template ? '' : $this->summary($node)) . '</span></a>'
+            . '<span class="fa-builder-row-summary" data-builder-summary>' . Str::e($template ? '' : $this->summary($node)) . '</span>'
+            . ($holds ? '<span class="fa-builder-row-inside" data-builder-inside></span>' : '') . '</a>'
             . '<span class="fa-builder-state' . ($state === '' ? '' : ' is-shown') . '" data-builder-state>' . ($state === '' ? '' : '<span class="fa-builder-state-dot" aria-hidden="true"></span>' . Str::e($state)) . '</span>';
         if ($error) { $html .= '<span class="fa-builder-row-error">' . Icons::svg('info', 'fa-icon') . '<span class="fa-sr">' . Str::e(self::t('has_errors')) . '</span></span>'; }
         if ($writable) {
@@ -204,11 +214,15 @@ final class BuilderRenderer
         if ($block !== null && $block->holdsBlocks()) {
             $children = $node['children'] ?? [];
             if ($block instanceof Columns || $block->columnCount($node['data'] ?? []) > 1) {
-                $shares = $block instanceof Columns ? Columns::shares((string) ($node['data']['layout'] ?? '50-50')) : array_fill(0, $block->columnCount($node['data'] ?? []), 1);
-                $html .= '<ol class="fa-builder-cols" data-builder-cols>';
+                $layout = $block instanceof Columns ? (string) ($node['data']['layout'] ?? '50-50') : '';
+                $shares = $block instanceof Columns ? Columns::shares($layout) : array_fill(0, $block->columnCount($node['data'] ?? []), 1);
+                // Side by side as wide as the layout (0.32): admin.css has a grid per layout; others share the width.
+                $html .= '<ol class="fa-builder-cols" data-builder-cols data-count="' . count($shares) . '"' . ($layout !== '' ? ' data-layout="' . Str::e($layout) . '"' : '') . '>';
+                $sum = max(1, array_sum($shares));
                 foreach ($shares as $column => $share) {
                     $in = array_values(array_filter($children, static fn (array $kid): bool => (int) ($kid['column'] ?? 0) === $column));
-                    $html .= '<li class="fa-builder-col" data-builder-col="' . $column . '"><span class="fa-builder-col-label">' . Str::e(self::t('column', ['number' => (string) ($column + 1)])) . '</span>'
+                    $html .= '<li class="fa-builder-col" data-builder-col="' . $column . '"><span class="fa-builder-col-head"><span class="fa-builder-col-label">' . Str::e(self::t('column', ['number' => (string) ($column + 1)])) . '</span>'
+                        . '<span class="fa-builder-col-width" data-builder-col-width>' . (int) round($share * 100 / $sum) . '%</span></span>'
                         . '<ul class="fa-builder-tree is-nested" role="list" data-builder-slot data-parent="' . Str::e($id) . '" data-column="' . $column . '">';
                     foreach ($in as $i => $kid) { $html .= $this->row($key, $kid, $i, count($in), $level + 1); }
                     $html .= '</ul>' . ($writable ? $this->picker($key, $id, $column, false, 'fa-builder-add-in', $block) : '') . '</li>';
@@ -219,6 +233,10 @@ final class BuilderRenderer
                 foreach ($children as $i => $kid) { $html .= $this->row($key, $kid, $i, count($children), $level + 1); }
                 $html .= '</ul>' . ($writable ? $this->picker($key, $id, 0, false, 'fa-builder-add-in', $block) : '');
             }
+        }
+        if ($writable) {
+            // A "+" between blocks (0.32), shown when the pointer is in the gap; the row's own + does the same for the keyboard.
+            $html .= '<button type="button" class="fa-builder-inserter" data-builder-action="insert" tabindex="-1" aria-hidden="true" data-builder-js hidden>' . Icons::svg('plus') . '</button>';
         }
         return $html . '</li>';
     }
@@ -273,6 +291,8 @@ final class BuilderRenderer
             $html .= $this->toggleButton($draft);
         }
         $html .= $this->toolButton('remove', 'trash', self::t('remove'), '', 'is-danger');
+        // More (0.32): every action again, and Move to… (builder.ts fills the menu when it opens).
+        $html .= $this->toolButton('more', 'more', self::t('more', ['block' => $title]), ' aria-haspopup="menu" aria-expanded="false"');
         return $html . $this->toolButton('insert', 'plus', self::t('add_after', ['block' => $title]), '', 'fa-builder-insert');
     }
 
@@ -365,9 +385,11 @@ final class BuilderRenderer
     {
         $field = $this->field;
         $parentType = $container !== null ? $container::type() : '';
-        $label = $parent === '' ? $field->getAddLabel() : ($container instanceof Columns ? self::t('add_to_column', ['number' => (string) ($column + 1)]) : self::t('add_inside'));
+        $inColumn = $parent !== '' && $container !== null && ($container instanceof Columns || $container->columnCount([]) > 1);
+        $label = $parent === '' ? $field->getAddLabel() : ($inColumn ? self::t('add_to_column', ['number' => (string) ($column + 1)]) : self::t('add_inside'));
+        $shown = $parent === '' ? $label : self::t('add');
         $html = '<details class="fa-builder-add ' . $class . '" data-builder-add data-parent="' . Str::e($parent) . '" data-column="' . $column . '">'
-            . '<summary class="fa-builder-add-button"' . ($full ? ' aria-disabled="true"' : '') . '>' . Icons::svg('plus') . '<span>' . Str::e($label) . '</span></summary>';
+            . '<summary class="fa-builder-add-button"' . ($full ? ' aria-disabled="true"' : '') . ($shown !== $label ? ' aria-label="' . Str::e($label) . '"' : '') . '>' . Icons::svg('plus') . '<span>' . Str::e($shown) . '</span></summary>';
         if ($parent !== '') {
             $html .= '<div class="fa-builder-picker-list">';
             foreach ($this->choices($parentType) as $block) {
@@ -443,7 +465,6 @@ final class BuilderRenderer
         $html = '<dialog class="fa-builder-dialog fa-builder-edit-dialog" data-builder-edit-dialog aria-labelledby="' . Str::e($this->id) . '-edit-title">'
             . '<header class="fa-dialog-head fa-builder-dialog-head"><span class="fa-builder-kind-icon" aria-hidden="true" data-builder-dialog-icon></span>'
             . '<span class="fa-builder-pane-names"><span class="fa-builder-pane-kind" data-builder-dialog-kind></span><h3 class="fa-dialog-title" id="' . Str::e($this->id) . '-edit-title" data-builder-dialog-title></h3></span>'
-            . '<span class="fa-builder-dialog-nav">' . $this->toolButton('previous-block', 'chevron-left', self::t('previous_block'), ' data-builder-dialog-nav="-1"') . $this->toolButton('next-block', 'chevron-right', self::t('next_block'), ' data-builder-dialog-nav="1"') . '</span>'
             . $close . '</header>'
             . '<div class="fa-dialog-body fa-builder-dialog-body" data-builder-dialog-body></div>'
             . '<footer class="fa-dialog-foot"><span class="fa-builder-dialog-hint">' . Str::e(self::t($writable ? 'dialog_hint' : 'dialog_hint_read')) . '</span><button type="button" class="fa-btn fa-btn-primary" data-builder-dialog-close>' . Str::e(self::t('done')) . '</button></footer></dialog>';

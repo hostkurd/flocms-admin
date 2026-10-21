@@ -140,6 +140,31 @@ abstract class Block
      */
     public function nameField(): ?string { return null; }
 
+    /**
+     * Checks that need more than one field (0.32), after each field's own rules:
+     * field name (or "list.<index>.<field>" inside a list) => message. The fields
+     * are as the editor keeps them (lists as JSON).
+     *
+     * @param array<string, string> $fields
+     * @return array<string, string>
+     */
+    public function check(array $fields): array { return []; }
+
+    /**
+     * A button's text and its link need each other: an error on the one that is missing.
+     *
+     * @param array<string, mixed> $values
+     * @return array<string, string>
+     */
+    protected static function buttonPair(array $values, string $button, string $link, string $prefix = ''): array
+    {
+        $text = trim((string) ($values[$button] ?? ''));
+        $url = trim((string) ($values[$link] ?? ''));
+        if ($text !== '' && $url === '') { return [$prefix . $link => \FloCMS\Admin\Support\AdminLang::get('blocks.needs_link')]; }
+        if ($text === '' && $url !== '') { return [$prefix . $button => \FloCMS\Admin\Support\AdminLang::get('blocks.needs_button')]; }
+        return [];
+    }
+
     /** Layout blocks hold other blocks (Section, Columns). */
     public function holdsBlocks(): bool { return false; }
 

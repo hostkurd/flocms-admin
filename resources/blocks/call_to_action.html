@@ -1,4 +1,4 @@
-@php /* Call to action block (flocms-admin 0.29). */ @endphp
+@php /* Call to action block (flocms-admin 0.29; 0.32: new tab). */ @endphp
 <div class="flo-cta is-{{ $style }}">
     <div class="flo-cta-text">
         <h2 class="flo-cta-heading">{{ $heading }}</h2>
@@ -7,6 +7,6 @@
         @endif
     </div>
     @if($button !== '' && $link !== '')
-    <a class="flo-button" href="{{ $link }}">{{ $button }}</a>
+    <a class="flo-button" href="{{ $link }}"{!! ($new_tab ?? '') === '1' ? ' target="_blank" rel="noopener"' : '' !!}>{{ $button }}</a>
     @endif
 </div>

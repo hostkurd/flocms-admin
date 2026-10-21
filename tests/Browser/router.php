@@ -202,7 +202,7 @@ $seedPages = static function (PDO $pdo): void {
 };
 if (Session::get('pages_demo') && !(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='admin_pages'")->fetchColumn()) { $seedPages($pdo); }
 // The Builder field (0.29)
-$seedLandings = static function (PDO $pdo): void {
+$seedLandings = static function (PDO $pdo, int $many = 0): void {
     $pdo->exec('DROP TABLE IF EXISTS landings');
     $pdo->exec('CREATE TABLE landings (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, content TEXT)');
     $en = [
@@ -219,7 +219,15 @@ $seedLandings = static function (PDO $pdo): void {
         ]],
         ['id' => 'bcta1', 'type' => 'call_to_action', 'data' => ['heading' => 'Start a project', 'button' => 'Contact us', 'link' => '/contact'], 'settings' => ['status' => 'draft']],
     ];
-    $pdo->prepare('INSERT INTO landings (title, content) VALUES (?, ?)')->execute([json_encode(['en' => 'Home page']), json_encode(['en' => $en], JSON_UNESCAPED_UNICODE)]);
+    // many=N (0.32): N more headings in English (up to 30 blocks) and N in Arabic and Kurdish, for a page with more fields than max_input_vars.
+    $lists = ['en' => $en];
+    for ($i = 1; $i <= $many; $i++) {
+        foreach (['en', 'ar', 'ku'] as $lang) {
+            if ($lang === 'en' && $i > 23) { continue; }
+            $lists[$lang][] = ['id' => 'bm' . $lang . $i, 'type' => 'heading', 'data' => ['text' => strtoupper($lang) . ' heading ' . $i, 'level' => 'h2']];
+        }
+    }
+    $pdo->prepare('INSERT INTO landings (title, content) VALUES (?, ?)')->execute([json_encode(['en' => 'Home page']), json_encode($lists, JSON_UNESCAPED_UNICODE)]);
 };
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='landings'")->fetchColumn()) { $seedLandings($pdo); }
 // Editor media and settings files, as a web server would serve public/uploads (the public folder is the web root).
@@ -322,7 +330,7 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/pages': Session::set('pages_demo', true); $seedPages($pdo); break;
         case '/__test/pages-off': Session::set('pages_demo', false); break;
         case '/__test/pages-state': header('Content-Type: application/json'); echo json_encode($pdo->query('SELECT * FROM admin_pages ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)); exit;
-        case '/__test/landings': $seedLandings($pdo); array_map('unlink', glob(ROOT . '/storage/cache/blocks/*.json') ?: []); break;
+        case '/__test/landings': $seedLandings($pdo, max(0, min(30, (int) ($_POST['many'] ?? 0)))); array_map('unlink', glob(ROOT . '/storage/cache/blocks/*.json') ?: []); break;
         case '/__test/landing-view':
             // The website side (0.29): a page that prints a landing's blocks, as a site's layout would.
             $row = $pdo->query('SELECT * FROM landings WHERE id = 1')->fetch(PDO::FETCH_ASSOC);

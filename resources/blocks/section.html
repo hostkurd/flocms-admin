@@ -1,5 +1,6 @@
-@php /* Section block (flocms-admin 0.29): $content holds the blocks inside it. */ $image = $background === 'image' ? media($image ?? null) : null; $colour = $background === 'colour' && preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) $colour) === 1 ? $colour : ''; @endphp
-<section class="flo-section is-bg-{{ $background }} is-padding-{{ $padding }}"{!! $colour !== '' ? ' style="--flo-section-bg: ' . htmlspecialchars($colour, ENT_QUOTES, 'UTF-8') . '"' : '' !!}{!! $name !== '' ? ' aria-label="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '"' : '' !!}>
+@php /* Section block (flocms-admin 0.29; 0.32: nothing when empty, text colour, overlay): $content holds the blocks inside it. */ $image = $background === 'image' ? media($image ?? null) : null; $colour = $background === 'colour' && preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) $colour) === 1 ? $colour : ''; $tone = in_array($tone ?? 'auto', ['light', 'dark'], true) && in_array($background, ['colour', 'image'], true) ? $tone : 'auto'; $style = ($colour !== '' ? '--flo-section-bg: ' . $colour . ';' : '') . ($image ? ' --flo-section-overlay: ' . (max(0, min(90, (int) ($overlay ?? 45))) / 100) . ';' : ''); @endphp
+@if(trim($content) !== '')
+<section class="flo-section is-bg-{{ $background }} is-tone-{{ $tone }} is-padding-{{ $padding }}"{!! $style !== '' ? ' style="' . htmlspecialchars(trim($style), ENT_QUOTES, 'UTF-8') . '"' : '' !!}{!! $name !== '' ? ' aria-label="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '"' : '' !!}>
     @if($image)
     <div class="flo-section-media">{!! $image->img(['sizes' => '100vw', 'alt' => '']) !!}</div>
     @endif
@@ -7,3 +8,4 @@
         {!! $content !!}
     </div>
 </section>
+@endif

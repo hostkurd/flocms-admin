@@ -23,7 +23,8 @@ final class Heading extends Block
         return [
             TextInput::make('text')->label($t('heading'))->required()->rules('max:200')->columnSpan('full'),
             Select::make('level')->label($t('heading_level'))->options(['h1' => 'H1', 'h2' => 'H2', 'h3' => 'H3', 'h4' => 'H4'])->default('h2')->segmented(),
-            Select::make('align')->label($t('align'))->options(['start' => $t('align_start'), 'center' => $t('align_center')])->default('start')->segmented(),
+            Select::make('align')->label($t('align'))->options(['start' => $t('align_start'), 'center' => $t('align_center'), 'end' => $t('align_end')])->default('start')->segmented(),
+            TextInput::make('subtitle')->label($t('subtitle'))->help($t('subtitle_help'))->rules('max:300')->columnSpan('full'),
         ];
     }
 }

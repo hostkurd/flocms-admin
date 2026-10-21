@@ -28,25 +28,28 @@ public function form(Form $form): Form
 
 ## The editor
 
-The field shows the page's **structure** on the left, one row per block, and the selected block's **panel** on the right. A block's own fields open in a dialog (0.31).
+The field shows the page's **structure** on the left, one row per block, and the selected block's **panel** on the right. A block's own fields open in a dialog (0.31). Section and Columns are framed cards with their blocks inside, and a Columns block shows its columns side by side, as wide as its layout (0.32).
 
-- **Rows** show the block's name, its kind, a short summary ("3 items" for a slider's slides) and its state ("Draft", "From 1 Nov", "Ended", "Desktop only", "Phones only"); a hidden block looks faded and a block changed since the page was opened has a dot. Pointing at a row (or reaching it with the keyboard) shows its buttons, icons with a name as a tooltip: **Edit**, **Duplicate**, **Copy to language** (with `->translatable()`), **Show / hide on the website** (Published ↔ Draft), **Delete** and **+** (add a block after it).
+- **Rows** show the block's name, its kind, a short summary ("3 items" for a slider's slides) and its state ("Draft", "From 1 Nov", "Ended", "Desktop only", "Phones only"); a hidden block looks faded and a block changed since the page was opened has a dot. Pointing at a row (or reaching it with the keyboard) shows its buttons, icons with a name as a tooltip: **Edit**, **Duplicate**, **Copy to language** (with `->translatable()`), **Show / hide on the website** (Published ↔ Draft), **Delete**, **⋯** and **+** (add a block after it). A **+** also appears in the gap between two blocks. In a narrow column a row keeps Edit, Delete and ⋯ in view.
+- **⋯** (0.32) lists the row's actions again and **Move to**: every place the block may go (into a Section, a column of a Columns block, or the top level after the container it is in). Arrow keys move through the menu; Escape closes it.
+- **Fold** (0.32): the chevron on a Section or Columns folds it to one line, "Services · 4 inside". The page remembers what is folded in this browser; **Collapse all** folds every container and becomes **Expand all**.
+- **Columns** (0.32) sit side by side, each with its name and width ("Column 1 · 67%"), and stack when the structure is narrower than 480 px (phones, a narrow window).
 - **The panel**: **Edit content**, the same actions, then the settings every block shares:
-  - **Name** and **Note**, for editors only, never printed on the website. The name replaces the block's first text in the structure. A Section, Columns and Slider show their own Name here instead.
+  - **Name** and **Note**, for editors only, never printed on the website. The name replaces the block's first text in the structure. A Section, Columns and Slider show their own Name here instead; a Section's and a Slider's name also names it for screen readers on the website.
   - **Status** (Published, Draft) and **Show from / Show until**: a draft or a block outside its dates is not printed.
   - **Show on** (all screens, desktop only, phones only).
   - **Advanced** (folded): **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Anchor** (`team` makes `#team` link to the block) and an extra **CSS class**.
-- **Edit** (or a double click on the row, or Enter) opens the block's own fields in a dialog, in its tabs (a slider has **Content** and **Slides**), with **Previous / Next block** and **Done**. Changes are kept until the page is saved. A new block opens there straight away.
+- **Edit** (or a double click on the row, or Enter) opens the block's own fields in a dialog, in its tabs (a slider has **Content** and **Slides**), with **Done**. The dialog edits one block (0.32) and keeps one height while it is open: its tallest tab, 360–760 px; what doesn't fit scrolls inside it. Changes are kept until the page is saved. A new block opens there straight away; a new Slider opens on its Slides tab, and a block whose required list is still empty says "Nothing added yet" on its row. Options that matter for one choice only (a slider's pixel heights with Fixed, a Section's colour with a Colour background) appear when it is chosen.
 - **Add block** opens a dialog with search, categories (Media, Text, Layout, Marketing, Your site, and **Recently used**) and where the block will go ("After “Hero”", "In “2 columns”, column 2"). It closes with ×, Escape or a click outside. **+** on a row adds a block after it; **Add to column 2** or **Add a block inside** add one into a Section or Columns.
 - **Delete** asks first ("Delete “Services”? The 4 blocks inside it go too."), then **Undo** brings it back until you save.
 - **Copy and paste**: **Ctrl+C** on a row keeps the block (with the blocks inside it) in this browser; **Ctrl+V** on a row pastes it after that row, on this page or another, and **Add block** offers **Paste** where the block may sit. An HTML block pasted by someone without `blocks.html` arrives empty.
-- **Keyboard**: Enter edits, Delete deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste; **Alt + ↑ ↓** moves a block, **Alt + → ←** moves it into the Section or Columns before it or out of its container (mirrored right to left). **Drag** a block by its handle anywhere it may sit. A Section sits at the top only; Columns sit at the top or in a Section; other blocks sit anywhere.
+- **Keyboard**: Enter edits, Delete deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste; **Alt + ↑ ↓** moves a block, **Alt + → ←** moves it into the Section or Columns before it or out of its container (mirrored right to left). **Drag** a block by its handle anywhere it may sit (0.32): it stays in place while a line shows where it will land; every Section and column is a target as a whole, so blocks go into, out of and between columns. A place it may not go shows a red line and nothing moves; Escape cancels; the page scrolls near the window's edges; a folded container opens when a block is held over it. On touch screens drag by the handle, or press and hold a row. A Section sits at the top only; Columns sit at the top or in a Section; other blocks sit anywhere.
 - With `->translatable()`, **Copy to language** adds the block at the end of another language's list; an empty language offers **Copy all from English**.
-- Changing a Columns layout to fewer columns moves the blocks of the columns that go into the last one.
+- Changing a Columns layout to fewer columns moves the blocks of the columns that go into the last one, and says so.
 - Errors open the block that has them (in the dialog when the error is in its own fields); the message above the form says where: "Page content → Hero: Heading".
 - Without JavaScript every block's fields and settings are shown one after another and the buttons send the form, as with [repeaters](repeaters.md).
 - A form with a Builder opens as a page, never in a dialog (inside a [relation manager](relation-managers.md) it still opens over the parent's page).
-- **Large pages and `max_input_vars`**: every field of every block is sent with the form, about 20 per block (more with slides and cards), and PHP drops what goes past `max_input_vars` (1000 by default). The page notices a request cut short and saves nothing, with a message saying so. For pages of more than about 40 blocks set `max_input_vars = 5000` in `php.ini` or `.user.ini`; `admin:doctor` warns when it is lower than 3000.
+- **Large pages** (0.32): the editor sends all of a Builder's fields as **one value** (JSON), so `max_input_vars` no longer limits a page, however many blocks it has. The server reads the same names and values as before and checks every block the same way; a value it can't read is refused, and nothing is saved. Without JavaScript the fields are sent one by one, as before: then PHP drops what goes past `max_input_vars` (1000 by default), the page notices and saves nothing, and pages of more than about 40 blocks need `max_input_vars = 5000`.
 - On phones a tap on a row opens its panel over the structure (with Edit content and every action), and the dialogs fill the screen.
 
 `->translatable()` keeps **one list per language**, so each language may have different blocks. Without it there is one list for every language; the block fields themselves are never translatable.
@@ -55,18 +58,20 @@ The field shows the page's **structure** on the left, one row per block, and the
 
 | Type | Category | Fields |
 | --- | --- | --- |
-| `slider` | Media | Name, Height (Full screen, Fixed, Like the first image), heights on desktop and phones, Effect (Fade, Slide), Next slide after, Play automatically, arrows, dots, Fill or Fit, Darken images; **Slides**: image or video, heading, text, button, link, text position (3 × 3), text colour, Show this slide |
-| `hero` | Media | Background image or video, heading, text, two buttons, height, alignment, darken |
-| `image` | Media | Image, caption, link, size (text width, wide, full) |
+| `slider` | Media | Name, Height (Full screen, Fixed, Like the first image), heights on desktop and phones (with Fixed), Effect (Fade, Slide), Play automatically, Next slide after (with autoplay), arrows, dots, Fill or Fit, Image overlay; **Slides**: image or video, heading, text, button, link, open in a new tab, text position (3 × 3), text colour, Show this slide |
+| `hero` | Marketing | Background image or video, heading, heading level (H1, H2), text, two buttons, open in a new tab, height, height on phones, alignment, image overlay |
+| `image` | Media | Image, alt text, caption, link, open in a new tab, size (text width, wide, full) |
 | `gallery` | Media | Heading, images (up to 60), columns, open larger on click |
-| `video` | Media | A file from the library, or a YouTube or Vimeo link (played from youtube-nocookie), cover, caption, autoplay (muted), loop |
-| `heading` | Text | Text, level (H1–H4), alignment |
+| `video` | Media | A file from the library, or a YouTube or Vimeo link (played from youtube-nocookie), cover, caption, autoplay (muted), loop; one of the two is needed |
+| `heading` | Text | Text, level (H1–H4), alignment (start, centre, end), subtitle |
 | `rich_text` | Text | The rich text editor (cleaned when saved) |
-| `cards` | Text | Heading, cards per row; **Cards**: image, title, text, link |
-| `call_to_action` | Marketing | Heading, text, button, link, style |
+| `cards` | Text | Heading, cards per row; **Cards**: image, title, text, link (the whole card opens it), button text, open in a new tab |
+| `call_to_action` | Marketing | Heading, text, button, link, open in a new tab, style |
 | `html` | Other | Raw HTML, printed as written: see below |
-| `section` | Layout | Name, content width (Full, Boxed, Narrow), background (none, light, dark, brand, a colour, an image), inner space; holds blocks |
-| `columns` | Layout | Name, layout (50/50, 67/33, 33/67, 25/75, thirds, 25/50/25, quarters, from pictures), space between, vertical alignment, stack on phones, last column first on phones; holds blocks |
+| `section` | Layout | Name, content width (Full, Boxed, Narrow), background (none, light, dark, brand, a colour, an image), text colour and image overlay (with a colour or image), inner space; holds blocks |
+| `columns` | Layout | Name, layout (50/50, 67/33, 33/67, 25/75, 75/25, 40/60, 60/40, thirds, 25/50/25, quarters, from pictures), space between, vertical alignment, stack on phones, last column first on phones; holds blocks |
+
+A button's text and its link need each other: one without the other is an error. Empty Slider, Section and Columns blocks print nothing on the website.
 
 `->blocks([...])` offers only the kinds named, in that order (types or classes); `->only(['media', 'text'])` offers those categories. Without either every kind is offered, the site's own included.
 
@@ -94,7 +99,9 @@ and the inside comes from **`views/blocks/<type>.html`** in the site, or the pac
 - On a **settings page**, a `Builder::make('blocks')` is printed with `{!! blocks(setting('home.blocks')) !!}`.
 - **`blocks_data($value)`** returns the blocks shown now as arrays (`id`, `type`, `fields`, `settings`, `children`), for a site that renders them in JavaScript or an API.
 - **Caching**: the printed HTML of a list is kept in `storage/cache/blocks` until its content, a template or the language changes, a block's dates start or end, or six hours pass. Blocks with their own `data()` (which may read the database) are not cached unless they say so, and nothing is cached while a `BlockRenderer::rendering()` listener is set. Links typed in blocks are printed only when they are http(s), `mailto:`, `tel:` or an address on the site.
-- The slider: the first slide loads at once, the others lazily; arrows, dots, swipe and arrow keys; autoplay pauses on hover, on focus and in a hidden tab, has a pause button, and is off with "reduce motion". Right-to-left pages slide the other way.
+- The slider: the first slide loads at once, the others lazily; arrows, dots, swipe and arrow keys; autoplay pauses on hover, on focus and in a hidden tab, has a pause button, and is off with "reduce motion", which also keeps its videos still. Right-to-left pages slide the other way.
+- Videos that play by themselves (a Hero's background, a Video block with autoplay) stay still for visitors who ask for less motion (`motion.js`, 0.32); a Video block then shows its controls.
+- Quarters show two by two below 900 px (tablets).
 
 ## A slider on its own
 
@@ -143,6 +150,8 @@ final class LatestProjects extends Block
 ```
 
 - `fields()` returns fields, or `Tab`s for several tabs. Any field works except uploads, many-to-many relations and another Builder; repeaters, media pickers and rich text work. Field names may not start with `_` (the shared settings `_label` and `_note` use it).
+- `check(array $fields): array` (0.32) returns errors that need more than one field, `['link' => 'Add a link…']` (or `'items.0.link'` inside a list); `self::buttonPair($fields, 'button', 'link')` is the panel's own button-and-link check.
+- A field's `->shownWhen('height', 'fixed')` (0.32) shows it only while another field of the block has one of those values, in the browser, without reloading the dialog. Unlike `visibleWhen()`, it is always sent and its rules always apply, so give it a valid default.
 - `title(array $fields)` names the block in the structure (by default its first heading, name, text…; an editor's Name comes first), `nameField()` a field of its own shown as the panel's Name (Section, Columns and Slider return `'name'`), `defaultWidth()` (`'boxed'` or `'full'`), `allowedIn(string $parentType)` where it may sit, `assets()` the files in `public/assets/flo-blocks/` it needs, `cacheable()`, and `render(array $vars): ?string` to build the HTML in PHP instead of a template.
 - A block with the type of one of the panel's replaces it everywhere.
 - `BlockRenderer::rendering(fn (array $vars, Block $block): ?array => …)` runs before each block is printed, for sites that add data.
