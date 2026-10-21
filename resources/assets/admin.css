@@ -1054,10 +1054,11 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-tool.is-danger:hover{background:var(--fa-danger-soft);color:var(--fa-danger)}
 .fa-builder-tool:disabled{opacity:.35;cursor:default;background:transparent}
 /* Row buttons (0.31): icon only, shown on hover, keyboard focus and the selected row; always on touch screens */
-.fa-builder-row-tools{display:flex;align-items:center;gap:1px;flex:none;opacity:0;transition:opacity .12s}
-.fa-builder-row-tools[hidden]{display:none}
-.fa-builder-row:hover > .fa-builder-row-tools,.fa-builder-row:focus-within > .fa-builder-row-tools,.fa-builder-node.is-selected > .fa-builder-row > .fa-builder-row-tools{opacity:1}
-@media (hover:none){.fa-builder-row-tools{opacity:1}}
+.fa-builder-row-tools{display:none;align-items:center;gap:1px;flex:none}
+.fa-builder-row:hover > .fa-builder-row-tools:not([hidden]),.fa-builder-row:focus-within > .fa-builder-row-tools:not([hidden]),.fa-builder-node.is-selected > .fa-builder-row > .fa-builder-row-tools:not([hidden]){display:flex}
+@media (hover:none){.fa-builder-row-tools:not([hidden]){display:flex}}
+/* Phones: a tap on a row opens its panel, which has Edit and every action */
+@media (max-width:700px){.fa-builder .fa-builder-row-tools:not([hidden]){display:none}}
 .fa-builder-row-tools .fa-builder-tool{width:30px;height:30px}
 .fa-builder-insert{margin-inline-start:2px;border-inline-start:1px solid var(--fa-border);border-radius:0 var(--fa-radius) var(--fa-radius) 0}
 [dir="rtl"] .fa-builder-insert{border-radius:var(--fa-radius) 0 0 var(--fa-radius)}
@@ -1159,6 +1160,10 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-add-dialog .fa-builder-picker{display:flex;flex-direction:column;gap:10px;height:100%;padding:0}
 .fa-builder-add-dialog .fa-builder-picker-main{flex:1}
 .fa-builder-add-dialog .fa-builder-dialog-body{display:flex;flex-direction:column;overflow:hidden}
+.fa-builder-paste{display:flex;align-items:center;gap:10px;flex:none;width:100%;min-height:48px;padding:8px 12px;border:1.5px dashed var(--fa-primary-border);border-radius:var(--fa-radius);background:var(--fa-primary-soft);color:var(--fa-text);font:inherit;text-align:start;cursor:pointer}
+.fa-builder-paste[hidden]{display:none}
+.fa-builder-paste > svg{width:18px;height:18px;color:var(--fa-primary-text)}
+.fa-builder-paste:hover{border-style:solid}
 .fa-panel dialog.fa-builder-confirm{width:min(440px,calc(100vw - 32px))}
 .fa-builder-confirm .fa-dialog-body{padding:16px 20px}
 .fa-builder-confirm-text{margin:0;color:var(--fa-text-2)}

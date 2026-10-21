@@ -175,6 +175,35 @@ test('a block\'s name and note are for editors only', async ({ page }) => {
   await expect(page.getByText('Intro heading')).toHaveCount(0);
 });
 
+test('copy a block with Ctrl+C and paste it on another page', async ({ page }) => {
+  await page.goto('/en/admin/landings/edit/1');
+  await row(page, 'bslider1').locator('[data-builder-select]').first().focus();
+  await page.keyboard.press('Control+c');
+  await expect(builder(page).locator('[data-builder-undo]')).toContainText('Block copied');
+  // Ctrl+V after a row
+  await row(page, 'bcta1').locator('[data-builder-select]').first().focus();
+  await page.keyboard.press('Control+v');
+  await expect(titlesOf(top(page))).toHaveText(['Home slider', 'Services', 'Start a project', 'Home slider']);
+  // And Paste in Add, on a fresh page (the copy is kept in the browser)
+  await page.request.post('/__test/landings');
+  await page.goto('/en/admin/landings/edit/1');
+  await list(page, 'en').locator('.fa-builder-add-main > summary').click();
+  await expect(adder(page).locator('[data-builder-paste]')).toContainText('Home slider');
+  await adder(page).locator('[data-builder-paste]').click();
+  await expect(titlesOf(top(page))).toHaveText(['Home slider', 'Services', 'Start a project', 'Home slider']);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Landing page saved.')).toBeVisible();
+  const content = await stored(page);
+  expect(content.en[3].type).toBe('slider');
+  expect(content.en[3].data.slides).toHaveLength(2);
+  expect(content.en[3].data.slides[0].heading).toBe('Design that works');
+  // Not offered where it may not sit (a Section inside Columns)
+  await row(page, 'bsect1').locator('[data-builder-select]').first().focus();
+  await page.keyboard.press('Control+c');
+  await row(page, 'bcols1').locator('[data-builder-col="0"] .fa-builder-add-in > summary').click();
+  await expect(adder(page).locator('[data-builder-paste]')).toBeHidden();
+});
+
 test('fewer columns move their blocks into the last one', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
   await edit(page, 'bcols1');
@@ -255,8 +284,12 @@ test('errors open the block that has them', async ({ page }) => {
 test('on a phone the panel and the dialogs fill the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await page.goto('/en/admin/landings/edit/1');
-  await expect(tool(page, 'bhead1', 'edit')).toBeVisible();
-  await tool(page, 'bhead1', 'edit').click();
+  await expect(tool(page, 'bhead1', 'edit')).toBeHidden();
+  await row(page, 'bhead1').locator('[data-builder-select]').first().click();
+  const panel = await pane(page, 'bhead1').boundingBox();
+  expect(panel!.width).toBeGreaterThan(385);
+  await pane(page, 'bhead1').locator('.fa-builder-edit').click();
+  await expect(editor(page)).toBeVisible();
   const box = await editor(page).boundingBox();
   expect(box!.width).toBeGreaterThan(385);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

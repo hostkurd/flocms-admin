@@ -296,64 +296,137 @@ function add(list: HTMLElement, type: string, target: Target): void {
 }
 
 /**
- * A copy of a block (and the blocks in it) in a list: new ids, the same values.
- * Lists inside the block get the same items first, so every value has a place.
+ * A block (and the blocks in it) as plain data: its kind, its controls' values
+ * by their name after "[lang][id]", the items of lists inside it, rich text,
+ * media and its children. Copies (Duplicate, Copy to language, Paste on any
+ * page) are made from it.
  */
-function copyNode(fromList: HTMLElement, source: HTMLElement, toList: HTMLElement, slot: HTMLElement, after: HTMLElement | null): HTMLElement | null {
-  const builder = builderOf(toList)!;
-  const oldId = source.dataset.builderNode || '';
-  const sourcePane = paneOf(fromList, oldId);
+type Value = { s: string; t: string; v: string; c?: boolean; o?: boolean[] };
+type Snapshot = { type: string; title: string; values: Value[]; repeaters: { s: string; keys: string[] }[]; rich: string[]; media: (string | null)[]; columns: number; children: { column: number; block: Snapshot }[] };
+
+function snapshot(list: HTMLElement, node: HTMLElement): Snapshot | null {
+  const id = node.dataset.builderNode || '';
+  const pane = paneOf(list, id);
+  if (!pane) return null;
+  const from = `[${list.dataset.builderList}][${id}]`;
+  const suffix = (name: string) => { const at = name.indexOf(from); return at < 0 ? null : name.slice(at + from.length); };
+  const scopes = scopesOf(list, id);
+  const values: Value[] = [];
+  scopes.forEach(scope => scope.querySelectorAll<Control>('[name]').forEach(control => {
+    // The place inputs are the new block's own (sync() fills them).
+    if (control.parentElement === pane) return;
+    const s = suffix(control.name);
+    if (s === null) return;
+    const value: Value = { s, t: control.type, v: control.value };
+    if (control instanceof HTMLInputElement && (control.type === 'radio' || control.type === 'checkbox')) value.c = control.checked;
+    if (control instanceof HTMLSelectElement) value.o = [...control.options].map(option => option.selected);
+    values.push(value);
+  }));
+  const repeaters = scopes.flatMap(scope => [...scope.querySelectorAll<HTMLElement>('[data-repeater]')]).map(repeater => ({
+    s: suffix(repeater.dataset.name || '') ?? '',
+    keys: [...repeater.querySelectorAll<HTMLElement>(':scope > [data-repeater-items] > [data-repeater-item]')].map(item => item.dataset.key || ''),
+  }));
+  // A rich editor keeps its text in the editor until the form is sent.
+  const rich = scopes.flatMap(scope => [...scope.querySelectorAll<HTMLElement>('[data-admin-rich-editor]')]).map(editor => editor.querySelector<HTMLElement>('.ProseMirror, [contenteditable="true"]')?.innerHTML ?? '');
+  const media = scopes.flatMap(scope => [...scope.querySelectorAll<HTMLElement>('[data-admin-media-field]')]).map(field => field.dataset.items ?? null);
+  const children: { column: number; block: Snapshot }[] = [];
+  node.querySelectorAll<HTMLElement>(':scope > [data-builder-cols] > [data-builder-col] > [data-builder-slot], :scope > [data-builder-slot]').forEach(slot => {
+    childNodes(slot).forEach(child => { const block = snapshot(list, child); if (block) children.push({ column: Number(slot.dataset.column || 0), block }); });
+  });
+  return { type: node.dataset.type || '', title: titleOf(list, node), values, repeaters, rich, media, columns: node.querySelectorAll(':scope > [data-builder-cols] > [data-builder-col]').length, children };
+}
+
+/** A new block made from a snapshot, in a list (new ids, the same values). */
+function build(list: HTMLElement, data: Snapshot, slot: HTMLElement, after: HTMLElement | null): HTMLElement | null {
+  const builder = builderOf(list)!;
   const id = newId();
-  const made = sourcePane ? fromTemplate(builder, source.dataset.type || '', toList.dataset.builderList || '', id) : null;
-  if (!sourcePane || !made) return null;
-  const from = `[${fromList.dataset.builderList}][${oldId}]`;
-  const to = `[${toList.dataset.builderList}][${id}]`;
-  // The items of lists inside the block (a slider's slides).
-  sourcePane.querySelectorAll<HTMLElement>('[data-repeater]').forEach(repeater => {
-    const name = (repeater.dataset.name || '').replace(from, to);
-    const target = [...made.pane.querySelectorAll<HTMLElement>('[data-repeater]')].find(element => element.dataset.name === name);
+  const made = fromTemplate(builder, data.type, list.dataset.builderList || '', id);
+  if (!made) return null;
+  const to = `[${list.dataset.builderList}][${id}]`;
+  const named = (element: Element, name: string) => { const at = name.indexOf(to); return at < 0 ? null : name.slice(at + to.length); };
+  // The items of lists inside the block (a slider's slides) first, so every value has a place.
+  data.repeaters.forEach(source => {
+    const target = [...made.pane.querySelectorAll<HTMLElement>('[data-repeater]')].find(element => named(element, element.dataset.name || '') === source.s);
     const template = target?.querySelector<HTMLTemplateElement>(':scope > template[data-repeater-template]');
     const items = target?.querySelector<HTMLElement>(':scope > [data-repeater-items]');
     if (!target || !template || !items) return;
-    repeater.querySelectorAll<HTMLElement>(':scope > [data-repeater-items] > [data-repeater-item]').forEach((item, index) => {
+    source.keys.forEach((key, index) => {
+      if (!/^[A-Za-z0-9_-]{1,40}$/.test(key)) return;
       const holder = document.createElement('div');
-      holder.innerHTML = template.innerHTML.split('__KEY__').join(item.dataset.key || '').split('__NUMBER__').join(String(index + 1));
+      holder.innerHTML = template.innerHTML.split('__KEY__').join(key).split('__NUMBER__').join(String(index + 1));
       if (holder.firstElementChild) items.append(holder.firstElementChild);
     });
   });
   const controls = [...made.pane.querySelectorAll<Control>('[name]')];
-  sourcePane.querySelectorAll<Control>('[name]').forEach(control => {
-    // The place inputs are the new block's own (sync() fills them).
-    if (control.parentElement === sourcePane) return;
-    const name = control.name.replace(from, to);
-    const radio = control instanceof HTMLInputElement && (control.type === 'radio' || control.type === 'checkbox');
-    const target = controls.find(element => element.name === name && element.type === control.type && (!radio || element.value === control.value));
+  data.values.forEach(value => {
+    const radio = value.t === 'radio' || value.t === 'checkbox';
+    const target = controls.find(element => named(element, element.name) === value.s && element.type === value.t && (!radio || element.value === value.v));
     if (!target) return;
-    if (radio) (target as HTMLInputElement).checked = (control as HTMLInputElement).checked;
-    else if (target instanceof HTMLSelectElement && control instanceof HTMLSelectElement) [...target.options].forEach((option, i) => { option.selected = control.options[i]?.selected ?? false; });
-    else target.value = control.value;
+    if (radio) (target as HTMLInputElement).checked = value.c === true;
+    else if (target instanceof HTMLSelectElement && value.o) [...target.options].forEach((option, i) => { option.selected = value.o?.[i] ?? false; });
+    else target.value = value.v;
   });
-  // A rich editor keeps its text in the editor until the form is sent.
-  sourcePane.querySelectorAll<HTMLElement>('[data-admin-rich-editor]').forEach((editor, index) => {
-    const html = editor.querySelector<HTMLElement>('.ProseMirror, [contenteditable="true"]')?.innerHTML;
-    const target = made.pane.querySelectorAll<HTMLElement>('[data-admin-rich-editor]')[index]?.querySelector<HTMLTextAreaElement>('textarea');
-    if (html && target) target.value = html;
+  made.pane.querySelectorAll<HTMLElement>('[data-admin-rich-editor]').forEach((editor, index) => {
+    const textarea = editor.querySelector<HTMLTextAreaElement>('textarea');
+    if (textarea && data.rich[index]) textarea.value = data.rich[index];
   });
-  sourcePane.querySelectorAll<HTMLElement>('[data-admin-media-field]').forEach((media, index) => {
-    const target = made.pane.querySelectorAll<HTMLElement>('[data-admin-media-field]')[index];
-    if (target && media.dataset.items) target.dataset.items = media.dataset.items;
+  made.pane.querySelectorAll<HTMLElement>('[data-admin-media-field]').forEach((field, index) => {
+    const items = data.media[index];
+    if (items) field.dataset.items = items;
   });
-  insert(toList, made.node, made.pane, slot, after);
+  insert(list, made.node, made.pane, slot, after);
   // Columns: the same number of columns before the blocks in them.
-  if (source.dataset.type === 'columns') setColumns(toList, made.node, source.querySelectorAll(':scope > [data-builder-cols] > [data-builder-col]').length);
+  if (data.type === 'columns' && data.columns > 0) setColumns(list, made.node, data.columns);
   prepare(builder, made.pane);
   enhance(made.node);
-  source.querySelectorAll<HTMLElement>(':scope > [data-builder-cols] > [data-builder-col] > [data-builder-slot], :scope > [data-builder-slot]').forEach(childSlot => {
-    const targetSlot = slotFor(toList, id, Number(childSlot.dataset.column || 0));
-    if (!targetSlot) return;
-    childNodes(childSlot).forEach(child => { copyNode(fromList, child, toList, targetSlot, null); });
+  data.children.forEach(child => {
+    const target = slotFor(list, id, child.column);
+    if (target && allowed(list, child.block.type, target)) build(list, child.block, target, null);
   });
   return made.node;
+}
+
+function copyNode(fromList: HTMLElement, source: HTMLElement, toList: HTMLElement, slot: HTMLElement, after: HTMLElement | null): HTMLElement | null {
+  const data = snapshot(fromList, source);
+  return data ? build(toList, data, slot, after) : null;
+}
+
+function count(data: Snapshot): number {
+  return 1 + data.children.reduce((sum, child) => sum + count(child.block), 0);
+}
+
+/** Copy (Ctrl+C on a row): the block is kept in this browser, for any page. */
+const CLIPBOARD_KEY = 'flo-admin-block-clipboard';
+function copyToClipboard(list: HTMLElement, node: HTMLElement): void {
+  const data = snapshot(list, node);
+  const builder = builderOf(list)!;
+  if (!data) return;
+  try { localStorage.setItem(CLIPBOARD_KEY, JSON.stringify({ v: 1, block: data })); } catch { return; }
+  announce(builder, builder.dataset.copiedBlockText || '');
+  showUndo(builder, builder.dataset.copiedBlockText || '', false);
+}
+function clipboard(): Snapshot | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(CLIPBOARD_KEY) || 'null');
+    return value && value.v === 1 && value.block && typeof value.block.type === 'string' ? value.block as Snapshot : null;
+  } catch { return null; }
+}
+
+/** Paste (Ctrl+V on a row, or Paste in Add): the copied block, after the row or in the chosen place. */
+function paste(list: HTMLElement, target: Target): boolean {
+  const builder = builderOf(list)!;
+  const data = clipboard();
+  const slot = slotFor(list, target.parent, target.column);
+  if (!data || !slot || !builder.querySelector(`:scope > template[data-builder-template="${CSS.escape(data.type)}"]`) || !allowed(list, data.type, slot)) return false;
+  if (full(list, count(data))) { announce(builder, builder.dataset.fullText || ''); return true; }
+  const made = build(list, data, slot, target.after);
+  if (!made) return false;
+  changed(list);
+  markChanged(made);
+  select(list, made.dataset.builderNode || null);
+  made.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus();
+  announce(builder, text(builder.dataset.pastedText, { block: titleOf(list, made) }));
+  return true;
 }
 
 function duplicate(list: HTMLElement, node: HTMLElement): void {
@@ -412,7 +485,7 @@ function remove(list: HTMLElement, node: HTMLElement): void {
   (next?.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]') ?? builder.querySelector<HTMLElement>('[data-builder-undo-button]'))?.focus();
 }
 
-function showUndo(builder: HTMLElement, message: string): void {
+function showUndo(builder: HTMLElement, message: string, withUndo = true): void {
   let bar = builder.querySelector<HTMLElement>(':scope > [data-builder-undo]');
   if (!bar) {
     bar = document.createElement('div');
@@ -430,6 +503,8 @@ function showUndo(builder: HTMLElement, message: string): void {
   }
   bar.hidden = false;
   bar.querySelector('span')!.textContent = message;
+  // A plain message (Copied) has no Undo, and does not drop the last removal.
+  bar.querySelector<HTMLElement>('[data-builder-undo-button]')!.hidden = !withUndo || !removed.has(builder);
 }
 
 function undo(builder: HTMLElement): void {
@@ -606,6 +681,15 @@ function openPicker(list: HTMLElement, target: Target): void {
   filter(picker);
   const place = dialog.querySelector<HTMLElement>('[data-builder-add-place]');
   if (place) place.textContent = placeText(list, target);
+  // Paste: the copied block, when it may sit here.
+  const copied = clipboard();
+  const pasteButton = dialog.querySelector<HTMLElement>('[data-builder-paste]');
+  if (pasteButton) {
+    const fits = copied !== null && builder.querySelector(`:scope > template[data-builder-template="${CSS.escape(copied.type)}"]`) !== null && allowed(list, copied.type, slot);
+    pasteButton.hidden = !fits;
+    const name = pasteButton.querySelector<HTMLElement>('[data-builder-paste-name]');
+    if (name && copied) name.textContent = copied.title;
+  }
   if (!dialog.open) dialog.showModal();
   search?.focus();
 }
@@ -922,6 +1006,13 @@ function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): 
       add(list, choice.dataset.builderChoice || '', where);
       return true;
     }
+    if (target.closest('[data-builder-paste]') && list) {
+      event.preventDefault();
+      const where = targets.get(list) || { list, parent: '', column: 0, after: null };
+      dialog.close();
+      paste(list, where);
+      return true;
+    }
     const category = target.closest<HTMLElement>('[data-builder-cat]');
     if (category) {
       category.parentElement!.querySelectorAll<HTMLElement>('[data-builder-cat]').forEach(button => button.setAttribute('aria-selected', String(button === category)));
@@ -1060,6 +1151,12 @@ document.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey && fieldsOf(list, id)) { event.preventDefault(); openEditor(list, id); return; }
     if (event.key === 'Delete') { event.preventDefault(); confirmRemove(list, rowNode); return; }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') { event.preventDefault(); duplicate(list, rowNode); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') { event.preventDefault(); copyToClipboard(list, rowNode); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+      const slot = slotOf(rowNode);
+      if (paste(list, { list, parent: slot.dataset.parent || '', column: Number(slot.dataset.column || 0), after: rowNode })) event.preventDefault();
+      return;
+    }
   } else if (list && rowNode && event.key === 'Enter' && fieldsOf(list, rowNode.dataset.builderNode || '')) {
     event.preventDefault(); openEditor(list, rowNode.dataset.builderNode || ''); return;
   }
