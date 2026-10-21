@@ -833,6 +833,38 @@ function enhance(root: ParentNode): void {
   });
 }
 
+/**
+ * Saving as one value (0.32): when the form is sent (Save, preview, drafts, the
+ * panel's page navigation all build their FormData from it), each Builder's fields
+ * leave as one value, content = {"_form":1,"pairs":[["[en][b1][f][title]","Hello"], …]},
+ * so max_input_vars never cuts a long page short. The server unpacks the same names
+ * and values (Builder::unpack) and checks them as before. Without the formdata event
+ * the fields are sent one by one, as in 0.31.
+ */
+const packing = new WeakSet<HTMLFormElement>();
+function packOnSubmit(builder: HTMLElement): void {
+  const form = builder.closest('form');
+  if (!form || packing.has(form) || typeof FormDataEvent === 'undefined') return;
+  packing.add(form);
+  form.addEventListener('formdata', event => {
+    form.querySelectorAll<HTMLElement>('[data-builder][data-name]').forEach(item => {
+      const name = item.dataset.name || '';
+      if (!name) return;
+      const prefix = name + '[';
+      const pairs: [string, string][] = [];
+      const names = new Set<string>();
+      for (const [key, value] of event.formData) {
+        if (!key.startsWith(prefix) || typeof value !== 'string') continue;
+        pairs.push([key.slice(name.length), value]);
+        names.add(key);
+      }
+      if (pairs.length === 0) return;
+      names.forEach(key => event.formData.delete(key));
+      event.formData.append(name, JSON.stringify({ _form: 1, pairs }));
+    });
+  });
+}
+
 /** The editor's own language buttons (when the page has no language switch). */
 function showLanguage(builder: HTMLElement, lang: string): void {
   builder.querySelectorAll<HTMLElement>(':scope > [data-lang-panes] > .fa-lang-pane').forEach(pane => pane.classList.toggle('is-current', pane.dataset.lang === lang));
@@ -847,6 +879,7 @@ export function initializeBuilders(root: ParentNode): void {
     ready.add(builder);
     builder.classList.add('is-ready');
     enhance(builder);
+    packOnSubmit(builder);
     const switching = builder.closest('[data-lang-scope]');
     const langs = builder.querySelector<HTMLElement>(':scope > [data-builder-langs]');
     if (langs && !switching) {

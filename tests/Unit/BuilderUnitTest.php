@@ -328,6 +328,84 @@ final class BuilderUnitTest extends TestCase
         self::assertSame(['C', 'A'], array_values(array_map(static fn (array $n): string => $n['data']['text'], array_filter($moved, static fn (array $n): bool => $n['column'] === 0))));
     }
 
+    /** The names and values a browser would post for $input under "content", packed as the editor sends them (0.32). */
+    private static function packed(array $input): string
+    {
+        $pairs = [];
+        $walk = static function (array $values, string $prefix) use (&$walk, &$pairs): void {
+            foreach ($values as $key => $value) {
+                if (is_array($value)) { $walk($value, $prefix . '[' . $key . ']'); } else { $pairs[] = [$prefix . '[' . $key . ']', (string) $value]; }
+            }
+        };
+        $walk($input, '');
+        return json_encode(['_form' => 1, 'pairs' => $pairs], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function testThePackedValueIsReadLikeTheFormFields(): void
+    {
+        $input = ['_sent' => '1', '_total' => ['en' => '4', 'ar' => '1'],
+            'en' => [
+                'bsec' => ['type' => 'section', 'order' => '0', 'f' => ['name' => 'Intro', 'width' => 'narrow']],
+                'bcol' => ['type' => 'columns', 'parent' => 'bsec', 'order' => '0', 'f' => ['layout' => '33-33-33']],
+                'bh1' => ['type' => 'heading', 'parent' => 'bcol', 'column' => '2', 'order' => '0', 'f' => ['text' => 'Right "quoted" & <b>', 'level' => 'h3']],
+                'btxt' => ['type' => 'rich_text', 'order' => '1', 'f' => ['body' => '<p onclick="x()">Hi</p><script>alert(1)</script>']],
+            ],
+            'ar' => ['bar' => ['type' => 'heading', 'f' => ['text' => 'مرحبا']]],
+        ];
+        $field = Builder::make('content')->translatable();
+        $fields = $field->stateFromInput(['content' => $input], self::LANGS);
+        $packed = $field->stateFromInput(['content' => self::packed($input)], self::LANGS);
+        self::assertSame($fields, $packed, 'the same state as the fields posted one by one');
+        $stored = (string) $field->dehydrate($packed);
+        self::assertStringContainsString('Right \"quoted\" & <b>', $stored);
+        self::assertStringNotContainsString('<script', $stored, 'rich text is cleaned as before');
+        self::assertStringContainsString('مرحبا', $stored);
+        self::assertSame([], $field->validateBlocks($packed, static fn (): array => []));
+
+        // "[]" appends, as PHP's own form parsing does
+        self::assertSame(['a' => ['x', 'y'], 'b' => ['c' => '1']], Builder::unpack('{"_form":1,"pairs":[["[a][]","x"],["[a][]","y"],["[b][c]","1"]]}', 1000));
+        // Not a packed value: an import's stored blocks, read as before
+        self::assertNull(Builder::unpack('[{"id":"b1","type":"heading","data":{"text":"Hi"}}]', 1000));
+        self::assertSame('Hi', $field->lists($field->stateFromInput(['content' => '[{"id":"b1","type":"heading","data":{"text":"Hi"}}]'], self::LANGS))['en'][0]['data']['text']);
+    }
+
+    public function testAPackedValueThatCantBeReadIsRefused(): void
+    {
+        $field = Builder::make('content');
+        $deep = '[' . implode('][', array_fill(0, Builder::PACKED_DEPTH + 1, 'a')) . ']';
+        $bad = [
+            '{"_form":1,"pairs":[["[_][b1][type]","heading"]',          // cut off
+            '{"_form":2,"pairs":[]}',                                    // unknown version
+            '{"_form":1,"pairs":{"a":["[_]","x"]}}',                     // not a list
+            '{"_form":1,"pairs":[["[_][b1][type]",1]]}',                 // not a string
+            '{"_form":1,"pairs":[["_][b1","x"]]}',                       // not a name
+            '{"_form":1,"pairs":[["' . $deep . '","x"]]}',               // too deep
+            '{"_form":1,"pairs":[["[_][b1][f][text]","' . str_repeat('x', Builder::MAX_BYTES * 4) . '"]]}', // too large
+        ];
+        foreach ($bad as $json) {
+            $state = $field->stateFromInput(['content' => $json], self::LANGS);
+            $errors = $field->validateBlocks($state, static fn (): array => []);
+            self::assertStringContainsString("can't read", $errors['content'] ?? '', substr($json, 0, 40));
+            self::assertNull($field->dehydrate($state));
+        }
+    }
+
+    public function testPackedHtmlBlocksKeepTheirSignatureCheck(): void
+    {
+        $session = $_SESSION ?? [];
+        try {
+            \FloCMS\Core\Config::set('permissions', [1 => []]);
+            $_SESSION = ['role' => 1];
+            $field = Builder::make('content');
+            $forged = ['_' => ['bh' => ['type' => 'html', 'f' => ['html' => '<script>x</script>']]]];
+            self::assertSame([], $field->lists($field->stateFromInput(['content' => self::packed($forged)], self::LANGS))['_']);
+            $raw = ['_' => ['b2' => ['type' => 'gone', 'raw' => '{"id":"b2","type":"html","data":{"html":"<script>"}}']]];
+            self::assertSame([], $field->lists($field->stateFromInput(['content' => self::packed($raw)], self::LANGS))['_']);
+        } finally {
+            $_SESSION = $session;
+        }
+    }
+
     public function testACutRequestIsNotSaved(): void
     {
         $field = Builder::make('content');

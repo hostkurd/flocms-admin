@@ -157,6 +157,31 @@ test('add, move, duplicate, hide and delete blocks, then save them in their plac
   expect(columns.children[2].column).toBe(1);
 });
 
+test('a page with more fields than max_input_vars is saved whole, as one value (0.32)', async ({ page }) => {
+  // 76 blocks in three languages: about 1,400 form fields, while the test server keeps PHP's max_input_vars = 1000.
+  await page.request.post('/__test/landings', { form: { many: '23' } });
+  await page.goto('/en/admin/landings/edit/1');
+  await expect(top(page)).toHaveCount(26);
+  const fields = await page.evaluate(() => [...new FormData(document.querySelector('[data-field="content"]')!.closest('form') as HTMLFormElement).keys()].length);
+  expect(fields).toBeLessThan(40);
+  const named = await page.locator('[data-field="content"] [name^="content["]').count();
+  expect(named).toBeGreaterThan(1000);
+  await edit(page, 'bmen23');
+  await editor(page).locator('[name$="[f][text]"]').fill('The last one, changed');
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  const sent = page.waitForRequest(request => request.method() === 'POST' && request.url().includes('/landings/edit/1'));
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const body = (await sent).postData() || '';
+  expect(body).not.toContain('content%5Ben%5D');
+  await expect(page.getByText('Landing page saved.')).toBeVisible();
+  const content = await stored(page);
+  expect(content.en).toHaveLength(26);
+  expect(content.ar).toHaveLength(23);
+  expect(content.ku).toHaveLength(23);
+  expect(content.en[25].data.text).toBe('The last one, changed');
+  expect(content.ku[22].data.text).toBe('KU heading 23');
+});
+
 test('a block\'s name and note are for editors only', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
   await row(page, 'bhead1').locator('[data-builder-select]').first().click();

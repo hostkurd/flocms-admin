@@ -273,8 +273,9 @@ final class DoctorCommand extends Command
         foreach ($form->fields() as $name => $field) {
             if (!$field instanceof \FloCMS\Admin\Form\Fields\Builder) { continue; }
             $vars = (int) ini_get('max_input_vars');
+            // 0.32: the editor sends "$name" as one value, so max_input_vars only limits editors without JavaScript.
             if ($vars > 0 && $vars < 3000) {
-                $this->caution('max_input_vars is ' . $vars . ': a page of "' . $name . '" with many blocks can be too large to save; set max_input_vars = 5000 in php.ini or .user.ini');
+                $this->ok('"' . $name . '" is saved as one value; max_input_vars (' . $vars . ') only limits pages edited without JavaScript (5000 is enough for them)');
             }
             $type = strtolower(trim((string) ($columns[strtolower($name)] ?? '')));
             if ($type !== '' && preg_match('/json|text|clob/', $type) !== 1) {

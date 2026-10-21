@@ -1638,6 +1638,7 @@ return [
     'validation.builder_size' => ':attribute كبير جدًا (:max كيلوبايت كحد أقصى).',
     'validation.builder_cut' => 'تعذّر حفظ :attribute: قطع الخادم الطلب (max_input_vars = :max). لم يُحفظ شيء؛ اطلب رفع قيمة max_input_vars أو قسّم الصفحة.',
     'validation.builder_stale' => 'تعذّر حفظ :attribute لأن الصفحة قديمة (فُتحت في جلسة أخرى). أعد تحميل الصفحة وأجرِ تغييراتك مرة أخرى.',
+    'validation.builder_unreadable' => 'تعذّر حفظ :attribute: وصل محتواه بصيغة لا تستطيع اللوحة قراءتها. لم يُحفظ شيء؛ أعد تحميل الصفحة وحاول مرة أخرى.',
     'pages.label' => 'صفحة',
     'pages.plural' => 'الصفحات',
     'pages.tab_content' => 'المحتوى',
