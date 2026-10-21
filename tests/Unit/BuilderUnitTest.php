@@ -95,6 +95,21 @@ final class BuilderUnitTest extends TestCase
         self::assertStringContainsString('aria-label="Show on the website"', $html);
         self::assertStringContainsString('data-builder-fields="bh"', $html);
         self::assertStringContainsString('data-builder-settings', $html);
+        // 0.32: one block per dialog; the ⋯ menu; a + between blocks
+        self::assertStringNotContainsString('data-builder-dialog-nav', $html);
+        self::assertStringContainsString('data-builder-action="more"', $html);
+        self::assertStringContainsString('fa-builder-inserter', $html);
+        // Containers fold; Columns are a grid as wide as their layout, each column with its width
+        $state = $field->stateFromInput(['content' => ['_' => [
+            'bc' => ['type' => 'columns', 'f' => ['layout' => '67-33']],
+            'bt' => ['type' => 'heading', 'parent' => 'bc', 'column' => '1', 'f' => ['text' => 'Right']],
+        ]]], self::LANGS);
+        $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([$field]));
+        self::assertStringContainsString('data-builder-action="fold"', $html);
+        self::assertStringContainsString('data-builder-cols data-count="2" data-layout="67-33"', $html);
+        self::assertStringContainsString('data-builder-col-width>33%<', $html);
+        self::assertStringContainsString('data-builder-col-width>67%<', $html);
+        self::assertStringContainsString('aria-label="Add to column 2"', $html);
         // Read only: no Add, Delete or confirm; the dialog shows the fields
         $html = (new FormRenderer(['content' => $state], [], self::LANGS, 'en'))->render((new Form())->schema([Builder::make('content')->disabled()]));
         self::assertStringContainsString('data-builder-edit-dialog', $html);

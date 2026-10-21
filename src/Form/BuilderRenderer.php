@@ -77,6 +77,8 @@ final class BuilderRenderer
             . ' data-where-top="' . Str::e(self::t('add_where_top')) . '" data-where-after="' . Str::e(self::t('add_where_after', ['block' => ':block'])) . '" data-where-in="' . Str::e(self::t('add_where_in', ['block' => ':block'])) . '" data-where-column="' . Str::e(self::t('add_where_column', ['block' => ':block', 'number' => ':number'])) . '"'
             . ' data-changed-text="' . Str::e(self::t('changed')) . '" data-copied-block-text="' . Str::e(self::t('copied_block')) . '" data-pasted-text="' . Str::e(self::t('pasted', ['block' => ':block'])) . '" data-recent-text="' . Str::e(self::t('recent')) . '"'
             . ' data-fold-text="' . Str::e(self::t('fold', ['block' => ':block'])) . '" data-unfold-text="' . Str::e(self::t('unfold', ['block' => ':block'])) . '" data-inside-text="' . Str::e(self::t('inside_count', ['count' => ':count'])) . '" data-moved-column-text="' . Str::e(self::t('moved_column', ['count' => ':count', 'number' => ':number'])) . '"'
+            . ' data-not-here-text="' . Str::e(self::t('not_here', ['block' => ':block'])) . '"'
+            . ' data-move-to-text="' . Str::e(self::t('move_to')) . '" data-move-top-text="' . Str::e(self::t('move_top', ['block' => ':block'])) . '"'
             . ' data-full-text="' . Str::e(self::t('full', ['max' => (string) $field->getMaxBlocks()])) . '">';
         $html .= '<div class="fa-builder-head"><span class="fa-label" id="' . Str::e($this->id) . '-label">' . $label . '</span></div>';
         if (($help = $field->getHelp()) !== null) { $html .= '<p class="fa-help" id="' . Str::e($this->id) . '-help">' . Str::e($help) . '</p>'; }
@@ -289,6 +291,8 @@ final class BuilderRenderer
             $html .= $this->toggleButton($draft);
         }
         $html .= $this->toolButton('remove', 'trash', self::t('remove'), '', 'is-danger');
+        // More (0.32): every action again, and Move to… (builder.ts fills the menu when it opens).
+        $html .= $this->toolButton('more', 'more', self::t('more', ['block' => $title]), ' aria-haspopup="menu" aria-expanded="false"');
         return $html . $this->toolButton('insert', 'plus', self::t('add_after', ['block' => $title]), '', 'fa-builder-insert');
     }
 
@@ -461,7 +465,6 @@ final class BuilderRenderer
         $html = '<dialog class="fa-builder-dialog fa-builder-edit-dialog" data-builder-edit-dialog aria-labelledby="' . Str::e($this->id) . '-edit-title">'
             . '<header class="fa-dialog-head fa-builder-dialog-head"><span class="fa-builder-kind-icon" aria-hidden="true" data-builder-dialog-icon></span>'
             . '<span class="fa-builder-pane-names"><span class="fa-builder-pane-kind" data-builder-dialog-kind></span><h3 class="fa-dialog-title" id="' . Str::e($this->id) . '-edit-title" data-builder-dialog-title></h3></span>'
-            . '<span class="fa-builder-dialog-nav">' . $this->toolButton('previous-block', 'chevron-left', self::t('previous_block'), ' data-builder-dialog-nav="-1"') . $this->toolButton('next-block', 'chevron-right', self::t('next_block'), ' data-builder-dialog-nav="1"') . '</span>'
             . $close . '</header>'
             . '<div class="fa-dialog-body fa-builder-dialog-body" data-builder-dialog-body></div>'
             . '<footer class="fa-dialog-foot"><span class="fa-builder-dialog-hint">' . Str::e(self::t($writable ? 'dialog_hint' : 'dialog_hint_read')) . '</span><button type="button" class="fa-btn fa-btn-primary" data-builder-dialog-close>' . Str::e(self::t('done')) . '</button></footer></dialog>';

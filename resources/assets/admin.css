@@ -1020,6 +1020,20 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-tree{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;min-width:0}
 .fa-builder-tree:empty{display:none}
 .fa-builder.is-ready .fa-builder-list.is-dragging .fa-builder-tree.is-nested:empty{display:flex;min-height:38px;border:1.5px dashed var(--fa-border-strong);border-radius:var(--fa-radius)}
+/* Drag and drop (0.32): the block stays in place, faded; a line shows where it lands; a copy follows the pointer */
+.fa-builder-outline{position:relative}
+.fa-builder-list.is-dragging{user-select:none;-webkit-user-select:none}
+.fa-builder-node.is-drag-source > .fa-builder-row{opacity:.4;border-style:dashed}
+.fa-builder-drop{position:absolute;z-index:5;height:2px;margin-top:-1px;border-radius:2px;background:var(--fa-primary);pointer-events:none}
+.fa-builder-drop[hidden]{display:none}
+.fa-builder-drop::before{content:"";position:absolute;inset-inline-start:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:inherit}
+.fa-builder-drop.is-refused{background:var(--fa-danger)}
+.fa-builder-list.is-dragging .fa-builder-add-button:hover{background:transparent;border-color:var(--fa-border-strong);color:var(--fa-muted)}
+.fa-builder-col.is-drop-zone{border-radius:var(--fa-radius);background:var(--fa-primary-soft);box-shadow:0 0 0 4px var(--fa-primary-soft)}
+.fa-builder-node.is-drop-zone{border-color:var(--fa-primary-border)}
+.is-drop-refused{border-radius:var(--fa-radius);background:var(--fa-danger-soft);box-shadow:0 0 0 4px var(--fa-danger-soft);outline:1.5px dashed var(--fa-danger);outline-offset:3px}
+.fa-panel .fa-builder-ghost{position:fixed;z-index:200;width:320px;pointer-events:none;background:var(--fa-surface);border-color:var(--fa-primary-border);box-shadow:var(--fa-shadow-md);transform:rotate(-1.5deg)}
+.fa-builder-ghost :is(.fa-builder-row-tools,.fa-builder-tools,.fa-builder-fold,.fa-builder-state,.fa-builder-changed){display:none !important}
 .fa-builder-tree.is-nested{gap:6px}
 .fa-builder-node{position:relative;min-width:0}
 /* Containers (0.32): framed cards, their blocks inside on a light ground; they fold */
@@ -1047,12 +1061,11 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 [dir="rtl"] .fa-builder-node.is-selected > .fa-builder-row{box-shadow:inset -3px 0 0 var(--fa-primary)}
 .fa-builder-node[data-holds].is-selected{border-color:var(--fa-primary-border)}
 .fa-builder-node.has-error > .fa-builder-row{border-color:var(--fa-danger);box-shadow:0 0 0 3px var(--fa-danger-soft)}
-.fa-builder-node.is-dragging > .fa-builder-row{box-shadow:var(--fa-shadow-md);border-color:var(--fa-primary-border);opacity:.92}
 .fa-builder-handle{display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:34px;padding:0;border:0;border-radius:var(--fa-radius-sm);background:transparent;color:var(--fa-faint);cursor:grab;touch-action:none}
 .fa-builder-handle[hidden]{display:none}
 .fa-builder-handle .fa-icon,.fa-builder-handle svg{width:16px;height:16px}
 .fa-builder-handle:hover,.fa-builder-handle:focus-visible{color:var(--fa-text-2);background:var(--fa-surface-3)}
-.fa-builder-node.is-dragging .fa-builder-handle{cursor:grabbing}
+.fa-builder-list.is-dragging,.fa-builder-list.is-dragging *{cursor:grabbing}
 .fa-builder-kind-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:7px;background:var(--fa-surface-3);color:var(--fa-text-2)}
 .fa-builder-kind-icon svg{width:16px;height:16px}
 .fa-builder-node[data-holds] > .fa-builder-row .fa-builder-kind-icon{background:var(--fa-primary-soft);color:var(--fa-primary-text)}
@@ -1203,8 +1216,6 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-dialog-head{display:flex;align-items:center;gap:12px;padding:14px 16px 14px 20px;border-block-end:1px solid var(--fa-border)}
 [dir="rtl"] .fa-builder-dialog-head{padding:14px 20px 14px 16px}
 .fa-builder-dialog-head .fa-dialog-title{margin:0;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;unicode-bidi:plaintext}
-.fa-builder-dialog-nav{display:flex;gap:2px}
-[dir="rtl"] .fa-builder-dialog-nav svg{transform:scaleX(-1)}
 .fa-panel .fa-builder-dialog-body{flex:1;min-height:0;max-height:none;overflow:auto;padding:18px 20px}
 .fa-builder-dialog-body > [data-builder-fields]{display:block;padding:0}
 .fa-builder-dialog .fa-dialog-foot{justify-content:space-between}
@@ -1221,10 +1232,19 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-confirm .fa-dialog-body{padding:16px 20px}
 .fa-builder-confirm-text{margin:0;color:var(--fa-text-2)}
 @media (max-width:700px){
-  .fa-panel dialog.fa-builder-dialog:not(.fa-builder-confirm){width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;border:0}
+  .fa-panel dialog.fa-builder-dialog:not(.fa-builder-confirm){width:100vw;max-width:100vw;height:100dvh !important;max-height:100dvh;margin:0;border-radius:0;border:0}
   .fa-builder-dialog-hint{display:none}
 }
 .fa-builder-pane-body > .fa-form-grid > .fa-tabs > .fa-tab-list{margin-block-end:12px}
+/* The ⋯ menu (0.32) */
+.fa-panel .fa-builder-menu{position:fixed;inset:auto;z-index:80;min-width:240px;max-width:min(340px,calc(100vw - 16px));max-height:min(420px,calc(100vh - 16px));overflow:auto}
+.fa-builder-menu[hidden]{display:none}
+.fa-builder-menu .fa-menu-item{display:flex;align-items:center;gap:10px;width:100%}
+.fa-builder-menu .fa-menu-item svg{width:16px;height:16px;flex:none;color:var(--fa-muted)}
+.fa-builder-menu .fa-menu-item > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;unicode-bidi:plaintext}
+.fa-builder-menu .fa-menu-item.is-danger,.fa-builder-menu .fa-menu-item.is-danger svg{color:var(--fa-danger)}
+.fa-builder-menu-heading{margin:0;padding:8px 12px 4px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fa-muted)}
+.fa-builder-menu-rule{margin:4px 2px;border:0;border-top:1px solid var(--fa-border)}
 .fa-builder-copy{position:relative;display:inline-flex}
 .fa-builder-copy[hidden]{display:none}
 .fa-builder-copy-menu{inset-inline-end:0}
