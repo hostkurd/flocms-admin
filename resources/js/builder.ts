@@ -159,6 +159,8 @@ function sync(list: HTMLElement): void {
     if (heading && title) heading.textContent = title;
     const handle = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-handle]');
     if (handle) handle.setAttribute('aria-label', text(builder.dataset.dragText, { block: title }) || title);
+    const inside = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-inside]');
+    if (inside) { const count = nodes(node).length; inside.textContent = count > 0 ? text(builder.dataset.insideText, { count: String(count) }) : ''; }
     showState(list, node);
   });
   const count = nodes(list).length;
@@ -287,6 +289,7 @@ function add(list: HTMLElement, type: string, target: Target): void {
   const made = fromTemplate(builder, type, list.dataset.builderList || '', newId());
   if (!made) return;
   insert(list, made.node, made.pane, slot, target.after);
+  reveal(list, made.node);
   prepare(builder, made.pane);
   enhance(made.node);
   changed(list);
@@ -379,7 +382,7 @@ function build(list: HTMLElement, data: Snapshot, slot: HTMLElement, after: HTML
   });
   insert(list, made.node, made.pane, slot, after);
   // Columns: the same number of columns before the blocks in them.
-  if (data.type === 'columns' && data.columns > 0) setColumns(list, made.node, data.columns);
+  if (data.type === 'columns' && data.columns > 0) setColumns(list, made.node, valueOf(list, id, 'layout') || Array(data.columns).fill(Math.round(100 / data.columns)).join('-'));
   prepare(builder, made.pane);
   enhance(made.node);
   data.children.forEach(child => {
@@ -595,18 +598,24 @@ function drag(list: HTMLElement, node: HTMLElement, event: PointerEvent): void {
 }
 
 /**
- * A Columns block's columns in the structure follow its layout: a column
- * that goes away gives its blocks to the last remaining one.
+ * A Columns block's columns in the structure follow its layout ("67-33"): as many
+ * columns, as wide (admin.css draws a grid per layout); a column that goes away gives
+ * its blocks to the last remaining one.
  */
-function setColumns(list: HTMLElement, node: HTMLElement, count: number): void {
+function setColumns(list: HTMLElement, node: HTMLElement, layout: string): void {
   const holder = node.querySelector<HTMLElement>(':scope > [data-builder-cols]');
+  const widths = layout.split('-').map(Number).filter(width => width > 0);
+  const count = widths.length;
   if (!holder || count < 1) return;
   const builder = builderOf(list)!;
+  holder.dataset.layout = layout;
+  holder.dataset.count = String(count);
   let columns = [...holder.querySelectorAll<HTMLElement>(':scope > [data-builder-col]')];
+  let moved = 0;
   while (columns.length > count) {
     const last = columns.pop()!;
     const keep = columns[columns.length - 1].querySelector<HTMLElement>(':scope > [data-builder-slot]')!;
-    childNodes(last.querySelector<HTMLElement>(':scope > [data-builder-slot]')!).forEach(child => keep.append(child));
+    childNodes(last.querySelector<HTMLElement>(':scope > [data-builder-slot]')!).forEach(child => { keep.append(child); moved++; });
     last.remove();
   }
   while (columns.length < count) {
@@ -620,15 +629,65 @@ function setColumns(list: HTMLElement, node: HTMLElement, count: number): void {
     if (label) label.textContent = text(builder.dataset.columnText, { number: String(index + 1) });
     copy.querySelectorAll<HTMLElement>('[data-builder-add]').forEach(add => {
       add.dataset.column = String(index);
-      add.dataset.columnLabel = builder.dataset.addColumnText || '';
       add.removeAttribute('open');
       add.querySelectorAll<HTMLButtonElement>('button[value]').forEach(button => { button.value = button.value.replace(/:\d+$/, ':' + index); });
-      const span = add.querySelector<HTMLElement>(':scope > summary > span');
-      if (span && add.dataset.columnLabel) span.textContent = text(add.dataset.columnLabel, { number: String(index + 1) });
+      add.querySelector(':scope > summary')?.setAttribute('aria-label', text(builder.dataset.addColumnText, { number: String(index + 1) }));
     });
     holder.append(copy);
     columns.push(copy);
   }
+  columns.forEach((column, index) => {
+    const width = column.querySelector<HTMLElement>('[data-builder-col-width]');
+    if (width) width.textContent = `${widths[index] ?? ''}%`;
+  });
+  if (moved > 0) announce(builder, text(builder.dataset.movedColumnText, { count: String(moved), number: String(count) }));
+}
+
+/* Fold and unfold containers (0.32), remembered per page in this browser. */
+const FOLD_KEY = 'flo-admin-builder-folds';
+const foldPlace = (list: HTMLElement) => `${location.pathname}|${builderOf(list)?.dataset.name || ''}|${list.dataset.builderList || ''}`;
+function readFolds(): Record<string, string[]> {
+  try { const value = JSON.parse(localStorage.getItem(FOLD_KEY) || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch { return {}; }
+}
+function saveFolds(list: HTMLElement): void {
+  const all = readFolds();
+  const place = foldPlace(list);
+  const ids = nodes(list).filter(node => node.classList.contains('is-folded')).map(node => node.dataset.builderNode || '');
+  delete all[place];
+  if (ids.length) all[place] = ids;
+  const places = Object.keys(all);
+  places.slice(0, Math.max(0, places.length - 40)).forEach(old => { delete all[old]; });
+  try { localStorage.setItem(FOLD_KEY, JSON.stringify(all)); } catch { /* private window */ }
+}
+const containersOf = (list: HTMLElement) => nodes(list).filter(node => node.hasAttribute('data-holds'));
+function setFolded(list: HTMLElement, node: HTMLElement, folded: boolean, save = true): void {
+  if (!node.hasAttribute('data-holds')) return;
+  node.classList.toggle('is-folded', folded);
+  const button = node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-action="fold"]');
+  if (button) {
+    const builder = builderOf(list)!;
+    const label = text(folded ? builder.dataset.unfoldText : builder.dataset.foldText, { block: titleOf(list, node) });
+    button.setAttribute('aria-expanded', String(!folded));
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  }
+  if (save) { saveFolds(list); showCollapseAll(list); }
+}
+/** The containers around a block open (a block added, pasted or moved into a folded one is seen). */
+function reveal(list: HTMLElement, node: HTMLElement): void {
+  let changedAny = false;
+  for (const parent of ancestors(node)) { if (parent.classList.contains('is-folded')) { setFolded(list, parent, false, false); changedAny = true; } }
+  if (changedAny) { saveFolds(list); showCollapseAll(list); }
+}
+/** "Collapse all" folds every container; when all are folded it reads "Expand all". */
+function showCollapseAll(list: HTMLElement): void {
+  const button = list.querySelector<HTMLElement>('[data-builder-action="collapse-all"]');
+  if (!button) return;
+  const containers = containersOf(list);
+  const all = containers.length > 0 && containers.every(node => node.classList.contains('is-folded'));
+  button.hidden = containers.length === 0;
+  button.setAttribute('aria-pressed', String(all));
+  if (button.dataset.expandText && button.dataset.collapseText) button.textContent = all ? button.dataset.expandText : button.dataset.collapseText;
 }
 
 /** Where the picker's block will go, in words ("After “Hero”", "In “Columns”, column 2"). */
@@ -825,7 +884,7 @@ function filter(picker: HTMLElement): void {
 
 /** The parts that need JavaScript appear; the no-JavaScript buttons go. */
 function enhance(root: ParentNode): void {
-  root.querySelectorAll<HTMLElement>('[data-builder-handle], [data-builder-js], [data-builder-action="collapse-all"]').forEach(element => {
+  root.querySelectorAll<HTMLElement>('[data-builder-handle], [data-builder-js]').forEach(element => {
     if (!element.closest('template')) element.hidden = false;
   });
   root.querySelectorAll<HTMLElement>('[data-builder] [data-nojs-only], [data-builder-node] [data-nojs-only]').forEach(element => {
@@ -888,10 +947,9 @@ export function initializeBuilders(root: ParentNode): void {
       showLanguage(builder, builder.querySelector<HTMLElement>('[data-builder-lang][aria-pressed="true"]')?.dataset.builderLang || builder.dataset.defaultLang || '');
     }
     builder.querySelectorAll<HTMLElement>('[data-builder-list]').forEach(list => {
-      // The nested Add buttons open the main picker (their own lists are for no JavaScript).
-      list.querySelectorAll<HTMLElement>('.fa-builder-add-in').forEach(add => {
-        if (add.closest('[data-builder-col]')) add.dataset.columnLabel = builder.dataset.addColumnText || '';
-      });
+      const folded = readFolds()[foldPlace(list)] || [];
+      folded.forEach(id => { const node = nodeOf(list, id); if (node && !node.querySelector('.has-error')) setFolded(list, node, true, false); });
+      showCollapseAll(list);
       sync(list);
       const invalid = list.querySelector<HTMLElement>('[data-builder-node].has-error');
       select(list, invalid?.dataset.builderNode || null);
@@ -1059,12 +1117,14 @@ document.addEventListener('click', event => {
   if (action.disabled) return;
   switch (action.dataset.builderAction) {
     case 'collapse-all': {
-      const collapse = !list.classList.contains('is-collapsed');
-      list.classList.toggle('is-collapsed', collapse);
-      action.setAttribute('aria-pressed', String(collapse));
-      if (action.dataset.expandText && action.dataset.collapseText) action.textContent = collapse ? action.dataset.expandText : action.dataset.collapseText;
+      const containers = containersOf(list);
+      const fold = !containers.every(container => container.classList.contains('is-folded'));
+      containers.forEach(container => setFolded(list, container, fold, false));
+      saveFolds(list);
+      showCollapseAll(list);
       break;
     }
+    case 'fold': if (node) setFolded(list, node, !node.classList.contains('is-folded')); break;
     case 'close': select(list, null); node?.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus(); break;
     case 'edit': if (node) openEditor(list, node.dataset.builderNode || ''); break;
     case 'remove': if (node) confirmRemove(list, node); break;
@@ -1204,7 +1264,7 @@ document.addEventListener('change', event => {
   const node = nodeOf(list, id);
   // A Columns block's layout: its columns in the structure follow.
   if (node?.dataset.type === 'columns' && event.target.name.endsWith('[f][layout]') && event.target instanceof HTMLInputElement && event.target.checked) {
-    setColumns(list, node, event.target.value.split('-').length);
+    setColumns(list, node, event.target.value);
   }
   sync(list);
   markChanged(node);

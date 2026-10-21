@@ -182,6 +182,73 @@ test('a page with more fields than max_input_vars is saved whole, as one value (
   expect(content.ku[22].data.text).toBe('KU heading 23');
 });
 
+test('columns sit side by side as wide as their layout, and stack when the structure is narrow (0.32)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/en/admin/landings/edit/1');
+  const cols = row(page, 'bcols1').locator(':scope > [data-builder-cols] > [data-builder-col]');
+  await expect(cols).toHaveCount(2);
+  await expect(cols.locator('[data-builder-col-width]')).toHaveText(['50%', '50%']);
+  let first = (await cols.nth(0).boundingBox())!;
+  let second = (await cols.nth(1).boundingBox())!;
+  expect(Math.abs(first.y - second.y)).toBeLessThan(2);
+  expect(second.x).toBeGreaterThan(first.x + first.width - 1);
+  // 67 / 33: the first column is twice as wide
+  await row(page, 'bcols1').locator(':scope > .fa-builder-row .fa-builder-row-main').dblclick();
+  await editor(page).locator('input[value="67-33"]').check({ force: true });
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await expect(cols.locator('[data-builder-col-width]')).toHaveText(['67%', '33%']);
+  first = (await cols.nth(0).boundingBox())!;
+  second = (await cols.nth(1).boundingBox())!;
+  expect(first.width / second.width).toBeGreaterThan(1.8);
+  // Thirds: a third column appears, empty, named for screen readers
+  await row(page, 'bcols1').locator(':scope > .fa-builder-row .fa-builder-row-main').dblclick();
+  await editor(page).locator('input[value="33-33-33"]').check({ force: true });
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await expect(cols).toHaveCount(3);
+  await expect(cols.nth(2).locator('[data-builder-add] > summary')).toHaveAttribute('aria-label', 'Add to column 3');
+  // A phone: the columns stack, each with its name and width
+  await page.setViewportSize({ width: 390, height: 844 });
+  first = (await cols.nth(0).boundingBox())!;
+  second = (await cols.nth(1).boundingBox())!;
+  expect(second.y).toBeGreaterThan(first.y + first.height - 1);
+  await expect(cols.nth(1).locator('.fa-builder-col-label')).toBeVisible();
+});
+
+test('containers fold and stay folded after a reload; Collapse all folds them all (0.32)', async ({ page }) => {
+  await page.goto('/en/admin/landings/edit/1');
+  const fold = (id: string) => row(page, id).locator(':scope > .fa-builder-row [data-builder-action="fold"]');
+  await expect(fold('bsect1')).toHaveAttribute('aria-expanded', 'true');
+  await expect(fold('bhead1')).toHaveCount(0);
+  await fold('bsect1').click();
+  await expect(row(page, 'bsect1')).toHaveClass(/is-folded/);
+  await expect(row(page, 'bhead1')).toBeHidden();
+  await expect(fold('bsect1')).toHaveAttribute('aria-expanded', 'false');
+  await expect(fold('bsect1')).toHaveAttribute('aria-label', 'Unfold Services');
+  await expect(row(page, 'bsect1').locator(':scope > .fa-builder-row [data-builder-inside]')).toHaveText('4 inside');
+  await page.reload();
+  await expect(row(page, 'bsect1')).toHaveClass(/is-folded/);
+  await expect(row(page, 'bhead1')).toBeHidden();
+  // Collapse all / Expand all
+  const all = list(page).locator('[data-builder-action="collapse-all"]');
+  await fold('bsect1').click();
+  await expect(all).toHaveText('Collapse all');
+  await all.click();
+  await expect(row(page, 'bsect1')).toHaveClass(/is-folded/);
+  await expect(row(page, 'bcols1')).toHaveClass(/is-folded/);
+  await expect(all).toHaveText('Expand all');
+  await all.click();
+  await expect(row(page, 'bhead1')).toBeVisible();
+  await expect(row(page, 'btext1')).toBeVisible();
+  // A block added into a folded container opens it
+  await fold('bcols1').click();
+  await row(page, 'bsect1').locator(':scope > .fa-builder-add > summary').click();
+  await adder(page).locator('[data-builder-choice="heading"]').click();
+  await expect(editor(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(row(page, 'bcols1')).toHaveClass(/is-folded/);
+  await expect(row(page, 'bsect1')).not.toHaveClass(/is-folded/);
+});
+
 test('a block\'s name and note are for editors only', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
   await row(page, 'bhead1').locator('[data-builder-select]').first().click();
