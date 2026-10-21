@@ -124,6 +124,9 @@ function place(details: HTMLDetailsElement): void {
     panel.style.visibility = 'hidden';
     requestAnimationFrame(() => { place(details); panel.style.visibility = ''; });
   }
+  // A fixed panel inside an element with a transform, filter or containment is placed
+  // from that element's corner, not the viewport's: measure where 0,0 really is.
+  const origin = panel.getBoundingClientRect();
   const rect = button.getBoundingClientRect();
   const width = panel.offsetWidth, height = panel.offsetHeight;
   // The page's width without its scrollbar; 12px from the edge.
@@ -134,8 +137,8 @@ function place(details: HTMLDetailsElement): void {
   const rtl = getComputedStyle(details).direction === 'rtl';
   let left = rtl ? rect.left : rect.right - width;
   left = Math.max(12, Math.min(left, viewWidth - width - 12));
-  panel.style.top = `${Math.round(top)}px`;
-  panel.style.left = `${Math.round(left)}px`;
+  panel.style.top = `${Math.round(top - origin.top)}px`;
+  panel.style.left = `${Math.round(left - origin.left)}px`;
   // Tooltips of greyed-out items go beside the menu when there is room, else below the item.
   const room = rtl ? viewWidth - (left + width) : left;
   panel.classList.toggle('is-tips-below', room < 240);

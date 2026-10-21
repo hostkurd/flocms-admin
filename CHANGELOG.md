@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.30.1 - 2026-10-21
+
+- **More on the view page opened outside the window.** With the sidebar shown, its menu appeared about the sidebar's width to the right of the button, partly off-screen, and gave the page a horizontal scrollbar. Menus now open under their button even inside the page's blurred, sticky header.
+
 ## 0.30.0 - 2026-10-21
 
 **Pages.** The website's pages in the panel, at **Site → Pages** (`/admin/site-pages`). Needs **flocms-core 2.6**. Turn on with `'pages' => true` in `config/admin.php`, then `php flo admin:install` and `php flo migrate`. See [Pages](docs/pages.md).
