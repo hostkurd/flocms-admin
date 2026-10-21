@@ -1078,6 +1078,9 @@ function fitDialog(dialog: HTMLDialogElement): void {
   const body = dialog.querySelector<HTMLElement>('[data-builder-dialog-body]');
   if (!body) return;
   dialog.style.removeProperty('height');
+  // Options shown for one choice count too, so choosing it later doesn't need a scroll.
+  const optional = [...body.querySelectorAll<HTMLElement>('[data-shown-when][hidden]')];
+  optional.forEach(field => { field.hidden = false; });
   let tallest = body.scrollHeight;
   const group = body.querySelector<HTMLElement>('[data-admin-tabs]');
   const panels = group ? [...group.querySelectorAll<HTMLElement>(':scope > [data-admin-tab-panel]')] : [];
@@ -1089,6 +1092,7 @@ function fitDialog(dialog: HTMLDialogElement): void {
     });
     panels.forEach((panel, index) => { panel.hidden = hidden[index]; });
   }
+  optional.forEach(field => { field.hidden = true; });
   const chrome = dialog.offsetHeight - body.clientHeight;
   const most = Math.min(760, window.innerHeight - 64);
   dialog.style.height = `${Math.max(Math.min(360, most), Math.min(most, tallest + chrome))}px`;
