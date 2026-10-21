@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## Unreleased
+
+- Rich text: after a failed save, the invalid editor keeps the focus on fast machines (focus was sometimes restored to the Save button a moment later).
+
 ## 0.31.0 - 2026-10-21
 
 **The Builder editor, reworked.** Nothing to install or migrate: every Builder gets the new editor, and stored blocks don't change. See [Builder: blocks and sliders](docs/builder.md).
