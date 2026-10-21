@@ -253,17 +253,19 @@ class RichField {
   private takeFocus(panel: HTMLElement): void {
     const focus = (): void => { this.selectTab(panel.dataset.lang ?? ''); this.editorFor(panel)?.commands.focus('end'); };
     focus();
-    let done = false;
+    // Checked when the update settles and twice more: on a fast machine focus can be
+    // restored to the Save button, or to the hidden source, after the first check.
     const again = (): void => {
-      if (done || !this.root.isConnected) return;
-      done = true;
+      if (!this.root.isConnected) return;
       const active = document.activeElement;
       const typing = active instanceof HTMLElement && active !== document.body && !this.root.contains(active)
         && (active.isContentEditable || active.matches('input:not([type=button]):not([type=submit]):not([type=reset]):not([type=hidden]), select, textarea'));
-      if (!typing && !this.root.contains(active)) focus();
+      const inEditor = active instanceof HTMLElement && active.isContentEditable && this.root.contains(active);
+      if (!typing && !inEditor) focus();
     };
     document.addEventListener('htmx:afterSettle', again, { once: true, signal: this.listeners.signal });
     window.setTimeout(again, 120);
+    window.setTimeout(again, 500);
   }
 
   private key(panel: HTMLElement): string { return panel.dataset.lang ?? ''; }
