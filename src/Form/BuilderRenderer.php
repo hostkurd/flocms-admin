@@ -75,7 +75,7 @@ final class BuilderRenderer
             . ' data-state-draft="' . Str::e(self::t('state_draft')) . '" data-state-ended="' . Str::e(self::t('state_ended')) . '" data-state-from="' . Str::e(self::t('state_from', ['date' => ':date'])) . '"'
             . ' data-state-desktop="' . Str::e(self::t('state_desktop')) . '" data-state-phone="' . Str::e(self::t('state_phone')) . '" data-summary-items="' . Str::e(self::t('summary_items', ['count' => ':count'])) . '"'
             . ' data-where-top="' . Str::e(self::t('add_where_top')) . '" data-where-after="' . Str::e(self::t('add_where_after', ['block' => ':block'])) . '" data-where-in="' . Str::e(self::t('add_where_in', ['block' => ':block'])) . '" data-where-column="' . Str::e(self::t('add_where_column', ['block' => ':block', 'number' => ':number'])) . '"'
-            . ' data-copied-block-text="' . Str::e(self::t('copied_block')) . '" data-pasted-text="' . Str::e(self::t('pasted', ['block' => ':block'])) . '" data-recent-text="' . Str::e(self::t('recent')) . '"'
+            . ' data-changed-text="' . Str::e(self::t('changed')) . '" data-copied-block-text="' . Str::e(self::t('copied_block')) . '" data-pasted-text="' . Str::e(self::t('pasted', ['block' => ':block'])) . '" data-recent-text="' . Str::e(self::t('recent')) . '"'
             . ' data-full-text="' . Str::e(self::t('full', ['max' => (string) $field->getMaxBlocks()])) . '">';
         $html .= '<div class="fa-builder-head"><span class="fa-label" id="' . Str::e($this->id) . '-label">' . $label . '</span></div>';
         if (($help = $field->getHelp()) !== null) { $html .= '<p class="fa-help" id="' . Str::e($this->id) . '-help">' . Str::e($help) . '</p>'; }

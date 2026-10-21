@@ -1414,7 +1414,6 @@ return [
     'blocks.add_where_in' => 'In “:block”',
     'blocks.add_where_column' => 'In “:block”, column :number',
     'blocks.recent' => 'Recently used',
-    'blocks.hidden_state' => 'Hidden',
     'blocks.state_desktop' => 'Desktop only',
     'blocks.state_phone' => 'Phones only',
     'blocks.copied_block' => 'Block copied. Paste it with Ctrl+V on a row of any page.',

@@ -2,6 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.31.0 - 2026-10-21
+
+**The Builder editor, reworked.** Nothing to install or migrate: every Builder gets the new editor, and stored blocks don't change. See [Builder: blocks and sliders](docs/builder.md).
+
+- **Row buttons**: point at a row (or reach it with the keyboard) for icon buttons with tooltips: **Edit**, **Duplicate**, **Copy to language**, **Show / hide on the website**, **Delete** and **+** (add after). Rows also show a short summary ("3 items"), "Desktop only" / "Phones only", a faded look when hidden and a dot when changed since the page was opened.
+- **Edit in a dialog**: a block's own fields open in a large dialog with its tabs, **Previous / Next block** and **Done**. A new block opens there straight away; a block with an error opens with it after saving.
+- **The block panel** beside the structure holds what every block shares: **Edit content**, the actions, a **Name** and a **Note** for editors (never printed on the website), Status, Show from / until, Show on, and **Advanced** (width, spacing, anchor, CSS class). Section, Columns and Slider show their own Name there.
+- **Add block is a dialog**: search, categories, **Recently used**, where the block will go ("After “Hero”"), a close button, Escape and a click outside.
+- **Delete asks first**, naming the blocks inside a Section or Columns; Undo still brings it back until you save.
+- **Copy and paste blocks** between pages: Ctrl+C on a row, Ctrl+V on a row, or **Paste** in Add block. The copy stays in the browser.
+- **Keyboard**: Enter edits, Delete deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste; Alt + arrows move blocks as before.
+- **Phones**: a tap on a row opens its panel with every action; the dialogs fill the screen.
+- For developers: the shared settings `_label` and `_note` (stored under `settings`), `Block::nameField()`, `Builder::contentForm()`, `Builder::settingsForm()`, `Builder::hasContent()`; new icons `eye-off` and `clipboard`.
+- New words in the panel's `en`, `ar` and `ku` files: `blocks.label`, `blocks.note`, `blocks.advanced`, `blocks.edit_*`, `blocks.view_*`, `blocks.show_block`, `blocks.hide_block`, `blocks.delete*`, `blocks.add_where_*`, `blocks.paste`, `blocks.copied_block` and others.
+
 ## 0.30.1 - 2026-10-21
 
 - **More on the view page opened outside the window.** With the sidebar shown, its menu appeared about the sidebar's width to the right of the button, partly off-screen, and gave the page a horizontal scrollbar. Menus now open under their button even inside the page's blurred, sticky header.

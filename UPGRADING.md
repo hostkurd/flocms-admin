@@ -1,3 +1,14 @@
+# Upgrading to Admin 0.31.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.31.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.
+
+- **The Builder editor looks different**: a block's own fields open in a dialog (Edit), and the panel beside the structure shows the settings every block shares. Tell your editors; nothing else changes for them.
+- **A site block with fields named `_label` or `_note`** can't be declared (names starting with `_` were already refused; these two are now the panel's Name and Note).
+- **Site blocks that name themselves for editors** (like a Section's Name) can return that field's name from `nameField()` to show it in the panel instead of the panel's own Name. Optional.
+- **Translations**: the new words in Arabic and Kurdish need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.30.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.30.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
