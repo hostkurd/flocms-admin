@@ -882,12 +882,14 @@ function wireDialogs(builder: HTMLElement): void {
   };
   dialogOf(builder, 'edit')?.addEventListener('close', () => {
     const dialog = dialogOf(builder, 'edit')!;
+    if (dialog.open) return;
     const list = listByKey(builder, dialog.dataset.list || '');
     returnFields(builder);
     focusRow(list, dialog.dataset.block || '', '[data-builder-action="edit"]');
   });
   dialogOf(builder, 'add')?.addEventListener('close', () => {
     const dialog = dialogOf(builder, 'add')!;
+    if (dialog.open) return;
     const list = listByKey(builder, dialog.dataset.list || '');
     returnPicker(builder);
     const target = list ? targets.get(list) : null;
@@ -898,6 +900,8 @@ function wireDialogs(builder: HTMLElement): void {
     else list.querySelector<HTMLElement>(`[data-builder-add][data-parent="${CSS.escape(target.parent)}"][data-column="${target.column}"] > summary`)?.focus();
   });
   dialogOf(builder, 'confirm')?.addEventListener('close', () => {
+    // Opened again before this event came (a quick second Delete): that one is waiting.
+    if (dialogOf(builder, 'confirm')?.open) return;
     const job = pending.get(builder);
     pending.delete(builder);
     if (job) focusRow(job.list, job.node.dataset.builderNode || '', '[data-builder-action="remove"]');
