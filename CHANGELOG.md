@@ -14,7 +14,8 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 - **Copy and paste blocks** between pages: Ctrl+C on a row, Ctrl+V on a row, or **Paste** in Add block. The copy stays in the browser.
 - **Keyboard**: Enter edits, Delete deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste; Alt + arrows move blocks as before.
 - **Phones**: a tap on a row opens its panel with every action; the dialogs fill the screen.
-- For developers: the shared settings `_label` and `_note` (stored under `settings`), `Block::nameField()`, `Builder::contentForm()`, `Builder::settingsForm()`, `Builder::hasContent()`; new icons `eye-off` and `clipboard`.
+- A list inside a block (a slider's slides, cards) is edited in the dialog as a normal list; the one-item-at-a-time view of the narrow side panel is gone.
+- For developers: the shared settings `_label` and `_note` (stored under `settings`, left out of templates' `$block['settings']` and `blocks_data()`), `Block::nameField()`, `Builder::contentForm()`, `Builder::settingsForm()`, `Builder::hasContent()`; new icons `eye-off` and `clipboard`.
 - New words in the panel's `en`, `ar` and `ku` files: `blocks.label`, `blocks.note`, `blocks.advanced`, `blocks.edit_*`, `blocks.view_*`, `blocks.show_block`, `blocks.hide_block`, `blocks.delete*`, `blocks.add_where_*`, `blocks.paste`, `blocks.copied_block` and others.
 
 ## 0.30.1 - 2026-10-21

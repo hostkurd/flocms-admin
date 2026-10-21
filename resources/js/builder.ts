@@ -22,6 +22,8 @@ const ready = new WeakSet<HTMLElement>();
 const targets = new WeakMap<HTMLElement, Target>();
 const removed = new WeakMap<HTMLElement, Removed>();
 const pending = new WeakMap<HTMLElement, { list: HTMLElement; node: HTMLElement }>();
+/** A block was just added from the Add dialog: its closing leaves the focus on the new block. */
+const added = new WeakSet<HTMLElement>();
 const TITLE_FIELDS = ['_label', 'title', 'heading', 'name', 'label', 'text', 'body', 'caption'];
 
 const text = (template: string | undefined, values: Record<string, string>) =>
@@ -357,7 +359,8 @@ function build(list: HTMLElement, data: Snapshot, slot: HTMLElement, after: HTML
       if (holder.firstElementChild) items.append(holder.firstElementChild);
     });
   });
-  const controls = [...made.pane.querySelectorAll<Control>('[name]')];
+  // Never the place, type or raw inputs: those are the new block's own.
+  const controls = [...made.pane.querySelectorAll<Control>('[name]')].filter(control => control.parentElement !== made.pane);
   data.values.forEach(value => {
     const radio = value.t === 'radio' || value.t === 'checkbox';
     const target = controls.find(element => named(element, element.name) === value.s && element.type === value.t && (!radio || element.value === value.v));
@@ -403,7 +406,7 @@ function copyToClipboard(list: HTMLElement, node: HTMLElement): void {
   if (!data) return;
   try { localStorage.setItem(CLIPBOARD_KEY, JSON.stringify({ v: 1, block: data })); } catch { return; }
   announce(builder, builder.dataset.copiedBlockText || '');
-  showUndo(builder, builder.dataset.copiedBlockText || '', false);
+  showUndo(builder, builder.dataset.copiedBlockText || '');
 }
 function clipboard(): Snapshot | null {
   try {
@@ -435,6 +438,7 @@ function duplicate(list: HTMLElement, node: HTMLElement): void {
   const copy = copyNode(list, node, list, slotOf(node), node);
   if (!copy) return;
   changed(list);
+  markChanged(copy);
   select(list, copy.dataset.builderNode || null);
 }
 
@@ -446,7 +450,7 @@ function copyTo(list: HTMLElement, node: HTMLElement, lang: string): void {
   if (full(target, 1 + nodes(node).length)) { announce(builder, builder.dataset.fullText || ''); return; }
   const slot = slotFor(target, '', 0)!;
   if (!allowed(target, node.dataset.type || '', slot)) return;
-  copyNode(list, node, target, slot, null);
+  markChanged(copyNode(list, node, target, slot, null));
   changed(target);
   announce(builder, text(builder.dataset.copiedText, { language: languageName(builder, lang) }));
 }
@@ -485,7 +489,7 @@ function remove(list: HTMLElement, node: HTMLElement): void {
   (next?.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]') ?? builder.querySelector<HTMLElement>('[data-builder-undo-button]'))?.focus();
 }
 
-function showUndo(builder: HTMLElement, message: string, withUndo = true): void {
+function showUndo(builder: HTMLElement, message: string): void {
   let bar = builder.querySelector<HTMLElement>(':scope > [data-builder-undo]');
   if (!bar) {
     bar = document.createElement('div');
@@ -504,7 +508,7 @@ function showUndo(builder: HTMLElement, message: string, withUndo = true): void 
   bar.hidden = false;
   bar.querySelector('span')!.textContent = message;
   // A plain message (Copied) has no Undo, and does not drop the last removal.
-  bar.querySelector<HTMLElement>('[data-builder-undo-button]')!.hidden = !withUndo || !removed.has(builder);
+  bar.querySelector<HTMLElement>('[data-builder-undo-button]')!.hidden = !removed.has(builder);
 }
 
 function undo(builder: HTMLElement): void {
@@ -531,6 +535,7 @@ function move(list: HTMLElement, node: HTMLElement, by: number): void {
   if (target < 0 || target >= siblings.length) return;
   if (by < 0) siblings[target].before(node); else siblings[target].after(node);
   changed(list);
+  markChanged(node);
   node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-handle], :scope > .fa-builder-row [data-builder-select]')?.focus();
   const builder = builderOf(list)!;
   announce(builder, text(builder.dataset.movedText, { block: titleOf(list, node), position: String(target + 1) }));
@@ -578,6 +583,7 @@ function drag(list: HTMLElement, node: HTMLElement, event: PointerEvent): void {
     if (up.type === 'pointercancel') { if (startNext && startNext.parentElement === startSlot) startSlot.insertBefore(node, startNext); else startSlot.append(node); }
     if (slotOf(node) !== startSlot || node.nextElementSibling !== startNext) {
       changed(list);
+      markChanged(node);
       const builder = builderOf(list)!;
       announce(builder, text(builder.dataset.movedText, { block: titleOf(list, node), position: String(childNodes(slotOf(node)).indexOf(node) + 1) }));
     }
@@ -827,72 +833,6 @@ function enhance(root: ParentNode): void {
   });
 }
 
-/*
- * A list inside a block (a slider's slides, cards) opens one item at a time
- * in the narrow inspector: its fields fill the pane, with Back, "2 of 3" and
- * the previous and next item.
- */
-function drillItems(repeater: HTMLElement): HTMLElement[] {
-  return [...repeater.querySelectorAll<HTMLElement>(':scope > [data-repeater-items] > [data-repeater-item]')];
-}
-
-function drill(repeater: HTMLElement, item: HTMLElement | null): void {
-  const builder = builderOf(repeater);
-  drillItems(repeater).forEach(other => {
-    const open = other === item;
-    other.classList.toggle('is-drilled', open);
-    const body = other.querySelector<HTMLElement>(':scope > .fa-repeater-body');
-    if (body && open) { body.hidden = false; other.classList.remove('is-collapsed'); }
-  });
-  repeater.classList.toggle('is-drilling', item !== null);
-  let bar = repeater.querySelector<HTMLElement>(':scope > [data-builder-drill]');
-  if (item === null) { if (bar) bar.hidden = true; return; }
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.className = 'fa-builder-drill';
-    bar.dataset.builderDrill = '';
-    const label = (key: string) => (builder?.dataset[key] || '').replace(/[<>&"]/g, '');
-    const button = (action: string, key: string, path: string) => `<button type="button" class="fa-builder-tool" data-drill="${action}" aria-label="${label(key)}" title="${label(key)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg></button>`;
-    bar.innerHTML = button('back', 'backText', 'M15 18l-6-6 6-6') + '<span class="fa-builder-drill-place" aria-live="polite"></span>'
-      + button('prev', 'previousText', 'M18 15l-6-6-6 6') + button('next', 'nextText', 'M6 9l6 6 6-6');
-    repeater.querySelector(':scope > [data-repeater-items]')?.before(bar);
-  }
-  bar.hidden = false;
-  const list = drillItems(repeater);
-  const index = list.indexOf(item);
-  bar.querySelector<HTMLElement>('.fa-builder-drill-place')!.textContent = text(builder?.dataset.itemOfText, { number: String(index + 1), count: String(list.length) });
-  bar.querySelector<HTMLButtonElement>('[data-drill="prev"]')!.disabled = index <= 0;
-  bar.querySelector<HTMLButtonElement>('[data-drill="next"]')!.disabled = index >= list.length - 1;
-}
-
-document.addEventListener('click', event => {
-  if (!(event.target instanceof Element)) return;
-  const repeater = event.target.closest<HTMLElement>('.fa-builder.is-ready [data-builder-pane] [data-repeater]:not(.is-table)');
-  if (!repeater) return;
-  const control = event.target.closest<HTMLElement>('[data-drill]');
-  if (control && control.closest('[data-builder-drill]')?.parentElement === repeater) {
-    const list = drillItems(repeater);
-    const current = list.find(item => item.classList.contains('is-drilled')) ?? null;
-    const index = current ? list.indexOf(current) : -1;
-    if (control.dataset.drill === 'back') {
-      drill(repeater, null);
-      current?.querySelector<HTMLElement>('[data-repeater-handle], [data-repeater-action]')?.focus();
-    } else {
-      drill(repeater, list[index + (control.dataset.drill === 'prev' ? -1 : 1)] ?? current);
-    }
-    return;
-  }
-  // Add opens the new item; removing the open item goes back to the list.
-  if (event.target.closest('[data-repeater-add]')) { const list = drillItems(repeater); if (list.length) drill(repeater, list[list.length - 1]); return; }
-  if (event.target.closest('[data-repeater-action="remove"]')) { if (!drillItems(repeater).some(item => item.classList.contains('is-drilled'))) drill(repeater, null); return; }
-  // A click on an item's head (not on its tools) opens it.
-  const head = event.target.closest<HTMLElement>('.fa-repeater-item-head');
-  const item = head?.closest<HTMLElement>('[data-repeater-item]');
-  if (!head || !item || item.parentElement?.parentElement !== repeater || event.target.closest('button') || item.classList.contains('is-drilled')) return;
-  drill(repeater, item);
-  item.querySelector<HTMLElement>('.fa-repeater-body input:not([type="hidden"]), .fa-repeater-body select, .fa-repeater-body textarea')?.focus();
-});
-
 /** The editor's own language buttons (when the page has no language switch). */
 function showLanguage(builder: HTMLElement, lang: string): void {
   builder.querySelectorAll<HTMLElement>(':scope > [data-lang-panes] > .fa-lang-pane').forEach(pane => pane.classList.toggle('is-current', pane.dataset.lang === lang));
@@ -920,11 +860,6 @@ export function initializeBuilders(root: ParentNode): void {
         if (add.closest('[data-builder-col]')) add.dataset.columnLabel = builder.dataset.addColumnText || '';
       });
       sync(list);
-      // A list in a block with an error opens its first item that has one.
-      list.querySelectorAll<HTMLElement>('[data-builder-pane] [data-repeater]:not(.is-table)').forEach(repeater => {
-        const wrong = drillItems(repeater).find(item => item.classList.contains('has-error'));
-        if (wrong) drill(repeater, wrong);
-      });
       const invalid = list.querySelector<HTMLElement>('[data-builder-node].has-error');
       select(list, invalid?.dataset.builderNode || null);
     });
@@ -934,7 +869,8 @@ export function initializeBuilders(root: ParentNode): void {
       .map(error => error.closest<HTMLElement>('[data-builder-pane]')!)
       .find(pane => !pane.closest('.fa-lang-pane:not(.is-current)'));
     const wrongList = wrong ? listOf(wrong) : null;
-    if (wrong && wrongList) openEditor(wrongList, wrong.dataset.builderPane || '');
+    const edit = dialogOf(builder, 'edit');
+    if (wrong && wrongList && edit && !edit.inert && !edit.closest('[inert]')) openEditor(wrongList, wrong.dataset.builderPane || '');
   });
 }
 
@@ -955,7 +891,8 @@ function wireDialogs(builder: HTMLElement): void {
     const list = listByKey(builder, dialog.dataset.list || '');
     returnPicker(builder);
     const target = list ? targets.get(list) : null;
-    // Back to where Add was pressed, unless a block was added (its dialog has the focus).
+    // Back to where Add was pressed, unless a block was added (the focus is on it, or in its dialog).
+    if (added.has(builder)) { added.delete(builder); return; }
     if (dialogOf(builder, 'edit')?.open || !list || !target) return;
     if (target.after) focusRow(list, target.after.dataset.builderNode || '', '[data-builder-action="insert"]');
     else list.querySelector<HTMLElement>(`[data-builder-add][data-parent="${CSS.escape(target.parent)}"][data-column="${target.column}"] > summary`)?.focus();
@@ -971,8 +908,8 @@ function wireDialogs(builder: HTMLElement): void {
 function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): boolean {
   const dialog = target.closest<HTMLDialogElement>('dialog.fa-builder-dialog');
   if (!dialog || builderOf(dialog) !== builder) return false;
-  // A click on the backdrop lands on the dialog itself.
-  if (target === dialog) {
+  // A click on the backdrop lands on the dialog itself (pressed there too, not a text selection ending outside).
+  if (target === dialog && pressedOn.get(dialog) === dialog) {
     const box = dialog.getBoundingClientRect();
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) { dialog.close(); return true; }
   }
@@ -1001,6 +938,7 @@ function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): 
     if (choice && list) {
       event.preventDefault();
       const where = targets.get(list) || { list, parent: '', column: 0, after: null };
+      added.add(builder);
       dialog.close();
       rememberType(choice.dataset.builderChoice || '');
       add(list, choice.dataset.builderChoice || '', where);
@@ -1009,6 +947,7 @@ function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): 
     if (target.closest('[data-builder-paste]') && list) {
       event.preventDefault();
       const where = targets.get(list) || { list, parent: '', column: 0, after: null };
+      added.add(builder);
       dialog.close();
       paste(list, where);
       return true;
@@ -1022,6 +961,12 @@ function dialogClick(builder: HTMLElement, event: MouseEvent, target: Element): 
   }
   return dialog.contains(target);
 }
+
+const pressedOn = new WeakMap<HTMLDialogElement, EventTarget | null>();
+document.addEventListener('mousedown', event => {
+  const dialog = event.target instanceof Element ? event.target.closest<HTMLDialogElement>('dialog.fa-builder-dialog') : null;
+  if (dialog) pressedOn.set(dialog, event.target);
+}, true);
 
 function closeCopyMenus(except: Element | null = null): void {
   document.querySelectorAll<HTMLElement>('.fa-builder-copy-menu:not([hidden])').forEach(menu => {
@@ -1086,7 +1031,7 @@ document.addEventListener('click', event => {
     case 'close': select(list, null); node?.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus(); break;
     case 'edit': if (node) openEditor(list, node.dataset.builderNode || ''); break;
     case 'remove': if (node) confirmRemove(list, node); break;
-    case 'duplicate': if (node) { duplicate(list, node); markChanged(nodeOf(list, list.dataset.selected || '')); } break;
+    case 'duplicate': if (node) duplicate(list, node); break;
     case 'toggle': if (node) toggle(list, node); break;
     case 'up': if (node) move(list, node, -1); break;
     case 'down': if (node) move(list, node, 1); break;
@@ -1184,6 +1129,7 @@ document.addEventListener('keydown', event => {
       parent.after(node);
     }
     changed(list);
+    markChanged(node);
     node.querySelector<HTMLElement>(':scope > .fa-builder-row [data-builder-select]')?.focus();
     announce(builderOf(list)!, text(builderOf(list)!.dataset.movedText, { block: titleOf(list, node), position: String(childNodes(slotOf(node)).indexOf(node) + 1) }));
     return;

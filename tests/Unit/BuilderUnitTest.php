@@ -61,6 +61,27 @@ final class BuilderUnitTest extends TestCase
         self::assertSame('Our work', $field->title(['type' => 'heading', 'data' => ['text' => 'Our work'], 'settings' => ['_label' => '  ']]));
     }
 
+    public function testEditorsNameAndNoteNeverReachTheWebsite(): void
+    {
+        $json = json_encode([['id' => 'bh', 'type' => 'heading', 'data' => ['text' => 'Hello', 'level' => 'h2'], 'settings' => ['_label' => 'Intro', '_note' => 'Ask Sara', 'anchor' => 'top']]]);
+        $data = blocks_data($json);
+        self::assertSame(['anchor' => 'top'], $data[0]['settings']);
+        $html = blocks($json);
+        self::assertStringContainsString('Hello', $html);
+        self::assertStringNotContainsString('Ask Sara', $html);
+        self::assertStringNotContainsString('Intro', $html);
+    }
+
+    public function testABlockMayNotNameItsOwnFieldsLikeThePanels(): void
+    {
+        $block = new class extends \FloCMS\Admin\Blocks\Block {
+            protected static string $type = 'clash';
+            public function fields(): array { return [\FloCMS\Admin\Form\Fields\TextInput::make('_label')]; }
+        };
+        $this->expectException(\LogicException::class);
+        Builder::make('content')->blockForm($block);
+    }
+
     public function testTheEditorHasItsDialogsAndRowButtons(): void
     {
         $field = Builder::make('content');

@@ -191,6 +191,7 @@ test('copy a block with Ctrl+C and paste it on another page', async ({ page }) =
   await expect(adder(page).locator('[data-builder-paste]')).toContainText('Home slider');
   await adder(page).locator('[data-builder-paste]').click();
   await expect(titlesOf(top(page))).toHaveText(['Home slider', 'Services', 'Start a project', 'Home slider']);
+  await expect(top(page).nth(3).locator(':scope > .fa-builder-row [data-builder-select]')).toBeFocused();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Landing page saved.')).toBeVisible();
   const content = await stored(page);

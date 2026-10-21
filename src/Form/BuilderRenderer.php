@@ -335,7 +335,8 @@ final class BuilderRenderer
         $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []), $key . '|' . $id);
         $child = $this->parent->child($state, $errors, $paneId . '-', $base . '[f]', $op . 'item:' . $key . ':' . $id . ':');
         $content = $field->hasContent($block);
-        $settingErrors = array_intersect_key($errors, array_flip($field->settingNames($block)));
+        // The block's own name sits in the panel too (Section, Columns, Slider).
+        $settingErrors = array_intersect_key($errors, array_flip([...$field->settingNames($block), ...($block->nameField() !== null ? [$block->nameField()] : [])]));
         // The block panel (0.31): Edit, then the actions, then the settings every block shares.
         $html .= '<div class="fa-builder-pane-actions" data-builder-js hidden>';
         if ($content) {

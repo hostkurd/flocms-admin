@@ -1178,15 +1178,6 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-copy-menu[hidden]{display:none}
 .fa-builder-undo{order:0}
 /* A list inside a block: one item at a time (Back, "2 of 3", previous and next) */
-.fa-builder.is-ready .fa-builder-pane .fa-repeater-item-head{cursor:pointer}
-.fa-builder.is-ready .fa-builder-pane .fa-repeater:not(.is-table) [data-repeater-action="toggle"]{display:none}
-.fa-builder.is-ready .fa-builder-pane .fa-repeater:not(.is-drilling) .fa-repeater-body{display:none}
-.fa-builder-drill{display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--fa-border);border-radius:var(--fa-radius);background:var(--fa-surface-2)}
-.fa-builder-drill[hidden]{display:none}
-[dir="rtl"] .fa-builder-drill [data-drill="back"] svg{transform:scaleX(-1)}
-.fa-builder-drill-place{flex:1;font-size:13px;font-weight:600;color:var(--fa-text-2)}
-.fa-repeater.is-drilling > .fa-repeater-items > .fa-repeater-item:not(.is-drilled),.fa-repeater.is-drilling > .fa-repeater-add,.fa-repeater.is-drilling > .fa-repeater-head .fa-repeater-meta{display:none}
-.fa-repeater.is-drilling > .fa-repeater-items > .fa-repeater-item.is-drilled > .fa-repeater-item-head{cursor:default}
 @media (max-width:1100px){
   .fa-builder-list{grid-template-columns:minmax(0,1fr) minmax(0,380px)}
 }

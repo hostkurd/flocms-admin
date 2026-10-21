@@ -168,8 +168,8 @@ class Builder extends Field
         if ($loose !== []) { array_unshift($tabs, Tab::make('content')->label(AdminLang::get('blocks.tab_content'))->columns(2)->schema($loose)); }
         $tabs[] = Tab::make('settings')->label(AdminLang::get('blocks.tab_settings'))->columns(2)->schema(BlockSettings::fields($block));
         $form = (new Form())->columns(2)->schema([Tabs::make('block')->schema($tabs)]);
-        foreach (array_keys($form->fields()) as $name) {
-            if ($name === 'f' || str_starts_with($name, '_') && $name !== '_signed' && !in_array($name, BlockSettings::NAMES, true)) { throw new \LogicException('Block "' . $block::type() . '": field names may not start with "_".'); }
+        foreach (self::fieldNames($own) as $name) {
+            if ($name === 'f' || str_starts_with($name, '_') && $name !== '_signed') { throw new \LogicException('Block "' . $block::type() . '": field names may not start with "_".'); }
         }
         foreach ($form->fields() as $field) {
             if ($field->isTranslatable()) { throw new \LogicException('Block "' . $block::type() . '": "' . $field->getName() . '" cannot be translatable; use ->translatable() on the Builder for one list per language.'); }
@@ -253,6 +253,17 @@ class Builder extends Field
             $out[] = $item;
         }
         return $out;
+    }
+
+    /** @param list<Field|\FloCMS\Admin\Form\Layout\Layout> $items @return list<string> the names of the fields, inside layouts too */
+    private static function fieldNames(array $items): array
+    {
+        $names = [];
+        foreach ($items as $item) {
+            if ($item instanceof Field) { $names[] = $item->getName(); }
+            elseif ($item instanceof \FloCMS\Admin\Form\Layout\Layout) { $names = [...$names, ...self::fieldNames($item->children())]; }
+        }
+        return $names;
     }
 
     /** Whether a block has fields of its own (else it has nothing to edit in a dialog). */
