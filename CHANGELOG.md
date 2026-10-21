@@ -2,6 +2,15 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.32.1 - 2026-10-21
+
+- **Builder**: a Rich text block added to a page had a plain text box instead of the editor until the page was saved; it has the editor at once.
+- **Builder**: **Show on**, **Width**, **Space above / below**, **Anchor** and **CSS class** moved from the block panel to a **Display** tab in the block's dialog (a block with no fields of its own keeps them in the panel). The panel keeps the name, note, status and dates.
+- **Builder**: the block dialog is at least 560 px tall (less on a short window), so a block whose lists are still empty (Cards, Slider) doesn't open small and then grow.
+- **Pages**: switching a page between Blocks, HTML and Rich text no longer loses what was typed in the others (on a new page it lost everything); the switch happens in place, without reloading the form. All three are saved with the page.
+- Docs: "Styling the blocks" in the Builder guide.
+- New words in `en`, `ar` and `ku`: `blocks.tab_display`.
+
 ## 0.32.0 - 2026-10-21
 
 **The Builder: saved as one value, a real canvas, drag and drop that goes anywhere, and better blocks.** Nothing to install or migrate: stored blocks don't change. See [Builder: blocks and sliders](docs/builder.md).

@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.32.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.32.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+- **Show on and Advanced** are now the **Display** tab of a block's dialog. Tell your editors.
+- **Pages** keep all three contents (blocks, HTML, rich text) when their type changes; the website still shows only the one chosen. All three are saved with every save, so a page's other contents are checked too (an invalid block shows its error even on a Rich text page) and its rich text is cleaned again, which can show in the activity log once.
+- **Translations**: `blocks.tab_display` in Arabic and Kurdish needs a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.32.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.32.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.

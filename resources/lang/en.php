@@ -1498,6 +1498,7 @@ return [
     'blocks.unknown_kind' => 'Unknown block',
     'blocks.unknown_help' => 'This block (":type") no longer exists on this site. It is kept as it is; remove it if it is not needed.',
     'blocks.tab_content' => 'Content',
+    'blocks.tab_display' => 'Display',
     'blocks.tab_settings' => 'Settings',
     'blocks.tab_slides' => 'Slides',
     'blocks.tab_cards' => 'Cards',

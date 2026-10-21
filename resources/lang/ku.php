@@ -1495,6 +1495,7 @@ return [
     'blocks.unknown_kind' => 'بلۆکی نەناسراو',
     'blocks.unknown_help' => 'ئەم بلۆکە («:type») چیتر لەم ماڵپەڕەدا نییە. وەک خۆی هێڵراوەتەوە؛ ئەگەر پێویست نییە لای ببە.',
     'blocks.tab_content' => 'ناوەڕۆک',
+    'blocks.tab_display' => 'پیشاندان',
     'blocks.tab_settings' => 'ڕێکخستنەکان',
     'blocks.tab_slides' => 'سلایدەکان',
     'blocks.tab_cards' => 'کارتەکان',

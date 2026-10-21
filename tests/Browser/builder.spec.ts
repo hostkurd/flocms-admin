@@ -16,6 +16,14 @@ async function edit(page: Page, id: string) {
   await tool(page, id, 'edit').click();
   await expect(editor(page)).toBeVisible();
 }
+/** Focus a row's link for the keyboard, once any dialog has closed and given the focus back (its close event comes a moment later). */
+async function focusRow(page: Page, locator: ReturnType<Page['locator']>) {
+  await expect(page.locator('dialog.fa-builder-dialog[open]')).toHaveCount(0);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const link = locator.locator('[data-builder-select]').first();
+  await link.focus();
+  await expect(link).toBeFocused();
+}
 const stored = async (page: Page) => { const rows = await (await page.request.post('/__test/landings-state')).json(); return JSON.parse(rows[0].content); };
 
 test.beforeEach(async ({ page }) => {
@@ -54,7 +62,7 @@ test('the structure shows the blocks; a row shows its settings, Edit opens its f
   // One block per dialog (0.32), and one height whatever the tab
   await expect(editor(page).locator('[data-builder-dialog-nav]')).toHaveCount(0);
   const height = (await editor(page).boundingBox())!.height;
-  expect(height).toBeGreaterThanOrEqual(360);
+  expect(height).toBeGreaterThanOrEqual(560);
   expect(height).toBeLessThanOrEqual(760);
   await editor(page).getByRole('tab', { name: 'Slides' }).click();
   await expect(editor(page).locator('[data-repeater-item]')).toHaveCount(2);
@@ -106,7 +114,7 @@ test('add, move, duplicate, hide and delete blocks, then save them in their plac
   await expect(adder(page)).toBeHidden();
 
   // Alt + ↑ moves it up
-  await added.locator('[data-builder-select]').first().focus();
+  await focusRow(page, added);
   await page.keyboard.press('Alt+ArrowUp');
   await expect(titlesOf(top(page))).toHaveText(['Home slider', 'Services', 'Latest news', 'Start a project']);
 
@@ -141,7 +149,7 @@ test('add, move, duplicate, hide and delete blocks, then save them in their plac
   await expect(confirm(page).locator('[data-builder-confirm-title]')).toHaveText('Delete “Start a project”?');
   await confirm(page).getByRole('button', { name: 'Cancel' }).click();
   await expect(row(page, 'bcta1')).toHaveCount(1);
-  await row(page, 'bcta1').locator('[data-builder-select]').first().focus();
+  await focusRow(page, row(page, 'bcta1'));
   await page.keyboard.press('Delete');
   await confirm(page).getByRole('button', { name: 'Delete' }).click();
   await expect(builder(page).locator('[data-builder-undo]')).toContainText('Start a project removed');
@@ -432,6 +440,36 @@ test('blocks: options shown for one choice, a new slider opens on its slides, a 
   await expect(editor(page).locator('[data-field="link"]')).toContainText('required');
 });
 
+test('a new rich text block has its editor; Show on and the spacing are the dialog\'s Display tab (0.32.1)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/en/admin/landings/edit/1');
+  await list(page).locator('.fa-builder-add-main > summary').click();
+  await adder(page).locator('[data-builder-choice="rich_text"]').click();
+  await expect(editor(page).locator('[contenteditable="true"]')).toHaveCount(1);
+  await expect(editor(page).locator('textarea[data-rich-source]')).toBeHidden();
+  await editor(page).locator('[contenteditable="true"]').click();
+  await page.keyboard.type('Typed in the editor');
+  await expect(editor(page).getByRole('tab')).toHaveText(['Content', 'Display']);
+  expect((await editor(page).boundingBox())!.height).toBeGreaterThanOrEqual(560);
+  await editor(page).getByRole('tab', { name: 'Display' }).click();
+  await expect(editor(page).locator('[data-field="devices"]')).toBeVisible();
+  await expect(editor(page).locator('[data-field="anchor"]')).toBeVisible();
+  await editor(page).locator('[data-field="devices"] input[value="phone"]').check({ force: true });
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  const added = top(page).last();
+  await expect(added.locator(':scope > .fa-builder-row [data-builder-state]')).toHaveText('Phones only');
+  // The panel keeps name, note, status and dates only
+  const id = await added.getAttribute('data-builder-node');
+  await expect(pane(page, id!).locator('[data-builder-settings] [data-field="devices"]')).toHaveCount(0);
+  await expect(pane(page, id!).locator('[data-builder-settings] [data-field="status"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Landing page saved.')).toBeVisible();
+  const content = await stored(page);
+  const last = content.en[content.en.length - 1];
+  expect(last.data.body).toContain('Typed in the editor');
+  expect(last.settings.devices).toBe('phone');
+});
+
 test('a block\'s name and note are for editors only', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
   await row(page, 'bhead1').locator('[data-builder-select]').first().click();
@@ -452,11 +490,11 @@ test('a block\'s name and note are for editors only', async ({ page }) => {
 
 test('copy a block with Ctrl+C and paste it on another page', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
-  await row(page, 'bslider1').locator('[data-builder-select]').first().focus();
+  await focusRow(page, row(page, 'bslider1'));
   await page.keyboard.press('Control+c');
   await expect(builder(page).locator('[data-builder-undo]')).toContainText('Block copied');
   // Ctrl+V after a row
-  await row(page, 'bcta1').locator('[data-builder-select]').first().focus();
+  await focusRow(page, row(page, 'bcta1'));
   await page.keyboard.press('Control+v');
   await expect(titlesOf(top(page))).toHaveText(['Home slider', 'Services', 'Start a project', 'Home slider']);
   // And Paste in Add, on a fresh page (the copy is kept in the browser)
@@ -474,7 +512,7 @@ test('copy a block with Ctrl+C and paste it on another page', async ({ page }) =
   expect(content.en[3].data.slides).toHaveLength(2);
   expect(content.en[3].data.slides[0].heading).toBe('Design that works');
   // Not offered where it may not sit (a Section inside Columns)
-  await row(page, 'bsect1').locator('[data-builder-select]').first().focus();
+  await focusRow(page, row(page, 'bsect1'));
   await page.keyboard.press('Control+c');
   await row(page, 'bcols1').locator('[data-builder-col="0"] .fa-builder-add-in > summary').click();
   await expect(adder(page).locator('[data-builder-paste]')).toBeHidden();
@@ -505,7 +543,7 @@ test('fewer columns move their blocks into the last one', async ({ page }) => {
 
 test('the keyboard moves blocks into and out of a section, and Enter opens a block', async ({ page }) => {
   await page.goto('/en/admin/landings/edit/1');
-  await row(page, 'bcta1').locator('[data-builder-select]').first().focus();
+  await focusRow(page, row(page, 'bcta1'));
   await page.keyboard.press('Alt+ArrowRight');
   await expect(row(page, 'bsect1').locator('[data-builder-node="bcta1"]')).toHaveCount(1);
   await expect(pane(page, 'bcta1').locator('[data-builder-parent]')).toHaveValue('bsect1');
@@ -517,7 +555,11 @@ test('the keyboard moves blocks into and out of a section, and Enter opens a blo
   await expect(editor(page)).toBeVisible();
   await expect(editor(page).locator('[data-builder-dialog-title]')).toHaveText('Start a project');
   await page.keyboard.press('Escape');
-  await row(page, 'bhead1').locator('[data-builder-select]').first().focus();
+  // The dialog gives the focus back to the block's Edit button when it has closed: wait for it before moving on.
+  await expect(editor(page)).toBeHidden();
+  await expect(tool(page, 'bcta1', 'edit')).toBeFocused();
+  await focusRow(page, row(page, 'bhead1'));
+  await expect(row(page, 'bhead1').locator('[data-builder-select]').first()).toBeFocused();
   await page.keyboard.press('Control+d');
   await expect(row(page, 'bsect1').locator('[data-builder-node][data-type="heading"]')).toHaveCount(2);
 });

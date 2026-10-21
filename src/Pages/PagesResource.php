@@ -147,10 +147,10 @@ final class PagesResource extends Resource
                     TextInput::make('slug')->label(AdminLang::get('pages.slug'))->translatable()->rules('max:190')->help(AdminLang::get('pages.slug_help'))->columnSpan('full'),
                     Select::make('type')->label(AdminLang::get('pages.type'))->options(self::types())
                         ->default('builder')->segmented()->required()->columnSpan('full'),
-                    Builder::make('blocks')->label(AdminLang::get('pages.blocks'))->translatable()->maxBlocks(60)->visibleWhen('type', 'builder'),
-                    CodeEditor::make('html')->label(AdminLang::get('pages.html'))->translatable()->visibleWhen('type', 'html')->disabled(!$html)
+                    Builder::make('blocks')->label(AdminLang::get('pages.blocks'))->translatable()->maxBlocks(60)->shownWhen('type', 'builder'),
+                    CodeEditor::make('html')->label(AdminLang::get('pages.html'))->translatable()->shownWhen('type', 'html')->disabled(!$html)
                         ->help(AdminLang::get($html ? 'pages.html_help' : 'pages.html_locked'))->columnSpan('full'),
-                    RichEditor::make('body')->label(AdminLang::get('pages.body'))->translatable()->visibleWhen('type', 'rich_text')->columnSpan('full'),
+                    RichEditor::make('body')->label(AdminLang::get('pages.body'))->translatable()->shownWhen('type', 'rich_text')->columnSpan('full'),
                 ]),
                 Tab::make('seo')->label(AdminLang::get('pages.tab_seo'))->columns(1)->schema([
                     TextInput::make('meta_title')->label(AdminLang::get('pages.meta_title'))->translatable()->maxLength(70)->help(AdminLang::get('pages.meta_title_help')),
