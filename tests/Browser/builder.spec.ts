@@ -547,7 +547,11 @@ test('the keyboard moves blocks into and out of a section, and Enter opens a blo
   await expect(editor(page)).toBeVisible();
   await expect(editor(page).locator('[data-builder-dialog-title]')).toHaveText('Start a project');
   await page.keyboard.press('Escape');
+  // The dialog gives the focus back to the block's Edit button when it has closed: wait for it before moving on.
+  await expect(editor(page)).toBeHidden();
+  await expect(tool(page, 'bcta1', 'edit')).toBeFocused();
   await row(page, 'bhead1').locator('[data-builder-select]').first().focus();
+  await expect(row(page, 'bhead1').locator('[data-builder-select]').first()).toBeFocused();
   await page.keyboard.press('Control+d');
   await expect(row(page, 'bsect1').locator('[data-builder-node][data-type="heading"]')).toHaveCount(2);
 });
