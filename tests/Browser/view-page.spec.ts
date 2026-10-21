@@ -104,3 +104,17 @@ test.describe('without JavaScript', () => {
     await expect(page.locator('[data-field=name] dd')).toHaveText('مشروع 0');
   });
 });
+
+test('More opens under its button, inside the window (the sticky header is blurred)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/en/admin/projects/view/1');
+  const button = page.locator('.fa-view-more > summary');
+  await button.click();
+  const panel = page.locator('.fa-view-more .fa-menu-panel');
+  await expect(panel).toBeVisible();
+  await expect.poll(async () => (await panel.boundingBox())!.x + (await panel.boundingBox())!.width).toBeLessThanOrEqual(1440 - 12);
+  const b = (await button.boundingBox())!, p = (await panel.boundingBox())!;
+  expect(Math.abs(p.x + p.width - (b.x + b.width))).toBeLessThan(2);
+  expect(p.y).toBeGreaterThan(b.y + b.height - 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});

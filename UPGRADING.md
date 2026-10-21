@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.30.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.30.1" -W`, run `php flo view:clear` and reload open Admin pages. No migration.
+
+---
+
 # Upgrading to Admin 0.30.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.30.0" "hostkurd/flocms-core:^2.6" -W`, run `php flo view:clear` and reload open Admin pages. Admin 0.30 needs **flocms-core 2.6**.
