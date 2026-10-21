@@ -22,6 +22,9 @@ function valueByName(name: string): string {
 export function applyShown(root: ParentNode, name?: string): void {
   root.querySelectorAll<HTMLElement>(name ? `[data-shown-when="${CSS.escape(name)}"]` : '[data-shown-when]').forEach(field => {
     const values = (field.dataset.shownValues || '').split(' ');
+    // When the form is shown, a field with an error stays in view, so the error can be seen and fixed;
+    // choosing another value later hides it as usual.
+    if (!name && field.classList.contains('has-error')) { field.hidden = false; return; }
     field.hidden = !values.includes(valueByName(field.dataset.shownWhen || ''));
   });
 }

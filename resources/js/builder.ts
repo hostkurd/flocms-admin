@@ -1263,7 +1263,7 @@ export function initializeBuilders(root: ParentNode): void {
       .find(pane => !pane.closest('.fa-lang-pane:not(.is-current)'));
     const wrongList = wrong ? listOf(wrong) : null;
     const edit = dialogOf(builder, 'edit');
-    if (wrong && wrongList && edit && !edit.inert && !edit.closest('[inert]')) openEditor(wrongList, wrong.dataset.builderPane || '');
+    if (wrong && wrongList && edit && !edit.inert && !edit.closest('[inert]') && !builder.closest('[hidden]')) openEditor(wrongList, wrong.dataset.builderPane || '');
   });
 }
 

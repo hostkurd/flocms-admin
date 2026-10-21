@@ -115,6 +115,22 @@ test('switching the content type keeps what was typed, on a new page too (0.32.1
   expect(JSON.parse(made?.blocks || '{}').en[0].data.text).toBe('Kept heading');
 });
 
+test('an error in blocks the page does not show is still shown (0.32.1)', async ({ page }) => {
+  await page.goto('/en/admin/site-pages/create');
+  await page.locator('[name="title[en]"]').fill('With an empty slider');
+  // A slider with no slides: an error when saved
+  await page.locator('[data-field="blocks"] [data-builder-list="en"] .fa-builder-add-main > summary').click();
+  await page.locator('dialog[data-builder-add-dialog][open] [data-builder-choice="slider"]').click();
+  await page.locator('dialog[data-builder-edit-dialog][open]').getByRole('button', { name: 'Done' }).click();
+  await page.locator('[data-field="type"] input[value="rich_text"]').evaluate(el => (el as HTMLInputElement).click());
+  await expect(page.locator('[data-field="blocks"]')).toBeHidden();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // The blocks come back into view with the error; no dialog is opened inside a hidden field
+  await expect(page.locator('[data-field="blocks"]')).toBeVisible();
+  await expect(page.locator('[data-field="blocks"] .has-error').first()).toBeVisible();
+  await expect(page.locator('[data-field="body"]')).toBeVisible();
+});
+
 test('a taken address is refused', async ({ page }) => {
   await page.goto('/en/admin/site-pages/create');
   await page.locator('[name="title[en]"]').fill('About again');

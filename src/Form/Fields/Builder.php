@@ -216,7 +216,8 @@ class Builder extends Field
             if ($tabs !== []) {
                 $display = array_values(array_filter(BlockSettings::fields($block), static fn (Field $field): bool => in_array($field->getName(), self::DISPLAY, true)));
                 usort($display, static fn (Field $a, Field $b): int => array_search($a->getName(), self::DISPLAY, true) <=> array_search($b->getName(), self::DISPLAY, true));
-                $tabs[] = Tab::make('display')->label(AdminLang::get('blocks.tab_display'))->columns(2)->schema($display);
+                // Named so a site block's own tabs ("display" included) can't clash with it.
+                $tabs[] = Tab::make('shared-display')->label(AdminLang::get('blocks.tab_display'))->columns(2)->schema($display);
             }
             return (new Form())->columns(2)->schema($tabs === [] ? [] : [Tabs::make('block')->schema($tabs)]);
         };
@@ -288,10 +289,10 @@ class Builder extends Field
         return $names;
     }
 
-    /** Whether a block has fields of its own (else it has nothing to edit in a dialog). */
     /** @var array<string, bool> */
     private array $hasContent = [];
 
+    /** Whether a block has fields of its own (else it has nothing to edit in a dialog). */
     public function hasContent(Block $block): bool
     {
         return $this->hasContent[$block::class] ??= array_filter($this->ownTabs($block), static fn (Tab $tab): bool => $tab->children() !== []) !== [];
