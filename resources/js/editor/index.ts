@@ -266,6 +266,15 @@ class RichField {
     document.addEventListener('htmx:afterSettle', again, { once: true, signal: this.listeners.signal });
     window.setTimeout(again, 120);
     window.setTimeout(again, 500);
+    // And for two seconds, whenever focus moves without the person clicking or typing
+    // (a late focus restore on a slow or very fast machine), it comes back here.
+    const watch = new AbortController();
+    const stop = (): void => watch.abort();
+    window.setTimeout(stop, 2000);
+    this.listeners.signal.addEventListener('abort', stop, { once: true });
+    ['pointerdown', 'keydown'].forEach(name => document.addEventListener(name, stop, { capture: true, once: true, signal: watch.signal }));
+    document.addEventListener('focusin', () => again(), { signal: watch.signal });
+    this.root.addEventListener('focusout', event => { if (!(event as FocusEvent).relatedTarget) requestAnimationFrame(again); }, { signal: watch.signal });
   }
 
   private key(panel: HTMLElement): string { return panel.dataset.lang ?? ''; }
