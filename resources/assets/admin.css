@@ -1042,6 +1042,8 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-node[data-holds] > .fa-builder-row{min-height:48px;border:0;border-block-end:1px solid var(--fa-border);border-radius:var(--fa-radius-lg) var(--fa-radius-lg) 0 0;box-shadow:none}
 .fa-builder-node[data-holds] > :is(.fa-builder-tree,.fa-builder-cols){margin:10px 10px 0}
 .fa-builder-node[data-holds] > .fa-builder-add{margin:8px 10px 10px}
+/* Columns have their Add buttons inside the columns: the grid keeps the same space from the card's bottom edge */
+.fa-builder-node[data-holds] > .fa-builder-cols:last-child,.fa-builder-node[data-holds] > .fa-builder-cols:has(+ .fa-builder-inserter:last-child){margin-bottom:12px}
 .fa-builder-node[data-holds]:has(> .fa-builder-row:hover){border-color:var(--fa-border-strong)}
 .fa-builder-node[data-holds].is-folded > :not(.fa-builder-row,.fa-builder-inserter){display:none}
 .fa-builder-node[data-holds].is-folded > .fa-builder-row{border-block-end:0;border-radius:var(--fa-radius-lg)}
