@@ -18,7 +18,11 @@ use FloCMS\Admin\Validation\FormValidator;
  */
 final class PageFilters
 {
-    private readonly Form $form;
+    /** The address marks a submitted filter form with filter[_]=1, so a cleared field stays cleared. */
+    public const MARKER = '_';
+
+    private Form $form;
+    private bool $failed = false;
     /** @var array<string, string|array<string, string>> */
     private array $state = [];
     /** @var array<string, string> */
@@ -41,7 +45,8 @@ final class PageFilters
             }
         }
         if ($this->form->fields() === []) { return; }
-        $given = false;
+        // Given: the form was sent (its marker), or a link names a filter; else the fields' defaults.
+        $given = ($input[self::MARKER] ?? null) === '1';
         foreach ($this->form->fields() as $name => $field) {
             $this->state[$name] = $field->stateFromInput($input, Languages::all());
             if (array_key_exists($name, $input) && $this->state[$name] !== '') { $given = true; }
@@ -63,6 +68,21 @@ final class PageFilters
             $this->values[$name] = $value;
             if ($given) { $this->active[$name] = $state; }
         }
+        if ($given) { $this->active = [self::MARKER => '1'] + $this->active; }
+    }
+
+    /** Filters that could not be built (filters() threw): none, and the page says so. */
+    public static function failed(AdminPage $page): self
+    {
+        $filters = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $filters->form = new Form();
+        $filters->failed = true;
+        return $filters;
+    }
+
+    public function hasFailed(): bool
+    {
+        return $this->failed;
     }
 
     public function exists(): bool
@@ -76,10 +96,16 @@ final class PageFilters
         return $this->values;
     }
 
-    /** @return array<string, string|array<string, string>> the values chosen in the address (for links) */
+    /** @return array<string, string|array<string, string>> the values chosen in the address (for links), with the marker */
     public function active(): array
     {
         return $this->active;
+    }
+
+    /** Whether a filter differs from the defaults (Reset is offered). */
+    public function changed(): bool
+    {
+        return $this->active !== [];
     }
 
     public function render(): string

@@ -31,6 +31,8 @@ use FloCMS\Core\ValidationException;
 final class CustomPageController extends PanelController
 {
     private AdminPage $page;
+    /** Set by guard() when a part failed. */
+    private bool $failed = false;
 
     public function __construct($data = [])
     {
@@ -44,16 +46,18 @@ final class CustomPageController extends PanelController
     {
         $this->authorizePage();
         $filters = $this->filters();
+        $this->failed = false;
         $table = $this->guard(fn (): ?PageTable => PageTable::of($this->page));
+        $tableFailed = $this->failed;
 
         if ($this->isPost()) {
             if (($this->request->input('_columns') ?? '') === 'apply' && $table !== null) {
                 $this->saveColumns($table);
             }
-            if (($this->request->input('_page_form') ?? '') !== '1' || !$this->page->hasForm()) { throw new HttpException(400); }
-            return $this->savePage($filters, $table);
+            if (($this->request->input('_page_form') ?? '') !== '1' || $this->guard(fn (): bool => $this->page->hasForm()) !== true) { throw new HttpException(400); }
+            return $this->savePage($filters, $table, $tableFailed);
         }
-        return $this->render($filters, $table);
+        return $this->render($filters, $table, $tableFailed);
     }
 
     /** The table's rows as a CSV file (the filters, search and sort of the page). */
@@ -102,6 +106,11 @@ final class CustomPageController extends PanelController
         $operationSlug = 'page:' . $slug;
         $errors = [];
 
+        if ($this->isPost() && $action->runsAtOnce()) {
+            // No form and no confirmation: the header's button posts with CSRF only (no operation token).
+            $result = \FloCMS\Admin\Notifications\Notifications::capture(fn (): mixed => $action->invokeOnPage([], $this->page));
+            $this->afterAction($action, $result, $back);
+        }
         if ($this->isPost()) {
             $token = $this->request->input('_operation');
             if (!is_string($token)) { throw new HttpException(400); }
@@ -133,13 +142,14 @@ final class CustomPageController extends PanelController
 
         $renderer = new FormRenderer(ActionForm::safe($form, $state) + $state, $errors, Languages::all(), Languages::default());
         $title = $action->getPageTitle();
-        return $this->panel($title, TemplateEngine::renderFile(PageView::viewPath('action'), [
+        // Sent by the browser itself (data-admin-local): the action may answer with a download.
+        return $this->panel($title, (string) preg_replace('/<form method="post"/', '<form method="post" data-admin-local', TemplateEngine::renderFile(PageView::viewPath('action'), [
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription(),
             'fields' => $renderer->render($form), 'translation' => null,
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($slug . '/action/' . $name, ['filter' => $filters->active() ?: null]),
             'submitLabel' => $action->getPageLabel(), 'submitColor' => $action->getColor(),
-        ]), $slug);
+        ]), 1), $slug);
     }
 
     /** A route the page declares in $routes: /admin/<slug>/route/<name>. */
@@ -151,16 +161,42 @@ final class CustomPageController extends PanelController
         $method = $this->page::routes()[$name] ?? null;
         if (!is_string($method) || $this->page::configurationErrors() !== []) { throw new HttpException(404); }
         $this->filters();
-        $result = $this->page->{$method}(...array_slice(array_map('strval', $this->params), 1));
+        $result = $this->page->{$method}(...self::routeArguments(new \ReflectionMethod($this->page, $method), array_slice(array_map('strval', $this->params), 1)));
         if ($result instanceof \FloCMS\Core\Http\Response) { return $result; }
         if (is_array($result)) { return \FloCMS\Core\Http\Response::json($result)->header('Cache-Control', 'no-store'); }
         if (is_string($result)) { return $this->panel($this->page::getLabel(), $result, $this->page::getSlug()); }
         $this->redirect(Admin::url($this->page::getSlug()));
     }
 
+    /**
+     * The address's parts after the route name as the method's arguments: cast to
+     * its int, float or bool parameters; 404 when too few, too many or not a number.
+     *
+     * @param list<string> $parts
+     * @return list<mixed>
+     */
+    public static function routeArguments(\ReflectionMethod $method, array $parts): array
+    {
+        $parameters = $method->getParameters();
+        if (count($parts) > count($parameters) || count($parts) < $method->getNumberOfRequiredParameters()) { throw new HttpException(404); }
+        $arguments = [];
+        foreach ($parts as $index => $part) {
+            $type = $parameters[$index]->getType();
+            $name = $type instanceof \ReflectionNamedType ? $type->getName() : 'string';
+            $arguments[] = match ($name) {
+                'int' => preg_match('/^-?\d{1,18}$/D', $part) === 1 ? (int) $part : throw new HttpException(404),
+                'float' => is_numeric($part) ? (float) $part : throw new HttpException(404),
+                'bool' => in_array($part, ['1', '0', 'true', 'false'], true) ? in_array($part, ['1', 'true'], true) : throw new HttpException(404),
+                'string', 'mixed' => $part,
+                default => throw new HttpException(404),
+            };
+        }
+        return $arguments;
+    }
+
     /* ---------------------------------------------------------------- */
 
-    private function render(PageFilters $filters, ?PageTable $table, ?array $formState = null, array $formErrors = []): string|\FloCMS\Core\Http\Response
+    private function render(PageFilters $filters, ?PageTable $table, bool $tableFailed = false, ?array $formState = null, array $formErrors = []): string|\FloCMS\Core\Http\Response
     {
         $page = $this->page;
         $slug = $page::getSlug();
@@ -169,7 +205,7 @@ final class CustomPageController extends PanelController
         $dir = $this->query('dir') ?: null;
         $state = ['filter' => $filters->active() ?: null, 'q' => $search !== '' ? $search : null, 'sort' => $sort, 'dir' => $dir];
 
-        $tableHtml = '';
+        $tableHtml = $tableFailed ? $this->unavailable() : '';
         if ($table !== null) {
             $tableHtml = $this->guard(function () use ($table, $search, $sort, $dir, $state, $slug): string {
                 $result = $table->paginate($search, $sort, $dir, max(1, (int) $this->query('page', '1')));
@@ -181,15 +217,19 @@ final class CustomPageController extends PanelController
         }
 
         $form = null;
-        if ($page->hasForm()) {
+        $this->failed = false;
+        $hasForm = $this->guard(fn (): bool => $this->page->hasForm());
+        if ($this->failed) {
+            $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save'), 'broken' => true];
+        } elseif ($hasForm === true) {
             $form = $this->guard(function () use ($formState, $formErrors): array {
                 $pageForm = new PageForm($this->page);
                 $state = $formState ?? $pageForm->initialState();
                 $renderer = new FormRenderer($state, $formErrors, Languages::all(), Languages::default(), true);
                 return ['fields' => $renderer->render($pageForm->form()), 'errors' => $formErrors, 'dirty' => $formState !== null,
-                    'submit' => $this->page::getSubmitLabel()];
+                    'submit' => $this->page::getSubmitLabel(), 'broken' => false];
             });
-            if ($form === null) { $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save')]; }
+            if ($form === null) { $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save'), 'broken' => true]; }
         }
 
         $widgets = $this->guard(fn (): string => $this->widgets($filters->values())) ?? $this->unavailable();
@@ -202,12 +242,14 @@ final class CustomPageController extends PanelController
             't' => PageView::translator(),
             'slug' => $slug,
             'url' => Admin::url($slug),
+            'formUrl' => Admin::url($slug, $state),
             'width' => $page::getWidth(),
             'group' => $page::getGroup(),
             'title' => $page::getLabel(),
             'description' => $page::getDescription(),
             'actions' => $actions,
-            'filters' => $filters->exists() ? ['fields' => $filters->render(), 'active' => $filters->active() !== [], 'q' => $search, 'sort' => $sort, 'dir' => $dir] : null,
+            'filters' => $filters->exists() ? ['fields' => $filters->render(), 'active' => $filters->changed(), 'q' => $search, 'sort' => $sort, 'dir' => $dir, 'marker' => PageFilters::MARKER] : null,
+            'filtersFailed' => $filters->hasFailed(),
             'widgets' => $widgets,
             'widgetColumns' => $columns,
             'view' => $view,
@@ -215,28 +257,28 @@ final class CustomPageController extends PanelController
             'tableLabel' => $page::getLabel(),
             'form' => $form,
             'csrf' => \FloCMS\Core\Csrf::field(),
-            'empty' => $widgets === '' && $view === '' && $table === null && $form === null && $actions === '' && !$filters->exists(),
+            'empty' => $widgets === '' && $view === '' && $table === null && !$tableFailed && $form === null && $actions === '' && !$filters->exists() && !$filters->hasFailed(),
             'emptyHint' => 'admin/Pages/' . (new \ReflectionClass($page))->getShortName() . '.php',
         ]);
         return $this->panel($page::getLabel(), $html, $slug);
     }
 
-    private function savePage(PageFilters $filters, ?PageTable $table): string|\FloCMS\Core\Http\Response
+    private function savePage(PageFilters $filters, ?PageTable $table, bool $tableFailed): string|\FloCMS\Core\Http\Response
     {
-        $pageForm = new PageForm($this->page);
+        $pageForm = $this->guard(fn (): PageForm => new PageForm($this->page)) ?? throw new HttpException(500);
         $input = $this->request->all();
         if ($this->request->input('_repeater') !== null) {
-            return $this->render($filters, $table, $pageForm->operate($input, $this->request->input('_repeater')));
+            return $this->render($filters, $table, $tableFailed, $pageForm->operate($input, $this->request->input('_repeater')));
         }
         $result = \FloCMS\Admin\Notifications\Notifications::capture(fn (): array => $pageForm->submit($input));
         if ($result['saved']) {
             if (!\FloCMS\Admin\Notifications\Notifications::sentDuringCapture()) {
                 Session::setFlash($result['message'] ?? AdminLang::get('pages_api.saved'), 'success');
             }
-            $this->redirect(Admin::url($this->page::getSlug(), ['filter' => $filters->active() ?: null]));
+            $this->redirect(Admin::url($this->page::getSlug(), $this->addressState($filters)));
         }
         if (!isset($result['errors']['_form'])) { Session::setFlash(AdminLang::get('flash.fix_errors'), 'danger'); }
-        return $this->render($filters, $table, $result['state'], $result['errors']);
+        return $this->render($filters, $table, $tableFailed, $result['state'], $result['errors']);
     }
 
     private function saveColumns(PageTable $table): never
@@ -255,6 +297,8 @@ final class CustomPageController extends PanelController
 
     private function afterAction(Action $action, mixed $result, string $back): never
     {
+        \FloCMS\Admin\Activity\Activity::record('action', \FloCMS\Admin\PanelPages\CustomPages::ACTIVITY, $this->page::getSlug(), strip_tags($this->page::getLabel()),
+            meta: ['action' => mb_substr(strip_tags($action->getPageLabel()), 0, 120)]);
         if ($result instanceof \FloCMS\Core\Http\Response) {
             $result->send();
             exit;
@@ -262,8 +306,6 @@ final class CustomPageController extends PanelController
         if (!\FloCMS\Admin\Notifications\Notifications::sentDuringCapture()) {
             Session::setFlash(is_string($result) && trim($result) !== '' ? $result : AdminLang::get('pages_api.action_done', ['action' => strip_tags($action->getPageLabel())]), 'success');
         }
-        \FloCMS\Admin\Activity\Activity::record('action', \FloCMS\Admin\PanelPages\CustomPages::ACTIVITY, $this->page::getSlug(), strip_tags($this->page::getLabel()),
-            meta: ['action' => mb_substr(strip_tags($action->getPageLabel()), 0, 120)]);
         $this->redirect($back);
     }
 
@@ -329,10 +371,10 @@ final class CustomPageController extends PanelController
             }
             $actionUrl = Admin::url($slug . '/action/' . $name, $query);
             if ($action->runsAtOnce()) {
-                // No form and no confirmation: one POST, with the operation issued here.
-                $token = OperationStore::issue('page:' . $slug, 'page', $name, '', '');
-                $html .= '<form method="post" class="fa-inline" action="' . Str::e($actionUrl) . '">' . \FloCMS\Core\Csrf::field()
-                    . '<input type="hidden" name="_operation" value="' . Str::e($token) . '"><button type="submit" class="' . $class . '" data-admin-action="' . Str::e($name) . '">' . $icon . '<span>' . $label . '</span></button></form>';
+                // No form and no confirmation: one POST with CSRF. Sent by the browser itself (data-admin-local),
+                // as the action may answer with a download.
+                $html .= '<form method="post" class="fa-inline" action="' . Str::e($actionUrl) . '" data-admin-local>' . \FloCMS\Core\Csrf::field()
+                    . '<button type="submit" class="' . $class . '" data-admin-action="' . Str::e($name) . '">' . $icon . '<span>' . $label . '</span></button></form>';
                 continue;
             }
             $html .= '<a class="' . $class . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e($actionUrl) . '">' . $icon . '<span>' . $label . '</span></a>';
@@ -352,9 +394,22 @@ final class CustomPageController extends PanelController
     {
         $input = $this->request->queryValue('filter', []);
         if (!is_array($input)) { throw new HttpException(400); }
-        $filters = new PageFilters($this->page, $input);
+        try {
+            $filters = new PageFilters($this->page, $input);
+        } catch (\Throwable $error) {
+            Log::error('Admin page ' . $this->page::class . ': filters(): ' . $error->getMessage());
+            if (\FloCMS\Core\Env::get('APP_DEBUG') === true) { throw $error; }
+            $filters = PageFilters::failed($this->page);
+        }
         $this->page->useFilterValues($filters->values());
         return $filters;
+    }
+
+    /** The page's address now: its filters, search and sort (for the form's Save and its redirect). */
+    private function addressState(PageFilters $filters): array
+    {
+        $search = $this->query('q');
+        return ['filter' => $filters->active() ?: null, 'q' => $search !== '' ? $search : null, 'sort' => $this->query('sort') ?: null, 'dir' => $this->query('dir') ?: null];
     }
 
     private function authorizePage(): void
@@ -383,6 +438,7 @@ final class CustomPageController extends PanelController
         } catch (HttpException $error) {
             throw $error;
         } catch (\Throwable $error) {
+            $this->failed = true;
             Log::error('Admin page ' . $this->page::class . ': ' . $error->getMessage());
             if (\FloCMS\Core\Env::get('APP_DEBUG') === true) { throw $error; }
             return null;

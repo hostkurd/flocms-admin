@@ -162,7 +162,7 @@ final class SalesReport extends AdminPage
 }
 ```
 
-**Filters** are a form whose values are kept in the address (`?filter[city]=erbil`), so a filtered report can be bookmarked and shared. Use simple fields: text, select, date, toggle. **Apply** sends them and **Reset** clears them. A value a field refuses (a city that isn't in the options, text in a numeric field) is shown with its error and left out. The values reach:
+**Filters** are a form whose values are kept in the address (`?filter[city]=erbil`), so a filtered report can be bookmarked and shared. Use simple fields: text, select, date, toggle. A field's `default()` applies until the form is sent; **Apply** sends the fields as they are (an emptied field stays empty) and **Reset** goes back to the defaults. A value a field refuses (a city that isn't in the options, text in a numeric field) is shown with its error and left out. The values reach:
 
 - `data(array $filters)` and the table's `query()`, as `$filters`;
 - widgets, as `$this->pageFilters()`;
@@ -175,6 +175,7 @@ Only valid, non-empty values are given, so test them with `isset()`.
 - `->url(fn (object $row) => …)` makes the first searchable column a link. Only `http(s)://` and site addresses starting with `/` are used.
 - The other column types work too: `BadgeColumn`, `BooleanColumn`, `DateColumn` and `->format(fn ($value, $row) => …)`.
 - Search and sort use the column's name in SQL, so name columns after real columns of the query. Use `->searchAlso(['email'])` for more columns to search.
+- Give the table a `defaultSort()` on a unique column (or one ending in one, such as `id`): without an order, the database may return rows in a different order on each page. `admin:doctor` reminds you.
 - The table has no Edit, Delete or bulk actions: rows that people edit belong to a resource.
 
 **Widgets** are the dashboard's classes (`php flo make:admin-widget`), with the same permission checks. Each widget reads the page's filters with `$this->pageFilters()`:
@@ -203,6 +204,7 @@ On the dashboard `pageFilters()` is empty.
 - The callback is `fn (array $data, AdminPage $page)`. It may return a message to show, send a `Notification`, throw a `ValidationException` (the error shows on the field) or return a `Response` (a download).
 - `->permission('reports.email')` gives an action its own permission; without one it needs the page's. `->visible()`, `->authorize()`, `->disabled()` and `->url()` work as on resources.
 - Running an action is written to the activity log.
+- An action's page and its button are sent by the browser itself, not through panel navigation, so an action may answer with a download.
 - Upload fields are not supported in page actions.
 
 ## Example 2: a tool page with a form
@@ -328,7 +330,9 @@ public function downloadPdf(): \FloCMS\Core\Http\Response { return Response::mak
 - A `Response` is sent as it is.
 - A string is shown inside the panel.
 
-Routes keep the page's permission, `canAccess()` and filters, and CSRF protection on POST. Anything after the route name is passed as arguments: `/route/chart/2026` calls `chartData('2026')`.
+Routes keep the page's permission, `canAccess()` and filters, and CSRF protection on POST. Anything after the route name is passed as arguments, cast to the method's `int`, `float` or `bool` parameters: `/route/chart/2026` calls `chartData(2026)` for `chartData(int $year)`. Too many or too few parts, or text where a number is expected, answers 404.
+
+Panel navigation loads links as panel pages, so give a link to a route that downloads a file the `download` attribute (or `data-no-navigate`).
 
 ## Permissions, sidebar and search
 

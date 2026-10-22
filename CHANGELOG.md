@@ -11,8 +11,8 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 - **A read-only table from any query**: `Table::query(fn (Database $db, array $filters) => …)`, with the list's search, sort, pages, Columns button and **Download CSV** (`->exportable(false)` removes it), and row links with `->url(fn ($row) => …)`.
 - **Widgets on any page**: the dashboard's widget classes, with their permission checks.
 - **Tool pages**: `form()`, `fill()` and `submit(array $data)`, with the resources' fields, checks, error summary and unsaved-changes warning. `submit()` may throw a `ValidationException` or return a message. Saves are logged as **Page saved** with the changed fields (`$activity = false` turns that off).
-- **Header actions** with the Actions API: a form or a confirmation on the action's own page, or one click with `->requiresConfirmation(false)`. The callback is `fn (array $data, AdminPage $page)`.
-- **Routes**: `$routes = ['chart' => 'chartData']` makes `/admin/<slug>/route/chart` call the method, with the page's permission; arrays are sent as JSON.
+- **Header actions** with the Actions API: a form or a confirmation on the action's own page, or one click with `->requiresConfirmation(false)`. The callback is `fn (array $data, AdminPage $page)` and may return a message or a `Response` (a download). Header actions open their own page in 0.36, not a dialog.
+- **Routes**: `$routes = ['chart' => 'chartData']` makes `/admin/<slug>/route/chart` call the method, with the page's permission; more parts of the address are cast to its `int`, `float` or `bool` parameters (404 otherwise); arrays are sent as JSON.
 - **Sidebar groups** for the first time: `$group`, `$sort`, `$icon`, `$navigation = false`, and `badge()` for a count on the item. Pages without a group come under Content after the resources.
 - **Permissions**: `panel.<slug>` by default (or `$permission`), plus `canAccess()`. The Roles page has a **Panel pages** group with an **All panel pages** switch (`panel.*`).
 - **Ctrl+K search** finds pages by label, group and description.

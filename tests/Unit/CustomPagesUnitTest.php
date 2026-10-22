@@ -92,7 +92,7 @@ final class CustomPagesUnitTest extends TestCase
         $page = new SalesReport();
         $filters = new PageFilters($page, ['status' => 'draft', 'min_views' => '']);
         self::assertSame(['status' => 'draft'], $filters->values());
-        self::assertSame(['status' => 'draft'], $filters->active());
+        self::assertSame(['_' => '1', 'status' => 'draft'], $filters->active());
         self::assertStringContainsString('name="filter[status]"', $filters->render());
         $bad = new PageFilters($page, ['status' => 'closed', 'min_views' => 'many']);
         self::assertSame([], $bad->values());
@@ -116,6 +116,33 @@ final class CustomPagesUnitTest extends TestCase
         $_SESSION = [];
     }
 
+    public function testFilterDefaultsApplyUntilTheFormIsSent(): void
+    {
+        $_SESSION = ['status_default' => 'published'];
+        $page = new SalesReport();
+        self::assertSame(['status' => 'published'], (new PageFilters($page, []))->values());
+        self::assertFalse((new PageFilters($page, []))->changed());
+        // The form sent with the field emptied: no filter, not the default.
+        $cleared = new PageFilters($page, ['_' => '1', 'status' => '']);
+        self::assertSame([], $cleared->values());
+        self::assertTrue($cleared->changed());
+        $_SESSION = [];
+    }
+
+    public function testRouteArgumentsAreCastOrRefused(): void
+    {
+        $method = new \ReflectionMethod(SalesReport::class, 'byYear');
+        self::assertSame([2026], CustomPageController::routeArguments($method, ['2026']));
+        foreach ([[], ['x'], ['2026', 'extra']] as $parts) {
+            try {
+                CustomPageController::routeArguments($method, $parts);
+                self::fail('Expected 404 for ' . json_encode($parts));
+            } catch (\FloCMS\Core\HttpException $error) {
+                self::assertSame(404, $error->status);
+            }
+        }
+    }
+
     public function testViewNamesStayInTheViewsFolder(): void
     {
         self::assertNull(CustomPageController::viewFile('../config/admin'));
@@ -129,5 +156,6 @@ final class CustomPagesUnitTest extends TestCase
         self::assertTrue(\FloCMS\Admin\PanelPages\PageTable::safeUrl('https://example.test/x'));
         self::assertFalse(\FloCMS\Admin\PanelPages\PageTable::safeUrl('javascript:alert(1)'));
         self::assertFalse(\FloCMS\Admin\PanelPages\PageTable::safeUrl('//evil.test'));
+        self::assertFalse(\FloCMS\Admin\PanelPages\PageTable::safeUrl('/\\evil.test'));
     }
 }

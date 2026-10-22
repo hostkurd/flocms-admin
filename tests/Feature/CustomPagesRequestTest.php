@@ -33,7 +33,7 @@ final class CustomPagesRequestTest extends RequestTestCase
     /** @param array<string, mixed> $options */
     private static function options(array $options = []): array
     {
-        $config = ($options['admin_config'] ?? []) + ['admin_pages' => [SalesReport::class, ExchangeRates::class, GettingStarted::class, HiddenPage::class]];
+        $config = ($options['admin_config'] ?? []) + ['admin_pages' => [SalesReport::class, ExchangeRates::class, GettingStarted::class, HiddenPage::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\BrokenParts::class]];
         unset($options['admin_config']);
         return $options + ['admin_config' => $config, 'permissions' => self::PAGE_PERMISSIONS];
     }
@@ -69,7 +69,7 @@ final class CustomPagesRequestTest extends RequestTestCase
         self::assertStringContainsString('mountain-cabin', $response['body']);
         self::assertStringNotContainsString('sea-view-villa', $response['body']);
         // Sort links keep the filter; Reset is offered.
-        self::assertMatchesRegularExpression('~href="[^"]*sales-report\?filter%5Bstatus%5D=draft[^"]*sort=slug~', $response['body']);
+        self::assertMatchesRegularExpression('~href="[^"]*sales-report\?[^"]*filter%5Bstatus%5D=draft[^"]*sort=slug~', $response['body']);
         self::assertStringContainsString('>Reset</a>', $response['body']);
         // A value the field refuses is shown as an error and left out.
         $bad = self::get('/en/admin/sales-report?filter%5Bstatus%5D=closed');
@@ -188,12 +188,13 @@ final class CustomPagesRequestTest extends RequestTestCase
         self::assertSame('boss@example.test sales-report', $sent['session']['report_sent']);
         // A used or forged operation is refused.
         self::assertSame(409, self::post('/en/admin/sales-report/action/send', ['_operation' => $token[1], 'email' => 'x@example.test'], self::options(['session' => $sent['session']]))['status']);
-        // Runs at once from the header (a POST form with its operation).
-        $page = self::get('/en/admin/sales-report');
-        preg_match('~action="[^"]*/action/recount"><input type="hidden" name="_token" value="tok"[^>]*><input type="hidden" name="_operation" value="([a-f0-9]+)"~', $page['body'], $recount);
-        self::assertNotEmpty($recount[1] ?? '', $page['body']);
-        $ran = self::post('/en/admin/sales-report/action/recount', ['_operation' => $recount[1]], self::options(['session' => $page['session']]));
+        // Runs at once from the header: a POST with CSRF, sent by the browser itself; viewing issues no operation.
+        $page = self::get('/en/admin/sales-report', ['session' => $sent['session']]);
+        self::assertMatchesRegularExpression('~action="[^"]*/action/recount" data-admin-local>~', $page['body']);
+        self::assertSame(count($sent['session']['_flo_admin_operations'] ?? []), count($page['session']['_flo_admin_operations'] ?? []));
+        $ran = self::post('/en/admin/sales-report/action/recount', [], self::options(['session' => $page['session']]));
         self::assertSame(1, $ran['session']['recounted']);
+        self::assertNotSame(200, self::request('POST', '/en/admin/sales-report/action/recount', self::options(['session' => $page['session']]))['status'], 'CSRF');
         // The action's own permission.
         self::assertSame(403, self::get('/en/admin/sales-report/action/secret')['status']);
     }
@@ -204,6 +205,9 @@ final class CustomPagesRequestTest extends RequestTestCase
         self::assertSame(200, $feed['status']);
         self::assertSame(['ok' => true, 'filters' => ['status' => 'published']], json_decode($feed['body'], true));
         self::assertSame(403, self::get('/en/admin/sales-report/route/feed', ['permissions' => [1 => []]])['status']);
+        self::assertSame(['year' => 2026], json_decode(self::get('/en/admin/sales-report/route/year/2026')['body'], true));
+        self::assertSame(404, self::get('/en/admin/sales-report/route/year/later')['status']);
+        self::assertSame(404, self::get('/en/admin/sales-report/route/year')['status']);
     }
 
     public function testSearchFindsPagesThePersonMayOpen(): void
@@ -239,6 +243,18 @@ $_SESSION = ' . var_export($session, true) . ';
 echo \FloCMS\Admin\Admin::homePath();');
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>&1', $output);
         return implode("\n", $output);
+    }
+
+    public function testSavingKeepsTheFiltersAndFailingPartsAreContained(): void
+    {
+        // The page's address (here its search; a page with filters keeps them too) stays on Save.
+        $page = self::get('/en/admin/exchange-rates?q=x&sort=rate&dir=desc');
+        self::assertMatchesRegularExpression('~<form method="post" action="[^"]*exchange-rates\?q=x&amp;sort=rate&amp;dir=desc"~', $page['body']);
+        $broken = self::get('/en/admin/broken-parts', ['session' => self::SUPER]);
+        self::assertSame(200, $broken['status'], $broken['body']);
+        self::assertStringContainsString('Still here', $broken['body']);
+        self::assertSame(3, substr_count($broken['body'], 'could not be shown'));
+        self::assertStringNotContainsString('This page has nothing to show yet', $broken['body']);
     }
 
     public function testPanelNavigationReturnsTheShell(): void

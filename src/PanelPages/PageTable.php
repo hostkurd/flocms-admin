@@ -63,7 +63,7 @@ final class PageTable
         $dir = strtolower((string) $dir) === 'desc' ? 'desc' : 'asc';
         if ($column !== null && $column->isDatabaseColumn()) {
             $query = $column->isTranslatable()
-                ? $query->orderByRaw(Translations::store()->sortExpression($query, $column->getName(), AdminLang::language(), Languages::default()) . ' ' . strtoupper($dir))
+                ? $query->orderByRaw(Translations::store()->sortExpression($query, $column->getName(), in_array(AdminLang::language(), Languages::all(), true) ? AdminLang::language() : Languages::default(), Languages::default()) . ' ' . strtoupper($dir))
                 : $query->orderBy($column->getName(), $dir);
         }
         return [$query, $column?->getName(), $dir];
@@ -183,18 +183,14 @@ final class PageTable
         $writer->row(array_map(static fn (Column $c): string => html_entity_decode(strip_tags($c->getLabel()), ENT_QUOTES | ENT_HTML5, 'UTF-8'), array_values($visible)));
         if ($sort !== null && $this->visibility()->isHidden($sort)) { $sort = null; $dir = null; }
         $limit = Admin::config()->export()['limit'];
+        // One query, so rows can't repeat or go missing between chunks.
+        [$query] = $this->query($search, $sort, $dir);
+        $rows = $query->limit($limit)->get();
+        foreach ($visible as $column) { $column->prepareRecords($rows); }
         $written = 0;
-        $chunk = 500;
-        for ($offset = 0; $written < $limit; $offset += $chunk) {
-            [$query] = $this->query($search, $sort, $dir);
-            $rows = $query->limit(min($chunk, $limit - $written))->offset($offset)->get();
-            if ($rows === []) { break; }
-            foreach ($visible as $column) { $column->prepareRecords($rows); }
-            foreach ($rows as $row) {
-                $writer->row(array_map(static fn (Column $c): string => self::text($c->render($row)), array_values($visible)));
-                $written++;
-            }
-            if (count($rows) < $chunk) { break; }
+        foreach ($rows as $row) {
+            $writer->row(array_map(static fn (Column $c): string => self::text($c->render($row)), array_values($visible)));
+            $written++;
         }
         return $written;
     }
@@ -221,6 +217,8 @@ final class PageTable
     /** http(s) and site-relative addresses only: never javascript: or data:. */
     public static function safeUrl(string $url): bool
     {
-        return preg_match('~^(https?://|/(?!/))~i', $url) === 1 && !preg_match('/[\x00-\x1F]/', $url);
+        // No control characters or backslashes ("/\evil.test" is read as "//evil.test").
+        if (preg_match('/[\x00-\x1F\\\\]/', $url) === 1) { return false; }
+        return preg_match('~^(https?://|/(?!/))~i', $url) === 1;
     }
 }

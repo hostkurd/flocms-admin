@@ -20,12 +20,12 @@ final class SalesReport extends AdminPage
     protected static ?string $icon = 'chart';
     protected static ?string $group = 'Reports';
     protected static int $sort = 10;
-    protected static array $routes = ['feed' => 'feed'];
+    protected static array $routes = ['feed' => 'feed', 'year' => 'byYear'];
 
     public function filters(Form $form): Form
     {
         return $form->schema([
-            Select::make('status')->options(['published' => 'Published', 'draft' => 'Draft']),
+            Select::make('status')->options(['published' => 'Published', 'draft' => 'Draft'])->default($_SESSION['status_default'] ?? ''),
             TextInput::make('min_views')->numeric(),
         ]);
     }
@@ -73,6 +73,11 @@ final class SalesReport extends AdminPage
     public function badge(): string|int|null
     {
         return 3;
+    }
+
+    public function byYear(int $year): array
+    {
+        return ['year' => $year];
     }
 
     public function feed(): array

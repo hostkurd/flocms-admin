@@ -487,6 +487,7 @@ final class DoctorCommand extends Command
                 }
                 $table = $page->table(new \FloCMS\Admin\Table\Table());
                 if ($table->getQuery() !== null && $table->getColumns() === []) { $problems[] = 'table() sets a query but no columns, so no table is shown'; }
+                if ($table->getQuery() !== null && $table->getDefaultSort() === null) { $this->caution($class . ': table() has no defaultSort(): rows may change places between pages; sort by a unique column such as id'); }
             } catch (Throwable $error) {
                 $problems[] = $error->getMessage();
             }

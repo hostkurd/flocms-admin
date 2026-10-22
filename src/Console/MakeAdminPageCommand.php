@@ -54,14 +54,18 @@ final class MakeAdminPageCommand extends Command
         $config = is_file($configFile) ? (static fn (string $f): mixed => require $f)($configFile) : [];
         $config = is_array($config) ? $config : [];
         $namespace = trim((string) ($config['admin_pages_namespace'] ?? 'App\\Admin\\Pages'), '\\');
-        $directory = trim(str_replace('\\', '/', (string) ($config['admin_pages_path'] ?? 'admin/Pages')), '/');
+        // The folder as config/admin.php names it: relative to the project, or absolute (as AdminConfig reads it).
+        $directory = rtrim(str_replace('\\', '/', (string) ($config['admin_pages_path'] ?? 'admin/Pages')), '/');
+        $absolute = str_starts_with($directory, '/') || preg_match('~^[A-Za-z]:/~', $directory) === 1;
+        $directory = $absolute ? $directory : ltrim($directory, '/');
 
         $short = preg_replace('/(?<!^)Page$/', '', $name) ?? $name;
         $slug = Str::kebab($short);
         $file = $directory . '/' . $name . '.php';
+        $target = $absolute ? $file : $project->path($file);
         $viewName = 'admin/' . $slug;
         $viewFile = 'views/' . $viewName . '.html';
-        if (is_file($project->path($file)) && !$this->option('force')) {
+        if (is_file($target) && !$this->option('force')) {
             $this->fail($file . ' already exists (use --force to overwrite).');
         }
 
@@ -77,7 +81,7 @@ final class MakeAdminPageCommand extends Command
             'width' => $form && !$table && !$view ? 'narrow' : 'default',
             'body' => $body,
         ]);
-        if (!Stub::write($project->path($file), $content)) {
+        if (!Stub::write($target, $content)) {
             $this->fail('Could not write ' . $file . '.');
         }
         $this->success('Created ' . $file);
