@@ -34,7 +34,8 @@ The page opens at `/admin/sales-report`. By default only Super admin can open it
 ## Making a page
 
 ```bash
-php flo make:admin-page SalesReport --view --table --group=Reports
+php flo make:admin-page SalesReport --table=listings --group=Reports
+php flo make:admin-page ListingsReport --resource=Listing --group=Reports
 php flo make:admin-page ExchangeRates --form --group=Tools
 php flo make:admin-page GettingStarted --view
 ```
@@ -43,7 +44,24 @@ The command writes `admin/Pages/<Name>.php` and adds it to `'admin_pages'` (it a
 
 - `--view` also writes `views/admin/<slug>.html` with the panel's UI pieces.
 - `--form` makes a tool page: a form with Save.
-- `--table` adds filters and a read-only table. It lists the site's `users` so the page works at once; replace the query and columns with your own.
+- `--table=listings` adds a read-only table of that database table, with filters (see below). Plain `--table` lists the database's tables to pick one from.
+- `--resource=Listing` adds a read-only table of a resource's table, with the columns and labels of its list, and rows that open the record (`Listing`, `ListingResource` or the slug `listings`).
+
+### What `--table` and `--resource` write
+
+The generator reads the table, so the page works the first time it opens:
+
+- **The table must exist.** A misspelt name stops with a suggestion ("Did you mean --table=listings?"). Without a terminal to ask in (a script, `--no-interaction`), plain `--table` names the tables and stops.
+- **Columns:** up to six, text first (the first one titles each row on phones and is searchable):
+  - text columns are searchable and sortable, numbers sortable, dates a `DateColumn`, true/false a `BooleanColumn`;
+  - columns holding the panel's translations (`{"en": …, "ar": …}`) are found from their values and get `->translatable()`;
+  - the key is the default sort (newest first) rather than a column;
+  - left out, and listed when the command runs: long text, binary data, keys ending in `_id` (a `RelationColumn` can show their title), secret-looking columns (`password`, `token`, `secret` …) and anything past six.
+- **Filters:** From/To dates when the table has a `created_at` (or another date column), and a select of the values when a `status`, `type`, `category` or similar column holds a few (at most 12).
+- **`--resource`** takes the list's `TextColumn`, `DateColumn`, `BooleanColumn` and `BadgeColumn` columns with their labels and translatable setting, and links rows to the record's edit page. Other column types (relations, media, counts) are listed for you to add by hand.
+- **No database connection:** the page is written with the table's name and an `id` column, and the command says so.
+
+Change anything afterwards in the class: it is your code.
 
 Then run `php flo admin:doctor`. It lists the pages and names anything wrong: a class that wasn't found, a view that doesn't exist, a slug that is already taken, a form without `submit()`.
 
