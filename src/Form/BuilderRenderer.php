@@ -352,7 +352,7 @@ final class BuilderRenderer
                 if (str_starts_with((string) $errorKey, $start)) { $errors[substr((string) $errorKey, strlen($start))] = $message; }
             }
         }
-        $state = $block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []), $key . '|' . $id);
+        $state = \FloCMS\Admin\Blocks\BlockSettings::prepareState($block->prepareState(($node['data'] ?? []) + ($node['settings'] ?? []), $key . '|' . $id), $key . '|' . $id);
         $child = $this->parent->child($state, $errors, $paneId . '-', $base . '[f]', $op . 'item:' . $key . ':' . $id . ':');
         $content = $field->hasContent($block);
         // The block's own name sits in the panel too (Section, Columns, Slider).

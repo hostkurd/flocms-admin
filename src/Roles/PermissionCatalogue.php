@@ -106,6 +106,12 @@ final class PermissionCatalogue
         }
         // HTML blocks print their markup on the website as written (0.29).
         $system[] = ['name' => \FloCMS\Admin\Blocks\Core\Html::PERMISSION, 'label' => AdminLang::get('roles.perm.blocks_html'), 'sub' => AdminLang::get('roles.perm.blocks_html_help')];
+        // A block's own CSS (0.33), applied on the website to that block.
+        $system[] = ['name' => \FloCMS\Admin\Blocks\BlockCss::PERMISSION, 'label' => AdminLang::get('roles.perm.blocks_custom_css'), 'sub' => AdminLang::get('roles.perm.blocks_custom_css_help')];
+        // Pages › Blocks preview (0.33): a settings.* permission, so the Admin role has it.
+        if (Admin::config()->pages()['enabled']) {
+            $system[] = ['name' => \FloCMS\Admin\Http\BlocksPreviewController::PERMISSION, 'label' => AdminLang::get('roles.perm.blocks_preview'), 'sub' => AdminLang::get('roles.perm.blocks_preview_help')];
+        }
         $groups[] = self::group('system', AdminLang::get('roles.group.system'), AdminLang::get('roles.group.system_help'), null, '', '', [], [], $system);
 
         // Actions and widgets with their own permission

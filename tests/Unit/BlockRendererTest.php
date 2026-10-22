@@ -41,11 +41,11 @@ final class BlockRendererTest extends TestCase
     public function testPrintsTheBlocksShownNowWithTheirSettings(): void
     {
         $html = blocks(json_encode(self::PAGE));
-        self::assertStringContainsString('<div class="flo-block flo-block-heading is-boxed flo-space-above-none flo-space-below-medium flo-only-desktop hero" id="top">', $html);
+        self::assertStringContainsString('<div class="flo-block flo-block-heading is-boxed flo-space-above-none flo-space-below-medium flo-only-desktop hero" data-block="heading" data-block-id="bh1" id="top">', $html);
         self::assertStringContainsString('<h1 class="flo-heading is-align-center">Welcome &lt;home&gt;</h1>', $html, 'text is escaped');
         foreach (['Draft', 'Future', 'Ended'] as $hidden) { self::assertStringNotContainsString('>' . $hidden . '<', $html); }
         self::assertStringContainsString('flo-section-inner is-narrow', $html);
-        self::assertMatchesRegularExpression('/--flo-column-share: 8">\s*<div class="flo-block flo-block-rich-text[^"]*"><div class="flo-rich-text"><p>Left<\/p>/', $html);
+        self::assertMatchesRegularExpression('/--flo-column-share: 8">\s*<div class="flo-block flo-block-rich-text[^"]*"[^>]*><div class="flo-rich-text"><p>Left<\/p>/', $html);
         self::assertMatchesRegularExpression('/--flo-column-share: 4">.*Right.*Lost column/s', $html, 'a block of a column that went is in the last one');
         self::assertStringContainsString('flo-columns is-count-2 is-gap-medium is-align-top is-stacking', $html, 'toggles stored as 1/0 and defaults filled in');
         self::assertStringContainsString('<a class="flo-button" href="/contact">Contact</a>', $html);

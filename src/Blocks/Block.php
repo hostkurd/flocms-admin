@@ -29,8 +29,9 @@ use FloCMS\Admin\Support\AdminLang;
  *     }
  *
  * fields() returns the block's fields, or Tab layouts for several inspector
- * tabs; every block also gets the shared Settings tab (published, schedule,
- * width, spacing, devices, anchor, CSS class). The template is
+ * tabs; every block also gets the shared settings (published, schedule, and in
+ * the Display tab style, colours, devices, width, spacing, anchor, CSS class and
+ * its own CSS). styles() and sample() (0.33) are optional. The template is
  * views/blocks/<type>.html in the site, else the package's default.
  */
 abstract class Block
@@ -163,6 +164,28 @@ abstract class Block
         if ($text !== '' && $url === '') { return [$prefix . $link => \FloCMS\Admin\Support\AdminLang::get('blocks.needs_link')]; }
         if ($text === '' && $url !== '') { return [$prefix . $button => \FloCMS\Admin\Support\AdminLang::get('blocks.needs_button')]; }
         return [];
+    }
+
+    /**
+     * The block's own styles (0.33), name => label, besides those in
+     * config/admin.php ('block_styles') and BlockStyles::add(). The website
+     * gets the class is-style-<name>.
+     *
+     * @return array<string, string|array<string, string>>
+     */
+    public function styles(): array { return []; }
+
+    /**
+     * Content for the blocks preview (0.33): the block's fields as stored,
+     * e.g. ['heading' => 'What we do']. [] (the default): the preview says
+     * "No sample yet". Layout blocks may add 'children' => [[type, data], …].
+     *
+     * @return array<string, mixed>
+     */
+    public function sample(): array
+    {
+        // The core blocks' samples (BlockSamples) use the newest images of the media library.
+        return str_starts_with(static::class, __NAMESPACE__ . '\\Core\\') ? BlockSamples::for(static::type()) : [];
     }
 
     /** Layout blocks hold other blocks (Section, Columns). */

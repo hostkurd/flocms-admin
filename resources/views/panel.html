@@ -21,6 +21,9 @@
             @if($pagesUrl !== null)
             <a class="fa-nav-link{{ $pagesActive ? ' is-active' : '' }}" href="{{ $pagesUrl }}"@if($pagesActive) aria-current="page"@endif>{!! $pagesIcon !!}<span>{{ $t('pages.plural') }}</span></a>
             @endif
+            @if($blocksPreviewUrl !== null)
+            <a class="fa-nav-link is-sub{{ $blocksPreviewActive ? ' is-active' : '' }}" href="{{ $blocksPreviewUrl }}"@if($blocksPreviewActive) aria-current="page"@endif><span>{{ $t('blocks.preview_title') }}</span></a>
+            @endif
             @if($usersUrl !== null)
             <a class="fa-nav-link{{ $usersActive ? ' is-active' : '' }}" href="{{ $usersUrl }}"@if($usersActive) aria-current="page"@endif>{!! $usersIcon !!}<span>{{ $t('nav.users') }}</span></a>
             @endif

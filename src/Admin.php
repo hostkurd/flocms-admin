@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.32.2';
+    public const VERSION = '0.33.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -123,6 +123,10 @@ final class Admin
         // A page's preview (0.30)
         if ($controller === 'page-preview' && $config->pages()['enabled']) {
             return \FloCMS\Admin\Http\PagePreviewController::class;
+        }
+        // Pages › Blocks preview (0.33)
+        if ($controller === 'blocks-preview' && $config->pages()['enabled']) {
+            return \FloCMS\Admin\Http\BlocksPreviewController::class;
         }
         // Ctrl+K search (0.20); a site resource with that slug keeps it.
         if ($controller === 'search' && $config->search()['enabled']) {

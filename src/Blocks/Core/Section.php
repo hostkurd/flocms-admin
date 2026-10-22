@@ -31,13 +31,28 @@ final class Section extends Block
         return [
             TextInput::make('name')->label($t('section_name'))->help($t('section_name_help'))->rules('max:120')->columnSpan('full'),
             Select::make('width')->label($t('content_width'))->options(['full' => $t('width_full'), 'boxed' => $t('width_boxed'), 'narrow' => $t('width_narrow')])->default('boxed')->segmented()->columnSpan('full'),
-            Select::make('background')->label($t('background'))->options(['none' => $t('bg_none'), 'light' => $t('bg_light'), 'dark' => $t('bg_dark'), 'brand' => $t('bg_brand'), 'colour' => $t('bg_colour'), 'image' => $t('bg_image')])->default('none')->columnSpan('full'),
+            Select::make('background')->label($t('background'))->options(self::backgrounds())->default('none')->columnSpan('full'),
             ColorPicker::make('colour')->label($t('bg_colour'))->shownWhen('background', 'colour'),
             MediaPicker::make('image')->label($t('bg_image'))->shownWhen('background', 'image'),
             Select::make('overlay')->label($t('slider_overlay'))->help($t('overlay_help'))->options(['0' => '0%', '20' => '20%', '35' => '35%', '45' => '45%', '60' => '60%', '75' => '75%'])->default('45')->shownWhen('background', 'image'),
             Select::make('tone')->label($t('text_colour'))->options(['auto' => $t('tone_auto'), 'light' => $t('tone_light'), 'dark' => $t('tone_dark')])->default('auto')->segmented()->shownWhen('background', ['colour', 'image'])->columnSpan('full'),
             Select::make('padding')->label($t('padding'))->options(['none' => $t('space_none'), 'small' => $t('space_small'), 'medium' => $t('space_medium'), 'large' => $t('space_large')])->default('large')->segmented()->columnSpan('full'),
         ];
+    }
+
+    /**
+     * None, the theme's colours (0.33: BlockColours, the same palette as every
+     * block's Background), Light, Dark and Brand colour if the palette left
+     * them out (sections may use them), any colour, an image.
+     *
+     * @return array<string, string>
+     */
+    public static function backgrounds(): array
+    {
+        $options = ['none' => AdminLang::get('blocks.bg_none')];
+        foreach (\FloCMS\Admin\Blocks\BlockColours::all() as $name => $colour) { $options[$name] = $colour['label']; }
+        foreach (['light', 'dark', 'brand'] as $name) { $options[$name] ??= AdminLang::get('blocks.bg_' . $name); }
+        return $options + ['colour' => AdminLang::get('blocks.bg_colour'), 'image' => AdminLang::get('blocks.bg_image')];
     }
 
     public function title(array $fields): string

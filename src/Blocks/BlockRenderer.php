@@ -32,6 +32,10 @@ final class BlockRenderer
 
     /** @var array<string, true> the kinds printed on this page, for blocks_assets() */
     private static array $printed = [];
+    /** @var array<string, true> the blocks' own CSS and colour rules on this page (0.33), for blocks_assets() */
+    private static array $css = [];
+    /** Whether blocks_assets() was printed already (then blocks() links its own CSS). */
+    private static bool $assetsPrinted = false;
     /** @var list<\Closure(array<string, mixed>, Block): ?array<string, mixed>> */
     private static array $listeners = [];
     private static int $now = 0;
@@ -49,6 +53,8 @@ final class BlockRenderer
     public static function reset(?int $now = null): void
     {
         self::$printed = [];
+        self::$css = [];
+        self::$assetsPrinted = false;
         self::$listeners = [];
         self::$now = $now ?? 0;
     }
@@ -96,22 +102,37 @@ final class BlockRenderer
             $cached = json_decode((string) @file_get_contents($cache), true);
             if (is_array($cached) && (int) ($cached['until'] ?? 0) > self::now() && is_string($cached['html'] ?? null)) {
                 foreach ((array) ($cached['types'] ?? []) as $type) { self::$printed[(string) $type] = true; }
-                return $cached['html'];
+                return self::withCss($cached['html'], is_string($cached['css'] ?? null) ? $cached['css'] : '');
             }
         }
         $types = [];
         $cacheable = true;
-        $html = self::list($nodes, $lang, 0, $types, $cacheable);
+        $css = [];
+        $html = self::list($nodes, $lang, 0, $types, $cacheable, $css);
         foreach (array_keys($types) as $type) { self::$printed[$type] = true; }
+        $css = implode('', array_keys($css));
         if ($cache !== null && $cacheable) {
             // At most a few hours, so a changed image or alt text in the library shows the same day.
             $until = min(self::nextChange($nodes) ?? PHP_INT_MAX, self::now() + self::CACHE_SECONDS);
-            @file_put_contents($cache, json_encode(['until' => $until, 'types' => array_keys($types), 'html' => $html], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+            @file_put_contents($cache, json_encode(['until' => $until, 'types' => array_keys($types), 'html' => $html, 'css' => $css], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
             // Now and then, files of old versions of pages go.
             if (random_int(1, 50) === 1) {
                 foreach (glob(dirname($cache) . '/*.json') ?: [] as $old) { if ((int) @filemtime($old) < time() - self::CACHE_SECONDS * 2) { @unlink($old); } }
+                BlockCss::clean();
             }
         }
+        return self::withCss($html, $css);
+    }
+
+    /**
+     * The blocks' own CSS (0.33) goes to blocks_assets(); blocks printed after it
+     * (a layout that prints the assets first) link theirs themselves.
+     */
+    private static function withCss(string $html, string $css): string
+    {
+        if ($css === '') { return $html; }
+        if (self::$assetsPrinted) { return BlockCss::tag($css) . $html; }
+        self::$css[$css] = true;
         return $html;
     }
 
@@ -132,7 +153,7 @@ final class BlockRenderer
             $extra = $block !== null ? $block->data($fields) : [];
             array_walk_recursive($extra, static function (mixed &$item): void { if (is_object($item) && method_exists($item, 'toArray')) { $item = $item->toArray(); } });
             $entry = ['id' => (string) ($node['id'] ?? ''), 'type' => (string) ($node['type'] ?? ''), 'fields' => $extra + $fields,
-                'settings' => self::publicSettings($node['settings'] ?? null)];
+                'settings' => self::publicSettings($node['settings'] ?? null, $block)];
             if ((int) ($node['column'] ?? 0) > 0) { $entry['column'] = (int) $node['column']; }
             if (is_array($node['children'] ?? null)) { $entry['children'] = self::data($node['children'], $lang); }
             $out[] = $entry;
@@ -173,20 +194,20 @@ final class BlockRenderer
         return $next;
     }
 
-    /** @param array<string, true> $types */
-    private static function list(array $nodes, string $lang, int $depth, array &$types, bool &$cacheable): string
+    /** @param array<string, true> $types @param array<string, true> $css */
+    private static function list(array $nodes, string $lang, int $depth, array &$types, bool &$cacheable, array &$css): string
     {
         if ($depth >= self::MAX_DEPTH) { return ''; }
         $html = '';
         foreach ($nodes as $node) {
             if (!is_array($node) || !self::visible($node)) { continue; }
-            $html .= self::block($node, $lang, $depth, $types, $cacheable);
+            $html .= self::block($node, $lang, $depth, $types, $cacheable, $css);
         }
         return $html;
     }
 
-    /** @param array<string, true> $types */
-    private static function block(array $node, string $lang, int $depth, array &$types, bool &$cacheable): string
+    /** @param array<string, true> $types @param array<string, true> $css */
+    private static function block(array $node, string $lang, int $depth, array &$types, bool &$cacheable, array &$css): string
     {
         $type = (string) ($node['type'] ?? '');
         $block = BlockRegistry::find($type);
@@ -199,7 +220,7 @@ final class BlockRenderer
         $fields = self::withDefaults($block, $fields);
         $vars = $block->data($fields) + $fields;
         $info = [
-            'id' => (string) ($node['id'] ?? ''), 'type' => $type, 'settings' => self::publicSettings($settings), 'lang' => $lang,
+            'id' => (string) ($node['id'] ?? ''), 'type' => $type, 'settings' => self::publicSettings($settings, $block), 'lang' => $lang,
             'anchor' => BlockSettings::anchor((string) ($settings['anchor'] ?? '')),
         ];
         if ($block instanceof Columns) {
@@ -207,11 +228,11 @@ final class BlockRenderer
             $columns = [];
             foreach ($shares as $index => $share) {
                 $in = array_values(array_filter($children, static fn ($kid): bool => is_array($kid) && min((int) ($kid['column'] ?? 0), count($shares) - 1) === $index));
-                $columns[] = ['share' => $share, 'html' => self::list($in, $lang, $depth + 1, $types, $cacheable)];
+                $columns[] = ['share' => $share, 'html' => self::list($in, $lang, $depth + 1, $types, $cacheable, $css)];
             }
             $vars['columns'] = $columns;
         } elseif ($block->holdsBlocks()) {
-            $vars['content'] = self::list($children, $lang, $depth + 1, $types, $cacheable);
+            $vars['content'] = self::list($children, $lang, $depth + 1, $types, $cacheable, $css);
         }
         $vars['block'] = (object) $info;
         foreach (self::$listeners as $listener) {
@@ -220,17 +241,37 @@ final class BlockRenderer
         }
         $inner = $block->render($vars) ?? self::template($type, $vars);
         if (trim($inner) === '') { return ''; }
-        return '<div' . self::wrapper($block, $type, $settings, $info['anchor']) . '>' . $inner . '</div>' . "\n";
+        // Its own CSS and its theme colour's rule (0.33), once per page.
+        $own = BlockCss::scope(is_string($settings['_css'] ?? null) ? $settings['_css'] : '', $info['id']);
+        if ($own !== '') { $css[$own] = true; }
+        $colour = $block instanceof Core\Section ? (string) ($fields['background'] ?? '') : (string) ($settings['_bg'] ?? '');
+        if ($colour !== '' && ($rule = BlockCss::colourRule($colour)) !== '') { $css[$rule] = true; }
+        return '<div' . self::wrapper($block, $type, $settings, $info['anchor'], $info['id']) . '>' . $inner . '</div>' . "\n";
     }
 
     /** @var array<string, array<string, mixed>> */
     private static array $defaults = [];
 
-    /** A block's settings for the website: without the editors' own (_label, _note). */
-    private static function publicSettings(mixed $settings): array
+    /**
+     * A block's settings for the website: without the editors' own (_label,
+     * _note) and the CSS; style and colours (0.33) without their "_".
+     */
+    private static function publicSettings(mixed $settings, ?Block $block = null): array
     {
         if (!is_array($settings)) { return []; }
-        return array_filter($settings, static fn (mixed $key): bool => !is_string($key) || !str_starts_with($key, '_'), ARRAY_FILTER_USE_KEY);
+        $out = [];
+        foreach ($settings as $key => $value) {
+            if (!is_string($key) || !str_starts_with($key, '_')) { $out[$key] = $value; }
+        }
+        // Only a style and colour the theme still has, as the wrapper prints them.
+        $style = (string) ($settings['_style'] ?? '');
+        if ($block !== null && $style !== '' && array_key_exists($style, BlockStyles::for($block))) { $out['style'] = $style; }
+        $bg = (string) ($settings['_bg'] ?? '');
+        if ($bg !== '' && !$block instanceof Core\Section && ($colour = BlockColours::find($bg)) !== null) {
+            $out['bg'] = $bg;
+            $out['text'] = in_array($settings['_text'] ?? '', ['light', 'dark'], true) ? (string) $settings['_text'] : $colour['text'];
+        }
+        return $out;
     }
 
     /**
@@ -292,20 +333,36 @@ final class BlockRenderer
         return $url;
     }
 
-    /** The wrapper's attributes: its classes from the shared settings, and the anchor. */
-    private static function wrapper(Block $block, string $type, array $settings, string $anchor): string
+    /**
+     * The wrapper's attributes: its classes from the shared settings, its kind
+     * and id for scripts and the block's CSS (0.33), and the anchor.
+     */
+    private static function wrapper(Block $block, string $type, array $settings, string $anchor, string $id = ''): string
     {
         $default = BlockSettings::defaultSpace($block);
-        $space = static fn (string $key): string => in_array($settings[$key] ?? $default, ['none', 'small', 'medium', 'large'], true) ? (string) ($settings[$key] ?? $default) : $default;
+        $size = static fn (mixed $value): ?string => is_string($value) && in_array($value, BlockSettings::SIZES, true) ? $value : null;
         $classes = ['flo-block', 'flo-block-' . str_replace('_', '-', $type)];
         if (!$block instanceof Core\Section) { $classes[] = ($settings['width'] ?? $block->defaultWidth()) === 'full' ? 'is-full' : 'is-boxed'; }
-        $classes[] = 'flo-space-above-' . $space('space_above');
-        $classes[] = 'flo-space-below-' . $space('space_below');
+        foreach (['above', 'below'] as $side) {
+            $classes[] = 'flo-space-' . $side . '-' . ($size($settings['space_' . $side] ?? null) ?? $default);
+            // Phones (0.33): only when it differs from desktop.
+            if (($phone = $size($settings['space_' . $side . '_phone'] ?? null)) !== null) { $classes[] = 'flo-space-' . $side . '-phone-' . $phone; }
+        }
         $devices = (string) ($settings['devices'] ?? 'all');
         if ($devices === 'desktop' || $devices === 'phone') { $classes[] = 'flo-only-' . $devices; }
+        // A style the theme defines, and a colour of its palette (0.33).
+        $style = (string) ($settings['_style'] ?? '');
+        if ($style !== '' && array_key_exists($style, BlockStyles::for($block))) { $classes[] = 'is-style-' . $style; }
+        $bg = (string) ($settings['_bg'] ?? '');
+        if (!$block instanceof Core\Section && $bg !== '' && ($colour = BlockColours::find($bg)) !== null) {
+            $text = in_array($settings['_text'] ?? '', ['light', 'dark'], true) ? (string) $settings['_text'] : $colour['text'];
+            array_push($classes, 'has-bg', 'has-bg-' . $bg, 'has-text-' . $text);
+        }
         $extra = BlockSettings::classes((string) ($settings['class'] ?? ''));
         if ($extra !== '') { $classes[] = $extra; }
-        return ' class="' . htmlspecialchars(implode(' ', $classes), ENT_QUOTES, 'UTF-8') . '"' . ($anchor !== '' ? ' id="' . htmlspecialchars($anchor, ENT_QUOTES, 'UTF-8') . '"' : '');
+        return ' class="' . htmlspecialchars(implode(' ', $classes), ENT_QUOTES, 'UTF-8') . '" data-block="' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '"'
+            . (preg_match('/^b[a-z0-9]{1,24}$/D', $id) === 1 ? ' data-block-id="' . $id . '"' : '')
+            . ($anchor !== '' ? ' id="' . htmlspecialchars($anchor, ENT_QUOTES, 'UTF-8') . '"' : '');
     }
 
     /** A slider outside the blocks: a Slider field's slides and the slider block's settings. */
@@ -317,7 +374,7 @@ final class BlockRenderer
         if ($vars['slides'] === []) { return ''; }
         $vars['block'] = (object) ['id' => 's' . substr(hash('sha256', json_encode($slides) . json_encode($options)), 0, 8), 'type' => 'slider', 'settings' => [], 'lang' => self::language(), 'anchor' => ''];
         self::$printed['slider'] = true;
-        return '<div class="flo-block flo-block-slider is-full">' . self::template('slider', $vars) . '</div>';
+        return '<div class="flo-block flo-block-slider is-full" data-block="slider">' . self::template('slider', $vars) . '</div>';
     }
 
     /** The site's template for a kind, else the package's. */
@@ -383,7 +440,9 @@ final class BlockRenderer
         };
         $walk($nodes);
         ksort($templates);
-        $key = hash('sha256', $lang . '|' . Admin::VERSION . '|' . json_encode($nodes) . '|' . json_encode($templates));
+        // The theme's styles and colours (0.33) too, so a change in config/admin.php shows at once.
+        $looks = json_encode([Admin::config()->blockStyles(), Admin::config()->blockColours()]);
+        $key = hash('sha256', $lang . '|' . Admin::VERSION . '|' . json_encode($nodes) . '|' . json_encode($templates) . '|' . $looks);
         return $directory . '/' . substr($key, 0, 40) . '.json';
     }
 
@@ -404,6 +463,7 @@ final class BlockRenderer
      */
     public static function assets(): string
     {
+        self::$assetsPrinted = true;
         if (self::$printed === []) { return ''; }
         $names = ['blocks'];
         foreach (array_keys(self::$printed) as $type) {
@@ -425,6 +485,9 @@ final class BlockRenderer
                 }
             }
         }
+        // Last, so the blocks' own CSS and the theme's colours (0.33) win over the base styles.
+        $html .= BlockCss::tag(implode('', array_keys(self::$css)));
+        self::$css = [];
         return $html;
     }
 }

@@ -1,3 +1,17 @@
+# Upgrading to Admin 0.33.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.33.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.
+
+- **A copied `blocks.css`**: if `php flo admin:blocks` copied the styles to `public/assets/flo-blocks/`, add the new rules from `vendor/hostkurd/flocms-admin/resources/site/blocks.css` (`flo-space-*-xlarge`, the phone spacing in the 767 px media query, and the `has-bg` / `has-text` rules), or replace the file with `php flo admin:blocks --force=blocks.css` if you didn't change it. `admin:doctor` warns until you do. Without them Extra large, phone spacing and backgrounds have no effect.
+- **A copied `section.html`**: the package's Section template adds `has-bg-<name>` for the theme's colours; copy that line if you use `block_colours` with your own names.
+- **Field names of your own blocks**: the shared settings now include `space_above_phone` and `space_below_phone` (the others added start with `_`). A block of yours with a field of either name must rename it.
+- **Permissions**: give `blocks.custom_css` only to people you trust with the site's design (Super admin has it). `settings.blocks_preview` opens Pages › Blocks preview; the Admin role has it through `settings.*`.
+- **Styles and colours** are optional: add `'block_styles'` and `'block_colours'` to `config/admin.php` when you want them (see the Builder guide). Without `block_colours` editors get the four colours of `blocks.css`.
+- **A strict Content-Security-Policy** on the website: the blocks' CSS is a file under `/flo-admin/asset/`, so `style-src 'self'` covers it. Only when `storage/cache/blocks` can't be written is it a `<style>` tag; then set `'block_style_nonce'`. The blocks preview shows the site in a frame: a site that sends `frame-ancestors 'none'` or `X-Frame-Options: DENY` needs `'self'` / `SAMEORIGIN` for `/<lang>/flo-preview/` pages, or use **Open in a new tab**.
+- **Translations**: the new Arabic and Kurdish words (Display tab groups, styles, colours, phone spacing, custom CSS, the blocks preview and the two permissions) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.32.2
 
 Update with `composer require "hostkurd/flocms-admin:^0.32.2" -W` and reload open Admin pages. No migration, nothing else to do: this release changes one style in the editor.

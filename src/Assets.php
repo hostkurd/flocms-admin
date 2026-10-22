@@ -29,6 +29,12 @@ final class Assets
         return preg_replace('~rich-text-v[^/]+\.css$~', 'blocks-' . $name . '-v' . Admin::VERSION . '.' . $kind, self::richTextUrl()) ?? '';
     }
 
+    /** A page's block CSS (0.33): /flo-admin/asset/block-styles-<hash>.css (BlockCss). */
+    public static function blockStylesUrl(string $hash): string
+    {
+        return preg_replace('~rich-text-v[^/]+\.css$~', 'block-styles-' . $hash . '.css', self::richTextUrl()) ?? '';
+    }
+
     /** The rich text stylesheet for the website (RichText::stylesheet() prints its tag). */
     public static function richTextUrl(): string
     {

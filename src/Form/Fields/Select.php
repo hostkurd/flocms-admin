@@ -7,6 +7,7 @@ use Closure;
 use FloCMS\Admin\Form\Field;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Support\Str;
+use FloCMS\Admin\Support\Icons;
 
 class Select extends Field
 {
@@ -33,7 +34,7 @@ class Select extends Field
     }
     /** @var array<int|string, string>|Closure */
     protected array|Closure $options = [];
-    /** select | segmented | pictures | positions (0.29) */
+    /** select | segmented | pictures | positions (0.29) | swatches (0.33) */
     private string $display = 'select';
     /** @var array<string, string> option value => inline SVG (pictures) */
     private array $pictures = [];
@@ -63,6 +64,36 @@ class Select extends Field
             'bottom-start' => 'select.bottom_start', 'bottom-center' => 'select.bottom_center', 'bottom-end' => 'select.bottom_end'];
         $this->resolved = null;
         return $this;
+    }
+
+    /** @var array<string, string> option value => colour (swatches) */
+    private array $swatches = [];
+    private ?string $missing = null;
+
+    /**
+     * Show the options as colour swatches (0.33): value => "#rrggbb"; an option
+     * without a colour is "none". The label is the swatch's name, read out and
+     * shown on hover.
+     *
+     * @param array<int|string, string> $colours
+     */
+    public function swatches(array $colours): static
+    {
+        $this->display = 'swatches';
+        foreach ($colours as $value => $colour) { $this->swatches[(string) $value] = $colour; }
+        return $this;
+    }
+
+    /**
+     * A notice when the value is no longer one of the options (0.33), e.g. a
+     * block style a developer removed: ":value" is replaced with the value.
+     */
+    public function whenMissing(string $message): static { $this->missing = $message; return $this; }
+
+    private function missingNotice(string $value): string
+    {
+        if ($this->missing === null || $value === '' || array_key_exists($value, $this->getOptions())) { return ''; }
+        return '<p class="fa-choice-gone" role="status">' . Icons::svg('alert-triangle', 'fa-icon') . '<span>' . Str::e(str_replace(':value', $value, AdminLang::label($this->missing))) . '</span></p>';
     }
 
     public function getDisplay(): string { return $this->display; }
@@ -106,7 +137,7 @@ class Select extends Field
 
     public function renderControl(string $id, string $name, string $value, array $attributes = []): string
     {
-        if ($this->display !== 'select') { return $this->renderChoices($id, $name, $value, $attributes); }
+        if ($this->display !== 'select') { return $this->renderChoices($id, $name, $value, $attributes) . $this->missingNotice($value); }
         $attrs = $this->baseAttributes($id, $name, $attributes);
         unset($attrs['placeholder']);
         $attrs['class'] = 'fa-input fa-select';
@@ -118,7 +149,7 @@ class Select extends Field
             $html .= '<option value="' . Str::e($optionValue) . '"' . $selected . '>' . Str::e($label) . '</option>';
         }
 
-        return $html . '</select>';
+        return $html . '</select>' . $this->missingNotice($value);
     }
 
     /** Radio buttons (they work without JavaScript): a row, pictures or a 3 × 3 grid. */
@@ -133,10 +164,14 @@ class Select extends Field
         foreach ($this->getOptions() as $optionValue => $label) {
             $optionId = $id . '-' . $index++;
             $checked = (string) $optionValue === $value;
-            $html .= '<label class="fa-choice' . ($checked ? ' is-checked' : '') . '" for="' . Str::e($optionId) . '"' . ($this->display === 'positions' ? ' title="' . Str::e($label) . '"' : '') . '>'
+            $html .= '<label class="fa-choice' . ($checked ? ' is-checked' : '') . '" for="' . Str::e($optionId) . '"' . (in_array($this->display, ['positions', 'swatches'], true) ? ' title="' . Str::e($label) . '"' : '') . '>'
                 . '<input type="radio" id="' . Str::e($optionId) . '" name="' . Str::e($name) . '" value="' . Str::e((string) $optionValue) . '"' . ($checked ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>';
             if ($this->display === 'pictures') {
                 $html .= '<span class="fa-choice-picture" aria-hidden="true">' . ($this->pictures[(string) $optionValue] ?? '') . '</span><span class="fa-choice-label">' . Str::e($label) . '</span>';
+            } elseif ($this->display === 'swatches') {
+                // The colour is set by the panel's script (no inline styles under a strict CSP); the name is read out.
+                $colour = $this->swatches[(string) $optionValue] ?? '';
+                $html .= '<span class="fa-choice-swatch' . ($colour === '' ? ' is-none' : '') . '" aria-hidden="true"' . ($colour !== '' ? ' data-swatch="' . Str::e($colour) . '"' : '') . '></span><span class="fa-sr">' . Str::e($label) . '</span>';
             } elseif ($this->display === 'positions') {
                 $html .= '<span class="fa-sr">' . Str::e($label) . '</span>';
             } else {

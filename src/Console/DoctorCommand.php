@@ -76,6 +76,7 @@ final class DoctorCommand extends Command
 
         $this->checkMedia($config);
         $this->checkBlocks();
+        $this->checkBlockLooks();
         $this->checkLayout();
         if ($config->loginThemeEnabled()) {
             $login = $project->path('views/users/admin_login.html');
@@ -586,6 +587,19 @@ final class DoctorCommand extends Command
             catch (\Throwable $e) { $this->bad('Block ' . $class . ': ' . $e->getMessage()); continue; }
         }
         $this->ok(count($types) . ' block' . (count($types) === 1 ? '' : 's') . ' of the site\'s own');
+    }
+
+    /**
+     * The blocks' styles and colours (0.33): entries that can't be used, and a copied
+     * blocks.css (php flo admin:blocks) without the rules 0.33 added.
+     */
+    private function checkBlockLooks(): void
+    {
+        foreach ([...\FloCMS\Admin\Blocks\BlockStyles::problems(), ...\FloCMS\Admin\Blocks\BlockColours::problems()] as $problem) { $this->caution($problem); }
+        $copied = Admin::root() . '/public/assets/flo-blocks/blocks.css';
+        if (is_file($copied) && !str_contains((string) file_get_contents($copied), 'flo-space-above-xlarge')) {
+            $this->caution('public/assets/flo-blocks/blocks.css is from before 0.33: Extra large and phone spacing and the background colours have no styles. Add the new rules from vendor/hostkurd/flocms-admin/resources/site/blocks.css (or php flo admin:blocks --force blocks.css)');
+        }
     }
 
     private function checkMedia(\FloCMS\Admin\AdminConfig $config): void

@@ -33,6 +33,10 @@ final class AssetController extends Controller
             // The blocks' own styles and scripts (0.30), until the site copies them (php flo admin:blocks).
             $file = $root . '/resources/site/' . $block[1] . '.' . $block[2];
             $type = $block[2] === 'js' ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8';
+        } elseif (preg_match('/^block-styles-([a-f0-9]{24})\.css$/D', $name, $styles) === 1) {
+            // The blocks' own CSS and theme colours on a page (0.33): written by BlockCss, named by its content.
+            $file = \FloCMS\Admin\Blocks\BlockCss::path($styles[1]) ?? '';
+            $type = 'text/css; charset=utf-8';
         } elseif (in_array($name, self::FONTS, true)) {
             // Fonts sit next to the stylesheet's URL, so its url() references stay relative.
             $file = $root . '/resources/fonts/' . $name;

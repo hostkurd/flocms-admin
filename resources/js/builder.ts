@@ -12,6 +12,7 @@ import { applyEditing, initializeTranslations } from './translations';
 import { initializeMedia } from './media';
 import { initializeForms } from './forms';
 import { initializeEditors } from './editors';
+import { initializeCodeEditors } from './code-editor';
 import { initialize as initializeRepeaters } from './repeater';
 
 type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -253,6 +254,8 @@ function prepare(builder: HTMLElement, pane: HTMLElement): void {
   initializeRepeaters(pane);
   initializeMedia(pane);
   initializeEditors(pane);
+  // A block's own CSS (0.33) is a code editor.
+  initializeCodeEditors(pane);
   // The rich editors start after their script loads; by then the edit dialog may have taken
   // the block's fields out of its pane, so they are started on the fields too (0.32.1).
   const fields = pane.querySelector<HTMLElement>(':scope > [data-builder-fields]');
@@ -339,6 +342,8 @@ function snapshot(list: HTMLElement, node: HTMLElement): Snapshot | null {
     if (control.parentElement === pane) return;
     const s = suffix(control.name);
     if (s === null) return;
+    // A block's CSS (0.33) is copied only by people who may write it: its signed copy belongs to this block.
+    if (s.endsWith('[_css_signed]') || (s.endsWith('[_css]') && control.type === 'hidden')) return;
     const value: Value = { s, t: control.type, v: control.value };
     if (control instanceof HTMLInputElement && (control.type === 'radio' || control.type === 'checkbox')) value.c = control.checked;
     if (control instanceof HTMLSelectElement) value.o = [...control.options].map(option => option.selected);

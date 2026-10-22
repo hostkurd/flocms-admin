@@ -6,7 +6,7 @@
  * - a[data-admin-dialog-url] loads that page's dialog content (X-Flo-Admin: fragment)
  *   into #fa-changes-dialog; on any failure it follows the link instead.
  * - [data-admin-dialog-close] closes its dialog; so does a click on the backdrop.
- * - select[data-admin-autosubmit] submits its form when it changes.
+ * - select[data-admin-autosubmit] (and a checkbox, 0.33) submits its form when it changes.
  * - [data-admin-dialog-min-height] (the panel, or one action's dialog) sets
  *   --fa-dialog-body-min-height (0.19.1). Set from script: the strict CSP allows
  *   no style attributes in the markup.
@@ -96,7 +96,9 @@ document.addEventListener('close', event => {
 
 document.addEventListener('change', event => {
   const select = event.target;
-  if (select instanceof HTMLSelectElement && select.hasAttribute('data-admin-autosubmit')) select.form?.requestSubmit();
+  // A select, or (0.33) a checkbox: the blocks preview's "Show styles and colours".
+  const box = select instanceof HTMLInputElement && select.type === 'checkbox';
+  if ((select instanceof HTMLSelectElement || box) && (select as HTMLElement).hasAttribute('data-admin-autosubmit')) (select as HTMLInputElement).form?.requestSubmit();
 });
 
 const LENGTH = /^\d{1,4}(?:\.\d{1,3})?(?:px|rem|em|vh|dvh|svh|lvh)$/;

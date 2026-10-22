@@ -373,6 +373,30 @@ final class AdminConfig
         return array_values(array_filter(is_array($value) ? $value : [], static fn ($class): bool => is_string($class) && is_a($class, \FloCMS\Admin\Blocks\Block::class, true)));
     }
 
+    /** 'block_styles' as written (0.33): block type or '*' => [name => label]; BlockStyles reads it. */
+    public function blockStyles(): mixed
+    {
+        return $this->values['block_styles'] ?? [];
+    }
+
+    /** 'block_colours' as written (0.33), or null without it (the four colours of blocks.css); BlockColours reads it. */
+    public function blockColours(): mixed
+    {
+        return $this->values['block_colours'] ?? null;
+    }
+
+    /**
+     * 'block_style_nonce' (0.33): a function returning the page's CSP nonce, for
+     * the <style> tag the blocks' own CSS falls back to when it can't be a file.
+     */
+    public function blockStyleNonce(): ?string
+    {
+        $value = $this->values['block_style_nonce'] ?? null;
+        if (!is_callable($value)) { return null; }
+        $nonce = $value();
+        return is_string($nonce) && preg_match('/^[A-Za-z0-9+\/=_-]{8,200}$/D', $nonce) === 1 ? $nonce : null;
+    }
+
     public function import(): array
     {
         $value = $this->values['import'] ?? true;

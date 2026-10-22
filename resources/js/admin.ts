@@ -20,6 +20,7 @@ import { initialize as initializeRepeaters } from './repeater';
 import { initializeBuilders } from './builder';
 import { initializeCodeEditors } from './code-editor';
 import { initializePages } from './pages';
+import { initializeBlocksPreview } from './blocks-preview';
 import './popovers';
 import './dialogs';
 import './search';
@@ -66,6 +67,7 @@ function initialize(): void {
   initializeBuilders(root);
   initializeCodeEditors(root);
   initializePages(root);
+  initializeBlocksPreview(root);
   initializeEditors(root);
   initializeSelection(root);
   initializeRecord(root);

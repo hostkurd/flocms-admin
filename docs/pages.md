@@ -123,6 +123,8 @@ A site with a `sitemap.xml` file of its own in `public/` keeps it, since the web
 - `content.site-pages.view`, `.create`, `.update`, `.delete`: as for any resource.
 - `pages.publish`: publish, schedule, unpublish, Set as home page, and change or delete pages visitors see.
 - `blocks.html`: HTML pages and HTML blocks.
+- `blocks.custom_css` (0.33): a block's own CSS, in its Display tab ([guide](builder.md#custom-css)).
+- `settings.blocks_preview` (0.33): **Pages › Blocks preview**, every kind of block in its styles and colours with the website's stylesheet ([guide](builder.md#styling-the-blocks)); the Admin role has it through `settings.*`.
 
 ## In code
 

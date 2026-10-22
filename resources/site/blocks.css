@@ -12,18 +12,46 @@
   --flo-light: #f4f6f8;
   --flo-dark: #101828;
   --flo-muted: #667085;
+  /* 0.33, optional: the spacing sizes --flo-space-sm, -md, -lg, -xl (by default a third, half, all and
+     one and a half of --flo-block-gap) and --flo-bg-padding / --flo-bg-padding-phone (40px / 24px),
+     the space inside a block with a background. Set them anywhere, as --flo-block-gap. */
 }
 .flo-block { box-sizing: border-box; }
 .flo-block *, .flo-block *::before, .flo-block *::after { box-sizing: inherit; }
 .flo-block.is-boxed { max-width: calc(var(--flo-container) + 2 * var(--flo-gutter)); margin-inline: auto; padding-inline: var(--flo-gutter); }
 .flo-block.is-full { width: 100%; }
 .flo-column > .flo-block.is-boxed, .flo-section-inner > .flo-block.is-boxed { max-width: none; padding-inline: 0; }
-.flo-space-above-none { margin-block-start: 0; } .flo-space-above-small { margin-block-start: calc(var(--flo-block-gap) / 3); }
-.flo-space-above-medium { margin-block-start: calc(var(--flo-block-gap) / 2); } .flo-space-above-large { margin-block-start: var(--flo-block-gap); }
-.flo-space-below-none { margin-block-end: 0; } .flo-space-below-small { margin-block-end: calc(var(--flo-block-gap) / 3); }
-.flo-space-below-medium { margin-block-end: calc(var(--flo-block-gap) / 2); } .flo-space-below-large { margin-block-end: var(--flo-block-gap); }
-@media (max-width: 767px) { .flo-only-desktop { display: none !important; } }
+.flo-space-above-none { margin-block-start: 0; } .flo-space-above-small { margin-block-start: var(--flo-space-sm, calc(var(--flo-block-gap) / 3)); }
+.flo-space-above-medium { margin-block-start: var(--flo-space-md, calc(var(--flo-block-gap) / 2)); } .flo-space-above-large { margin-block-start: var(--flo-space-lg, var(--flo-block-gap)); }
+.flo-space-above-xlarge { margin-block-start: var(--flo-space-xl, calc(var(--flo-block-gap) * 1.5)); }
+.flo-space-below-none { margin-block-end: 0; } .flo-space-below-small { margin-block-end: var(--flo-space-sm, calc(var(--flo-block-gap) / 3)); }
+.flo-space-below-medium { margin-block-end: var(--flo-space-md, calc(var(--flo-block-gap) / 2)); } .flo-space-below-large { margin-block-end: var(--flo-space-lg, var(--flo-block-gap)); }
+.flo-space-below-xlarge { margin-block-end: var(--flo-space-xl, calc(var(--flo-block-gap) * 1.5)); }
+@media (max-width: 767px) {
+  .flo-only-desktop { display: none !important; }
+  /* Phones (0.33): the space set for them, when it differs from desktop. */
+  .flo-space-above-phone-none { margin-block-start: 0; } .flo-space-above-phone-small { margin-block-start: var(--flo-space-sm, calc(var(--flo-block-gap) / 3)); }
+  .flo-space-above-phone-medium { margin-block-start: var(--flo-space-md, calc(var(--flo-block-gap) / 2)); } .flo-space-above-phone-large { margin-block-start: var(--flo-space-lg, var(--flo-block-gap)); }
+  .flo-space-above-phone-xlarge { margin-block-start: var(--flo-space-xl, calc(var(--flo-block-gap) * 1.5)); }
+  .flo-space-below-phone-none { margin-block-end: 0; } .flo-space-below-phone-small { margin-block-end: var(--flo-space-sm, calc(var(--flo-block-gap) / 3)); }
+  .flo-space-below-phone-medium { margin-block-end: var(--flo-space-md, calc(var(--flo-block-gap) / 2)); } .flo-space-below-phone-large { margin-block-end: var(--flo-space-lg, var(--flo-block-gap)); }
+  .flo-space-below-phone-xlarge { margin-block-end: var(--flo-space-xl, calc(var(--flo-block-gap) * 1.5)); }
+}
 @media (min-width: 768px) { .flo-only-phone { display: none !important; } }
+
+/* Background colours (0.33): the four of the default palette; a site's own colours ('block_colours') get their rules from the panel. */
+.flo-block.has-bg { padding-block: var(--flo-bg-padding, 40px); }
+.flo-block.has-bg.is-boxed { border-radius: var(--flo-radius); }
+.flo-column > .flo-block.has-bg, .flo-section-inner > .flo-block.has-bg { padding-inline: var(--flo-bg-padding, 40px); }
+@media (max-width: 767px) {
+  .flo-block.has-bg { padding-block: var(--flo-bg-padding-phone, 24px); }
+  .flo-column > .flo-block.has-bg, .flo-section-inner > .flo-block.has-bg { padding-inline: var(--flo-bg-padding-phone, 24px); }
+}
+.has-bg-brand { background-color: var(--flo-brand); color: var(--flo-brand-text); }
+.has-bg-light { background-color: var(--flo-light); color: var(--flo-dark); }
+.has-bg-dark { background-color: var(--flo-dark); color: #fff; }
+.has-bg-muted { background-color: var(--flo-muted); color: #fff; }
+.flo-block.has-text-light { color: #fff; } .flo-block.has-text-dark { color: var(--flo-dark); }
 
 .flo-heading { margin: 0 0 .5em; line-height: 1.2; }
 .flo-heading.is-align-center { text-align: center; } .flo-heading.is-align-end { text-align: end; }

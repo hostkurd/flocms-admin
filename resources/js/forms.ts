@@ -50,6 +50,11 @@ export function initializeForms(root: HTMLElement): void {
     activate(group, invalid?.id || (tabs.some(tab => tab.dataset.adminTab === previous) ? previous! : tabs[0].dataset.adminTab!));
   });
   root.querySelectorAll<HTMLButtonElement>('button[name="_refresh"]').forEach(button => { button.hidden = true; });
+  // Colour swatches (0.33): the colour is set here, as a strict CSP allows no inline styles.
+  root.querySelectorAll<HTMLElement>('[data-swatch]').forEach(swatch => {
+    const colour = swatch.dataset.swatch || '';
+    if (/^#(?:[0-9a-f]{3}){1,2}$/i.test(colour)) swatch.style.backgroundColor = colour;
+  });
 }
 document.addEventListener('click', event => {
   const tab = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-admin-tab]') : null;
