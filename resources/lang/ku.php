@@ -2150,4 +2150,11 @@ return [
     'roles.group.panel_pages_help' => 'پەڕە تایبەتەکانی ماڵپەڕ لە پانێڵدا: ڕاپۆرت، ئامراز و پەڕەکانی یارمەتی. پەڕە نیشان نەکراوەکان لە لیستی لاتەنیشت و گەڕاندا دەرناکەون.',
     'roles.all_panel_pages' => 'هەموو پەڕەکانی پانێڵ',
     'roles.all_panel_pages_help' => 'هەموو پەڕەکانی panel.*، لەوانەش ئەوانەی دواتر زیاد دەکرێن.',
+    'pages_api.unavailable_title' => 'ئەم بەشەی پەڕەکە پیشان نەدرا.',
+    'pages_api.problem_table' => 'خشتەی ":table" لە بنکەی زانیارییەکاندا نەدۆزرایەوە. :method لە :file بپشکنە.',
+    'pages_api.problem_column' => 'ستوونی ":column" نەدۆزرایەوە. :method لە :file بپشکنە.',
+    'pages_api.problem_database' => 'بنکەی زانیارییەکان پەیوەست نییە. ڕێکخستنەکانی بنکەی زانیاری لە ‎.env بپشکنە.',
+    'pages_api.problem_query' => 'داواکاری بنکەی زانیارییەکان سەرکەوتوو نەبوو. :method لە :file بپشکنە.',
+    'pages_api.problem_setup' => 'هەڵە لە ڕێکخستنی پەڕەکەدا (:method لە :file): :message',
+    'pages_api.problem_other' => 'هەڵەیەک لە :method ی :file. وردەکارییەکان لە تۆماری ماڵپەڕەکەدان.',
 ];

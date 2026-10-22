@@ -254,6 +254,8 @@ echo \FloCMS\Admin\Admin::homePath();');
         self::assertSame(200, $broken['status'], $broken['body']);
         self::assertStringContainsString('Still here', $broken['body']);
         self::assertSame(3, substr_count($broken['body'], 'could not be shown'));
+        self::assertStringContainsString('An error in table() of admin/Pages/BrokenParts.php', $broken['body']);
+        self::assertStringContainsString('An error in filters() of admin/Pages/BrokenParts.php', $broken['body']);
         self::assertStringNotContainsString('This page has nothing to show yet', $broken['body']);
         self::assertStringNotContainsString('table broke', $broken['body'], 'the error stays in the log');
         // With APP_DEBUG the error shows inside the part, and the page still opens.
@@ -262,6 +264,15 @@ echo \FloCMS\Admin\Admin::homePath();');
         self::assertStringContainsString('RuntimeException: table broke', $debug['body']);
         self::assertStringContainsString('RuntimeException: filters broke', $debug['body']);
         self::assertStringContainsString('Still here', $debug['body']);
+    }
+
+    public function testAMissingTableIsNamedOnThePage(): void
+    {
+        $response = self::get('/en/admin/missing-table', ['session' => self::SUPER, 'admin_config' => ['admin_pages' => [\FloCMS\Admin\Tests\Fixtures\PanelPages\MissingTable::class]]]);
+        self::assertSame(200, $response['status']);
+        self::assertStringContainsString('The table &quot;bookings&quot; was not found in the database. Check table() in admin/Pages/MissingTable.php.', $response['body']);
+        self::assertStringContainsString('The column &quot;nickname&quot; was not found. Check view() / data() in admin/Pages/MissingTable.php.', $response['body']);
+        self::assertStringNotContainsString('SQLSTATE', $response['body'], 'raw errors only with APP_DEBUG');
     }
 
     public function testPanelNavigationReturnsTheShell(): void
