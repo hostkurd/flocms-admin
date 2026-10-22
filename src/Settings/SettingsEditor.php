@@ -116,6 +116,10 @@ final class SettingsEditor
         foreach ($resolved->writableFields() as $name => $field) {
             if ($field->skipsWrite($state[$name] ?? '', true)) { $skip[] = $name; }
         }
+        // Checkbox lists and tags (0.37): a removed option the page already has stays valid
+        foreach ($resolved->writableFields() as $field) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) { $field->allowStored($field->values($field->stateFromRecord($record, Languages::default()))); }
+        }
         $errors = (new FormValidator(Languages::all(), Languages::default(), null, true))->validate($resolved, $state, $skip);
         $errors = array_replace($errors, $uploads['errors']);
         if ($errors !== [] || !$this->ready()) {

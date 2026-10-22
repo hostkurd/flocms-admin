@@ -29,6 +29,10 @@ final class FormSubmission
     public function errors(Form $form, array $state, ?object $record): array
     {
         $form = $form->evaluate($state, $record);
+        // Checkbox lists and tags (0.37): a removed option the record already has stays valid
+        foreach ($form->writableFields() as $field) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) { $field->allowStored($record !== null ? $field->values($field->stateFromRecord($record, Languages::default())) : []); }
+        }
         $pk = $this->resource::getPrimaryKey();
         $except = $record === null ? null : (string) $record->{$pk};
         $validator = new FormValidator(Languages::all(), Languages::default(),

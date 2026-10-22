@@ -67,6 +67,7 @@ class TimePicker extends Field
     public function stepSeconds(): ?int
     {
         if ($this->step === null) { return $this->seconds ? 1 : null; }
+        if (!$this->seconds && $this->step > 60) { throw new \LogicException('TimePicker "' . $this->name . '": step() is in minutes (1–60); use seconds() for a step in seconds.'); }
         return $this->seconds ? $this->step : $this->step * 60;
     }
 
@@ -122,7 +123,8 @@ class TimePicker extends Field
     {
         $value = parent::normalizeInput($value);
         $parsed = self::parse($value);
-        return $parsed === null ? $value : $this->short($parsed);
+        // Seconds the field doesn't take stay, so the check below reports them
+        return $parsed === null || (!$this->seconds && substr($parsed, 6) !== '00') ? $value : $this->short($parsed);
     }
 
     public function typeError(string $value): ?array

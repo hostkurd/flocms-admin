@@ -34,6 +34,8 @@ class TagsInput extends Field implements ListField
     private ?int $max = null;
     private int $maxLength = self::DEFAULT_LENGTH;
     private string $separator = ',';
+    /** A record's own field (set by the form's submission): the tags it already has. */
+    private ?array $stored = null;
 
     protected function setUp(): void
     {
@@ -106,7 +108,18 @@ class TagsInput extends Field implements ListField
 
     public function values(mixed $state): array
     {
-        return ListValues::decode($state);
+        return $this->parse($state);
+    }
+
+    /**
+     * The tags the record has (0.37): with onlySuggestions(), a tag that is no
+     * longer suggested stays valid on the records that have it.
+     *
+     * @param list<string> $stored
+     */
+    public function allowStored(array $stored): void
+    {
+        $this->stored = $stored;
     }
 
     public function readable(array $values): array
@@ -161,7 +174,7 @@ class TagsInput extends Field implements ListField
 
     protected function formatForInput(mixed $value): string
     {
-        return ListValues::encode($this->clean(ListValues::decode($value)));
+        return ListValues::encode($this->clean($this->parse($value)));
     }
 
     public function stateFromInput(array $input, array $languages): string|array
@@ -172,7 +185,7 @@ class TagsInput extends Field implements ListField
 
     public function dehydrate(string|array $state): mixed
     {
-        $tags = is_string($state) ? $this->clean(ListValues::decode($state)) : [];
+        $tags = is_string($state) ? $this->clean($this->parse($state)) : [];
         if ($tags === []) { return $this->isNullable() ? null : '[]'; }
         return ListValues::encode($tags);
     }
@@ -187,7 +200,7 @@ class TagsInput extends Field implements ListField
             if (str_contains($tag, $this->separator) || ($this->separator === ',' && str_contains($tag, '،'))) { return ['validation.tag_separator', ['tag' => $tag, 'separator' => $this->separator]]; }
         }
         if ($this->onlySuggestions) {
-            $allowed = array_map([ListValues::class, 'fold'], $this->getSuggestions());
+            $allowed = array_map([ListValues::class, 'fold'], array_merge($this->getSuggestions(), $this->stored ?? []));
             foreach ($tags as $tag) {
                 if (!in_array(ListValues::fold($tag), $allowed, true)) { return ['validation.tag_unknown', ['tag' => $tag]]; }
             }

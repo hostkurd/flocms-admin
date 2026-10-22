@@ -48,9 +48,9 @@ A checkbox per option. The chosen option **keys** are stored in the order of the
 | `->min(2)`, `->max(5)` | At least / at most this many choices. `min()` applies once something is chosen; add `->required()` to ask for at least one |
 | `->whenMissing('“:value” was removed')` | The notice for a stored key that is no longer an option |
 
-A count ("4 of 9 chosen") sits next to the label. At the maximum, the other boxes wait until one is unticked; the server checks the limits too.
+A count ("4 of 9 chosen") sits next to the label (above the box on phones). At the maximum, the other boxes wait until one is unticked; the server checks the limits too.
 
-**An option you remove** stays in the records that have it. Their edit page shows it with a notice ("“sauna” is no longer an option. It stays saved until you untick it.") and saves it again until someone unticks it, so taking an option out of `options()` never quietly loses data. A key that the form did not show is refused.
+**An option you remove** stays in the records that have it. Their edit page shows it with a notice ("“sauna” is no longer an option. It stays saved until you untick it.") and saves it again until someone unticks it, so taking an option out of `options()` never quietly loses data. Saving without the field, or an import, keeps it too. A key the record doesn't have is refused. Old keys don't count towards `min()` and `max()`. Inside repeater items and blocks, an old key stays only as the form showed it (a duplicated item leaves it out).
 
 `->translatable()` is not available: the stored keys are the same in every language and the labels are translated.
 
@@ -109,10 +109,10 @@ $table->columns([
 - **`TagsColumn`** shows the first `limit()` items (default 3) as chips and "+2" for the rest (their names on hover and for screen readers). With `options()` it shows labels instead of keys.
 - **`TimeColumn`** shows the time as `time_format` says; `->timeFormat('g:i A')` for one column, `->seconds()` to show seconds.
 - **`CheckboxListFilter`** finds records that have an option ("Has: Pool"). With `->multiple()` the options are checkboxes, and a record matches when it has **any** of the ticked ones.
-- **`TagsFilter`** is a text box with the suggestions. It matches **whole tags, regardless of capitals** in any script: "Sea View" finds "sea view", but "sea" does not.
+- **`TagsFilter`** is a text box with the suggestions. It matches **whole tags, regardless of capitals** in any script: "Sea View" finds "sea view", but "sea" does not. Accents count: "cafe" does not find "café".
 - **`TimeRangeFilter`** finds times between two times, both included.
 
-The filters give the same results on MySQL, MariaDB and SQLite, also for Greek and Arabic.
+The filters give the same results on MySQL, MariaDB and SQLite, also for Greek and Arabic. Rows that still hold plain text from before are matched between commas.
 
 ## On the website
 
@@ -131,11 +131,11 @@ In repeater items, blocks, settings pages and custom page forms the value is alr
 
 ## CSV import and export
 
-Lists are exported as `pool | parking`; the readable export gives the labels (`Pool | Parking`). An import reads cells split by `|`, `;` or a new line (or by commas when there is no other separator), and accepts keys or labels for a CheckboxList. Times are exported as stored (`09:30:00`), readable as `09:30`, and imported from `9:30`, `09:30:15`, `9:30 PM` or a spreadsheet's time (0.3958…).
+Lists are exported as `pool | parking`; the readable export gives the labels (`Pool | Parking`). An import reads cells split by `|`, `;` or a new line (or by commas when there is no other separator), and accepts keys or labels for a CheckboxList. A tag that itself contains `|` or `;` comes back as two tags. Times are exported as stored (`09:30:00`), readable as `09:30`, and imported from `9:30`, `09:30:15`, `9:30 PM` or a spreadsheet's time (0.3958…).
 
 ## Switching an existing column
 
-A text column that already holds "pool, parking" can become a CheckboxList or TagsInput without a migration: plain text is read as a list (split on commas), and the record is saved as JSON the next time it is saved. The filters match those old rows too. To change the column's type to JSON on MySQL, convert the old rows first.
+A text column that already holds "pool, parking" can become a CheckboxList or TagsInput without a migration: plain text is read as a list, and the record is saved as JSON the next time it is saved. A TagsInput splits old text on its own `separator()`; `list_values()` and the filters split it on commas. The filters match those old rows too. To change the column's type to JSON on MySQL, convert the old rows first.
 
 ## Activity log
 

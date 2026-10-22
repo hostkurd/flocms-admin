@@ -88,6 +88,38 @@ final class ChoiceFieldsTest extends TestCase
         self::assertStringNotContainsString('data-checks-search', (clone $many)->searchable(false)->renderControl('f-x', 'x', ''));
     }
 
+    public function testARemovedOptionStaysValidOnlyOnRecordsThatHaveIt(): void
+    {
+        $field = self::features()->max(2);
+        $form = (new Form())->schema([$field]);
+        $field->allowStored(['pool', 'sauna']);
+        self::assertSame([], self::errors($form, ['features' => '["pool","garden","sauna"]']), 'sauna is kept and does not count towards max');
+        $field->allowStored(['pool']);
+        self::assertArrayHasKey('features', self::errors($form, ['features' => '["pool","sauna"]']), 'another record');
+        $field->allowStored([]);
+        self::assertArrayHasKey('features', self::errors($form, ['features' => '["sauna"]']), 'a new record');
+    }
+
+    public function testAKeptOptionInsideAnItemNeedsTheFormsSignature(): void
+    {
+        $_SESSION = [];
+        $field = self::features();
+        $html = $field->renderControl('f', 'features', '["sauna"]');
+        self::assertSame(1, preg_match('#value="(~[^"]+)"#', $html, $m));
+        $signed = html_entity_decode($m[1], ENT_QUOTES);
+        $state = $field->stateFromInput(['features' => ['_' => '', 'k0' => $signed, 'o0' => 'pool']], ['en']);
+        self::assertSame('["pool","sauna"]', $state);
+        self::assertNull($field->typeError($state));
+        $plain = $field->stateFromInput(['features' => ['_' => '', 'o9' => 'sauna', 'o1' => 'parking']], ['en']);
+        self::assertSame(['validation.in', []], $field->typeError($plain), 'unsigned in another state');
+        self::assertSame('["parking"]', $field->stateFromInput(['features' => ['_' => '', 'k0' => '~forged|c2F1bmE=', 'o1' => 'parking']], ['en']), 'a bad signature is dropped');
+    }
+
+    public function testADisabledListSendsNoMarker(): void
+    {
+        self::assertStringContainsString('name="features[_]" value="" disabled', self::features()->disabled()->renderControl('f', 'features', ''));
+    }
+
     public function testCheckboxListCannotBeTranslatable(): void
     {
         $this->expectException(\LogicException::class);
@@ -103,8 +135,12 @@ final class ChoiceFieldsTest extends TestCase
         self::assertSame('["x","y"]', $field->stateFromInput(['keywords' => '["x","y"]'], ['en']), 'the JSON state of a draft');
         self::assertSame('["x","y"]', $field->stateFromInput(['keywords' => ['x', 'y']], ['en']), 'a repeater item');
         self::assertSame('', $field->stateFromInput(['keywords' => ' , '], ['en']));
+        self::assertSame(['villa', 'sea view'], TagsInput::make('t')->separator(';')->values('villa; sea view'), 'old text split on the field\'s separator');
         $only = TagsInput::make('kind')->suggestions(['Sea view', 'Villa'])->onlySuggestions();
         self::assertSame('["Sea view","Villa"]', $only->stateFromInput(['kind' => 'sea VIEW, villa'], ['en']), 'the suggestion\'s spelling');
+        self::assertSame(['validation.tag_unknown', ['tag' => 'Old tag']], $only->typeError('["Old tag"]'));
+        $only->allowStored(['Old tag']);
+        self::assertNull($only->typeError('["Old tag","Villa"]'), 'a suggestion removed since stays on the records that have it');
     }
 
     public function testTagsValidation(): void
@@ -154,11 +190,17 @@ final class ChoiceFieldsTest extends TestCase
         self::assertStringContainsString('must be 08:00 or later', self::errors($form, ['opens_at' => '07:45'])['opens_at']);
         self::assertStringContainsString('steps of 15 minutes', self::errors($form, ['opens_at' => '09:40'])['opens_at']);
         self::assertStringContainsString('a time like 09:30', self::errors($form, ['opens_at' => 'soon'])['opens_at']);
-        self::assertStringContainsString('a time like 09:30', self::errors($form, ['opens_at' => '09:30:10'])['opens_at'], 'seconds only with seconds()');
+        self::assertStringContainsString('a time like 09:30', self::errors($form, ['opens_at' => $field->stateFromInput(['opens_at' => '09:30:10'], ['en'])])['opens_at'], 'seconds only with seconds(), never dropped silently');
 
         $html = $field->renderControl('f-o', 'opens_at', '09:30');
         self::assertStringContainsString('type="time" value="09:30" class="fa-input fa-time" min="08:00" max="20:00" step="900"', $html);
         self::assertStringContainsString('step="5"', TimePicker::make('t')->seconds()->step(5)->renderControl('f-t', 't', ''));
+    }
+
+    public function testTimePickerStepIsInMinutesUnlessSeconds(): void
+    {
+        $this->expectException(\LogicException::class);
+        TimePicker::make('t')->step(90)->renderControl('f-t', 't', '');
     }
 
     public function testTimePickerRejectsABadMinimum(): void

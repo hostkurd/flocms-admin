@@ -88,6 +88,18 @@ test('tags: suggestions, Enter and comma, Backspace twice, and the maximum', asy
   await expect(chips(page)).toHaveText(['sea view', 'garden', 'Quiet']);
 });
 
+test('a refresh of the page\'s scripts keeps the tags box and what is being typed', async ({ page }) => {
+  await page.goto('/en/admin/houses/edit/2');
+  const input = keywords(page).locator('.fa-tags-input');
+  await input.pressSequentially('half typ');
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent('flo-reactive:updated')));
+  await expect(keywords(page).locator('.fa-tags-box')).toHaveCount(1);
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue('half typ');
+  await input.press('Enter');
+  await expect(chips(page)).toHaveText(['apartment', 'Sea View', 'half typ']);
+});
+
 test('a pasted list becomes tags; the Arabic comma adds one on a right-to-left page', async ({ page }) => {
   await page.goto('/ar/admin/houses/edit/4');
   const input = keywords(page).locator('.fa-tags-input');

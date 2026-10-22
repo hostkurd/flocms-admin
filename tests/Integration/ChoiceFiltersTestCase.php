@@ -35,6 +35,7 @@ abstract class ChoiceFiltersTestCase extends TestCase
             6 => [null, '["foo\\"sea view"]', null],
             7 => [null, '["50%_off"]', null],
             8 => [null, null, '12:16:00'],
+            9 => [null, '["café"]', null],
         ];
         foreach ($rows as $id => [$features, $keywords, $time]) {
             $this->db->query('INSERT INTO homes (id, features, keywords, opens_at) VALUES (?, ?, ?, ?)', [$id, $features, $keywords, $time]);
@@ -66,7 +67,9 @@ abstract class ChoiceFiltersTestCase extends TestCase
         self::assertSame([7], $this->ids($filter, '50%_off'));
         self::assertSame([], $this->ids($filter, '50%'), 'LIKE wildcards are plain text');
         self::assertSame([6], $this->ids($filter, 'foo"sea view'), 'a quote inside a tag');
-        self::assertSame([1, 2, 3, 4, 5, 6, 7, 8], $this->ids($filter, ''));
+        self::assertSame([9], $this->ids($filter, 'CAFÉ'));
+        self::assertSame([], $this->ids($filter, 'cafe'), 'accents count, on every database');
+        self::assertSame([1, 2, 3, 4, 5, 6, 7, 8, 9], $this->ids($filter, ''));
     }
 
     public function testCheckboxListFilterFindsAChoiceOrAnyOfSeveral(): void
@@ -75,7 +78,7 @@ abstract class ChoiceFiltersTestCase extends TestCase
         self::assertSame([1, 4], $this->ids(CheckboxListFilter::make('features')->options($options), 'pool'));
         self::assertSame([4, 5], $this->ids(CheckboxListFilter::make('features')->options($options), 'lift'), 'after ", " as MySQL\'s JSON type writes it');
         self::assertSame([2, 4, 5], $this->ids(CheckboxListFilter::make('features')->options($options)->multiple(), ['o1' => 'parking', 'o2' => 'lift']));
-        self::assertSame([1, 2, 3, 4, 5, 6, 7, 8], $this->ids(CheckboxListFilter::make('features')->options($options)->multiple(), []));
+        self::assertSame([1, 2, 3, 4, 5, 6, 7, 8, 9], $this->ids(CheckboxListFilter::make('features')->options($options)->multiple(), []));
     }
 
     public function testTimeRangeIncludesBothEnds(): void

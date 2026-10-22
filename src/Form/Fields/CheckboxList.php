@@ -41,8 +41,13 @@ class CheckboxList extends Field implements ListField
     private ?int $min = null;
     private ?int $max = null;
     private ?string $missing = null;
-    /** Keys no longer among the options that the form sent back signed (kept), shared with resolve()'s clones. */
+    /**
+     * Inside a repeater item or a block: the keys no longer among the options
+     * that the form sent back signed, per form state (shared with resolve()'s clones).
+     */
     private \ArrayObject $kept;
+    /** A record's own field (set by the form's submission): the keys it already has; signatures are not needed then. */
+    private ?array $stored = null;
 
     protected function setUp(): void
     {
@@ -156,19 +161,34 @@ class CheckboxList extends Field implements ListField
             return is_string($value) ? ListValues::encode($this->ordered(ListValues::decode($value))) : '';
         }
         $keys = [];
+        $kept = [];
         foreach ($value as $index => $item) {
             if ($index === self::MARKER || !is_string($item) || $item === '') { continue; }
             if (str_starts_with($item, '~') && !array_key_exists($item, $this->getOptions())) {
                 // A key no longer among the options, kept: only as the form showed it (signed).
                 $key = Builder::unsign(substr($item, 1), 'kept|' . $this->name);
                 if ($key === null) { continue; }
-                $this->kept[$key] = true;
+                $kept[] = $key;
                 $item = $key;
             }
             $keys[] = $item;
             if (count($keys) >= ListValues::LIMIT) { break; }
         }
-        return ListValues::encode($this->ordered($keys));
+        $state = ListValues::encode($this->ordered($keys));
+        if ($kept !== []) { $this->kept[$state] = $kept; }
+        return $state;
+    }
+
+    /**
+     * The keys the record has (0.37). Set before a save is checked: a key that
+     * is no longer an option passes only when the record already has it, whether
+     * the form showed it, an import sent it or the field was not in the input.
+     *
+     * @param list<string> $stored
+     */
+    public function allowStored(array $stored): void
+    {
+        $this->stored = $stored;
     }
 
     /** The field is in the input (a hidden features[_] comes with every form that shows it). */
@@ -201,11 +221,16 @@ class CheckboxList extends Field implements ListField
     {
         $keys = ListValues::decode($value);
         $options = $this->getOptions();
+        // A record's field: only keys it already has; an item's: only keys the form showed (signed) in this state
+        $allowed = $this->stored ?? ($this->kept[$value] ?? []);
+        $chosen = 0;
         foreach ($keys as $key) {
-            if (!array_key_exists($key, $options) && !isset($this->kept[$key])) { return ['validation.in', []]; }
+            if (array_key_exists($key, $options)) { $chosen++; continue; }
+            if (!in_array($key, $allowed, true)) { return ['validation.in', []]; }
         }
-        if ($this->min !== null && count($keys) > 0 && count($keys) < $this->min) { return ['validation.list_min', ['min' => (string) $this->min]]; }
-        if ($this->max !== null && count($keys) > $this->max) { return ['validation.list_max', ['max' => (string) $this->max]]; }
+        // Old keys kept until unticked don't count towards min and max
+        if ($this->min !== null && $chosen > 0 && $chosen < $this->min) { return ['validation.list_min', ['min' => (string) $this->min]]; }
+        if ($this->max !== null && $chosen > $this->max) { return ['validation.list_max', ['max' => (string) $this->max]]; }
         return null;
     }
 
@@ -226,7 +251,7 @@ class CheckboxList extends Field implements ListField
             . ' data-admin-checks data-checks-total="' . count($options) . '"' . ($this->max !== null ? ' data-checks-max="' . $this->max . '"' : '')
             . ' data-checks-count-text="' . Str::e(AdminLang::get('checks.count')) . '">';
         if ($name !== '') {
-            $html .= '<input type="hidden" name="' . Str::e((string) $inputName(self::MARKER)) . '" value="">';
+            $html .= '<input type="hidden" name="' . Str::e((string) $inputName(self::MARKER)) . '" value=""' . ($disabled ? ' disabled' : '') . '>';
         }
         $tools = '';
         if ($this->selectAll && !$disabled) {
@@ -263,7 +288,7 @@ class CheckboxList extends Field implements ListField
             if (array_key_exists($key, $options)) { continue; }
             $optionId = $id . '-gone-' . $gone;
             $message = $this->missing !== null ? str_replace(':value', $key, AdminLang::label($this->missing)) : AdminLang::get('checks.gone', ['value' => $key]);
-            $html .= '<p class="fa-choice-gone fa-check-gone" role="status">' . Icons::svg('alert-triangle', 'fa-icon')
+            $html .= '<p class="fa-choice-gone fa-check-gone">' . Icons::svg('alert-triangle', 'fa-icon')
                 . '<label class="fa-check" for="' . Str::e($optionId) . '"><input type="checkbox" id="' . Str::e($optionId) . '"'
                 . ($name !== '' ? ' name="' . Str::e((string) $inputName('k' . $gone)) . '"' : '')
                 . ' value="~' . Str::e(Builder::sign($key, 'kept|' . $this->name)) . '" checked' . ($disabled ? ' disabled' : '') . ' data-checks-kept>'

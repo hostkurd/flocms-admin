@@ -19,7 +19,8 @@ function boxes(group: HTMLElement): HTMLInputElement[] {
 }
 
 function updateChecks(group: HTMLElement): void {
-  const all = boxes(group);
+  // Old keys kept until unticked are not options: they don't count and are never locked
+  const all = boxes(group).filter(box => !box.hasAttribute('data-checks-kept'));
   const count = all.filter(box => box.checked).length;
   const total = Number(group.dataset.checksTotal || all.length);
   const counter = group.querySelector<HTMLElement>('[data-checks-count]');
@@ -105,6 +106,7 @@ class Tags {
   private readonly suggestions: string[];
   private tags: string[];
   private active = -1;
+  private readonly listeners = new AbortController();
   private shown: Array<{ text: string; isNew: boolean }> = [];
 
   constructor(private readonly root: HTMLElement) {
@@ -234,7 +236,7 @@ class Tags {
     return added > 0;
   }
 
-  private remove(index: number, focusAfter: boolean): void {
+  private remove(index: number, focusAfter: boolean, forward = false): void {
     const [tag] = this.tags.splice(index, 1);
     if (tag === undefined) return;
     this.render();
@@ -242,7 +244,9 @@ class Tags {
     this.say(format(this.root.dataset.tagsRemoved || ':tag', { tag }));
     if (!focusAfter) return;
     const chips = this.chips();
-    if (chips.length) chips[Math.max(0, Math.min(index - 1, chips.length - 1))].focus();
+    const next = forward ? index : index - 1;
+    if (forward && next >= chips.length) this.input.focus();
+    else if (chips.length) chips[Math.max(0, Math.min(next, chips.length - 1))].focus();
     else this.input.focus();
   }
 
@@ -250,18 +254,27 @@ class Tags {
     return [...this.list.querySelectorAll<HTMLElement>('.fa-tag-chip')];
   }
 
-  private commit(): void {
+  /** Still the widget on the page (a reactive update may have replaced its parts). */
+  alive(): boolean {
+    return this.box.parentElement === this.root && this.value.parentElement === this.root && this.value.isConnected && this.value.hidden === true;
+  }
+
+  destroy(): void {
+    this.listeners.abort();
+  }
+
+  commit(): void {
     const text = this.input.value;
     if (!text.trim()) return;
     if (this.add(this.parse(text)) || this.only) this.input.value = '';
     this.close();
   }
 
-  private open(): void {
+  private open(all = false): void {
     const query = fold(this.input.value);
     const taken = new Set(this.tags.map(fold));
     const free = this.suggestions.filter(suggestion => !taken.has(fold(suggestion)));
-    const matches = query === '' ? [] : [
+    const matches = query === '' ? (all ? free.slice(0, 8) : []) : [
       ...free.filter(suggestion => fold(suggestion).startsWith(query)),
       ...free.filter(suggestion => !fold(suggestion).startsWith(query) && fold(suggestion).includes(query)),
     ].slice(0, 8);
@@ -320,12 +333,12 @@ class Tags {
   private listen(): void {
     this.box.addEventListener('mousedown', event => {
       if (event.target === this.box || event.target === this.list) { event.preventDefault(); this.input.focus(); }
-    });
+    }, { signal: this.listeners.signal });
     this.list.addEventListener('click', event => {
       const remove = event.target instanceof Element ? event.target.closest('.fa-tag-remove') : null;
       const chip = remove?.closest<HTMLElement>('.fa-tag-chip');
       if (chip) { this.remove(Number(chip.dataset.index), false); this.input.focus(); }
-    });
+    }, { signal: this.listeners.signal });
     this.list.addEventListener('keydown', event => {
       const chip = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('.fa-tag-chip') : null;
       if (!chip) return;
@@ -333,22 +346,25 @@ class Tags {
       const chips = this.chips();
       const back = this.rtl() ? 'ArrowRight' : 'ArrowLeft';
       const forward = this.rtl() ? 'ArrowLeft' : 'ArrowRight';
-      if (event.key === 'Backspace' || event.key === 'Delete') { event.preventDefault(); this.remove(index, true); }
+      if (event.key === 'Backspace' || event.key === 'Delete') { event.preventDefault(); this.remove(index, true, event.key === 'Delete'); }
       else if (event.key === back) { event.preventDefault(); chips[Math.max(0, index - 1)].focus(); }
       else if (event.key === forward) { event.preventDefault(); if (index + 1 < chips.length) chips[index + 1].focus(); else this.input.focus(); }
       else if (event.key === 'Escape' || event.key === 'End') { event.preventDefault(); this.input.focus(); }
       else if (event.key === 'Home') { event.preventDefault(); chips[0].focus(); }
-    });
+    }, { signal: this.listeners.signal });
     this.input.addEventListener('keydown', event => {
       if (event.isComposing) return;
       const open = !this.options.hidden;
       if (event.key === 'Enter') {
-        // Enter adds the tag (or the suggestion), never submits the form
+        // Enter adds the tag (or the suggestion); in an empty box it acts as in any other field
+        if (!open && this.input.value.trim() === '') return;
         event.preventDefault();
         if (open && this.active >= 0) this.choose(this.active); else this.commit();
       } else if (this.isSeparatorKey(event.key)) {
         event.preventDefault();
         this.commit();
+      } else if (event.key === 'ArrowDown' && !open) {
+        event.preventDefault(); this.open(true);
       } else if (event.key === 'ArrowDown' && open) {
         event.preventDefault(); this.active = (this.active + 1) % this.shown.length; this.highlight();
       } else if (event.key === 'ArrowUp' && open) {
@@ -360,8 +376,9 @@ class Tags {
         event.preventDefault();
         this.chips()[this.tags.length - 1]?.focus();
       }
-    });
-    this.input.addEventListener('input', () => {
+    }, { signal: this.listeners.signal });
+    this.input.addEventListener('input', event => {
+      if ((event as InputEvent).isComposing) return;
       // A pasted "a, b, c" (or a separator typed on a phone keyboard) becomes tags; the last part stays to type on
       if (this.separators().test(this.input.value)) {
         const parts = this.input.value.split(this.separators());
@@ -370,21 +387,33 @@ class Tags {
         this.input.value = rest.trimStart();
       }
       this.open();
-    });
-    this.input.addEventListener('blur', () => { window.setTimeout(() => { if (document.activeElement !== this.input) this.commit(); }, 120); });
-    this.options.addEventListener('mousedown', event => event.preventDefault());
+    }, { signal: this.listeners.signal });
+    this.input.addEventListener('blur', () => { window.setTimeout(() => { if (document.activeElement !== this.input) this.commit(); }, 120); }, { signal: this.listeners.signal });
+    this.options.addEventListener('mousedown', event => event.preventDefault(), { signal: this.listeners.signal });
     this.options.addEventListener('click', event => {
       const option = event.target instanceof Element ? event.target.closest<HTMLElement>('.fa-tags-option') : null;
       if (option) this.choose(Number(option.dataset.index));
-    });
-    this.value.form?.addEventListener('submit', () => this.commit(), { capture: true });
+    }, { signal: this.listeners.signal });
   }
 }
+
+const instances = new WeakMap<HTMLElement, Tags>();
+
+// Words typed but not yet added become tags when the form is sent (one listener for every form)
+document.addEventListener('submit', event => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  form.querySelectorAll<HTMLElement>('[data-admin-tags]').forEach(element => instances.get(element)?.commit());
+}, { capture: true });
 
 export function initializeChoiceFields(root: ParentNode): void {
   root.querySelectorAll<HTMLElement>('[data-admin-checks]').forEach(initializeChecks);
   root.querySelectorAll<HTMLElement>('[data-admin-tags]').forEach(element => {
     if (element.closest('template')) return;
-    new Tags(element);
+    // Initialised again (a refresh, a dialog, a builder pane): keep the working widget and what is being typed
+    const existing = instances.get(element);
+    if (existing?.alive()) return;
+    existing?.destroy();
+    instances.set(element, new Tags(element));
   });
 }

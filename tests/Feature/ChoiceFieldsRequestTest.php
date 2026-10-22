@@ -79,11 +79,18 @@ final class ChoiceFieldsRequestTest extends RequestTestCase
         self::assertTrue($saved['redirected'], (string) $saved['error']);
         self::assertSame('["pool","sauna"]', self::row('houses', 1)['features']);
 
-        // A key the form never showed is refused
-        $forged = self::post('/en/admin/houses/edit/1', self::form(['features' => ['_' => '', 'o0' => 'pool', 'k0' => '~forged|c2F1bmE=', 'o9' => 'jacuzzi']]), self::options(['session' => $page['session']]));
+        // A form without the field (an older draft, a partial form) keeps it as it is
+        $partial = self::form();
+        unset($partial['features']);
+        $saved = self::post('/en/admin/houses/edit/1', $partial + ['title' => 'Seaside villa, renamed'], self::options());
+        self::assertTrue($saved['redirected'], (string) $saved['error']);
+        self::assertSame('["pool","sauna"]', self::row('houses', 1)['features']);
+
+        // A key the record doesn't have is refused, even with a signature from another record
+        $forged = self::post('/en/admin/houses/edit/2', self::form(['features' => ['_' => '', 'o4' => 'lift', 'k0' => $signed, 'o9' => 'jacuzzi']]), self::options(['session' => $page['session']]));
         self::assertFalse($forged['redirected']);
         self::assertStringContainsString('Features must be one of the listed values.', $forged['body']);
-        self::assertSame('["pool","sauna"]', self::row('houses', 1)['features']);
+        self::assertSame('["lift"]', self::row('houses', 2)['features']);
     }
 
     public function testErrorsAreShownOnTheFields(): void

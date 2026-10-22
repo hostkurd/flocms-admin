@@ -24,4 +24,12 @@ interface ListField
      * @return list<string>
      */
     public function readable(array $values): array;
+
+    /**
+     * The items the record being saved already has (0.37), set before a save
+     * is checked: an option or suggestion removed since stays valid there.
+     *
+     * @param list<string> $stored
+     */
+    public function allowStored(array $stored): void;
 }

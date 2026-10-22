@@ -9,8 +9,8 @@ use FloCMS\Core\Database;
 /**
  * "The list in this column holds this item" (0.37), for CheckboxList and
  * TagsInput columns: whole items only ("sea" does not match "sea view") and
- * regardless of capitals in any script ("Sea View" matches "sea view"), the
- * same on MySQL, MariaDB and SQLite.
+ * regardless of capitals in any script ("Sea View" matches "sea view"; "café"
+ * does not match "cafe"), the same on MySQL, MariaDB and SQLite.
  *
  * The lists are JSON written by the panel (["a","b"]) or by MySQL's JSON type
  * (["a", "b"]), so an item is its JSON string right after "[" or ",": a quote
@@ -31,16 +31,16 @@ final class ListMatch
      */
     public static function condition(Database $query, string $column, string $item): array
     {
-        $sqlite = $query->driver() === 'sqlite';
         $col = '`' . $column . '`';
-        if ($sqlite) {
+        // Both sides in lower case and compared exactly: capitals don't count, accents do (as in PHP)
+        $item = ListValues::fold($item);
+        if ($query->driver() === 'sqlite') {
             self::register($query);
-            $item = ListValues::fold($item);
             $text = 'flo_admin_lower(' . $col . ')';
             $legacy = "(',' || replace(replace(replace({$text}, '،', ','), ', ', ','), ' ,', ',') || ',')";
         } else {
-            $text = 'CONVERT(' . $col . ' USING utf8mb4) COLLATE utf8mb4_unicode_ci';
-            $legacy = "CONCAT(',', REPLACE(REPLACE(REPLACE(CONVERT({$col} USING utf8mb4), '،', ','), ', ', ','), ' ,', ','), ',') COLLATE utf8mb4_unicode_ci";
+            $text = 'LOWER(CONVERT(' . $col . ' USING utf8mb4)) COLLATE utf8mb4_bin';
+            $legacy = "CONCAT(',', REPLACE(REPLACE(REPLACE(LOWER(CONVERT({$col} USING utf8mb4)), '،', ','), ', ', ','), ' ,', ','), ',') COLLATE utf8mb4_bin";
         }
         $json = self::like(json_encode($item, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $sql = "({$text} LIKE ? ESCAPE '!' OR {$text} LIKE ? ESCAPE '!' OR {$text} LIKE ? ESCAPE '!'"
