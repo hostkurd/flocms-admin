@@ -2133,4 +2133,21 @@ return [
     'mail.two_factor_off_greeting' => 'مرحبًا :name،',
     'mail.two_factor_off_body' => 'تم إيقاف التحقق بخطوتين لحسابك في :brand. تسجّل الدخول الآن بكلمة المرور فقط.',
     'mail.two_factor_off_note' => 'إن لم تكن أنت من فعل ذلك، غيّر كلمة المرور وفعّله من جديد وأبلغ المدير.',
+
+    // Custom panel pages (0.36)
+    'pages_api.download_csv' => 'تنزيل CSV',
+    'pages_api.no_rows' => 'لا شيء لعرضه بعد.',
+    'pages_api.filters' => 'عوامل التصفية',
+    'pages_api.reset' => 'إعادة تعيين',
+    'pages_api.empty' => 'لا يوجد في هذه الصفحة ما يُعرض بعد. أضف widgets() أو view() أو table() أو form() إلى صنفها:',
+    'pages_api.unavailable' => 'تعذّر عرض هذا الجزء من الصفحة. الخطأ مسجّل في سجل الموقع.',
+    'pages_api.saved' => 'تم الحفظ.',
+    'pages_api.action_done' => 'تم: :action.',
+    'pages_api.activity_type' => 'صفحة في اللوحة',
+    'activity.what.page_saved' => 'حفظ الصفحة',
+    'activity.badge.page_saved' => 'حفظ صفحة',
+    'roles.group.panel_pages' => 'صفحات اللوحة',
+    'roles.group.panel_pages_help' => 'صفحات الموقع الخاصة في اللوحة: التقارير والأدوات وصفحات المساعدة. الصفحات غير المحددة تختفي من القائمة الجانبية والبحث.',
+    'roles.all_panel_pages' => 'كل صفحات اللوحة',
+    'roles.all_panel_pages_help' => 'كل صفحات panel.*، ومنها ما يُضاف لاحقاً.',
 ];

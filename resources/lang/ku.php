@@ -2133,4 +2133,21 @@ return [
     'mail.two_factor_off_greeting' => 'سڵاو :name،',
     'mail.two_factor_off_body' => 'چوونەژوورەوەی دوو هەنگاوی بۆ هەژمارەکەت لە :brand کوژێنرایەوە. ئێستا تەنها بە وشەی نهێنی دەچیتە ژوورەوە.',
     'mail.two_factor_off_note' => 'ئەگەر تۆ نەبوویت، وشەی نهێنییەکەت بگۆڕە، دووبارە هەڵیبکەرەوە و بە بەڕێوەبەر بڵێ.',
+
+    // Custom panel pages (0.36)
+    'pages_api.download_csv' => 'داگرتنی CSV',
+    'pages_api.no_rows' => 'هێشتا هیچ شتێک نییە بۆ پیشاندان.',
+    'pages_api.filters' => 'پاڵاوتنەکان',
+    'pages_api.reset' => 'ڕێکخستنەوە',
+    'pages_api.empty' => 'ئەم پەڕەیە هێشتا هیچی تێدا نییە بۆ پیشاندان. widgets() یان view() یان table() یان form() زیاد بکە بۆ پۆلەکەی:',
+    'pages_api.unavailable' => 'ئەم بەشەی پەڕەکە پیشان نەدرا. هەڵەکە لە تۆماری ماڵپەڕەکەدایە.',
+    'pages_api.saved' => 'پاشەکەوت کرا.',
+    'pages_api.action_done' => 'کرا: :action.',
+    'pages_api.activity_type' => 'پەڕەی پانێڵ',
+    'activity.what.page_saved' => 'پەڕەکەی پاشەکەوت کرد',
+    'activity.badge.page_saved' => 'پەڕە پاشەکەوت کرا',
+    'roles.group.panel_pages' => 'پەڕەکانی پانێڵ',
+    'roles.group.panel_pages_help' => 'پەڕە تایبەتەکانی ماڵپەڕ لە پانێڵدا: ڕاپۆرت، ئامراز و پەڕەکانی یارمەتی. پەڕە نیشان نەکراوەکان لە لیستی لاتەنیشت و گەڕاندا دەرناکەون.',
+    'roles.all_panel_pages' => 'هەموو پەڕەکانی پانێڵ',
+    'roles.all_panel_pages_help' => 'هەموو پەڕەکانی panel.*، لەوانەش ئەوانەی دواتر زیاد دەکرێن.',
 ];

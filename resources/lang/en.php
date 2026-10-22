@@ -2164,4 +2164,21 @@ return [
     'mail.two_factor_off_greeting' => 'Hi :name,',
     'mail.two_factor_off_body' => 'Two-factor sign-in was turned off for your :brand account. You now sign in with your password only.',
     'mail.two_factor_off_note' => 'If this wasn\'t you, change your password, turn it on again and tell an administrator.',
+
+    // Custom panel pages (0.36)
+    'pages_api.download_csv' => 'Download CSV',
+    'pages_api.no_rows' => 'Nothing to show yet.',
+    'pages_api.filters' => 'Filters',
+    'pages_api.reset' => 'Reset',
+    'pages_api.empty' => 'This page has nothing to show yet. Add widgets(), view(), table() or form() to its class:',
+    'pages_api.unavailable' => 'This part of the page could not be shown. The error is in the site\'s log.',
+    'pages_api.saved' => 'Saved.',
+    'pages_api.action_done' => 'Done: :action.',
+    'pages_api.activity_type' => 'Panel page',
+    'activity.what.page_saved' => 'Saved the page',
+    'activity.badge.page_saved' => 'Page saved',
+    'roles.group.panel_pages' => 'Panel pages',
+    'roles.group.panel_pages_help' => 'The site\'s own pages in the panel: reports, tools and help pages. Unticked pages leave the sidebar and search.',
+    'roles.all_panel_pages' => 'All panel pages',
+    'roles.all_panel_pages_help' => 'Every panel.* page, including ones added later.',
 ];

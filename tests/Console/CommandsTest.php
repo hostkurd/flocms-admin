@@ -8,6 +8,7 @@ use FloCMS\Admin\Console\InstallCommand;
 use FloCMS\Admin\Console\ListCommand;
 use FloCMS\Admin\Console\MakeResourceCommand;
 use FloCMS\Admin\Console\MakeWidgetCommand;
+use FloCMS\Admin\Console\MakeAdminPageCommand;
 use FloCMS\Admin\Console\MakeBlockCommand;
 use FloCMS\Admin\Console\BlocksCommand;
 use FloCMS\Admin\Console\TrashPurgeCommand;
@@ -467,6 +468,68 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('already registered', $again->getDisplay());
         self::assertSame(3, count((require $this->root . '/config/admin.php')['widgets']));
         self::assertSame(1, $this->runCommand(new MakeWidgetCommand(), ['Visits'])->getStatusCode());
+    }
+
+    public function testMakeAdminPageWritesTheClassTheViewAndRegistersIt(): void
+    {
+        $this->runCommand(new InstallCommand());
+        $tester = $this->runCommand(new MakeAdminPageCommand(), ['SalesReport', '--view', '--table', '--group=Reports']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        $code = (string) file_get_contents($this->root . '/admin/Pages/SalesReport.php');
+        self::assertStringContainsString('namespace App\Admin\Pages;', $code);
+        self::assertStringContainsString('final class SalesReport extends AdminPage', $code);
+        self::assertStringContainsString("protected static ?string \$group = 'Reports';", $code);
+        self::assertStringContainsString("return 'admin/sales-report';", $code);
+        self::assertStringContainsString('->query(function (Database $db, array $filters): Database {', $code);
+        $this->lint($this->root . '/admin/Pages/SalesReport.php');
+        self::assertStringContainsString('class="fa-stat-row"', (string) file_get_contents($this->root . '/views/admin/sales-report.html'));
+        self::assertStringContainsString('Page ready at /admin/sales-report', $tester->getDisplay() . $tester->getErrorOutput());
+
+        $tool = $this->runCommand(new MakeAdminPageCommand(), ['ExchangeRates', '--form']);
+        self::assertSame(0, $tool->getStatusCode());
+        $code = (string) file_get_contents($this->root . '/admin/Pages/ExchangeRates.php');
+        self::assertStringContainsString('public function submit(array $data): ?string', $code);
+        self::assertStringContainsString("protected static string \$width = 'narrow';", $code);
+        self::assertStringContainsString('protected static ?string $group = null;', $code);
+        $this->lint($this->root . '/admin/Pages/ExchangeRates.php');
+        $this->runCommand(new MakeAdminPageCommand(), ['HelpPage']);
+        $this->lint($this->root . '/admin/Pages/HelpPage.php');
+
+        $this->lint($this->root . '/config/admin.php');
+        self::assertSame(['App\Admin\Pages\SalesReport', 'App\Admin\Pages\ExchangeRates', 'App\Admin\Pages\HelpPage'], (require $this->root . '/config/admin.php')['admin_pages']);
+        self::assertSame(1, $this->runCommand(new MakeAdminPageCommand(), ['SalesReport'])->getStatusCode(), 'an existing page is kept');
+        self::assertNotSame(0, $this->runCommand(new MakeAdminPageCommand(), ['sales-report'])->getStatusCode());
+
+        // A config/admin.php from before 0.36 has no 'admin_pages': the list is added.
+        file_put_contents($this->root . '/config/admin.php', "<?php\nreturn [\n    'brand' => 'Old site',\n];\n");
+        $old = $this->runCommand(new MakeAdminPageCommand(), ['Report', '--force']);
+        self::assertStringContainsString('Registered Report', $old->getDisplay());
+        $this->lint($this->root . '/config/admin.php');
+        self::assertSame(['App\Admin\Pages\Report'], (require $this->root . '/config/admin.php')['admin_pages']);
+        self::assertSame('Old site', (require $this->root . '/config/admin.php')['brand']);
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testDoctorChecksThePanelPages(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'admin_pages' => []];");
+        $this->runCommand(new MakeAdminPageCommand(), ['SalesReport', '--view']);
+        $this->runCommand(new MakeAdminPageCommand(), ['Broken', '--view']);
+        unlink($this->root . '/views/admin/broken.html');
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['users' => false, 'admin_pages' => [App\\Admin\\Pages\\SalesReport::class, App\\Admin\\Pages\\Broken::class, App\\Admin\\Pages\\Gone::class], 'home' => App\\Admin\\Pages\\Other::class];");
+        $display = $this->runCommand(new DoctorCommand())->getDisplay();
+        self::assertStringContainsString('Panel pages  (admin_pages)', $display);
+        self::assertStringContainsString('Sales report  /admin/sales-report  (panel.sales-report)', $display);
+        self::assertStringContainsString('view "admin/broken" not found: expected views/admin/broken.html', $display);
+        self::assertStringContainsString('expected the file admin/Pages/Gone.php', $display);
+        self::assertStringContainsString("'home' => App\\Admin\\Pages\\Other is not one of admin_pages", $display);
     }
 
     public function testMakeWidgetRegistersInListsWrittenByHand(): void

@@ -1,0 +1,16 @@
+<!-- The view of the panel page {{ class }} (admin/Pages/{{ class }}.php).
+     Variables: what data() returns, $filters (the filters' values) and $page.
+     The panel's pieces: .fa-stat-row with .fa-stat-tile, .fa-card, .fa-split, .fa-empty. -->
+<div class="fa-stat-row">
+    <div class="fa-stat-tile"><span class="fa-stat-label">Example</span><span class="fa-stat-value">{{ $count }}</span></div>
+</div>
+<div class="fa-split">
+    <section class="fa-card">
+        <h2>{{ $heading }}</h2>
+        <p>Replace this with your own content.</p>
+    </section>
+    <section class="fa-card fa-empty">
+        <h2>Nothing here yet</h2>
+        <p>An empty state: a title, a line of text and an optional button.</p>
+    </section>
+</div>

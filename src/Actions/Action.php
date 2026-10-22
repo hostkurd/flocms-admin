@@ -246,6 +246,50 @@ class Action
         if ($this->handler === null) { throw new \LogicException('Custom action ' . $this->name . ' needs an action() callback.'); }
         ($this->handler)($context, $data);
     }
+    /* Panel pages (0.36): header actions without a resource. */
+
+    /** Whether the person may see this action on a panel page: its permission (else the page's), visible() and authorize(). */
+    public function permitsOnPage(\FloCMS\Admin\AdminPage $page): bool
+    {
+        return $this->kind === 'custom' && Auth::can($this->permission ?? $page::permission())
+            && ($this->visibility === null || (bool) ($this->visibility)(null))
+            && ($this->authorization === null || (bool) ($this->authorization)(null));
+    }
+    public function allowedOnPage(\FloCMS\Admin\AdminPage $page): bool
+    {
+        return $this->permitsOnPage($page) && $this->disabledReason(null) === null;
+    }
+    public function reasonDisabledOnPage(\FloCMS\Admin\AdminPage $page): ?string
+    {
+        return $this->permitsOnPage($page) ? $this->disabledReason(null) : null;
+    }
+    public function getPageLabel(): string
+    {
+        return $this->label !== null ? AdminLang::label($this->label) : Str::headline($this->name);
+    }
+    public function getPageTitle(): string
+    {
+        if ($this->heading !== null && is_string($heading = ($this->heading)(null)) && $heading !== '') { return $heading; }
+        return $this->getPageLabel();
+    }
+    /** The action's own form on a panel page (no upload fields). */
+    public function getPageForm(): Form
+    {
+        $form = $this->form !== null ? ($this->form)(new Form()) : new Form();
+        foreach ($form->fields() as $field) { if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload) { throw new \LogicException('Upload fields are not supported in a panel page\'s actions.'); } }
+        return $form;
+    }
+    /** A page action runs without its own page: no form and no confirmation. */
+    public function runsAtOnce(): bool
+    {
+        return !$this->confirmation && $this->getPageForm()->fields() === [];
+    }
+    /** Run on a panel page: fn (array $data, AdminPage $page). */
+    public function invokeOnPage(array $data, \FloCMS\Admin\AdminPage $page): mixed
+    {
+        if ($this->handler === null) { throw new \LogicException('Action ' . $this->name . ' needs an action() callback.'); }
+        return ($this->handler)($data, $page);
+    }
     private function customOnly(): void
     {
         if ($this->kind !== 'custom') { throw new \LogicException('Built-in CRUD actions use the resource form and save contracts.'); }

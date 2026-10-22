@@ -25,6 +25,16 @@ return [
     'widgets_namespace' => 'App\\Admin\\Widgets',
     'widget_columns' => 2,
 
+    // Pages of your own in the panel (0.36): reports, tools, help pages.
+    // php flo make:admin-page SalesReport --view --table adds one here.
+    'admin_pages' => [
+        // App\Admin\Pages\SalesReport::class,
+    ],
+    'admin_pages_path' => 'admin/Pages',
+    'admin_pages_namespace' => 'App\\Admin\\Pages',
+    // The page /admin opens: 'dashboard', or one of admin_pages (App\Admin\Pages\SalesReport::class).
+    // 'home' => 'dashboard',
+
     // Pages built from blocks, HTML or rich text, at /admin/site-pages (0.30); then
     // php flo admin:install and php flo migrate. Needs flocms-core 2.6.
     // 'pages' => true,  or ['missing' => '404'] to answer 404 for a page not translated

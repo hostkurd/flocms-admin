@@ -23,6 +23,41 @@ final class Table
     private bool $newRecordsFirst = false;
     private int $reorderLimit = 500;
 
+    private ?\Closure $query = null;
+    private ?\Closure $rowUrl = null;
+    private bool $exportable = true;
+
+    /**
+     * A panel page's table (0.36): its rows come from any query,
+     * fn (\FloCMS\Core\Database $db, array $filters): Database, read-only.
+     * Resources ignore it (their rows come from their own table).
+     */
+    public function query(\Closure $query): self
+    {
+        $this->query = $query;
+        return $this;
+    }
+
+    public function getQuery(): ?\Closure { return $this->query; }
+
+    /** Where a row of a panel page's table links (0.36): fn (object $row): ?string. */
+    public function url(\Closure $url): self
+    {
+        $this->rowUrl = $url;
+        return $this;
+    }
+
+    public function getRowUrl(): ?\Closure { return $this->rowUrl; }
+
+    /** A panel page's table offers a CSV download of its rows (0.36); false turns it off. */
+    public function exportable(bool $exportable = true): self
+    {
+        $this->exportable = $exportable;
+        return $this;
+    }
+
+    public function isExportable(): bool { return $this->exportable; }
+
     /** The most rows Reorder mode loads at once. */
     public const MAX_REORDER_LIMIT = 2000;
 

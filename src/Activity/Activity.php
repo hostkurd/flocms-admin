@@ -214,7 +214,7 @@ final class Activity
     /** Actions of each group of the Action switch. */
     public const GROUP_ACTIONS = [
         'created' => ['created', 'media_uploaded', 'role_created'],
-        'edited' => ['updated', 'settings_saved', 'media_updated', 'media_replaced', 'profile_updated', 'role_updated', 'role_reset'],
+        'edited' => ['updated', 'settings_saved', 'page_saved', 'media_updated', 'media_replaced', 'profile_updated', 'role_updated', 'role_reset'],
         'deleted' => ['deleted', 'purged', 'media_deleted', 'role_deleted'],
         'restored' => ['restored'],
     ];

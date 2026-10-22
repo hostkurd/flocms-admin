@@ -79,7 +79,12 @@ final class GlobalSearch
     private function search(string $query): array
     {
         $groups = [];
-        $pages = array_values(array_filter($this->pages(), static fn (SearchResult $r): bool => self::contains($r->getTitle(), $query)));
+        $this->keywords = [];
+        $all = $this->pages();
+        $pages = [];
+        foreach ($all as $index => $result) {
+            if (self::contains($result->getTitle(), $query) || (($this->keywords[$index] ?? '') !== '' && self::contains($this->keywords[$index], $query))) { $pages[] = $result; }
+        }
         $groups[] = ['label' => AdminLang::get('search.pages_actions'), 'items' => array_slice($pages, 0, $this->limit())];
 
         $found = 0;
@@ -106,6 +111,9 @@ final class GlobalSearch
         return $ok;
     }
 
+    /** @var array<int, string> more words a page of pages() is found by (0.36), by its index */
+    private array $keywords = [];
+
     /**
      * The panel's pages the person may open, then "New …" for each resource they may add to.
      *
@@ -118,6 +126,14 @@ final class GlobalSearch
         $urls = PanelView::pageUrls();
         foreach ([['media', 'media.title', 'image'], ['users', 'nav.users', 'users'], ['blocks_preview', 'blocks.preview_title', 'grid'], ['roles', 'nav.roles', 'shield'], ['settings', 'nav.settings', 'settings'], ['activity', 'activity.title', 'clock'], ['trash', 'trash.title', 'trash'], ['imports', 'nav.imports', 'upload'], ['profile', 'nav.profile', 'user']] as [$key, $label, $icon]) {
             if ($urls[$key] !== null) { $pages[] = SearchResult::make(AdminLang::get($label), $urls[$key])->icon($icon)->type($page); }
+        }
+
+        // The site's own panel pages (0.36), found by their name, group or description.
+        foreach (\FloCMS\Admin\PanelPages\CustomPages::allowed() as $slug => $custom) {
+            if (!$custom::isGloballySearchable()) { continue; }
+            $pages[] = SearchResult::make($custom::getLabel(), Admin::url($slug))->icon($custom::getIcon())->type($page)
+                ->detail($custom::getGroup() ?? $custom::getDescription());
+            $this->keywords[count($pages) - 1] = trim(($custom::getGroup() ?? '') . ' ' . ($custom::getDescription() ?? ''));
         }
 
         $action = AdminLang::get('search.type_action');

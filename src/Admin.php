@@ -17,13 +17,14 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.35.0';
+    public const VERSION = '0.36.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
     private static ?AdminConfig $config = null;
     private static ?ResourceRegistry $registry = null;
     private static ?\FloCMS\Admin\Settings\SettingsRegistry $settings = null;
+    private static ?\FloCMS\Admin\PanelPages\PanelPageRegistry $panelPages = null;
     private static bool $problemsLogged = false;
 
     /** Register the controller resolver (once). Called from bootstrap.php. */
@@ -87,10 +88,34 @@ final class Admin
         }
     }
 
-    /** 'dashboard' when the panel is set up (config/admin.php exists), else null. */
+    /**
+     * Where /admin goes when the panel is set up (config/admin.php exists), else
+     * null: the dashboard, or the panel page set as 'home' (0.36) for people who
+     * may open it.
+     */
     public static function homePath(): ?string
     {
-        return self::config()->isInstalled() ? 'dashboard' : null;
+        if (!self::config()->isInstalled()) { return null; }
+        $page = self::homePage();
+        return $page !== null ? $page::getSlug() : 'dashboard';
+    }
+
+    /**
+     * The panel page set as 'home' in config/admin.php, when it is registered and
+     * the signed-in person may open it; else null (the dashboard).
+     *
+     * @return class-string<AdminPage>|null
+     */
+    public static function homePage(): ?string
+    {
+        $home = self::config()->home();
+        if ($home === null) { return null; }
+        try {
+            $class = self::panelPages()->findClass($home);
+            return $class !== null && (new $class())->allowed() ? $class : null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -136,6 +161,10 @@ final class Admin
         }
         if ($registry->find($controller) !== null) {
             return ResourceController::class;
+        }
+        // The site's own panel pages (0.36)
+        if (self::panelPages()->find($controller) !== null) {
+            return \FloCMS\Admin\Http\CustomPageController::class;
         }
         // The trash and the activity log (0.19); a site resource with that slug keeps it.
         if ($controller === 'trash' && $config->trash()['enabled']) {
@@ -188,6 +217,7 @@ final class Admin
         self::$config = null;
         self::$registry = null;
         self::$settings = null;
+        self::$panelPages = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Blocks\BlockRegistry::reset();
     }
@@ -221,6 +251,7 @@ final class Admin
         self::$config = new AdminConfig($values, $root ?? self::root(), $installed);
         self::$registry = null;
         self::$settings = null;
+        self::$panelPages = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Media\MediaLibrary::reset();
         \FloCMS\Admin\Trash\Trash::reset();
@@ -240,6 +271,12 @@ final class Admin
         return self::$registry ??= ResourceRegistry::fromConfig(self::config());
     }
 
+    /** The site's own panel pages (0.36), from 'admin_pages' in config/admin.php. */
+    public static function panelPages(): \FloCMS\Admin\PanelPages\PanelPageRegistry
+    {
+        return self::$panelPages ??= \FloCMS\Admin\PanelPages\PanelPageRegistry::fromConfig(self::config(), self::registry());
+    }
+
     /** The settings pages: admin/settings.php and the panel's own page. */
     public static function settings(): \FloCMS\Admin\Settings\SettingsRegistry
     {
@@ -253,6 +290,7 @@ final class Admin
         self::$config = null;
         self::$registry = null;
         self::$settings = null;
+        self::$panelPages = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Preferences\Preferences::reset();
         \FloCMS\Admin\Media\MediaLibrary::reset();
@@ -289,7 +327,7 @@ final class Admin
     /** In debug mode, write skipped resources to storage/logs/app.log once per request. */
     private static function logProblems(ResourceRegistry $registry): void
     {
-        if (self::$problemsLogged || $registry->problems() === []) {
+        if (self::$problemsLogged) {
             return;
         }
         self::$problemsLogged = true;
@@ -300,6 +338,9 @@ final class Admin
             }
             foreach ($registry->problems() as $problem) {
                 App::logger()->log('warning', '[flocms-admin] Resource skipped: ' . $problem);
+            }
+            foreach (self::panelPages()->problems() as $problem) {
+                App::logger()->log('warning', '[flocms-admin] Panel page skipped: ' . $problem);
             }
         } catch (Throwable) {
             // Logging must never break a page

@@ -2,6 +2,27 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.36.0 - 2026-10-22
+
+**Custom pages: a site's own reports, tools and help pages inside the panel.** Nothing to migrate. Pages are listed in `'admin_pages'` in `config/admin.php`. See [Custom pages](docs/custom-pages.md).
+
+- **`FloCMS\Admin\AdminPage`**: one class per page, in `admin/Pages/` (namespace `App\Admin\Pages`, loaded by the panel), at `/admin/<slug>`. It gets the panel's layout, sidebar, breadcrumbs, permissions, search, RTL, dark mode and phone layout. Every part is optional and shows in this order: a header with `actions()`, `filters()`, `widgets()`, `view()` with `data()`, a read-only `table()`, and a `form()` with Save.
+- **Filters** kept in the address (`?filter[city]=erbil`), so a filtered page can be bookmarked and shared. Their checked values reach `data()`, the table's query, widgets (`$this->pageFilters()`), actions and routes (`$page->filterValues()`).
+- **A read-only table from any query**: `Table::query(fn (Database $db, array $filters) => …)`, with the list's search, sort, pages, Columns button and **Download CSV** (`->exportable(false)` removes it), and row links with `->url(fn ($row) => …)`.
+- **Widgets on any page**: the dashboard's widget classes, with their permission checks.
+- **Tool pages**: `form()`, `fill()` and `submit(array $data)`, with the resources' fields, checks, error summary and unsaved-changes warning. `submit()` may throw a `ValidationException` or return a message. Saves are logged as **Page saved** with the changed fields (`$activity = false` turns that off).
+- **Header actions** with the Actions API: a form or a confirmation on the action's own page, or one click with `->requiresConfirmation(false)`. The callback is `fn (array $data, AdminPage $page)`.
+- **Routes**: `$routes = ['chart' => 'chartData']` makes `/admin/<slug>/route/chart` call the method, with the page's permission; arrays are sent as JSON.
+- **Sidebar groups** for the first time: `$group`, `$sort`, `$icon`, `$navigation = false`, and `badge()` for a count on the item. Pages without a group come under Content after the resources.
+- **Permissions**: `panel.<slug>` by default (or `$permission`), plus `canAccess()`. The Roles page has a **Panel pages** group with an **All panel pages** switch (`panel.*`).
+- **Ctrl+K search** finds pages by label, group and description.
+- **Home page**: `'home' => SalesReport::class` makes `/admin` open that page for people who may open it.
+- **Look**: `$width` (`default`, `full`, `narrow`), and UI pieces for a page's own view (`fa-card`, `fa-stat-row` / `fa-stat-tile`, `fa-split`, `fa-empty`) that follow the theme, RTL and dark mode without inline styles.
+- **`php flo make:admin-page SalesReport`** with `--view`, `--form`, `--table` and `--group=`. It registers the page, and adds the `'admin_pages'` list to an older `config/admin.php`. `admin:doctor` and `admin:list` list the pages and their problems: a missing class or view, a slug used by a resource, by a panel page or by the site's own controller, a broken definition, or a `'home'` that isn't a page.
+- A part of a page that fails is logged and shows "could not be shown"; the rest of the page still works.
+- For developers: `Widget::pageFilters()`, `Dashboard::items()`, `Notifications::sentDuringCapture()`, `Icons::exists()`, `Table::query()`, `Table::url()`, `Table::exportable()`, `Admin::panelPages()`, `Admin::homePage()`.
+- New words in `en`, `ar` and `ku`: `pages_api.*`, `roles.group.panel_pages(_help)`, `roles.all_panel_pages(_help)`, `activity.what.page_saved`, `activity.badge.page_saved`.
+
 ## 0.35.0 - 2026-10-22
 
 **Login security: two-factor sign-in with an authenticator app, and email verification.** Both are off until `'two_factor' => true` / `'email_verification' => true` in `config/admin.php`; they need flocms-core 2.7, `php flo admin:install` and `php flo migrate`. See [Login security](docs/login-security.md).

@@ -15,6 +15,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Website settings**: settings pages declared in PHP, a page-level language switch, one image per language, and a cached `setting('site.title')` helper for templates. [Settings guide](docs/settings.md).
 - **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
 - **Media library**: images and videos uploaded once, with titles and alt text per language, in folders, picked in forms and the rich text editor, with "used in" tracking, focal points, a duplicate check and responsive `<img>` output on the website. [Media guide](docs/media.md).
+- **Custom pages**: a site's own reports, tools and help pages in the panel, with filters kept in the address, widgets, a read-only table from any query (search, sort, CSV), a form with Save, header actions, sidebar groups and badges, permissions on the Roles page and `php flo make:admin-page`. [Custom pages guide](docs/custom-pages.md).
 - **Ctrl+K search**: one box, from any page, that finds records of every resource, the panel's pages, settings and media you may open. [Search guide](docs/search.md).
 - **Relation managers**: a record's related records (a property's units) on its edit page, with search and New, Edit and Delete in dialogs, always limited to that parent by the server. [Relation managers guide](docs/relation-managers.md).
 - **Roles and permissions**: change what each role may do in a permission grid, add roles with their own level, and keep every change in the activity log, on top of `config/config.php`. [Roles guide](docs/roles.md).
@@ -319,6 +320,10 @@ Since 0.21 the roles and their permissions can be changed on **Site → Roles** 
 | `resources` | `[]` | Classes to load; empty loads every `*Resource.php` in `resources_path` |
 | `resources_path` | `'admin/Resources'` | Folder of the resource classes |
 | `resources_namespace` | `'App\Admin\Resources'` | Their namespace |
+| `admin_pages` | `[]` | Your own panel pages, as classes (0.36, [guide](docs/custom-pages.md)) |
+| `admin_pages_path` | `'admin/Pages'` | Folder of the page classes |
+| `admin_pages_namespace` | `'App\Admin\Pages'` | Their namespace |
+| `home` | `'dashboard'` | The page `/admin` opens: the dashboard, or one of `admin_pages` (`SalesReport::class`) |
 | `brand` | `SITE_NAME_ADMIN` | Name at the top of the sidebar |
 | `theme` | `'light'` | Colour theme: `'light'`, `'dark'`, or `'auto'` (follows the visitor's operating system) |
 | `primary_color` | `null` | Brand colour as `#rrggbb` for buttons, links and highlights; `null` keeps the default blue. Buttons use white text, so `admin:doctor` warns below a 4.5:1 contrast |
@@ -429,6 +434,10 @@ Admin 0.29 adds the **Builder** field: `Builder::make('content')` keeps a list o
 
 Admin 0.28 adds photos (or the first letter) and a bio to users, a user page with Photo, Access and Quick actions in a sidebar, a people list with All / Active / Pending / Suspended tabs, row and bulk actions (**Send reset link**, **Send email**, **Activate**, **Suspend**, greyed out with a reason when they don't apply), and emails with an email-style To field: a direct email to a few chosen users, or a mailing to everyone, a role or a status, sent in batches with an unsubscribe link and `php flo admin:mailings` for cron. See [Users: photos, actions and emails](docs/users.md).
 
+## Custom pages
+
+Admin 0.36 lets a site add **its own pages to the panel**: a report with filters kept in the address, widgets and a read-only table from any query (search, sort, Columns, CSV); a tool page with a form and Save; a help page with its own view and the panel's UI pieces. Pages get sidebar groups and badges, a `panel.<slug>` permission on the Roles page, Ctrl+K search, header actions and declared routes, and one can be the home page. `php flo make:admin-page SalesReport --view --table` makes one. See [Custom pages](docs/custom-pages.md).
+
 ## Login security
 
 Admin 0.35 adds **two-factor sign-in** with any authenticator app: people set it up under Profile → Security (QR code, the first code, 10 backup codes shown once), sign in with a code or a backup code after their password, and can have a device remembered for 30 days; roles can require it, and admins can reset it for someone who lost their phone (or `php flo admin:two-factor-reset`). It also adds **email verification**: invitations for new accounts, a banner for unconfirmed addresses, a changed address that applies only after its link is opened, and optionally a "Check your email" step after signing in. Both are off until turned on in `config/admin.php`; they need flocms-core 2.7 (held sign-ins). See [Login security](docs/login-security.md).
@@ -488,6 +497,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.33: the block's Display tab for developers: styles editors pick (`block_styles`), the theme's colours (`block_colours`), Extra large and phone spacing, `data-block` / `data-block-id` hooks, scoped custom CSS (`blocks.custom_css`), and Pages › Blocks preview
 - 0.34: six blocks (Contact and map, FAQ, Testimonials, Stats, Team, Logos), Video shapes and click-to-load, Hero text position, Gallery captions; warnings and errors close after 12 seconds
 - 0.35: login security (two-factor sign-in with backup codes, remembered devices, roles that require it and admin reset; email verification with invitations and confirmed address changes; flocms-core 2.7)
+- 0.36: custom pages (`AdminPage`: filters, widgets, views, read-only tables, forms, header actions and routes; sidebar groups and badges; Panel pages on the Roles page; `make:admin-page`)
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development

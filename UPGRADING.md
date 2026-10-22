@@ -1,3 +1,15 @@
+# Upgrading to Admin 0.36.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.36.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and no change until you add a page.
+
+- **Adding pages**: `php flo make:admin-page SalesReport --view --table`, then tick **Panel pages** on the roles that should see it (only Super admin can open a new page). See [Custom pages](docs/custom-pages.md).
+- **A report built as a skeleton controller** (`ReportsController::admin_index`) keeps working. To move it into the panel, make a page with another slug, then remove the controller: a site controller always wins its address.
+- **Resource slugs**: a page can't take a resource's slug, so resources are never affected. `admin:doctor` says when a page is skipped.
+- **The sidebar**: with pages that have a `$group`, new headings appear between Content and Site.
+- **Translations**: the new Arabic and Kurdish words (the page's filters, CSV and messages, the Roles group) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.35.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.35.0" -W` (it needs **flocms-core 2.7**, which Composer brings along), run `php flo view:clear` and reload open Admin pages. Nothing changes until you turn the new features on.

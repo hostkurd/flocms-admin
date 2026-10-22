@@ -69,7 +69,7 @@ final class ActivityEntry
     {
         return match ($this->action) {
             'created', 'media_uploaded', 'role_created' => 'created',
-            'updated', 'settings_saved', 'media_updated', 'media_replaced', 'profile_updated', 'role_updated', 'role_reset' => 'edited',
+            'updated', 'settings_saved', 'page_saved', 'media_updated', 'media_replaced', 'profile_updated', 'role_updated', 'role_reset' => 'edited',
             'deleted', 'purged', 'media_deleted', 'role_deleted' => 'deleted',
             'restored' => 'restored',
             default => 'other',
@@ -90,7 +90,7 @@ final class ActivityEntry
     {
         return match ($this->action) {
             'created', 'media_uploaded', 'role_created' => 'green',
-            'updated', 'settings_saved', 'media_updated', 'profile_updated', 'role_updated', 'role_reset' => 'blue',
+            'updated', 'settings_saved', 'page_saved', 'media_updated', 'profile_updated', 'role_updated', 'role_reset' => 'blue',
             'deleted', 'purged', 'media_deleted', 'role_deleted' => 'red',
             'restored' => 'purple',
             'imported' => 'teal',
@@ -147,6 +147,7 @@ final class ActivityEntry
         if ($class !== null) { return $class::getLabel(); }
         return match ($this->resource) {
             'settings' => AdminLang::get('settings.title'),
+            \FloCMS\Admin\PanelPages\CustomPages::ACTIVITY => AdminLang::get('pages_api.activity_type'),
             'media' => AdminLang::get('media.title'),
             'roles' => AdminLang::get('activity.what.role'),
             null, '' => '',
@@ -235,6 +236,8 @@ final class ActivityEntry
             }), 'target' => '', 'url' => null],
             'password_reset_limited', 'password_reset' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => '', 'url' => null],
             'settings_saved' => ['verb' => AdminLang::get('settings.title'), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            // A panel page's form (0.36), and its CSV
+            'page_saved' => ['verb' => AdminLang::get('activity.what.page_saved'), 'target' => $this->label(), 'url' => $this->recordUrl()],
             // The Users page and emails (0.28)
             'user_suspended', 'user_activated', 'password_link_sent', 'email_sent' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => $this->label(), 'url' => $this->recordUrl()],
             // Login security (0.35)
@@ -247,7 +250,7 @@ final class ActivityEntry
             // CSV import and export (0.25)
             'imported' => ['verb' => AdminLang::get('activity.what.imported', ['created' => (int) ($this->meta['created'] ?? 0), 'updated' => (int) ($this->meta['updated'] ?? 0), 'label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],
             'import_undone' => ['verb' => AdminLang::get('activity.what.import_undone', ['label' => $plural]), 'target' => $this->label(), 'url' => $this->importUrl()],
-            'exported' => ['verb' => AdminLang::get('activity.what.exported', ['count' => (int) ($this->meta['rows'] ?? 0)]), 'target' => $plural, 'url' => $this->listUrl()],
+            'exported' => $this->resource === \FloCMS\Admin\PanelPages\CustomPages::ACTIVITY ? ['verb' => AdminLang::get('activity.what.exported', ['count' => (int) ($this->meta['rows'] ?? 0)]), 'target' => $this->label(), 'url' => $this->recordUrl()] : ['verb' => AdminLang::get('activity.what.exported', ['count' => (int) ($this->meta['rows'] ?? 0)]), 'target' => $plural, 'url' => $this->listUrl()],
             default => ['verb' => $this->typeLabel(), 'target' => $this->label(), 'url' => $this->recordUrl()],
         };
     }
@@ -291,6 +294,10 @@ final class ActivityEntry
             if ($this->action === 'role_deleted' || !\FloCMS\Admin\Roles\Roles::canManage() || !is_numeric($this->recordId)) { return null; }
             $role = \FloCMS\Admin\Roles\Roles::find((int) $this->recordId);
             return $role !== null ? Admin::url('roles/edit/' . $role->number) : null;
+        }
+        if ($this->resource === \FloCMS\Admin\PanelPages\CustomPages::ACTIVITY) {
+            $class = Admin::panelPages()->find($this->recordId);
+            return $class !== null && (new $class())->allowed() ? Admin::url($class::getSlug()) : null;
         }
         if ($this->resource === 'media') {
             return \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('update') ? Admin::url('media/edit/' . $this->recordId) : null;
