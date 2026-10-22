@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.34.1 - 2026-10-22
+
+- **Builder**: a block that can't fold (anything but a Section or Columns) no longer has an empty space before its icon in the structure; its icon sits right after the drag handle.
+
 ## 0.34.0 - 2026-10-22
 
 **Six new blocks, and better Video, Hero and Gallery blocks.** Nothing to migrate: stored blocks don't change. See [Builder: the blocks of 0.34](docs/builder.md#the-blocks-of-034).

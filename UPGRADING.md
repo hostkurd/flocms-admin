@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.34.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.34.1" -W` and reload open Admin pages. No migration, nothing else to do: this release changes one style in the editor.
+
+---
+
 # Upgrading to Admin 0.34.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.34.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.

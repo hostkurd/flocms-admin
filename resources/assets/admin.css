@@ -1071,8 +1071,7 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-builder-fold:hover{background:var(--fa-surface-3);color:var(--fa-text)}
 .is-folded > .fa-builder-row .fa-builder-fold svg{transform:rotate(-90deg)}
 [dir="rtl"] .is-folded > .fa-builder-row .fa-builder-fold svg{transform:rotate(90deg)}
-/* Top-level blocks line up with the containers' icons, after their fold button */
-.fa-builder.is-ready .fa-builder-outline > .fa-builder-tree > .fa-builder-node:not([data-holds]) > .fa-builder-row > .fa-builder-kind-icon{margin-inline-start:30px}
+/* 0.34.1: a block that can't fold has no empty space where the fold button would be */
 .fa-builder-row-inside{display:none;flex:0 1000 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fa-muted)}
 .is-folded > .fa-builder-row .fa-builder-row-inside:not(:empty){display:inline}
 .fa-builder-row-inside::before{content:"·";margin-inline-end:5px}
