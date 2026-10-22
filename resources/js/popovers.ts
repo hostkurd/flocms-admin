@@ -78,7 +78,7 @@ document.addEventListener('flo-reactive:updated', event => {
       const chosen = [...select.options].find(option => option.defaultSelected) ?? select.options[0];
       if (chosen) select.value = chosen.value;
     });
-    details.querySelectorAll<HTMLInputElement>('input[data-admin-filter]').forEach(input => { input.value = input.defaultValue; });
+    details.querySelectorAll<HTMLInputElement>('input[data-admin-filter]').forEach(input => { if (input.type === 'checkbox') input.checked = input.defaultChecked; else input.value = input.defaultValue; });
   });
   openBeforeUpdate.forEach(id => {
     const details = document.getElementById(id);

@@ -116,6 +116,10 @@ final class SettingsEditor
         foreach ($resolved->writableFields() as $name => $field) {
             if ($field->skipsWrite($state[$name] ?? '', true)) { $skip[] = $name; }
         }
+        // Checkbox lists and tags (0.37): a removed option the page already has stays valid
+        foreach ($resolved->writableFields() as $field) {
+            if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) { $field->allowStored($field->values($field->stateFromRecord($record, Languages::default()))); }
+        }
         $errors = (new FormValidator(Languages::all(), Languages::default(), null, true))->validate($resolved, $state, $skip);
         $errors = array_replace($errors, $uploads['errors']);
         if ($errors !== [] || !$this->ready()) {
@@ -193,6 +197,11 @@ final class SettingsEditor
                 return $values === [] ? null : $values;
             }
             return is_string($state) && $state !== '' && $state !== SettingsUploads::PENDING ? $state : null;
+        }
+        if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) {
+            // Stored as the list itself (0.37), so setting('site.tags') is an array.
+            $list = $field->values(is_string($state) ? $state : '');
+            return $list === [] ? null : $list;
         }
         if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater || $field instanceof \FloCMS\Admin\Form\Fields\Builder) {
             // Stored as the list itself (0.24; blocks 0.29), so setting('contact.links') is an array.

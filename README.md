@@ -196,8 +196,11 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `RichEditor` | visual editor | Formatting, links, images, videos, YouTube/Vimeo; clean HTML; translatable with language tabs ([guide](docs/rich-text.md)) |
 | `Select` | select | `->options([...])` or `->options(fn () => [...])`; only listed values are accepted. `->segmented()`, `->pictures([...])`, `->positions()` (0.29) and `->swatches(['brand' => '#0b6e91'])` (0.33) show buttons; `->whenMissing('…:value…')` (0.33) points out a stored value that is no longer an option |
 | `Toggle` | checkbox | Stored as `1` / `0`; an unchecked box saves `0` |
+| `CheckboxList` | checkboxes | Several choices from a fixed list, stored as a JSON list of keys: `->options([...])`, `->columns(3)`, `->selectAll()`, `->searchable()`, `->min()`, `->max()` (0.37, [guide](docs/choice-fields.md)) |
+| `TagsInput` | chips | Free words typed as tags (Enter or comma), stored as a JSON list: `->suggestions([...])`, `->onlySuggestions()`, `->max(10)`, `->maxLength(40)`, `->separator(';')` (0.37, [guide](docs/choice-fields.md)) |
 | `Date` | date | Stored as `Y-m-d`, empty as `NULL` |
 | `DateTime` | datetime-local | Stored as `Y-m-d H:i:s`, empty as `NULL` |
+| `TimePicker` | time | Stored as `H:i:s`, empty as `NULL`: `->minTime('08:00')`, `->maxTime('20:00')`, `->step(15)`, `->seconds()` (0.37, [guide](docs/choice-fields.md)) |
 | `Slug` | text | `->from('title')` fills it from the default-language title while empty (in the browser and on save) |
 | `Hidden` | hidden | Written, not shown |
 | `Placeholder` | read-only text | `->content(fn (?object $record) => ...)`; never written |
@@ -226,6 +229,8 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `TextColumn` | text | `->limit(60)` |
 | `BooleanColumn` | Yes / No badge | |
 | `DateColumn` | a date | `->dateFormat('Y-m-d H:i')` |
+| `TimeColumn` | a time of day | `->timeFormat('g:i A')`, `->seconds()`; default from `'time_format'` (0.37) |
+| `TagsColumn` | a list as chips, then "+2" | `->options([...])` for labels, `->limit(3)` (0.37, [guide](docs/choice-fields.md#in-the-list)) |
 | `BadgeColumn` | a coloured badge | `->colors([...])` (gray, green, blue, yellow, red, purple), `->labels([...])` |
 | `RelationColumn` | related titles | `->resource(CityResource::class)`; many-to-many with `->pivot(...)`, `->limit(3)` ([guide](docs/relationships.md)) |
 | `MediaColumn` | thumbnails of media items | `->limit(3)`; loads the page's items in one query ([guide](docs/media.md)) |
@@ -434,6 +439,10 @@ Admin 0.29 adds the **Builder** field: `Builder::make('content')` keeps a list o
 
 Admin 0.28 adds photos (or the first letter) and a bio to users, a user page with Photo, Access and Quick actions in a sidebar, a people list with All / Active / Pending / Suspended tabs, row and bulk actions (**Send reset link**, **Send email**, **Activate**, **Suspend**, greyed out with a reason when they don't apply), and emails with an email-style To field: a direct email to a few chosen users, or a mailing to everyone, a role or a status, sent in batches with an unsubscribe link and `php flo admin:mailings` for cron. See [Users: photos, actions and emails](docs/users.md).
 
+## Checkbox lists, tags and times
+
+`CheckboxList` (several choices from a fixed list), `TagsInput` (free words as chips) and `TimePicker` (a time of day), with list columns and filters that match whole tags regardless of capitals on MySQL, MariaDB and SQLite. See [Checkbox lists, tags and times](docs/choice-fields.md).
+
 ## Custom pages
 
 Admin 0.36 lets a site add **its own pages to the panel**: a report with filters kept in the address, widgets and a read-only table from any query (search, sort, Columns, CSV); a tool page with a form and Save; a help page with its own view and the panel's UI pieces. Pages get sidebar groups and badges, a `panel.<slug>` permission on the Roles page, Ctrl+K search, header actions and declared routes, and one can be the home page. `php flo make:admin-page SalesReport --view --table=listings` makes one, with columns and filters read from the table (or `--resource=Listing` for a resource's columns). See [Custom pages](docs/custom-pages.md).
@@ -498,6 +507,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.34: six blocks (Contact and map, FAQ, Testimonials, Stats, Team, Logos), Video shapes and click-to-load, Hero text position, Gallery captions; warnings and errors close after 12 seconds
 - 0.35: login security (two-factor sign-in with backup codes, remembered devices, roles that require it and admin reset; email verification with invitations and confirmed address changes; flocms-core 2.7)
 - 0.36: custom pages (`AdminPage`: filters, widgets, views, read-only tables, forms, header actions and routes; sidebar groups and badges; Panel pages on the Roles page; `make:admin-page`)
+- 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development

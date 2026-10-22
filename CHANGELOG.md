@@ -2,6 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.37.0 - 2026-10-23
+
+**Checkbox lists, tags and times.** Nothing to migrate. See [Checkbox lists, tags and times](docs/choice-fields.md).
+
+- **`CheckboxList`**: several choices from a fixed list, stored as a JSON list of option keys in one column, in the order of the options. `->columns(1–4)`, `->selectAll()` (Select all and Clear), `->searchable()` (a filter box, on by default above 12 options), `->min()`, `->max()` (the other boxes wait at the maximum), `->whenMissing()`. A count ("4 of 9 chosen") next to the label. An option removed from `options()` stays saved in records that have it, with a notice, until it is unticked (also through imports and saves without the field); it doesn't count towards `min()`/`max()`; a key the record doesn't have is refused.
+- **`TagsInput`**: free words as chips. Enter or a comma adds one (the Arabic comma too); a pasted list becomes tags; Backspace in the empty box selects the last tag and removes it on the second press; arrow keys move between tags (mirrored on right-to-left pages). `->suggestions()`, `->onlySuggestions()` (a suggestion removed since stays valid on records that have it), `->max()`, `->maxLength()`, `->separator()`. Tags are trimmed, spaces collapsed and duplicates removed regardless of capitals. Without JavaScript: one text box.
+- **`TimePicker`**: the browser's time input, stored as `HH:MM:SS`. `->minTime()`, `->maxTime()`, `->step()` (minutes), `->seconds()`; all checked again on the server.
+- **List columns** `TagsColumn` (chips, `->limit()`, `->options()` for labels; "+2" for the rest) and `TimeColumn`; **filters** `CheckboxListFilter` (one option, or `->multiple()` for any of several), `TagsFilter` (whole tags, any capitals, any script, accents count; the same on MySQL, MariaDB and SQLite) and `TimeRangeFilter`.
+- Everywhere else the fields go: the view page (chips, times), the activity log ("Features · Added: Parking"; the same tags in another order are no change), CSV export (`pool | parking`, labels in the readable export) and import (keys or labels; times like `9:30 PM` or a spreadsheet's 0.3958), repeater items, block forms, settings pages and custom page forms (lists arrive as arrays).
+- A plain-text column holding "pool, parking" can become a CheckboxList or TagsInput without a migration: it is read as a list and saved as JSON next time.
+- New config `'time_format'` (default `'H:i'`; `'g:i A'` for 12-hour) for times in lists, view pages and the activity log.
+- Website helpers `list_values($value)` and `option_labels($value, $options)`.
+- `make:admin-page --table` shows `TIME` columns with `TimeColumn` (they were taken for dates).
+- New words in `en`, `ar` and `ku`: `checks.*`, `tags.*`, `validation.list_*`, `validation.tag*`, `validation.time*`, `filters.any_tag`, `table.more_items`.
+
 ## 0.36.2 - 2026-10-22
 
 **`make:admin-page` reads the table it lists.** See [Custom pages: making a page](docs/custom-pages.md#making-a-page).

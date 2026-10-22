@@ -46,6 +46,9 @@ final class Values
             $field instanceof Fields\Toggle => [self::toggle($cell) ?? $cell, self::toggle($cell) === null ? AdminLang::get('import.not_yes_no') : null],
             $field instanceof Fields\DateTime => [self::dateTime($cell, $this->dateOrder) ?? $cell, null],
             $field instanceof Fields\Date => [self::date($cell, $this->dateOrder) ?? $cell, null],
+            $field instanceof Fields\CheckboxList => [self::choices($field, $cell), null],
+            $field instanceof Fields\TagsInput => [self::listCells($cell), null],
+            $field instanceof Fields\TimePicker => [self::time($cell) ?? $cell, null],
             $field instanceof Fields\Select => [self::option($field, $cell), null],
             $field instanceof Fields\ColorPicker => [self::color($cell), null],
             $field instanceof Fields\BelongsTo => $this->belongsTo($field, $cell),
@@ -178,6 +181,54 @@ final class Values
             if (Schema::normalize((string) $key) === $wanted || Schema::normalize(strip_tags((string) $label)) === $wanted) { return (string) $key; }
         }
         return $cell;
+    }
+
+    /**
+     * "Pool | Parking" (or "pool; parking", one per line, or "pool, parking"
+     * when there is no other separator) → the parts (0.37).
+     *
+     * @return list<string>
+     */
+    public static function listCells(string $cell): array
+    {
+        $cell = trim($cell);
+        if ($cell === '') { return []; }
+        if ($cell[0] === '[') {
+            $decoded = json_decode($cell, true);
+            if (is_array($decoded) && array_is_list($decoded)) { return \FloCMS\Admin\Support\ListValues::decode($decoded); }
+        }
+        $parts = array_values(array_filter(array_map('trim', preg_split('/\s*[|;\n]\s*/u', $cell) ?: []), static fn (string $p): bool => $p !== ''));
+        if (count($parts) === 1) { return \FloCMS\Admin\Support\ListValues::split($parts[0], [',']); }
+        return $parts;
+    }
+
+    /** A CheckboxList cell: each part a key or a label (any capitals) → the keys. @return list<string> */
+    public static function choices(Fields\CheckboxList $field, string $cell): array
+    {
+        $options = $field->getOptions();
+        $keys = [];
+        foreach (self::listCells($cell) as $part) {
+            if (array_key_exists($part, $options)) { $keys[] = $part; continue; }
+            $wanted = Schema::normalize($part);
+            $found = $part;
+            foreach ($options as $key => $label) {
+                if (Schema::normalize((string) $key) === $wanted || Schema::normalize(strip_tags((string) $label)) === $wanted) { $found = (string) $key; break; }
+            }
+            $keys[] = $found;
+        }
+        return $keys;
+    }
+
+    /** "9:30", "09:30:15", "9:30 PM", or Excel's day fraction (0.3958…) → HH:MM:SS, or null. */
+    public static function time(string $cell): ?string
+    {
+        $cell = trim($cell);
+        if (preg_match('/^0?\.\d+$|^0$/D', $cell) === 1) {
+            $seconds = (int) round((float) $cell * 86400);
+            if ($seconds >= 86400) { return null; }
+            return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
+        }
+        return Fields\TimePicker::parse($cell);
     }
 
     public static function color(string $cell): string

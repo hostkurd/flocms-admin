@@ -63,8 +63,9 @@ final class PageFilters
         foreach ($resolved->fields() as $name => $field) {
             $state = $this->state[$name] ?? '';
             if ($state === '' || isset($this->errors[$name]) || $field instanceof \FloCMS\Admin\Form\Fields\Placeholder) { continue; }
-            $value = $field->dehydrate($state);
-            if ($value === null || $value === '' || $value === false) { continue; }
+            // A checkbox list or tags (0.37): the list itself
+            $value = $field instanceof \FloCMS\Admin\Form\Fields\ListField ? $field->values($state) : $field->dehydrate($state);
+            if ($value === null || $value === '' || $value === false || $value === []) { continue; }
             $this->values[$name] = $value;
             if ($given) { $this->active[$name] = $state; }
         }

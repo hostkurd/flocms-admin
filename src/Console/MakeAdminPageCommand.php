@@ -182,7 +182,7 @@ final class MakeAdminPageCommand extends Command
         $left = [];
         foreach ($definition->getColumns() as $name => $column) {
             $class = (new \ReflectionClass($column))->getShortName();
-            if (!in_array($class, ['TextColumn', 'DateColumn', 'BooleanColumn', 'BadgeColumn'], true) || !$column->isDatabaseColumn()) { $left[] = $name . ' (' . $class . ': add it by hand)'; continue; }
+            if (!in_array($class, ['TextColumn', 'DateColumn', 'TimeColumn', 'BooleanColumn', 'BadgeColumn'], true) || !$column->isDatabaseColumn()) { $left[] = $name . ' (' . $class . ': add it by hand)'; continue; }
             $columns[] = ['class' => $class === 'BadgeColumn' ? 'TextColumn' : $class, 'name' => (string) $name, 'searchable' => $column->isSearchable(), 'sortable' => $column->isSortable(), 'translatable' => $column->isTranslatable()];
             $label = (new \ReflectionProperty($column, 'label'))->getValue($column);
             if (is_string($label) && $label !== '') { $labels[(string) $name] = $label; }

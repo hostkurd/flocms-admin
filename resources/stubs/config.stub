@@ -74,6 +74,9 @@ return [
     // Sidebar style: 'light' or 'dark'
     'sidebar' => 'light',
 
+    // How times of day are shown in lists and view pages: 'H:i' (24-hour) or 'g:i A' (12-hour)
+    'time_format' => 'H:i',
+
     // Page width: 'full' uses the whole window, 'boxed' centres pages at most 1280 px wide
     'content_width' => 'full',
 

@@ -126,10 +126,14 @@ final class PageForm
 
     /**
      * The value submit() receives: translatable fields ['en' => …, 'ar' => …],
-     * repeaters and builders their list, other fields what a resource would store.
+     * repeaters, builders, checkbox lists and tags their list, other fields what
+     * a resource would store.
      */
     public static function value(Field $field, string|array $state): mixed
     {
+        if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) {
+            return $field->values(is_string($state) ? $state : '');
+        }
         if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater || $field instanceof \FloCMS\Admin\Form\Fields\Builder) {
             $encoded = $field->dehydrate(is_string($state) ? $state : '');
             $list = is_string($encoded) ? json_decode($encoded, true) : $encoded;

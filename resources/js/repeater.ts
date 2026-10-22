@@ -9,6 +9,7 @@
  */
 import { applyEditing, initializeTranslations } from './translations';
 import { initializeMedia } from './media';
+import { initializeChoiceFields } from './choices';
 
 type Removed = { node: HTMLElement; index: number; title: string };
 const removed = new WeakMap<HTMLElement, Removed>();
@@ -115,6 +116,7 @@ function prepare(field: HTMLElement, item: HTMLElement): void {
   initialize(item);
   initializeTranslations(item);
   initializeMedia(item);
+  initializeChoiceFields(item);
   const scope = field.closest<HTMLElement>('[data-lang-scope].is-switching');
   if (scope) applyEditing(scope, scope.dataset.editing || scope.dataset.defaultLang || '');
 }

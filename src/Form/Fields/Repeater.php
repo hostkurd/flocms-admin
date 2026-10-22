@@ -41,7 +41,7 @@ class Repeater extends Field
     public const MAX_BYTES = 48000;
 
     /** Field types allowed inside an item. */
-    private const ALLOWED = [TextInput::class, Textarea::class, Select::class, Toggle::class, Date::class, DateTime::class, ColorPicker::class, Hidden::class, MediaPicker::class];
+    private const ALLOWED = [TextInput::class, Textarea::class, Select::class, Toggle::class, Date::class, DateTime::class, ColorPicker::class, Hidden::class, MediaPicker::class, CheckboxList::class, TagsInput::class, TimePicker::class];
 
     /** @var array<string, Field> */
     protected array $schema = [];
@@ -82,7 +82,7 @@ class Repeater extends Field
         foreach (self::ALLOWED as $class) { if ($field instanceof $class) { $allowed = true; } }
         $name = $field->getName();
         if (!$allowed || $field instanceof Slug) {
-            throw new LogicException('Repeater "' . $repeater . '": ' . (new \ReflectionClass($field))->getShortName() . ' "' . $name . '" cannot sit inside an item. Use text, textarea, select, toggle, date, date-time, colour, hidden or media picker fields.');
+            throw new LogicException('Repeater "' . $repeater . '": ' . (new \ReflectionClass($field))->getShortName() . ' "' . $name . '" cannot sit inside an item. Use text, textarea, select, checkbox list, tags, toggle, date, date-time, time, colour, hidden or media picker fields.');
         }
         if ($field instanceof TextInput && $field->isPassword()) { throw new LogicException('Repeater "' . $repeater . '": passwords cannot sit inside an item.'); }
         if ($field instanceof Select && $field->hasDependentOptions()) { throw new LogicException('Repeater "' . $repeater . '": select "' . $name . '" cannot depend on another field inside an item.'); }
@@ -266,6 +266,12 @@ class Repeater extends Field
             if ($field->isTranslatable()) {
                 $clean = array_filter(is_array($value) ? $value : [], static fn ($part): bool => is_string($part) && $part !== '');
                 if ($clean !== []) { $stored[$name] = $clean; }
+                continue;
+            }
+            if ($field instanceof ListField) {
+                // A list stays a list (0.37), so repeater_items() gives an array
+                $list = $field->values(is_string($value) ? $value : '');
+                if ($list !== []) { $stored[$name] = $list; }
                 continue;
             }
             if ($field instanceof MediaPicker) {

@@ -1,3 +1,4 @@
+import { initializeChoiceFields } from './choices';
 // Tabs are progressive enhancement: without JS every section remains reachable.
 const activeTabs = new Map<string, string>();
 function activate(group: HTMLElement, id: string, focus = false): void {
@@ -35,6 +36,7 @@ document.addEventListener('change', event => {
 
 export function initializeForms(root: HTMLElement): void {
   applyShown(root);
+  initializeChoiceFields(root);
   root.querySelectorAll<HTMLElement>('[data-admin-tabs]').forEach(group => {
     const list = group.querySelector<HTMLElement>(':scope > [data-admin-tab-list]');
     const tabs = [...group.querySelectorAll<HTMLButtonElement>(':scope > [data-admin-tab-list] > [data-admin-tab]')];

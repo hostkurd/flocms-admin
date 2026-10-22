@@ -174,10 +174,12 @@ document.addEventListener('submit', event => {
     const values: Record<string, string | Record<string, string>> = {};
     form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-admin-filter]').forEach(input => {
       const [name, part] = input.dataset.adminFilter!.split('.');
+      // A ticked box sends its value, an unticked one nothing (CheckboxListFilter, 0.37)
+      const value = input instanceof HTMLInputElement && input.type === 'checkbox' ? (input.checked ? input.value : '') : input.value;
       if (part) {
         const range = typeof values[name] === 'object' ? values[name] as Record<string, string> : {};
-        range[part] = input.value; values[name] = range;
-      } else values[name] = input.value;
+        range[part] = value; values[name] = range;
+      } else values[name] = value;
     });
     form.querySelector<HTMLInputElement>('[data-rx-bind="filters"]')!.value = JSON.stringify(values);
     return;

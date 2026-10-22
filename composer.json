@@ -79,7 +79,7 @@
             ]
         },
         "branch-alias": {
-            "dev-main": "0.36-dev"
+            "dev-main": "0.37-dev"
         }
     },
     "scripts": {

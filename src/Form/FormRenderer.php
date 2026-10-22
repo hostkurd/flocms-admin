@@ -276,7 +276,9 @@ final class FormRenderer
 
         $html = '<div class="' . implode(' ', $classes) . '" data-field="' . Str::e($name) . '"' . ($shared ? ' data-same-all' : '')
             . ($panes || $switched ? ' data-translatable' : '') . ($switched && $isRich ? ' data-rich' : '') . ($switched && $isUpload ? ' data-uncounted' : '') . '>';
-        $html .= '<label class="fa-label" id="' . Str::e($id) . '-label" for="' . Str::e($id) . '">' . $label . (($panes || ($switched && $isRich)) && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</label>';
+        // A checkbox list is a group named by aria-labelledby: its label points at no one input (0.37)
+        $tag = $field instanceof Fields\CheckboxList ? 'span' : 'label';
+        $html .= '<' . $tag . ' class="fa-label" id="' . Str::e($id) . '-label"' . ($tag === 'label' ? ' for="' . Str::e($id) . '"' : '') . '>' . $label . (($panes || ($switched && $isRich)) && count($this->languages) > 1 ? $this->labelDots($field) : '') . '</' . $tag . '>';
         // Settings pages: an "All languages" pill above the input; record forms: a line below it.
         // Inside repeater items ($sameNote ''): locked without a note on every field.
         $note = $shared && $this->sameNote !== '' ? '<p class="fa-same-note' . ($this->sameNote !== null ? ' is-line' : '') . '"' . ($this->locksShared() ? '' : ' hidden') . '>'
