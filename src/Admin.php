@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.34.0';
+    public const VERSION = '0.35.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -45,6 +45,8 @@ final class Admin
             App::allowGuestAdminActions('mailings', ['admin_unsubscribe'], \FloCMS\Admin\Http\MailingsController::class);
         }
         \FloCMS\Admin\Auth\PasswordStamp::boot();
+        // Login security (0.35, flocms-core 2.7+): the sign-in steps, when turned on in config/admin.php.
+        self::bootLoginSecurity();
         // Pages (0.30, flocms-core 2.6+): addresses no controller answers may be pages.
         if (method_exists(App::class, 'fallbackUsing')) {
             App::fallbackUsing(static fn (string $path, \FloCMS\Core\Http\Request $request): ?\FloCMS\Core\Http\Response => \FloCMS\Admin\Pages\PageFallback::handle($path, $request));
@@ -55,6 +57,33 @@ final class Admin
         // A site can set its own 'admin.home' in config/config.php, which runs later.
         if (Config::get('admin.home') === null) {
             Config::set('admin.home', static fn (): ?string => self::homePath());
+        }
+    }
+
+    private static bool $twoFactorBooted = false;
+    private static bool $verificationBooted = false;
+
+    /**
+     * Two-factor sign-in and email verification hold fresh sign-ins (flocms-core
+     * 2.7). Registered only when config/admin.php turns them on, so a site that
+     * doesn't use them is never asked for a sign-in step. Reads the config at
+     * boot when the site's ROOT is known; useConfig() asks again.
+     */
+    private static function bootLoginSecurity(): void
+    {
+        if (!self::$booted || (self::$root === null && self::$config === null && !defined('ROOT'))) { return; }
+        try {
+            $config = self::config();
+        } catch (Throwable) {
+            return;
+        }
+        if (!self::$twoFactorBooted && $config->twoFactor()['enabled']) {
+            self::$twoFactorBooted = true;
+            \FloCMS\Admin\Auth\TwoFactor::boot();
+        }
+        if (!self::$verificationBooted && $config->emailVerification()['enabled']) {
+            self::$verificationBooted = true;
+            \FloCMS\Admin\Auth\EmailVerification::boot();
         }
     }
 
@@ -94,6 +123,13 @@ final class Admin
         }
         if ($controller === 'password' && $config->passwordReset()['enabled']) {
             return \FloCMS\Admin\Http\PasswordController::class;
+        }
+        // Login security (0.35): the sign-in steps and the email links.
+        if ($controller === \FloCMS\Admin\Auth\TwoFactor::PATH && $config->twoFactor()['enabled']) {
+            return \FloCMS\Admin\Http\TwoFactorController::class;
+        }
+        if ($controller === \FloCMS\Admin\Auth\EmailVerification::PATH && $config->emailVerification()['enabled']) {
+            return \FloCMS\Admin\Http\VerifyController::class;
         }
         if ($controller === 'profile' && $config->usersEnabled()) {
             return ProfileController::class;
@@ -192,6 +228,9 @@ final class Admin
         \FloCMS\Admin\Roles\Roles::reset();
         \FloCMS\Admin\Relations\RelationManager::reset();
         Languages::setRtl(self::$config->rtlLanguages());
+        \FloCMS\Admin\Auth\TwoFactor::reset();
+        \FloCMS\Admin\Auth\EmailVerification::reset();
+        self::bootLoginSecurity();
 
         return self::$config;
     }

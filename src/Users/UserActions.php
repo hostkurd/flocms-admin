@@ -39,6 +39,9 @@ final class UserActions
             EditAction::make(),
             self::resetLink(Action::make('reset_link'))->group('account'),
             self::email(Action::make('email'))->group('account'),
+            // Login security (0.35)
+            self::verifyLink(Action::make('verify_link'))->group('account'),
+            self::resetTwoFactor(Action::make('reset_two_factor'))->group('account'),
             self::activate(Action::make('activate'))->group('status'),
             self::suspend(Action::make('suspend'))->group('status'),
             DeleteAction::make(),
@@ -147,6 +150,57 @@ final class UserActions
                 }
                 Activity::record('password_link_sent', 'accounts', (string) $context->record->id, self::name($context->record), meta: !empty($data['sign_out']) ? ['signed_out' => 1] : []);
             }, 'users.link_sent_one'));
+    }
+
+    /** Send verification email (an invitation for a pending account that never confirmed). */
+    private static function verifyLink(Action $action): Action
+    {
+        return $action->label(AdminLang::get('users.send_verification'))->icon('mail')->permission('users.manage')
+            ->visible(static fn (?object $r = null): bool => \FloCMS\Admin\Auth\EmailVerification::available())
+            ->disabled(static fn (?object $r): ?string => self::reason($r === null ? null
+                : (self::protectedReason($r) ?? ((int) ($r->status ?? 0) === UsersResource::SUSPENDED ? 'users.reason_activate_first'
+                : (\FloCMS\Admin\Auth\EmailVerification::isVerified($r) ? 'users.reason_verified'
+                : (filter_var((string) ($r->email ?? ''), FILTER_VALIDATE_EMAIL) === false ? 'users.reason_no_email' : null))))))
+            ->modalHeading(static fn (?object $r): string => $r !== null ? AdminLang::get((int) ($r->status ?? 0) === UsersResource::PENDING ? 'users.invite_title' : 'users.verify_title', ['name' => self::name($r)]) : '')
+            ->modalDescription(static fn (?object $r): string => $r !== null ? AdminLang::get((int) ($r->status ?? 0) === UsersResource::PENDING ? 'users.invite_text' : 'users.verify_text',
+                ['email' => (string) ($r->email ?? ''), 'hours' => max(1, intdiv(Admin::config()->emailVerification()['expires'], 60))]) : '')
+            ->requiresConfirmation()
+            ->action(self::handler(static function (ActionContext $context): void {
+                $user = $context->record;
+                try {
+                    $sent = (int) ($user->status ?? 0) === UsersResource::PENDING
+                        ? \FloCMS\Admin\Auth\EmailVerification::invite($user, \FloCMS\Core\Session::get('fullname') ?: null)
+                        : \FloCMS\Admin\Auth\EmailVerification::sendVerification($user);
+                } catch (MailException|\InvalidArgumentException $error) {
+                    error_log('flocms-admin: verification email to user ' . $user->id . ' failed: ' . $error->getMessage());
+                    throw new ValidationException(['_form' => AdminLang::get('users.mail_failed')]);
+                }
+                if (!$sent) { throw new ValidationException(['_form' => AdminLang::get('users.verify_limited', ['name' => self::name($user)])]); }
+            }, 'users.verify_sent_one'));
+    }
+
+    /** Reset two-factor: for someone who lost their phone and their backup codes. */
+    private static function resetTwoFactor(Action $action): Action
+    {
+        return $action->label(AdminLang::get('users.reset_two_factor'))->icon('shield')->permission('users.manage')
+            ->visible(static fn (?object $r = null): bool => \FloCMS\Admin\Auth\TwoFactor::available())
+            ->disabled(static fn (?object $r): ?string => self::reason(self::protectedReason($r)
+                ?? ($r !== null && !\FloCMS\Admin\Auth\TwoFactor::isOn((int) $r->id) ? 'users.reason_two_factor_off' : null)))
+            ->modalHeading(static fn (?object $r): string => $r !== null ? AdminLang::get('users.reset_two_factor_title', ['name' => self::name($r)]) : '')
+            ->modalDescription(static fn (?object $r): string => $r !== null ? AdminLang::get(\FloCMS\Admin\Auth\TwoFactor::isRequired($r->role ?? null) ? 'users.reset_two_factor_required' : 'users.reset_two_factor_text', ['name' => self::name($r)]) : '')
+            ->form(static fn (Form $form): Form => $form->columns(1)->schema([
+                Toggle::make('notify')->label(AdminLang::get('users.reset_two_factor_notify'))->default('1'),
+            ]))
+            ->action(self::handler(static function (ActionContext $context, array $data): void {
+                \FloCMS\Admin\Auth\TwoFactor::disable((int) $context->record->id, 'two_factor_reset');
+                if (!empty($data['notify'])) {
+                    try { \FloCMS\Admin\Auth\SecurityMail::twoFactorReset($context->record); }
+                    catch (MailException|\InvalidArgumentException $error) {
+                        error_log('flocms-admin: two-factor reset notice to user ' . $context->record->id . ' failed: ' . $error->getMessage());
+                        Notification::make()->title(AdminLang::get('users.notice_failed', ['name' => self::name($context->record)]))->warning()->send();
+                    }
+                }
+            }, 'users.two_factor_reset_one'));
     }
 
     private static function email(Action $action): Action

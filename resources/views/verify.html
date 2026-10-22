@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="{{ $lang }}" dir="{{ $dir }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>{{ $title }} · {{ $brand }}</title>
+{!! $assets !!}
+</head>
+<body>
+<main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}" data-theme="{{ $theme }}">
+    <div class="fa-login-container">
+        <a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>
+        <section class="fa-login-card" aria-labelledby="fa-login-title">
+            @if($screen === 'done')<div class="fa-login-icon is-success" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4 10-10"/></svg></div>@endif
+            @if($screen === 'waiting' || $screen === 'confirm')<div class="fa-login-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>@endif
+            @if($screen === 'invalid')<div class="fa-login-icon is-warning" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>@endif
+            <header>
+                <p class="fa-login-eyebrow">{{ $t('login.admin') }}</p>
+                <h1 id="fa-login-title">{{ $title }}</h1>
+                @if($screen === 'waiting')
+                <p class="fa-login-text">{{ $t('verify.waiting_before') }}<strong dir="ltr">{{ $email }}</strong>{{ $t('verify.waiting_after') }}</p>
+                <p class="fa-login-note">{{ $t('verify.waiting_note', ['hours' => $hours]) }}</p>
+                @elseif($screen === 'invite')
+                <div class="fa-login-badge"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4 10-10"/></svg><span dir="ltr">{{ $email }}</span></div>
+                <p class="fa-login-description">{{ $t('verify.invite_description') }}</p>
+                @else
+                <p class="fa-login-description">{{ $description }}</p>
+                @endif
+            </header>
+            @if($flash !== '')<div class="fa-login-alert{{ $flashType === 'success' ? ' is-success' : '' }}" role="{{ $flashType === 'success' ? 'status' : 'alert' }}"><span>{{ $flash }}</span></div>@endif
+
+            @if($screen === 'waiting')
+            <form method="post" action="{{ $action }}" class="fa-login-actions">
+                {!! $csrf !!}
+                <button type="submit" class="fa-login-submit">{{ $t('verify.send_again') }}</button>
+                <a class="fa-login-secondary" href="{{ $logoutUrl }}">{{ $t('two_factor.sign_out') }}</a>
+            </form>
+            @endif
+
+            @if($screen === 'invite')
+            <form method="post" action="{{ $action }}" class="fa-login-form" novalidate>
+                {!! $csrf !!}
+                <input type="email" name="username" value="{{ $email }}" autocomplete="username" hidden>
+                <div><label for="fa-invite-password">{{ $t('password.new') }}</label><div class="fa-login-password"><input id="fa-invite-password" type="password" name="password" required minlength="{{ $min }}" autocomplete="new-password" dir="ltr" @if($confirmError === '') autofocus @endif aria-describedby="fa-invite-password-help{{ $passwordError !== '' ? ' fa-invite-password-error' : '' }}" @if($passwordError !== '') aria-invalid="true" @endif><button type="button" data-admin-password-toggle aria-controls="fa-invite-password" aria-pressed="false" data-show-text="{{ $t('login.show') }}" data-hide-text="{{ $t('login.hide') }}" hidden>{{ $t('login.show') }}</button></div><p class="fa-login-help" id="fa-invite-password-help">{{ $t('password.rule', ['min' => $min]) }}</p>@if($passwordError !== '')<p class="fa-login-error" id="fa-invite-password-error">{!! $errorIcon !!}{{ $passwordError }}</p>@endif</div>
+                <div><label for="fa-invite-confirm">{{ $t('password.confirm') }}</label><div class="fa-login-password"><input id="fa-invite-confirm" type="password" name="password_confirmation" required autocomplete="new-password" dir="ltr" @if($confirmError !== '') autofocus aria-invalid="true" aria-describedby="fa-invite-confirm-error" @endif><button type="button" data-admin-password-toggle aria-controls="fa-invite-confirm" aria-pressed="false" data-show-text="{{ $t('login.show') }}" data-hide-text="{{ $t('login.hide') }}" hidden>{{ $t('login.show') }}</button></div>@if($confirmError !== '')<p class="fa-login-error" id="fa-invite-confirm-error">{!! $errorIcon !!}{{ $confirmError }}</p>@endif</div>
+                <button type="submit" class="fa-login-submit">{{ $t('verify.invite_save') }}</button>
+            </form>
+            @endif
+
+            @if($screen === 'confirm')
+            <form method="post" action="{{ $action }}">
+                {!! $csrf !!}
+                <button type="submit" class="fa-login-submit">{{ $t('verify.confirm_button') }}</button>
+            </form>
+            @endif
+
+            @if($screen === 'done')
+            <a class="fa-login-submit" href="{{ $continueUrl }}">{{ $t('verify.continue') }}</a>
+            @endif
+
+            @if($screen === 'invalid')
+            <a class="fa-login-secondary" href="{{ $continueUrl }}">{{ $t('verify.invalid_action') }}</a>
+            @endif
+        </section>
+        <nav class="fa-login-languages" aria-label="{{ $t('login.language') }}">@foreach($languages as $language)<a href="{{ $language['url'] }}" lang="{{ $language['code'] }}" @if($lang === $language['code']) aria-current="page" @endif>{{ $language['name'] }}</a>@endforeach</nav>
+        <a class="fa-login-back" href="{{ $siteUrl }}">{{ $t('login.back') }}</a>
+    </div>
+</main>
+</body>
+</html>

@@ -103,6 +103,11 @@ final class ActivityEntry
             'user_activated', 'mailing_finished' => 'green',
             'password_link_sent', 'email_sent', 'mailing_started' => 'blue',
             'mailing_paused' => 'yellow',
+            // Login security (0.35)
+            'two_factor_enabled', 'email_verified', 'invite_accepted' => 'green',
+            'two_factor_disabled', 'two_factor_reset', 'two_factor_locked' => 'red',
+            'two_factor_codes', 'two_factor_backup_used', 'email_change_requested' => 'yellow',
+            'email_link_sent', 'invite_sent', 'email_changed', 'role_two_factor' => 'blue',
             default => '',
         };
     }
@@ -232,6 +237,11 @@ final class ActivityEntry
             'settings_saved' => ['verb' => AdminLang::get('settings.title'), 'target' => $this->label(), 'url' => $this->recordUrl()],
             // The Users page and emails (0.28)
             'user_suspended', 'user_activated', 'password_link_sent', 'email_sent' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            // Login security (0.35)
+            'two_factor_enabled', 'two_factor_disabled', 'two_factor_reset', 'two_factor_codes', 'two_factor_locked', 'email_link_sent', 'invite_sent',
+            'invite_accepted', 'email_verified', 'email_change_requested', 'email_changed' => ['verb' => AdminLang::get('activity.what.' . $this->action), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            'two_factor_backup_used' => ['verb' => AdminLang::get('activity.what.two_factor_backup_used', ['left' => (int) ($this->meta['left'] ?? 0)]), 'target' => $this->label(), 'url' => $this->recordUrl()],
+            'role_two_factor' => ['verb' => AdminLang::get(!empty($this->meta['required']) ? 'activity.what.role_two_factor_on' : 'activity.what.role_two_factor_off'), 'target' => $this->label(), 'url' => $this->recordUrl()],
             'mailing_started', 'mailing_finished', 'mailing_cancelled', 'mailing_paused' => ['verb' => AdminLang::get('activity.what.' . $this->action, ['count' => $count]), 'target' => $this->label(),
                 'url' => \FloCMS\Core\Auth::can('users.mailing') && $this->recordId !== null ? Admin::url('mailings/show/' . $this->recordId) : null],
             // CSV import and export (0.25)

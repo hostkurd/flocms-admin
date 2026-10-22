@@ -77,11 +77,7 @@ final class UsersResource extends Resource
                 TextInput::make('phone')->tel()->label(AdminLang::get('users.phone'))->rules('max:50'),
                 ...(self::hasColumn('bio') ? [Textarea::make('bio')->label(AdminLang::get('users.bio'))->rows(4)->rules('max:2000')->nullable()->columnSpan('full')->help(AdminLang::get('users.bio_help'))] : []),
             ]),
-            Section::make('security')->label(AdminLang::get('users.section_password'))->schema([
-                TextInput::make('password')->password()->label(AdminLang::get('users.password'))
-                    ->rules('min:' . self::MIN_PASSWORD)->requiredOnCreate()->generate()
-                    ->help(AdminLang::get('users.password_help'))->columnSpan('full'),
-            ]),
+            Section::make('security')->label(AdminLang::get('users.section_password'))->schema(self::passwordFields()),
         ])->aside([
             // The photo (0.28): public, a 256 px square; without one the list shows the first letter.
             ...(self::hasImageColumn() ? [Section::make('photo')->label(AdminLang::get('users.photo'))->columns(1)->schema([
@@ -99,6 +95,33 @@ final class UsersResource extends Resource
             ]),
         ]);
     }
+
+    /** @return list<\FloCMS\Admin\Form\Field> the password, and "Send an invitation" on a new account (0.35) */
+    private static function passwordFields(): array
+    {
+        $password = TextInput::make('password')->password()->label(AdminLang::get('users.password'))
+            ->rules('min:' . self::MIN_PASSWORD)->generate()->help(AdminLang::get('users.password_help'))->columnSpan('full');
+        if (!self::creating() || !\FloCMS\Admin\Auth\EmailVerification::available()) {
+            return [$password->requiredOnCreate()];
+        }
+        return [
+            InviteToggle::make('invite')->label(AdminLang::get('users.invite'))->help(AdminLang::get('users.invite_help'))
+                ->default(Admin::config()->emailVerification()['invite'] ? '1' : '0')->columnSpan('full'),
+            $password->visibleWhen('invite', '0')->requiredWhen('invite', '0'),
+        ];
+    }
+
+    /** Whether this request creates an account (/admin/accounts/create). */
+    private static function creating(): bool
+    {
+        try {
+            return \FloCMS\Core\App::getRouter()->getAction() === 'create';
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private bool $inviting = false;
 
     public function table(Table $table): Table
     {
@@ -167,6 +190,7 @@ final class UsersResource extends Resource
 
     public function normalizeState(array $state, ?object $record): array
     {
+        $this->inviting = $record === null && ($state['invite'] ?? '0') === '1' && \FloCMS\Admin\Auth\EmailVerification::available();
         return self::normalizeLogin($state);
     }
 
@@ -181,11 +205,22 @@ final class UsersResource extends Resource
 
     public function beforeSave(array $data, ?object $record): array
     {
-        if ($record === null) {
+        if ($record === null && $this->inviting) {
+            // Invited (0.35): Pending until the link is opened; the person chooses the password.
+            $data['status'] = self::PENDING;
+            $data['is_verified'] = 0;
+            $data['password'] = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
+            $data['verify_type'] = 2;
+            $data['token'] = '';
+        } elseif ($record === null) {
             // Created by an admin: no email verification (as with user:create)
             $data['is_verified'] = 1;
             $data['verify_type'] = 2;
             $data['token'] = '';
+        } elseif (isset($data['email']) && strcasecmp((string) $data['email'], (string) ($record->email ?? '')) !== 0
+            && \FloCMS\Admin\Auth\EmailVerification::available()) {
+            // An admin changed the address (0.35): it applies at once, but isn't confirmed.
+            $data['is_verified'] = 0;
         }
 
         return $data;
@@ -197,6 +232,19 @@ final class UsersResource extends Resource
      */
     public function afterSave(object $record): void
     {
+        if ($this->inviting) {
+            $this->inviting = false;
+            try {
+                if (!\FloCMS\Admin\Auth\EmailVerification::invite($record, Session::get('fullname') ?: null)) {
+                    \FloCMS\Admin\Notifications\Notification::make()->title(AdminLang::get('users.invite_limited'))->warning()->send();
+                } else {
+                    \FloCMS\Admin\Notifications\Notification::make()->title(AdminLang::get('users.invite_sent', ['email' => (string) ($record->email ?? '')]))->success()->send();
+                }
+            } catch (\FloCMS\Admin\Mail\MailException|\InvalidArgumentException $error) {
+                error_log('flocms-admin: invitation to user ' . ($record->id ?? '?') . ' failed: ' . $error->getMessage());
+                \FloCMS\Admin\Notifications\Notification::make()->title(AdminLang::get('users.invite_failed'))->warning()->send();
+            }
+        }
         $id = Session::get('user_id');
         if ((is_int($id) || (is_string($id) && ctype_digit($id))) && (int) $id === (int) ($record->id ?? 0) && is_string($record->password ?? null)) {
             \FloCMS\Admin\Auth\PasswordStamp::restamp($record->password);

@@ -1,3 +1,18 @@
+# Upgrading to Admin 0.35.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.35.0" -W` (it needs **flocms-core 2.7**, which Composer brings along), run `php flo view:clear` and reload open Admin pages. Nothing changes until you turn the new features on.
+
+- **To use them**, add `'two_factor' => true` and/or `'email_verification' => true` to `config/admin.php`, then run `php flo admin:install` and `php flo migrate` (one new migration, `login_security`) and `php flo admin:doctor`. See [Login security](docs/login-security.md).
+- **Two-factor sign-in needs `APP_KEY`** of at least 32 random characters in `.env`. Don't change it later: the stored secrets can't be read with another key and everyone sets two-factor sign-in up again.
+- **Mail**: both features send emails; set `MAIL_*` and a full `APP_URL` as for Forgot password, and test with `php flo admin:mail-test you@example.com`.
+- **Resource slugs**: with two-factor sign-in on, `two-factor` is reserved for the panel; with email verification on, `verify` is. A resource of yours with that slug needs another `$slug` first.
+- **Your own login step**: a site with its own `TwoFactorController` or `VerifyController` keeps it, and the panel's `/admin/two-factor` or `/admin/verify` page doesn't show. `admin:doctor` points this out.
+- **Required verification** (`'required' => true`) applies to existing accounts too: confirm addresses first (the banner and **Send verification email** help), or people with an unconfirmed address wait at "Check your email" after signing in.
+- **Requiring two-factor for a role**: everyone with that role sets it up at their next sign-in. Tell them before you switch it on.
+- **Translations**: the new Arabic and Kurdish words (the sign-in step, Profile → Security, the email links and emails, Users and Roles) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.34.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.34.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.

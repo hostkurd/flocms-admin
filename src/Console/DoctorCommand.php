@@ -129,6 +129,7 @@ final class DoctorCommand extends Command
         $this->checkRoles($config, $db, $project);
         $this->checkImports($config, $db, $project);
         $this->checkPasswordReset($config, $db, $project);
+        $this->checkLoginSecurity($config, $db, $project);
         $this->checkPages($config, $db, $project);
 
         try {
@@ -729,6 +730,95 @@ final class DoctorCommand extends Command
     }
 
     /** The Roles page (0.21): flocms-core 2.4, the config maps it builds on, its table and the stored roles. */
+    /** Two-factor sign-in and email verification (0.35). */
+    private function checkLoginSecurity(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        $twoFactor = $config->twoFactor();
+        $verification = $config->emailVerification();
+        $this->section('Login security  (/admin/profile/security)');
+        if (!$twoFactor['enabled'] && !$verification['enabled']) {
+            $this->line("  Off: add 'two_factor' => true and/or 'email_verification' => true to config/admin.php.");
+            return;
+        }
+        if ($twoFactor['enabled'] && !method_exists(\FloCMS\Core\Auth::class, 'holdSessionsUsing')) {
+            $this->bad('Two-factor sign-in needs flocms-core 2.7 or later: composer require hostkurd/flocms-core:^2.7');
+        }
+        if ($verification['enabled'] && $verification['required'] && !method_exists(\FloCMS\Core\Auth::class, 'holdSessionsUsing')) {
+            $this->bad("'email_verification' => ['required' => true] needs flocms-core 2.7 or later.");
+        }
+        if (!is_callable(\FloCMS\Core\Config::get('auth.user_loader'))) {
+            $this->bad("Config 'auth.user_loader' is not set (the skeleton sets it in config/config.php): signing in with a sign-in step would end the session.");
+        }
+        if ($twoFactor['enabled'] && !\FloCMS\Admin\Auth\SecretBox::ready()) {
+            $this->bad('Two-factor sign-in needs APP_KEY of at least ' . \FloCMS\Admin\Auth\SecretBox::MIN_KEY_LENGTH . ' characters in .env (it encrypts the authenticator secrets). Changing APP_KEY later turns everyone\'s two-factor sign-in off: they set it up again.');
+        }
+        foreach ([\FloCMS\Admin\Auth\TwoFactor::PATH => 'TwoFactor', \FloCMS\Admin\Auth\EmailVerification::PATH => 'Verify'] as $slug => $class) {
+            if (class_exists(\FloCMS\Admin\Support\Str::appControllerClass($slug))) {
+                $this->bad('Your site has a ' . $class . 'Controller, which always wins: the panel\'s /admin/' . $slug . ' pages are not shown.');
+            }
+        }
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the login security tables were not checked.'); $db = null; }
+        }
+        if ($db !== null) {
+            $tables = [];
+            if ($twoFactor['enabled']) {
+                $tables[$twoFactor['table']] = ['user_id', 'secret', 'last_step', 'backup_codes', 'failures', 'failures_since', 'locked_until', 'confirmed_at', 'updated_at'];
+                $tables[$twoFactor['roles_table']] = ['role', 'required', 'updated_at'];
+                $tables[$twoFactor['devices_table']] = ['id', 'user_id', 'token_hash', 'password_stamp', 'name', 'created_at', 'last_used_at', 'expires_at'];
+            }
+            if ($verification['enabled']) {
+                $tables[$verification['table']] = ['id', 'user_id', 'kind', 'email', 'token_hash', 'created_at', 'expires_at', 'used_at'];
+            }
+            $ready = true;
+            foreach ($tables as $table => $columns) {
+                $found = $this->columns($db, $table);
+                if ($found === null) {
+                    $this->bad('Table "' . $table . '" not found: run php flo admin:install, then php flo migrate.');
+                    $ready = false;
+                } elseif (($missing = array_values(array_diff($columns, array_keys($found)))) !== []) {
+                    $this->bad('Table "' . $table . '" is missing ' . implode(', ', $missing) . '.');
+                    $ready = false;
+                } else {
+                    $this->ok('Table "' . $table . '"');
+                }
+            }
+            if ($verification['enabled'] && ($this->columns($db, 'users')['is_verified'] ?? null) === null) {
+                $this->bad('The users table has no is_verified column (the skeleton\'s users table has it).');
+            }
+            if ($twoFactor['enabled'] && $ready && method_exists(\FloCMS\Core\Auth::class, 'holdSessionsUsing')) {
+                try {
+                    $previous = \FloCMS\Core\App::$db;
+                    \FloCMS\Core\App::$db = $db;
+                    \FloCMS\Admin\Auth\TwoFactor::reset();
+                    $roles = \FloCMS\Admin\Users\UsersResource::roles();
+                    foreach (\FloCMS\Admin\Auth\TwoFactor::requiredRoles($db) as $role) {
+                        $coverage = \FloCMS\Admin\Auth\TwoFactor::roleCoverage($role, $db);
+                        $missing = $coverage['total'] - $coverage['on'];
+                        $label = $roles[$role] ?? ('#' . $role);
+                        if ($missing > 0) {
+                            $this->caution($label . ' requires two-factor sign-in: ' . $missing . ' of ' . $coverage['total'] . ' people haven\'t set it up yet (they will at their next sign-in).');
+                        } else {
+                            $this->ok($label . ' requires two-factor sign-in; everyone has it on.');
+                        }
+                    }
+                    \FloCMS\Core\App::$db = $previous;
+                } catch (Throwable $error) {
+                    $this->caution('Could not read who uses two-factor sign-in: ' . $error->getMessage());
+                }
+            }
+        }
+        if (\FloCMS\Admin\Mail\Mailer::problem() !== null) {
+            $this->bad('Email: ' . \FloCMS\Admin\Mail\Mailer::problem() . '. Verification links, invitations and two-factor notices are sent by email.');
+        }
+        if ($twoFactor['enabled']) {
+            $this->line('  Two-factor sign-in: ' . ($twoFactor['remember_days'] > 0 ? 'devices can be remembered for ' . $twoFactor['remember_days'] . ' days' : 'no remembered devices') . '; app name "' . $twoFactor['issuer'] . '".');
+        }
+        if ($verification['enabled']) {
+            $this->line('  Email links work once, for ' . $verification['expires'] . ' minutes' . ($verification['required'] ? '; unverified people wait at "Check your email" after signing in.' : '.'));
+        }
+    }
+
     private function checkPasswordReset(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
     {
         $reset = $config->passwordReset();

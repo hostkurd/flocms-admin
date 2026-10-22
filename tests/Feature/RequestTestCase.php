@@ -157,6 +157,7 @@ $_SERVER['REQUEST_URI'] = $uri;
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 foreach (($options['headers'] ?? []) as $name => $value) { $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value; }
 $_POST = $options['post'];
+$_COOKIE = $options['cookies'] ?? [];
 // Uploaded files: the uploader copies a file that did not come through PHP's upload.
 $_FILES = $options['files'] ?? [];
 $query = parse_url($uri, PHP_URL_QUERY);
@@ -203,10 +204,13 @@ $status = 200;
 $finished = false;
 $error = null;
 ob_start();
+// Registered from inside a shutdown function, so it runs after App::run()'s own (held sign-ins, core 2.7)
 register_shutdown_function(static function () use (&$status, &$finished, &$error): void {
-    $body = (string) ob_get_clean();
-    $status = http_response_code() ?: $status;
-    echo json_encode(['status' => $status, 'body' => $body, 'redirected' => !$finished, 'session' => $_SESSION, 'error' => $error]);
+    register_shutdown_function(static function () use (&$status, &$finished, &$error): void {
+        $body = (string) ob_get_clean();
+        $status = http_response_code() ?: $status;
+        echo json_encode(['status' => $status, 'body' => $body, 'redirected' => !$finished, 'session' => $_SESSION, 'error' => $error, 'cookies' => $_COOKIE]);
+    });
 });
 try {
     App::run($uri);

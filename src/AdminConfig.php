@@ -436,6 +436,57 @@ final class AdminConfig
     }
 
     /**
+     * Two-factor sign-in (0.35): 'two_factor' => true, or an array. Off by default.
+     *   'issuer'         the name shown in the authenticator app (default: the panel brand)
+     *   'remember_days'  days a remembered device skips the code (default 30, 0 = never remember)
+     *   'required_roles' role numbers that must use it (roles not set on the Roles page)
+     *   'table', 'roles_table', 'devices_table'
+     *
+     * @return array{enabled: bool, issuer: string, remember_days: int, required_roles: list<int>, table: string, roles_table: string, devices_table: string}
+     */
+    public function twoFactor(): array
+    {
+        $value = $this->values['two_factor'] ?? false;
+        $options = is_array($value) ? $value : [];
+        $issuer = is_string($options['issuer'] ?? null) && trim($options['issuer']) !== '' ? trim($options['issuer']) : $this->brand();
+        $roles = [];
+        foreach (is_array($options['required_roles'] ?? null) ? $options['required_roles'] : [] as $role) {
+            if (is_int($role) || (is_string($role) && ctype_digit($role))) { $roles[] = (int) $role; }
+        }
+        return [
+            'enabled' => ($value === true || is_array($value)) && ($options['enabled'] ?? true) !== false && $this->usersEnabled(),
+            'issuer' => mb_substr($issuer, 0, 60),
+            'remember_days' => is_int($options['remember_days'] ?? null) ? max(0, min(365, $options['remember_days'])) : 30,
+            'required_roles' => array_values(array_unique($roles)),
+            'table' => self::tableName($options['table'] ?? null, 'admin_two_factor'),
+            'roles_table' => self::tableName($options['roles_table'] ?? null, 'admin_two_factor_roles'),
+            'devices_table' => self::tableName($options['devices_table'] ?? null, 'admin_trusted_devices'),
+        ];
+    }
+
+    /**
+     * Email verification (0.35): 'email_verification' => true, or an array. Off by default.
+     *   'expires'  minutes a link works (default 1440 = 24 hours, 10 to 10080)
+     *   'invite'   "Send an invitation" is on by default when an account is created (default true)
+     *   'required' hold unverified users at "Check your email" after signing in (default false)
+     *   'table'
+     *
+     * @return array{enabled: bool, expires: int, invite: bool, required: bool, table: string}
+     */
+    public function emailVerification(): array
+    {
+        $value = $this->values['email_verification'] ?? false;
+        $options = is_array($value) ? $value : [];
+        return [
+            'enabled' => ($value === true || is_array($value)) && ($options['enabled'] ?? true) !== false && $this->usersEnabled(),
+            'expires' => is_int($options['expires'] ?? null) ? max(10, min(10080, $options['expires'])) : 1440,
+            'invite' => ($options['invite'] ?? true) !== false,
+            'required' => ($options['required'] ?? false) === true,
+            'table' => self::tableName($options['table'] ?? null, 'admin_email_tokens'),
+        ];
+    }
+
+    /**
      * Pages (0.30): 'pages' => true, or an array. Off by default.
      *   'table'    the pages table (admin_pages)
      *   'missing'  a page not translated: 'default' shows the default language's (with hreflang), '404' does not

@@ -195,6 +195,8 @@ final class PasswordReset
         });
         if ($user !== null) {
             self::log('password_reset', $user, [], $db);
+            // The link reached the inbox: the address is confirmed (0.35).
+            EmailVerification::markVerified((int) $user->id, $db);
         }
         return $user;
     }

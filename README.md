@@ -429,6 +429,10 @@ Admin 0.29 adds the **Builder** field: `Builder::make('content')` keeps a list o
 
 Admin 0.28 adds photos (or the first letter) and a bio to users, a user page with Photo, Access and Quick actions in a sidebar, a people list with All / Active / Pending / Suspended tabs, row and bulk actions (**Send reset link**, **Send email**, **Activate**, **Suspend**, greyed out with a reason when they don't apply), and emails with an email-style To field: a direct email to a few chosen users, or a mailing to everyone, a role or a status, sent in batches with an unsubscribe link and `php flo admin:mailings` for cron. See [Users: photos, actions and emails](docs/users.md).
 
+## Login security
+
+Admin 0.35 adds **two-factor sign-in** with any authenticator app: people set it up under Profile → Security (QR code, the first code, 10 backup codes shown once), sign in with a code or a backup code after their password, and can have a device remembered for 30 days; roles can require it, and admins can reset it for someone who lost their phone (or `php flo admin:two-factor-reset`). It also adds **email verification**: invitations for new accounts, a banner for unconfirmed addresses, a changed address that applies only after its link is opened, and optionally a "Check your email" step after signing in. Both are off until turned on in `config/admin.php`; they need flocms-core 2.7 (held sign-ins). See [Login security](docs/login-security.md).
+
 ## Forgot password
 
 Admin 0.26 adds **Forgot password?** to the panel's login page. A person types the address they sign in with and gets a one-time link by email (valid 60 minutes); the answer is the same whether the address has an account or not, and requests are limited per address and per IP. The link opens a page to choose a new password; saving it signs the account out everywhere else, sends a short "your password was changed" note and goes to the activity log. Emails are sent with PHP `mail()` or SMTP from `.env` (`MAIL_*`), without a third-party package; `php flo admin:mail-test` checks them. Needs flocms-core 2.5; add `'password_reset' => true` to an existing `config/admin.php`, then run `php flo admin:install` and `php flo migrate`. See the [Forgot password guide](docs/password-reset.md).
@@ -483,6 +487,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.32: the Builder saved as one value (no `max_input_vars` limit), columns side by side, folding containers, drag and drop into and out of columns, ⋯ menus with Move to, a steady edit dialog, and block fixes and options (`shownWhen()`, `Block::check()`, open in a new tab, alt text, heading levels)
 - 0.33: the block's Display tab for developers: styles editors pick (`block_styles`), the theme's colours (`block_colours`), Extra large and phone spacing, `data-block` / `data-block-id` hooks, scoped custom CSS (`blocks.custom_css`), and Pages › Blocks preview
 - 0.34: six blocks (Contact and map, FAQ, Testimonials, Stats, Team, Logos), Video shapes and click-to-load, Hero text position, Gallery captions; warnings and errors close after 12 seconds
+- 0.35: login security (two-factor sign-in with backup codes, remembered devices, roles that require it and admin reset; email verification with invitations and confirmed address changes; flocms-core 2.7)
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development

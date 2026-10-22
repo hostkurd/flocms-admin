@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="{{ $lang }}" dir="{{ $dir }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>{{ $title }} · {{ $brand }}</title>
+{!! $assets !!}
+</head>
+<body>
+<main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}" data-theme="{{ $theme }}">
+    <div class="fa-login-container{{ $screen === 'setup' || $screen === 'codes' ? ' is-wide' : '' }}">
+        <a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>
+        <section class="fa-login-card" aria-labelledby="fa-login-title">
+            @if($screen === 'codes')<div class="fa-login-icon is-success" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div>@endif
+            <header>
+                <p class="fa-login-eyebrow">{{ $screen === 'setup' ? $t('two_factor.one_more_step') : $t('two_factor.eyebrow') }}</p>
+                <h1 id="fa-login-title">{{ $title }}</h1>
+                @if($screen === 'code')
+                <p class="fa-login-description">{{ $t('two_factor.code_before') }}<strong dir="ltr">{{ $email }}</strong>{{ $t('two_factor.code_after') }}</p>
+                @elseif($screen === 'backup')
+                <p class="fa-login-description">{{ $t('two_factor.backup_description') }}</p>
+                @elseif($screen === 'setup')
+                <p class="fa-login-description">{{ $role !== '' ? $t('two_factor.setup_required', ['role' => $role]) : $t('two_factor.setup_required_any') }}</p>
+                @else
+                <p class="fa-login-description">{{ $t('two_factor.codes_description') }}</p>
+                @endif
+            </header>
+            @if($flash !== '')<div class="fa-login-alert" role="alert">{{ $flash }}</div>@endif
+
+            @if($screen === 'code' || $screen === 'backup')
+            <form method="post" action="{{ $action }}" class="fa-login-form" novalidate>
+                {!! $csrf !!}
+                <div>
+                    <label for="fa-two-factor-code">{{ $screen === 'code' ? $t('two_factor.code_label') : $t('two_factor.backup_label') }}</label>
+                    @if($screen === 'code')
+                    <input id="fa-two-factor-code" class="fa-login-code" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="12" required autofocus dir="ltr" @if($error !== '') aria-invalid="true" aria-describedby="fa-two-factor-error" @endif>
+                    @else
+                    <input id="fa-two-factor-code" class="fa-login-code is-backup" type="text" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" required autofocus dir="ltr" @if($error !== '') aria-invalid="true" aria-describedby="fa-two-factor-error" @endif>
+                    @endif
+                    @if($error !== '')<p class="fa-login-error" id="fa-two-factor-error">{!! $errorIcon !!}{{ $error }}</p>@endif
+                </div>
+                @if($screen === 'code' && $remember)
+                <label class="fa-login-check"><input type="checkbox" name="remember" value="1">{{ $t('two_factor.remember', ['days' => $days]) }}</label>
+                @endif
+                <button type="submit" class="fa-login-submit">{{ $t('two_factor.verify') }}</button>
+            </form>
+            <div class="fa-login-links">
+                @if($screen === 'code')<a href="{{ $backupUrl }}">{{ $t('two_factor.use_backup') }}</a>@else<a href="{{ $codeUrl }}">{{ $t('two_factor.use_app') }}</a>@endif
+                <a class="is-quiet" href="{{ $logoutUrl }}">{{ $t('two_factor.other_account') }}</a>
+            </div>
+            @endif
+
+            @if($screen === 'setup')
+            <ol class="fa-two-factor-steps">
+                <li>
+                    <h2>{{ $t('two_factor.step_scan') }}</h2>
+                    <a class="fa-login-secondary fa-two-factor-open" href="{{ $uri }}">{{ $t('two_factor.open_app') }}</a>
+                    <div class="fa-two-factor-qr">{!! $qr !!}</div>
+                    <p class="fa-login-help">{{ $t('two_factor.apps') }}</p>
+                    <div class="fa-two-factor-key"><span>{{ $t('two_factor.key_label') }}</span><code dir="ltr">{{ $key }}</code><button type="button" class="fa-login-mini" data-admin-copy="{{ str_replace(' ', '', $key) }}" data-copied-text="{{ $t('view.copied') }}" aria-label="{{ $t('two_factor.copy_key') }}" hidden>{{ $t('two_factor.copy') }}</button></div>
+                </li>
+                <li>
+                    <h2>{{ $t('two_factor.step_code') }}</h2>
+                    <form method="post" action="{{ $action }}" class="fa-login-form" novalidate>
+                        {!! $csrf !!}
+                        <div><label for="fa-two-factor-code">{{ $t('two_factor.app_code_label') }}</label><input id="fa-two-factor-code" class="fa-login-code" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="12" required dir="ltr" @if($error !== '') aria-invalid="true" aria-describedby="fa-two-factor-error" autofocus @endif>@if($error !== '')<p class="fa-login-error" id="fa-two-factor-error">{!! $errorIcon !!}{{ $error }}</p>@endif</div>
+                        <button type="submit" class="fa-login-submit">{{ $t('two_factor.turn_on_continue') }}</button>
+                    </form>
+                </li>
+            </ol>
+            <div class="fa-login-links is-center"><a class="is-quiet" href="{{ $logoutUrl }}">{{ $t('two_factor.sign_out') }}</a></div>
+            @endif
+
+            @if($screen === 'codes')
+            <ul class="fa-backup-codes" dir="ltr" aria-label="{{ $t('two_factor.codes_label') }}">@foreach($codes as $code)<li>{{ $code }}</li>@endforeach</ul>
+            <div class="fa-backup-actions">
+                <a class="fa-login-mini" href="{{ $file }}" download="backup-codes.txt">{{ $t('two_factor.download') }}</a>
+                <button type="button" class="fa-login-mini" data-admin-copy="{{ implode("\n", $codes) }}" data-copied-text="{{ $t('view.copied') }}" aria-label="{{ $t('two_factor.copy_codes') }}" hidden>{{ $t('two_factor.copy') }}</button>
+                <button type="button" class="fa-login-mini" data-admin-print hidden>{{ $t('two_factor.print') }}</button>
+            </div>
+            <p class="fa-login-note is-warning">{{ $t('two_factor.codes_warning') }}</p>
+            <form method="post" action="{{ $action }}">
+                {!! $csrf !!}
+                <button type="submit" class="fa-login-submit">{{ $t('two_factor.saved_continue') }}</button>
+            </form>
+            @endif
+        </section>
+        <nav class="fa-login-languages" aria-label="{{ $t('login.language') }}">@foreach($languages as $language)<a href="{{ $language['url'] }}" lang="{{ $language['code'] }}" @if($lang === $language['code']) aria-current="page" @endif>{{ $language['name'] }}</a>@endforeach</nav>
+        @if($screen === 'code' || $screen === 'backup')<p class="fa-login-note">{{ $t('two_factor.no_phone') }}</p>@endif
+    </div>
+</main>
+</body>
+</html>
