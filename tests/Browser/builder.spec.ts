@@ -457,6 +457,9 @@ test('a new rich text block has its editor; Show on and the spacing are the dial
   expect((await editor(page).boundingBox())!.height).toBeGreaterThanOrEqual(560);
   await editor(page).getByRole('tab', { name: 'Display' }).click();
   await expect(editor(page).locator('[data-field="devices"]')).toBeVisible();
+  // 0.33: a new block's swatches have their colours and its CSS box is a code editor
+  await expect(editor(page).locator('[data-field="_bg"] [data-swatch="#101828"]')).toHaveCSS('background-color', 'rgb(16, 24, 40)');
+  await expect(editor(page).locator('[data-field="_css"] .fa-code')).toHaveClass(/is-ready/);
   await expect(editor(page).locator('[data-field="anchor"]')).toBeVisible();
   await editor(page).locator('[data-field="devices"] input[value="phone"]').check({ force: true });
   await editor(page).getByRole('button', { name: 'Done' }).click();
@@ -472,6 +475,63 @@ test('a new rich text block has its editor; Show on and the spacing are the dial
   const last = content.en[content.en.length - 1];
   expect(last.data.body).toContain('Typed in the editor');
   expect(last.settings.devices).toBe('phone');
+});
+
+test('the Display tab: a style, a theme colour, phone spacing and custom CSS reach the website (0.33)', async ({ page }) => {
+  await page.goto('/en/admin/landings/edit/1');
+  await edit(page, 'bhead1');
+  await editor(page).getByRole('tab', { name: 'Display' }).click();
+  // Look, Layout and Advanced; Text colour only once there is a background
+  await expect(editor(page).locator('.fa-form-section.is-group > .fa-section-title')).toHaveText(['Look', 'Layout', 'Advanced']);
+  await expect(editor(page).locator('[data-field="_text"]')).toBeHidden();
+  await expect(editor(page).locator('[data-field="space_above"] select option').first()).toHaveText('Default (Medium)');
+  await editor(page).locator('[data-field="_style"] input[value="underlined"]').check({ force: true });
+  await editor(page).locator('[data-field="_bg"] label[title="Brand colour"]').click();
+  await expect(editor(page).locator('[data-field="_bg"] [data-swatch="#0b6e91"]')).toHaveCSS('background-color', 'rgb(11, 110, 145)');
+  await expect(editor(page).locator('[data-field="_text"]')).toBeVisible();
+  await editor(page).locator('[data-field="_text"] input[value="dark"]').check({ force: true });
+  await editor(page).locator('[data-field="space_above"] select').selectOption('xlarge');
+  await editor(page).locator('[data-field="space_below_phone"] select').selectOption('none');
+  // Custom CSS: a code editor in CSS mode, checked when the page is saved
+  const css = editor(page).locator('[data-field="_css"] textarea');
+  await expect(editor(page).locator('[data-field="_css"] .fa-code-lang')).toHaveText('CSS');
+  await css.fill('& { letter-spacing: 1px; }\n& { background: url(https://x.example/a.png); }');
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // Not saved: the block's dialog opens on the error
+  await expect(editor(page)).toBeVisible();
+  await expect(editor(page).locator('[data-field="_css"]')).toContainText('Line 2: “url(” isn’t allowed in custom CSS.');
+  await editor(page).locator('[data-field="_css"] textarea').fill('& { letter-spacing: 1px; }');
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Landing page saved.')).toBeVisible();
+  const settings = (await stored(page)).en[1].children[0].settings;
+  expect(settings).toMatchObject({ _style: 'underlined', _bg: 'brand', _text: 'dark', space_above: 'xlarge', space_below_phone: 'none', _css: '& { letter-spacing: 1px; }' });
+  // The website: the classes, the hooks and a stylesheet with the block's CSS
+  await page.goto('/__test/landing-view');
+  const heading = page.locator('[data-block-id="bhead1"]');
+  await expect(heading).toHaveAttribute('data-block', 'heading');
+  await expect(heading).toHaveClass(/is-style-underlined has-bg has-bg-brand has-text-dark/);
+  await expect(heading).toHaveClass(/flo-space-above-xlarge .*flo-space-below-phone-none/);
+  await expect(heading).toHaveCSS('letter-spacing', '1px');
+  const href = await page.locator('link[href*="/flo-admin/asset/block-styles-"]').getAttribute('href');
+  const sheet = await page.request.get(href!);
+  expect(sheet.headers()['content-type']).toContain('text/css');
+  expect(await sheet.text()).toBe('.flo-block[data-block-id="bhead1"]{letter-spacing: 1px;}');
+});
+
+test('a removed style is pointed out and goes when the page is saved (0.33)', async ({ page }) => {
+  const content = await stored(page);
+  content.en[1].children[0].settings = { _style: 'glass' };
+  await page.request.post('/__test/landings-set', { form: { content: JSON.stringify(content) } });
+  await page.goto('/en/admin/landings/edit/1');
+  await edit(page, 'bhead1');
+  await editor(page).getByRole('tab', { name: 'Display' }).click();
+  await expect(editor(page).locator('[data-field="_style"] .fa-choice-gone')).toHaveText('The style “glass” no longer exists. The website ignores it, and it goes when you save.');
+  await editor(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Landing page saved.')).toBeVisible();
+  expect((await stored(page)).en[1].children[0].settings._style).toBeUndefined();
 });
 
 test('a block\'s name and note are for editors only', async ({ page }) => {

@@ -193,7 +193,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `TextInput` | text | `->email()`, `->url()`, `->tel()`, `->numeric()`, `->password()`, `->maxLength(190)`; text and URL inputs can be translatable |
 | `Textarea` | textarea | `->rows(8)`; translatable; full width by default |
 | `RichEditor` | visual editor | Formatting, links, images, videos, YouTube/Vimeo; clean HTML; translatable with language tabs ([guide](docs/rich-text.md)) |
-| `Select` | select | `->options([...])` or `->options(fn () => [...])`; only listed values are accepted |
+| `Select` | select | `->options([...])` or `->options(fn () => [...])`; only listed values are accepted. `->segmented()`, `->pictures([...])`, `->positions()` (0.29) and `->swatches(['brand' => '#0b6e91'])` (0.33) show buttons; `->whenMissing('…:value…')` (0.33) points out a stored value that is no longer an option |
 | `Toggle` | checkbox | Stored as `1` / `0`; an unchecked box saves `0` |
 | `Date` | date | Stored as `Y-m-d`, empty as `NULL` |
 | `DateTime` | datetime-local | Stored as `Y-m-d H:i:s`, empty as `NULL` |
@@ -206,7 +206,7 @@ Only the fields declared in `form()` are ever written. The primary key, `created
 | `Repeater` | cards or rows of items | A short list inside the record (rooms, days, opening hours): `->schema([...])`, `->itemLabel('name')`, `->maxItems(12)`, `->table()`, `->distinct('name')`; one JSON column ([guide](docs/repeaters.md)) |
 | `Builder` | structure and block editor | Blocks of different kinds in one record (slider, hero, heading, rich text, cards, sections, columns, your own): `->blocks([...])`, `->maxBlocks(40)`, `->translatable()`; one JSON column, printed with `blocks()` ([guide](docs/builder.md)) |
 | `Slider` | slides | A slider's slides on their own (image or video, heading, text, button, text position): printed with `slider()` ([guide](docs/builder.md)) |
-| `CodeEditor` | code editor | HTML with line numbers, highlighting, Tab indent and Format: `CodeEditor::make('html')`, `->translatable()` (0.30) |
+| `CodeEditor` | code editor | HTML with line numbers, highlighting, Tab indent and Format: `CodeEditor::make('html')`, `->translatable()` (0.30); CSS with `->language('css')` (0.33) |
 | `KeyValue` | rows of key and value | Labels and values (specs, social links): `->keyLabel()`, `->valueLabel()`, `->translatableValues()`, `->keys([...])` for fixed keys ([guide](docs/repeaters.md)) |
 | `MediaPicker` | a framed card: preview, sortable tiles, drop to upload | Items of the media library: `->images()` (default), `->videos()`, `->any()`, `->multiple()`, `->max(12)`, `->folder('Listings/Covers')`, `->aspectRatio('16:9')`; stores an id, or a JSON list of ids in order ([guide](docs/media.md)) |
 
@@ -423,7 +423,7 @@ Admin 0.30 adds **Site → Pages** (`/admin/site-pages`): the website's pages, b
 
 ## Builder: blocks and sliders
 
-Admin 0.29 adds the **Builder** field: `Builder::make('content')` keeps a list of blocks of different kinds in one JSON column (a slider, a hero, headings, rich text, images, a gallery, a video, cards, a call to action, HTML, and Sections and Columns that hold other blocks). The editor shows the page's structure with drag and drop and Alt + arrow keys, icon buttons on each row (Edit, Duplicate, Copy to language, Show / hide, Delete), a panel with the settings every block shares (a name and note for editors, Draft or published, show from and until, screens, width, spacing, anchor and CSS class), the block's own fields in an Edit dialog, an Add block dialog with search and categories, and copy and paste between pages (0.31). `->translatable()` keeps one list per language with Copy to another language. The website prints them with `{!! blocks($page->content) !!}` and templates the site owns (`php flo admin:blocks` copies them to `views/blocks/`); `{!! blocks_assets() !!}` adds only the styles and scripts the page needs, such as the slider's. A site adds its own blocks with `php flo make:admin-block`. `Slider::make('photos')` and `slider()` give a record a slider without blocks. See [Builder: blocks and sliders](docs/builder.md).
+Admin 0.29 adds the **Builder** field: `Builder::make('content')` keeps a list of blocks of different kinds in one JSON column (a slider, a hero, headings, rich text, images, a gallery, a video, cards, a call to action, HTML, and Sections and Columns that hold other blocks). The editor shows the page's structure with drag and drop and Alt + arrow keys, icon buttons on each row (Edit, Duplicate, Copy to language, Show / hide, Delete), a panel with the settings every block shares (a name and note for editors, Draft or published, show from and until) and a Display tab (a style, a background from the theme's colours, screens, width, spacing on desktop and phones, anchor, CSS class and its own CSS, 0.33), the block's own fields in an Edit dialog, an Add block dialog with search and categories, and copy and paste between pages (0.31). `->translatable()` keeps one list per language with Copy to another language. The website prints them with `{!! blocks($page->content) !!}` and templates the site owns (`php flo admin:blocks` copies them to `views/blocks/`); `{!! blocks_assets() !!}` adds only the styles and scripts the page needs, such as the slider's. A site adds its own blocks with `php flo make:admin-block`. `Slider::make('photos')` and `slider()` give a record a slider without blocks. See [Builder: blocks and sliders](docs/builder.md).
 
 ## Users: photos, actions and emails
 
@@ -481,6 +481,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.29: the `Builder` field (blocks, sections and columns, the block picker, templates owned by the site, `blocks()`, `blocks_assets()`, `make:admin-block`, `admin:blocks`) and the `Slider` field
 - 0.31: the Builder editor reworked (row buttons, block panel with Name and Note, Edit and Add block dialogs, delete confirmation, copy and paste between pages)
 - 0.32: the Builder saved as one value (no `max_input_vars` limit), columns side by side, folding containers, drag and drop into and out of columns, ⋯ menus with Move to, a steady edit dialog, and block fixes and options (`shownWhen()`, `Block::check()`, open in a new tab, alt text, heading levels)
+- 0.33: the block's Display tab for developers: styles editors pick (`block_styles`), the theme's colours (`block_colours`), Extra large and phone spacing, `data-block` / `data-block-id` hooks, scoped custom CSS (`blocks.custom_css`), and Pages › Blocks preview
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development

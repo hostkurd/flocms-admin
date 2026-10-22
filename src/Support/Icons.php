@@ -105,6 +105,11 @@ final class Icons
         'eye-off' => 'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2',
         'printer' => 'M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z',
         'info' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 11v5M12 8h.01',
+        // 0.33: a warning, and the blocks preview's screens
+        'alert-triangle' => 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01',
+        'monitor' => 'M3 4h18v12H3zM8 21h8M12 16v5',
+        'tablet' => 'M5 2h14v20H5zM11 18h2',
+        'smartphone' => 'M7 2h10v20H7zM11 18h2',
     ];
 
     /** @return list<string> */

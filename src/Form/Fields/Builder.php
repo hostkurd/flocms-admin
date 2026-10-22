@@ -183,8 +183,13 @@ class Builder extends Field
     /** @var array<string, Form> */
     private array $contentForms = [];
 
-    /** The shared settings that sit in the dialog's Display tab when a block has a dialog (0.32.1). */
-    public const DISPLAY = ['devices', 'width', 'space_above', 'space_below', 'anchor', 'class'];
+    /** The shared settings that sit in the dialog's Display tab when a block has a dialog (0.32.1), by group (0.33). */
+    public const DISPLAY_GROUPS = [
+        'look' => ['_style', '_bg', '_text'],
+        'layout' => ['devices', 'width', 'space_above', 'space_above_phone', 'space_below', 'space_below_phone'],
+        'advanced' => ['anchor', 'class', '_css', '_css_signed'],
+    ];
+    public const DISPLAY = ['_style', '_bg', '_text', 'devices', 'width', 'space_above', 'space_above_phone', 'space_below', 'space_below_phone', 'anchor', 'class', '_css', '_css_signed'];
 
     /**
      * A block's own tabs (or one Content tab for loose fields), without its
@@ -214,10 +219,18 @@ class Builder extends Field
         $make = function () use ($block): Form {
             $tabs = $this->ownTabs($block);
             if ($tabs !== []) {
-                $display = array_values(array_filter(BlockSettings::fields($block), static fn (Field $field): bool => in_array($field->getName(), self::DISPLAY, true)));
-                usort($display, static fn (Field $a, Field $b): int => array_search($a->getName(), self::DISPLAY, true) <=> array_search($b->getName(), self::DISPLAY, true));
+                $settings = [];
+                foreach (BlockSettings::fields($block) as $item) { $settings[$item->getName()] = $item; }
+                // Look, Layout and Advanced (0.33); a group with nothing in it is left out.
+                $groups = [];
+                foreach (self::DISPLAY_GROUPS as $group => $names) {
+                    $fields = array_values(array_filter(array_map(static fn (string $name): ?Field => $settings[$name] ?? null, $names)));
+                    if ($fields === []) { continue; }
+                    $label = AdminLang::get($group === 'advanced' ? 'blocks.advanced' : 'blocks.group_' . $group);
+                    $groups[] = Section::make('display-' . $group)->label($label)->group()->columns(2)->schema($fields);
+                }
                 // Named so a site block's own tabs ("display" included) can't clash with it.
-                $tabs[] = Tab::make('shared-display')->label(AdminLang::get('blocks.tab_display'))->columns(2)->schema($display);
+                $tabs[] = Tab::make('shared-display')->label(AdminLang::get('blocks.tab_display'))->columns(1)->schema($groups);
             }
             return (new Form())->columns(2)->schema($tabs === [] ? [] : [Tabs::make('block')->schema($tabs)]);
         };
@@ -248,8 +261,9 @@ class Builder extends Field
             if ($this->hasContent($block)) {
                 return (new Form())->columns(1)->schema(array_values(array_diff_key($fields, array_flip(self::DISPLAY))));
             }
-            $advanced = array_values(array_intersect_key($fields, array_flip(['width', 'space_above', 'space_below', 'anchor', 'class'])));
-            $main = array_values(array_diff_key($fields, array_flip(['width', 'space_above', 'space_below', 'anchor', 'class'])));
+            $folded = array_flip(array_diff(self::DISPLAY, ['devices']));
+            $advanced = array_values(array_intersect_key($fields, $folded));
+            $main = array_values(array_diff_key($fields, $folded));
             return (new Form())->columns(1)->schema([...$main, Section::make('advanced')->label(AdminLang::get('blocks.advanced'))->columns(1)->collapsed()->schema($advanced)]);
         };
         if ($readOnly) {
@@ -604,7 +618,7 @@ class Builder extends Field
                 $item = $field->stateFromInput($fields, $languages);
                 $state[$name] = is_string($item) ? $item : '';
             }
-            $state = $block->acceptInput($state, $key . '|' . $id);
+            $state = BlockSettings::acceptInput($block, $block->acceptInput($state, $key . '|' . $id), $key . '|' . $id);
             // A block the person may not add, or a signed copy that no longer matches, is not kept.
             if (($state['_rejected'] ?? null) !== null) {
                 if ($state['_rejected'] === 'stale') { $stale = true; }
@@ -793,6 +807,11 @@ class Builder extends Field
                                 continue;
                             }
                             $errors += $check($field, $value, $prefix . $name);
+                        }
+                        // The block's own CSS (0.33), checked only for people who may write it (anyone else's is the stored copy).
+                        if (\FloCMS\Admin\Blocks\BlockCss::allowed() && is_string($state['_css'] ?? null) && trim($state['_css']) !== ''
+                            && ($problem = \FloCMS\Admin\Blocks\BlockCss::problem($state['_css'])) !== null) {
+                            $errors[$prefix . '_css'] ??= $problem;
                         }
                         // Checks across fields (0.32): a button and its link, a video's source…
                         foreach ($block->check(array_map(static fn ($value): string => is_string($value) ? $value : '', $state)) as $where => $message) {

@@ -212,7 +212,8 @@ final class FormRenderer
                         . '<summary class="fa-section-summary"><span class="fa-section-heading"><span class="fa-section-title" id="' . Str::e($id . '-title') . '">' . $label . '</span>' . $description . '</span>'
                         . Icons::svg('chevron-down', 'fa-icon fa-section-chevron') . '</summary>' . $body . '</details>';
                 } else {
-                    $html .= '<section class="fa-form-section fa-span-full"' . ($title !== '' ? ' aria-labelledby="' . Str::e($id . '-title') . '"' : '') . '>' . $title . $description . $body . '</section>';
+                    $group = $node instanceof \FloCMS\Admin\Form\Layout\Section && $node->isGroup() ? ' is-group' : '';
+                    $html .= '<section class="fa-form-section fa-span-full' . $group . '"' . ($title !== '' ? ' aria-labelledby="' . Str::e($id . '-title') . '"' : '') . '>' . $title . $description . $body . '</section>';
                 }
             }
         }

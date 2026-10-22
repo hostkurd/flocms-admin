@@ -997,6 +997,24 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-choices.is-positions .fa-choice:has(input:checked){background:var(--fa-primary-soft);box-shadow:0 0 0 1px var(--fa-primary)}
 .fa-choices.is-positions .fa-choice:has(input:checked)::after{background:var(--fa-primary)}
 
+/* Swatches (0.33): a block's background from the theme's colours; the colour is set by forms.ts */
+.fa-choices.is-swatches{gap:8px;align-items:center}
+.fa-choices.is-swatches .fa-choice{width:40px;height:40px;border-radius:999px;border:2px solid transparent}
+.fa-choices.is-swatches .fa-choice:hover{border-color:var(--fa-border-strong)}
+.fa-choices.is-swatches .fa-choice:has(input:checked){border-color:var(--fa-primary-text)}
+.fa-choices.is-swatches .fa-choice:has(input:focus-visible){outline-offset:2px}
+.fa-choice-swatch{width:28px;height:28px;border-radius:999px;background:var(--fa-surface-3);box-shadow:inset 0 0 0 1px rgba(16,24,40,.16)}
+.fa-choice-swatch.is-none{background:linear-gradient(135deg,transparent 46%,var(--fa-danger) 46%,var(--fa-danger) 54%,transparent 54%),var(--fa-surface);box-shadow:inset 0 0 0 1px var(--fa-border-strong)}
+/* A value that is no longer an option (0.33: a block style a developer removed) */
+.fa-choice-gone{display:flex;align-items:center;gap:8px;margin:8px 0 0;padding:9px 12px;border:1px solid var(--fa-warning-border);border-radius:var(--fa-radius);background:var(--fa-warning-soft);color:var(--fa-warning);font-size:13px}
+.fa-choice-gone .fa-icon{flex:none;width:16px;height:16px}
+/* A light group inside a tab (0.33: Look, Layout and Advanced in a block's Display tab) */
+.fa-form-section.is-group{padding:0;border:0;background:none;box-shadow:none}
+.fa-form-section.is-group > .fa-section-title{display:flex;align-items:center;gap:12px;margin:0 0 14px!important;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fa-muted)}
+.fa-form-section.is-group > .fa-section-title::after{content:"";flex:1;height:1px;background:var(--fa-border)}
+[dir="rtl"] .fa-form-section.is-group > .fa-section-title{letter-spacing:0}
+.fa-form-section.is-group + .fa-form-section.is-group{margin-block-start:10px}
+
 /* Builder (0.29): the structure of a page's blocks, and the selected block's fields */
 .fa-builder{display:flex;flex-direction:column;gap:10px;min-width:0}
 .fa-builder-head{display:flex;align-items:center;gap:10px}
@@ -1294,6 +1312,7 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-code-highlight{position:absolute;inset:0;padding:12px;overflow:hidden;white-space:pre;color:var(--fa-text);pointer-events:none}
 .fa-code-highlight[hidden]{display:none}
 .fa-code.is-ready .fa-code-input{position:relative;display:block;width:100%;min-height:22em;padding:12px;border:0;border-radius:0;box-shadow:none;background:transparent;color:transparent;caret-color:var(--fa-text);resize:vertical;white-space:pre;overflow:auto}
+.fa-code[data-language="css"].is-ready .fa-code-input{min-height:11em}
 .fa-code.is-ready .fa-code-input::selection{background:var(--fa-primary-soft);color:transparent}
 .fa-code:not(.is-ready) .fa-code-input{font:13px/1.6 var(--fa-mono);border:0;box-shadow:none;width:100%}
 .fa-code .fa-code-input:focus{outline:none;box-shadow:none}
@@ -2672,3 +2691,17 @@ a.fa-filedrop-name:hover{text-decoration:underline}
   .fa-mailing-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fa-table-list .fa-cell-person{gap:10px}
 }
+
+/* Pages › Blocks preview (0.33) */
+.fa-panel .fa-nav-link.is-sub{padding-inline-start:44px;font-size:13.5px}
+.fa-check-inline{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--fa-text-2);cursor:pointer}
+.fa-check-inline input{width:16px;height:16px;margin:0;accent-color:var(--fa-primary)}
+.fa-blocks-preview{padding:0;overflow:hidden}
+.fa-blocks-preview-bar{flex-wrap:wrap;gap:10px 14px}
+.fa-blocks-preview-widths{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--fa-border-strong);border-radius:10px;background:var(--fa-surface-2)}
+.fa-blocks-preview-widths .fa-btn{border-color:transparent;background:transparent;box-shadow:none}
+.fa-blocks-preview-widths .fa-btn.is-active{background:var(--fa-surface);color:var(--fa-text);box-shadow:0 1px 2px rgba(16,24,40,.12),0 0 0 1px var(--fa-border)}
+.fa-blocks-preview-stage{display:flex;justify-content:center;padding:16px;background:var(--fa-surface-3);border-top:1px solid var(--fa-border);overflow-x:auto}
+.fa-blocks-preview-frame{display:block;width:100%;max-width:100%;height:max(520px,calc(100vh - 300px));border:1px solid var(--fa-border-strong);border-radius:var(--fa-radius);background:#fff;transition:width .2s}
+@media (prefers-reduced-motion:reduce){.fa-blocks-preview-frame{transition:none}}
+@media (max-width:700px){.fa-blocks-preview-stage{padding:8px}.fa-blocks-preview-widths{display:none}}

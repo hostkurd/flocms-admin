@@ -1,6 +1,6 @@
 /*
- * The HTML code editor (0.30): line numbers, highlighting (tags, attributes,
- * strings, comments), the cursor's line and column, Tab to indent and Format.
+ * The HTML code editor (0.30), and CSS (0.33): line numbers, highlighting (tags, attributes,
+ * strings, comments), the cursor's line and column, Tab to indent and Format (HTML).
  * The textarea stays the field: the highlighting is a <pre> drawn under it.
  */
 const ready = new WeakSet<HTMLElement>();
@@ -21,6 +21,26 @@ export function highlight(code: string): string {
         escapeHtml(space) + `<span class="tk-attr">${escapeHtml(name)}</span>` + (equals ? escapeHtml(equals) + `<span class="tk-string">${escapeHtml(value || '')}</span>` : ''));
       out += `<span class="tk-tag">${escapeHtml(match[2])}${escapeHtml(match[3])}</span>${attrs}` + (match[5] ? `<span class="tk-tag">${escapeHtml(match[5])}</span>` : '');
     }
+    last = (match.index || 0) + match[0].length;
+  }
+  return out + escapeHtml(code.slice(last)) + '\n';
+}
+
+/** CSS as coloured spans (0.33): comments, strings, at-rules, "&" and property names. */
+export function highlightCss(code: string): string {
+  let out = '';
+  let last = 0;
+  let depth = 0;
+  const span = (kind: string, text: string) => `<span class="tk-${kind}">${escapeHtml(text)}</span>`;
+  const pattern = /(\/\*[\s\S]*?(?:\*\/|$))|("[^"\n]*"?|'[^'\n]*'?)|(@[A-Za-z-]+)|(&)|([{}])|(-?[A-Za-z][\w-]*)(?=\s*:[^{};]*(?:;|\}|$))/g;
+  for (const match of code.matchAll(pattern)) {
+    out += escapeHtml(code.slice(last, match.index));
+    if (match[1] !== undefined) out += span('comment', match[1]);
+    else if (match[2] !== undefined) out += span('string', match[2]);
+    else if (match[3] !== undefined) out += span('tag', match[3]);
+    else if (match[4] !== undefined) out += span('entity', match[4]);
+    else if (match[5] !== undefined) { depth = Math.max(0, depth + (match[5] === '{' ? 1 : -1)); out += escapeHtml(match[5]); }
+    else out += depth > 0 ? span('attr', match[6]) : escapeHtml(match[6]);
     last = (match.index || 0) + match[0].length;
   }
   return out + escapeHtml(code.slice(last)) + '\n';
@@ -70,7 +90,7 @@ function update(editor: HTMLElement): void {
   const code = editor.querySelector<HTMLElement>('[data-code-highlight] code');
   const lines = editor.querySelector<HTMLElement>('[data-code-lines]');
   if (!input || !code || !lines) return;
-  code.innerHTML = highlight(input.value);
+  code.innerHTML = editor.dataset.language === 'css' ? highlightCss(input.value) : highlight(input.value);
   const count = input.value.split('\n').length;
   // Only when the number of lines changes (the numbers are one text node).
   if (lines.dataset.count !== String(count)) { lines.dataset.count = String(count); lines.textContent = Array.from({ length: count }, (_, i) => String(i + 1)).join('\n'); }

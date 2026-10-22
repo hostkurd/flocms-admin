@@ -77,6 +77,8 @@ final class PanelView
             'pagesUrl' => $urls['pages'],
             'pagesActive' => $activeSlug === \FloCMS\Admin\Pages\PagesResource::SLUG,
             'pagesIcon' => Icons::svg('file'),
+            'blocksPreviewUrl' => $urls['blocks_preview'],
+            'blocksPreviewActive' => $activeSlug === 'blocks-preview',
             'usersUrl' => $urls['users'],
             'usersActive' => $activeSlug === 'accounts',
             'rolesUrl' => $urls['roles'],
@@ -203,7 +205,7 @@ final class PanelView
      * The panel's own pages the current person may open (null when not): the sidebar
      * and Ctrl+K search (0.20) show the same set.
      *
-     * @return array{pages: ?string, media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, mailings: ?string, profile: ?string}
+     * @return array{pages: ?string, blocks_preview: ?string, media: ?string, users: ?string, roles: ?string, settings: ?string, activity: ?string, trash: ?string, imports: ?string, mailings: ?string, profile: ?string}
      */
     public static function pageUrls(): array
     {
@@ -211,6 +213,8 @@ final class PanelView
         return [
             // Site → Pages (0.30)
             'pages' => Admin::registry()->isBuiltIn(\FloCMS\Admin\Pages\PagesResource::SLUG) && Auth::can(\FloCMS\Admin\Pages\PagesResource::permission('view')) ? Admin::url(\FloCMS\Admin\Pages\PagesResource::SLUG) : null,
+            // Pages › Blocks preview (0.33)
+            'blocks_preview' => Admin::registry()->isBuiltIn(\FloCMS\Admin\Pages\PagesResource::SLUG) && Auth::can(\FloCMS\Admin\Http\BlocksPreviewController::PERMISSION) ? Admin::url('blocks-preview') : null,
             'media' => !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('media')) && \FloCMS\Admin\Media\MediaLibrary::enabled() && \FloCMS\Admin\Media\MediaLibrary::can('view') ? Admin::url('media') : null,
             'users' => $usersEnabled && Auth::can('users.manage') ? Admin::url('accounts') : null,
             'roles' => self::rolesUrl(),
@@ -298,6 +302,9 @@ final class PanelView
             $items = [['label' => AdminLang::get('nav.resources'), 'url' => null], ['label' => AdminLang::get('media.title'), 'url' => $title === AdminLang::get('media.title') ? null : Admin::url('media')]];
             if ($title !== AdminLang::get('media.title')) { $items[] = ['label' => $title, 'url' => null]; }
             return $items;
+        }
+        if ($activeSlug === 'blocks-preview') {
+            return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => AdminLang::get('pages.plural'), 'url' => self::pageUrls()['pages']], ['label' => $title, 'url' => null]];
         }
         if ($activeSlug === 'accounts' || ($activeSlug === \FloCMS\Admin\Pages\PagesResource::SLUG && Admin::registry()->isBuiltIn($activeSlug))) {
             return [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => $title, 'url' => null]];

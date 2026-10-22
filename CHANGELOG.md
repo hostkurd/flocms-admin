@@ -2,6 +2,21 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.33.0 - 2026-10-22
+
+**A block's Display tab for frontend developers: styles, theme colours, phone spacing, hooks, scoped custom CSS and a preview of every block.** Nothing to migrate: stored blocks don't change. See [Builder: styling the blocks](docs/builder.md#styling-the-blocks).
+
+- **Display tab in three groups**: **Look** (style, background, text colour), **Layout** (show on, width, spacing) and **Advanced** (anchor, CSS class, custom CSS); a group with nothing in it is left out.
+- **Spacing**: "Choose…" is gone; the first option names the block's default, **Default (Medium)** (or None for full-width blocks), and keeps following it. New size **Extra large**. **Space above / below on phones** (Same as on desktop unless set): `flo-space-above-phone-<size>` below 768 px. The sizes are theme variables, `--flo-space-sm` … `--flo-space-xl`, by default today's fractions of `--flo-block-gap`, so pages look the same.
+- **Block styles**: developers list named styles per block type (`'block_styles'` in `config/admin.php`, `BlockStyles::add()`, or `Block::styles()`); editors pick one (**Style**: Default, then the styles); the wrapper gets `is-style-<name>`. A style removed later is ignored by the website, pointed out in the dialog and dropped when the page is saved.
+- **Theme colours**: every block has a **Background** swatch from the theme's palette and a **Text colour** (Automatic, Light, Dark); the wrapper gets `has-bg has-bg-<name> has-text-light|dark` and space inside (`--flo-bg-padding`). The palette is `'block_colours'` in `config/admin.php`, or the four colours of `blocks.css` without it. A Section's Background offers the same colours.
+- **Hooks**: every block wrapper has `data-block="<type>"` and `data-block-id="<id>"`.
+- **Custom CSS** for people with the new **`blocks.custom_css`** permission: `&` is the block, rules without it apply inside it, `@media` works. Checked on save (with the line), scoped to `.flo-block[data-block-id="…"]`; `url()` and other functions that load files, `@import` and other at-rules, backslashes and `<` are refused. Everyone else's saves keep a block's CSS unchanged. On the website one cached stylesheet per page, `/flo-admin/asset/block-styles-<hash>.css`, linked by `blocks_assets()` (a `<style>` tag, with `'block_style_nonce'`, when it can't be written).
+- **Pages › Blocks preview** (`/admin/blocks-preview`, permission **`settings.blocks_preview`**, which the Admin role has through `settings.*`): every kind of block in each style and colour, with the website's layout and stylesheets, at desktop, tablet and phone widths and in each language, each labelled with its selector and **Copy selector**. Core blocks show samples (with the newest images of the media library); a site block shows `Block::sample()`.
+- For developers: `Select::swatches()` and `Select::whenMissing()`, `CodeEditor::language('css')` (highlighting, no Format), `Section::group()` for a light group inside a tab, `Block::styles()` and `Block::sample()`; `blocks_data()` gives `style`, `bg` and `text` in a block's settings; icons `alert-triangle`, `monitor`, `tablet`, `smartphone`. A checkbox with `data-admin-autosubmit` submits its form, as a select does.
+- `admin:doctor` names unusable `block_styles` and `block_colours` entries, and a copied `public/assets/flo-blocks/blocks.css` from before 0.33.
+- New words in `en`, `ar` and `ku`: `blocks.group_look`, `blocks.group_layout`, `blocks.style`, `blocks.style_default`, `blocks.style_help`, `blocks.style_gone`, `blocks.bg_help`, `blocks.bg_muted`, `blocks.text_help`, `blocks.space_xlarge`, `blocks.space_default`, `blocks.space_above_phone`, `blocks.space_below_phone`, `blocks.custom_css`, `blocks.custom_css_help`, `blocks.css_*`, `blocks.preview_*`, `roles.perm.blocks_custom_css(_help)`, `roles.perm.blocks_preview(_help)`.
+
 ## 0.32.2 - 2026-10-21
 
 - **Builder**: a Columns block had no space below its Add block buttons in the editor; it now keeps the same space from the card's bottom edge as a Section.

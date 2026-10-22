@@ -36,7 +36,9 @@ final class BuilderUnitTest extends TestCase
         // 0.32.1: the panel keeps name, note, status and dates; Show on and Advanced are the dialog's Display tab
         self::assertSame(['_label', '_note', 'status', 'starts', 'ends'], array_keys($field->settingsForm($heading)->fields()));
         self::assertSame(['text', 'level'], array_values(array_intersect(['text', 'level'], array_keys($field->contentForm($heading)->fields()))));
-        self::assertSame(['devices', 'width', 'space_above', 'space_below', 'anchor', 'class'], array_slice(array_keys($field->contentForm($heading)->fields()), -6));
+        // 0.33: grouped as Look (style, background, text), Layout (screens, width, spacing) and Advanced (anchor, class, CSS)
+        self::assertSame(['_bg', '_text', 'devices', 'width', 'space_above', 'space_above_phone', 'space_below', 'space_below_phone', 'anchor', 'class', '_css', '_css_signed'],
+            array_slice(array_keys($field->contentForm($heading)->fields()), -12));
         // A block with no fields of its own has no dialog: everything stays in the panel
         $bare = new class extends \FloCMS\Admin\Blocks\Block {
             protected static string $type = 'bare_test';
@@ -44,7 +46,8 @@ final class BuilderUnitTest extends TestCase
         };
         self::assertFalse($field->hasContent($bare));
         self::assertSame([], $field->contentForm($bare)->fields());
-        self::assertSame(['_label', '_note', 'status', 'starts', 'ends', 'devices', 'width', 'space_above', 'space_below', 'anchor', 'class'], array_keys($field->settingsForm($bare)->fields()));
+        self::assertSame(['_label', '_note', 'status', 'starts', 'ends', 'devices', '_bg', '_text', 'width', 'space_above', 'space_above_phone', 'space_below', 'space_below_phone', 'anchor', 'class', '_css', '_css_signed'],
+            array_keys($field->settingsForm($bare)->fields()));
         self::assertNotContains('status', array_keys($field->contentForm($heading)->fields()));
         // Section, Columns and Slider: their own name in the panel, in place of the panel's
         $slider = BlockRegistry::find('slider');

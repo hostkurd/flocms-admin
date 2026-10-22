@@ -37,7 +37,12 @@ The field shows the page's **structure** on the left, one row per block, and the
 - **The panel**: **Edit content**, the same actions, then the settings every block shares:
   - **Name** and **Note**, for editors only, never printed on the website. The name replaces the block's first text in the structure. A Section, Columns and Slider show their own Name here instead; a Section's and a Slider's name also names it for screen readers on the website.
   - **Status** (Published, Draft) and **Show from / Show until**: a draft or a block outside its dates is not printed.
-- **Display** (0.32.1), the last tab of the block's dialog: **Show on** (all screens, desktop only, phones only), **Width** (Boxed in the site's container, or Full width), **Space above / below**, **Anchor** (`team` makes `#team` link to the block) and an extra **CSS class**. A block with no fields of its own has no dialog; it keeps these in the panel, under **Advanced**.
+- **Display** (0.32.1), the last tab of the block's dialog, in three groups (0.33):
+  - **Look**: **Style**, one of the styles the theme defines for this kind (shown only when there are some; see [Styles and colours](#styles-and-colours)), **Background**, a swatch of the theme's colours, and **Text colour** (Automatic, Light, Dark) once there is a background. A Section keeps its own Background field, with the same colours.
+  - **Layout**: **Show on** (all screens, desktop only, phones only), **Width** (Boxed in the site's container, or Full width), **Space above / below** (Default, None, Small, Medium, Large, Extra large; **Default (Medium)** names the block's default and follows it if it changes) and the same **on phones** (**Same as on desktop** unless set).
+  - **Advanced**: **Anchor** (`team` makes `#team` link to the block), an extra **CSS class**, and **Custom CSS** for people with `blocks.custom_css` (see [Custom CSS](#custom-css)).
+
+  A group with nothing in it is left out. A block with no fields of its own has no dialog; it keeps these in the panel, under **Advanced**.
 - **Edit** (or a double click on the row, or Enter) opens the block's own fields in a dialog, in its tabs (a slider has **Content** and **Slides**), with **Done**. The dialog edits one block (0.32) and keeps one height while it is open: its tallest tab, 560–760 px (less on a short window); what doesn't fit scrolls inside it. Changes are kept until the page is saved. A new block opens there straight away; a new Slider opens on its Slides tab, and a block whose required list is still empty says "Nothing added yet" on its row. Options that matter for one choice only (a slider's pixel heights with Fixed, a Section's colour with a Colour background) appear when it is chosen.
 - **Add block** opens a dialog with search, categories (Media, Text, Layout, Marketing, Your site, and **Recently used**) and where the block will go ("After “Hero”", "In “2 columns”, column 2"). It closes with ×, Escape or a click outside. **+** on a row adds a block after it; **Add to column 2** or **Add a block inside** add one into a Section or Columns.
 - **Delete** asks first ("Delete “Services”? The 4 blocks inside it go too."), then **Undo** brings it back until you save.
@@ -67,7 +72,7 @@ The field shows the page's **structure** on the left, one row per block, and the
 | `cards` | Text | Heading, cards per row; **Cards**: image, title, text, link (the whole card opens it), button text, open in a new tab |
 | `call_to_action` | Marketing | Heading, text, button, link, open in a new tab, style |
 | `html` | Other | Raw HTML, printed as written: see below |
-| `section` | Layout | Name, content width (Full, Boxed, Narrow), background (none, light, dark, brand, a colour, an image), text colour and image overlay (with a colour or image), inner space; holds blocks |
+| `section` | Layout | Name, content width (Full, Boxed, Narrow), background (none, the theme's colours, a colour, an image), text colour and image overlay (with a colour or image), inner space; holds blocks |
 | `columns` | Layout | Name, layout (50/50, 67/33, 33/67, 25/75, 75/25, 40/60, 60/40, thirds, 25/50/25, quarters, from pictures), space between, vertical alignment, stack on phones, last column first on phones; holds blocks |
 
 A button's text and its link need each other: one without the other is an error. Empty Slider, Section and Columns blocks print nothing on the website.
@@ -83,8 +88,10 @@ An HTML block prints its code on the website as written, so only people with the
 `blocks($value)` prints the blocks shown now (published, inside their dates) in the page's language. With one list per language, a language without blocks shows the default language's. Each block is wrapped in
 
 ```html
-<div class="flo-block flo-block-heading is-boxed flo-space-above-medium flo-space-below-medium" id="team">…</div>
+<div class="flo-block flo-block-heading is-boxed flo-space-above-medium flo-space-below-medium" data-block="heading" data-block-id="b8f2c1" id="team">…</div>
 ```
+
+`data-block` is the block's kind and `data-block-id` its id, which stays the same when the block is moved, edited or saved again (a duplicate gets a new one): hooks for scripts, tests and the block's own CSS (0.33). With a style, a colour or phone spacing the wrapper also gets `is-style-<name>`, `has-bg has-bg-<name> has-text-light|dark` and `flo-space-above-phone-<size>`.
 
 and the inside comes from **`views/blocks/<type>.html`** in the site, or the package's default template. A template gets the block's fields as variables (every field is there, empty when not filled; toggles are `'1'` or `'0'`), `$block` (`id`, `type`, `settings`, `lang`, `anchor`), and: `$content` for a Section (the HTML of the blocks in it) and `$columns` for Columns (each column's `share` of 12 and `html`). Use `media($id)`, `media_list($ids)` and `repeater_items($list)` as anywhere else. A slider's `$slides` holds only the slides shown, each with `item` (its media item).
 
@@ -106,10 +113,59 @@ and the inside comes from **`views/blocks/<type>.html`** in the site, or the pac
 
 A site styles its blocks with its own CSS, in four ways, from the broadest:
 
-1. **The CSS variables** of `blocks.css`, set in the theme's stylesheet: `--flo-container`, `--flo-narrow`, `--flo-gutter`, `--flo-block-gap`, `--flo-radius`, `--flo-brand`, `--flo-brand-text`, `--flo-light`, `--flo-dark`, `--flo-muted`. They change every block at once, without touching the panel's files.
-2. **The classes every block prints**: the wrapper `flo-block flo-block-<type>` (`.flo-block-cards`, `.flo-block-hero`), its width (`is-boxed`, `is-full`), spacing (`flo-space-above-large`) and devices; inside, each template's own classes (`.flo-card`, `.flo-hero-heading`, `.flo-section.is-bg-dark`). Rules for these go in the site's stylesheet, loaded after `{!! blocks_assets() !!}`.
-3. **The CSS class** in a block's Display tab, for one block: `is-highlight` there, and `.flo-block.is-highlight { … }` in the stylesheet. Editors use the names developers give them; the anchor gives one block an `id` too.
-4. **The templates and styles themselves**: `php flo admin:blocks` copies them into the site (`views/blocks/`, `public/assets/flo-blocks/`), and from then on they are the site's to change, markup included. A site block from `php flo make:admin-block` has its own template and its `assets()` files.
+1. **The CSS variables** of `blocks.css`, set in the theme's stylesheet: `--flo-container`, `--flo-narrow`, `--flo-gutter`, `--flo-block-gap`, `--flo-radius`, `--flo-brand`, `--flo-brand-text`, `--flo-light`, `--flo-dark`, `--flo-muted`, and (0.33) the spacing sizes `--flo-space-sm`, `--flo-space-md`, `--flo-space-lg`, `--flo-space-xl` (by default a third, half, all and one and a half of `--flo-block-gap`) and `--flo-bg-padding`, the space inside a block with a background. They change every block at once, without touching the panel's files.
+2. **The classes every block prints**: the wrapper `flo-block flo-block-<type>` (`.flo-block-cards`, `.flo-block-hero`), its width (`is-boxed`, `is-full`), spacing (`flo-space-above-large`, `flo-space-above-phone-small`), devices, style (`is-style-shadow`) and colour (`has-bg-brand`); inside, each template's own classes (`.flo-card`, `.flo-hero-heading`, `.flo-section.is-bg-dark`). Rules for these go in the site's stylesheet, loaded after `{!! blocks_assets() !!}`.
+3. **Styles** (0.33): named looks a developer defines and editors pick from a list; better than asking editors to type class names. See below.
+4. **The CSS class** in a block's Display tab, for one block: `is-highlight` there, and `.flo-block.is-highlight { … }` in the stylesheet. The anchor gives one block an `id` too.
+5. **Custom CSS** (0.33), for one block, by people with `blocks.custom_css`. See below.
+6. **The templates and styles themselves**: `php flo admin:blocks` copies them into the site (`views/blocks/`, `public/assets/flo-blocks/`), and from then on they are the site's to change, markup included. A site block from `php flo make:admin-block` has its own template and its `assets()` files.
+
+**Pages › Blocks preview** (0.33) shows every kind of block in each of its styles and colours with the website's own layout and stylesheets, at desktop, tablet and phone widths and in each language, each one labelled with its selector and a **Copy selector** button. It is a page preview in a frame, so nothing is saved. The core blocks show sample content, with the newest images of the media library; a site block shows its `sample()` (an array of its fields as stored), or "No sample yet". It needs the `settings.blocks_preview` permission, which the Admin role has through `settings.*`, and `'pages' => true`.
+
+### Styles and colours
+
+**Styles** are listed in `config/admin.php` per block type (`'*'` for every kind), or from PHP; a site block can also return its own from `styles()`:
+
+```php
+'block_styles' => [
+    'cards' => ['shadow' => 'With shadow', 'plain' => 'Plain'],
+    '*'     => ['highlight' => ['en' => 'Highlighted', 'ar' => 'مميّز']],
+],
+```
+
+```php
+\FloCMS\Admin\Blocks\BlockStyles::add('cards', 'shadow', 'With shadow');   // a package, a service provider
+public function styles(): array { return ['outline' => 'Outline']; }       // in a Block class
+```
+
+A name is lower-case letters, digits and `-`; a label is words, a translation key or one text per language. The editor picks one in the Display tab (Default, then the styles: a row of buttons for up to four, a list for more) and the wrapper gets `is-style-<name>`: write `.flo-block-cards.is-style-shadow .flo-card { box-shadow: … }` in the theme. A style removed from the list later is ignored by the website; its block says "The style “shadow” no longer exists" and the style goes when the page is saved. `php flo admin:doctor` names entries it can't use.
+
+**Colours**: every block (but a Section, which has its own Background with the same colours) can have a background from the theme's palette, and a text colour (Automatic picks light or dark for the background). Without `block_colours` the palette is the four colours of `blocks.css`: Brand colour, Light, Dark and Muted, styled with its variables. With it, the palette is the site's own:
+
+```php
+'block_colours' => [
+    'brand' => ['label' => 'Brand', 'value' => '#0e6e8c', 'text' => 'light'],
+    'sand'  => ['label' => 'Sand',  'value' => '#f4ede1'],          // text: light or dark, worked out when left out
+],
+```
+
+The panel then prints each colour's rule (`.has-bg-sand { background-color: #f4ede1; color: … }`) in the page's block stylesheet (below), so a theme needs no CSS for them; it can add its own for `.has-bg-sand` all the same. A block with a background gets `--flo-bg-padding` (40 px, 24 px on phones) inside. Names are lower-case letters, digits and `-`, and not `none`, `colour`, `image` or `auto`.
+
+### Custom CSS
+
+People with the **`blocks.custom_css`** permission (Roles page, System; Super admin has it through `*`) see a **Custom CSS** box at the end of a block's Display tab. It applies to that block only:
+
+```css
+& { border-radius: 24px; }                     /* & is the block */
+.flo-card { gap: 2rem; }                       /* rules without & apply inside it */
+@media (max-width: 767px) { & { padding-inline: 0; } }
+```
+
+The panel checks it when the page is saved and scopes every rule to `.flo-block[data-block-id="b8f2c1"]`. It refuses, with the line: braces that don't match, a rule inside a rule, `url()` and the other functions that load files (`image-set()`, `image()`, `src()`…), `@import` and any at-rule but `@media`, `@supports`, `@container` and `@keyframes`, backslashes, `<`, `javascript:`, `expression()`, `behavior` and `-moz-binding`, and more than 5,000 characters. A background image is set with a Section instead.
+
+For everyone else the box is hidden and the block's CSS is kept as it is (a copy signed for that block travels with the form); a block they duplicate or paste has none. Changes show in the activity log with the page.
+
+On the website the CSS of the blocks on a page, and the rules of the theme's colours, are one small stylesheet named by its content, `/flo-admin/asset/block-styles-<hash>.css`, cached for good and linked by `{!! blocks_assets() !!}` after the base styles. Being a file, it works under a strict Content-Security-Policy. When `storage/cache/blocks` can't be written it is a `<style>` tag instead; give it your policy's nonce with `'block_style_nonce' => fn () => $nonce` in `config/admin.php`. Stylesheets no page has used for 30 days are removed.
 
 ## A slider on its own
 
@@ -157,7 +213,8 @@ final class LatestProjects extends Block
 }
 ```
 
-- `fields()` returns fields, or `Tab`s for several tabs. Any field works except uploads, many-to-many relations and another Builder; repeaters, media pickers and rich text work. Field names may not start with `_` (the shared settings `_label` and `_note` use it).
+- `fields()` returns fields, or `Tab`s for several tabs. Any field works except uploads, many-to-many relations and another Builder; repeaters, media pickers and rich text work. Field names may not start with `_` (the shared settings use it: `_label`, `_note`, and since 0.33 `_style`, `_bg`, `_text` and `_css`), nor be one of the other shared settings (`status`, `starts`, `ends`, `width`, `devices`, `space_above`, `space_below`, `space_above_phone`, `space_below_phone`, `anchor`, `class`).
+- `styles()` (0.33) returns the block's own styles, `['outline' => 'Outline']`, besides those in `block_styles`; `sample()` returns content for the blocks preview, its fields as stored (`['heading' => 'Our projects', 'count' => '3']`; a Section-like block may add `'children' => [['type' => 'heading', 'data' => [...]], …]`).
 - `check(array $fields): array` (0.32) returns errors that need more than one field, `['link' => 'Add a link…']` (or `'items.0.link'` inside a list); `self::buttonPair($fields, 'button', 'link')` is the panel's own button-and-link check.
 - A field's `->shownWhen('height', 'fixed')` (0.32) shows it only while another field of the block has one of those values, in the browser, without reloading the dialog. Unlike `visibleWhen()`, it is always sent and its rules always apply, so give it a valid default.
 - `title(array $fields)` names the block in the structure (by default its first heading, name, text…; an editor's Name comes first), `nameField()` a field of its own shown as the panel's Name (Section, Columns and Slider return `'name'`), `defaultWidth()` (`'boxed'` or `'full'`), `allowedIn(string $parentType)` where it may sit, `assets()` the files in `public/assets/flo-blocks/` it needs, `cacheable()`, and `render(array $vars): ?string` to build the HTML in PHP instead of a template.
@@ -179,4 +236,4 @@ final class LatestProjects extends Block
 ]
 ```
 
-With `->translatable()`: `{"en": […], "ar": […]}`. A block's `id` stays the same when it moves. A block whose kind no longer exists is kept as stored and shown as "Unknown block" until someone removes it. The activity log names blocks ("Page content · Added: Call to action", "Page content · Hero · Heading: Welcome → Hello", "Order changed"), the view page shows the structure, media in blocks count as used in the library, export writes the JSON as it is, and import reads it like a submitted form: each block is checked as if typed in the editor, so a block whose kind no longer exists, or an HTML block imported by someone without `blocks.html`, is left out.
+With `->translatable()`: `{"en": […], "ar": […]}`. A block's `id` stays the same when it moves. Settings left on their default are not stored; those of 0.33 are `"_style": "shadow"`, `"_bg": "sand"`, `"_text": "light"`, `"space_above_phone": "small"` and `"_css": "& { … }"` (`blocks_data()` gives them as `style`, `bg` and `text`, never the CSS). A block whose kind no longer exists is kept as stored and shown as "Unknown block" until someone removes it. The activity log names blocks ("Page content · Added: Call to action", "Page content · Hero · Heading: Welcome → Hello", "Order changed"), the view page shows the structure, media in blocks count as used in the library, export writes the JSON as it is, and import reads it like a submitted form: each block is checked as if typed in the editor, so a block whose kind no longer exists, or an HTML block imported by someone without `blocks.html`, is left out, and custom CSS imported by someone without `blocks.custom_css` is dropped.

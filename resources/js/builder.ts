@@ -12,6 +12,7 @@ import { applyEditing, initializeTranslations } from './translations';
 import { initializeMedia } from './media';
 import { initializeForms } from './forms';
 import { initializeEditors } from './editors';
+import { initializeCodeEditors } from './code-editor';
 import { initialize as initializeRepeaters } from './repeater';
 
 type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -253,6 +254,8 @@ function prepare(builder: HTMLElement, pane: HTMLElement): void {
   initializeRepeaters(pane);
   initializeMedia(pane);
   initializeEditors(pane);
+  // A block's own CSS (0.33) is a code editor.
+  initializeCodeEditors(pane);
   // The rich editors start after their script loads; by then the edit dialog may have taken
   // the block's fields out of its pane, so they are started on the fields too (0.32.1).
   const fields = pane.querySelector<HTMLElement>(':scope > [data-builder-fields]');

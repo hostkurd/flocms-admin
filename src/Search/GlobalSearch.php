@@ -116,7 +116,7 @@ final class GlobalSearch
         $page = AdminLang::get('search.type_page');
         $pages = [SearchResult::make(AdminLang::get('nav.dashboard'), Admin::url('dashboard'))->icon('dashboard')->type($page)];
         $urls = PanelView::pageUrls();
-        foreach ([['media', 'media.title', 'image'], ['users', 'nav.users', 'users'], ['roles', 'nav.roles', 'shield'], ['settings', 'nav.settings', 'settings'], ['activity', 'activity.title', 'clock'], ['trash', 'trash.title', 'trash'], ['imports', 'nav.imports', 'upload'], ['profile', 'nav.profile', 'user']] as [$key, $label, $icon]) {
+        foreach ([['media', 'media.title', 'image'], ['users', 'nav.users', 'users'], ['blocks_preview', 'blocks.preview_title', 'grid'], ['roles', 'nav.roles', 'shield'], ['settings', 'nav.settings', 'settings'], ['activity', 'activity.title', 'clock'], ['trash', 'trash.title', 'trash'], ['imports', 'nav.imports', 'upload'], ['profile', 'nav.profile', 'user']] as [$key, $label, $icon]) {
             if ($urls[$key] !== null) { $pages[] = SearchResult::make(AdminLang::get($label), $urls[$key])->icon($icon)->type($page); }
         }
 
