@@ -598,6 +598,40 @@ final class AdminConfig
         return $columns;
     }
 
+    /**
+     * The site's own panel pages (0.36), listed explicitly.
+     *
+     * @return list<class-string<AdminPage>>
+     */
+    public function adminPages(): array
+    {
+        $list = $this->values['admin_pages'] ?? [];
+        return array_values(array_filter(is_array($list) ? $list : [], 'is_string'));
+    }
+
+    public function adminPagesPath(): string
+    {
+        $path = str_replace('\\', '/', (string) ($this->values['admin_pages_path'] ?? 'admin/Pages'));
+        $absolute = str_starts_with($path, '/') || preg_match('/^[A-Za-z]:\//', $path) === 1;
+        return $absolute ? rtrim($path, '/') : rtrim($this->root, '/\\') . '/' . trim($path, '/');
+    }
+
+    public function adminPagesNamespace(): string
+    {
+        return trim((string) ($this->values['admin_pages_namespace'] ?? 'App\\Admin\\Pages'), '\\');
+    }
+
+    /**
+     * The page /admin opens (0.36): a panel page's class, or null for the dashboard.
+     *
+     * @return class-string<AdminPage>|null
+     */
+    public function home(): ?string
+    {
+        $home = $this->values['home'] ?? null;
+        return is_string($home) && trim($home) !== '' && trim($home) !== 'dashboard' ? ltrim(trim($home), '\\') : null;
+    }
+
     /** @return array<string, mixed> */
     public function all(): array
     {

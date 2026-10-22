@@ -9,6 +9,7 @@ final class Notifications
 {
     private const KEY = '_flo_admin_notifications';
     private static array $buffers = [];
+    private static int $captured = 0;
     public static function push(array $notification): void
     {
         if (self::$buffers !== []) {
@@ -30,6 +31,11 @@ final class Notifications
     {
         $pending = self::pending(); Session::set(self::KEY, []); return $pending;
     }
+    /** Whether the last capture() that finished sent a notification (0.36: a page shows its own "Saved" otherwise). */
+    public static function sentDuringCapture(): bool
+    {
+        return self::$captured > 0;
+    }
     /** On failure neither session delivery nor a caller's outer buffer is changed. */
     public static function capture(callable $callback): mixed
     {
@@ -37,6 +43,7 @@ final class Notifications
         try { $result = $callback(); }
         catch (\Throwable $error) { array_pop(self::$buffers); throw $error; }
         $notifications = array_pop(self::$buffers);
+        self::$captured = count($notifications);
         foreach ($notifications as $notification) { self::push($notification); }
         return $result;
     }

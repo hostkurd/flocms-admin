@@ -1,0 +1,21 @@
+<?php
+declare(strict_types=1);
+
+namespace {{ namespace }};
+{{ imports }}
+/**
+ * A page of the site's own in the panel, at /admin/{{ slug }}.
+ * Registered in config/admin.php under 'admin_pages'; open to roles that have
+ * the permission panel.{{ slug }} (tick it on the Roles page).
+ * Every method is optional: see docs/custom-pages.md.
+ */
+final class {{ class }} extends AdminPage
+{
+    protected static string $label = '{{ label }}'; // plain text or a site language key
+    protected static ?string $description = null;
+    protected static ?string $icon = '{{ icon }}';
+    protected static ?string $group = {{ group }}; // a sidebar group, e.g. 'Reports'; null: under Content
+    protected static int $sort = 0;
+    protected static string $width = '{{ width }}'; // default, full or narrow
+{{ body }}
+}

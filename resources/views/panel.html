@@ -8,13 +8,22 @@
         </a>
         <nav class="fa-nav">
             <a class="fa-nav-link{{ $dashboardActive ? ' is-active' : '' }}" href="{{ $dashboardUrl }}"@if($dashboardActive) aria-current="page"@endif>{!! $dashboardIcon !!}<span>{{ $t('nav.dashboard') }}</span></a>
-            @if(count($nav) > 0 || $mediaUrl !== null)
+            @if(count($nav) > 0 || $mediaUrl !== null || count($pageNav) > 0)
             <p class="fa-nav-heading">{{ $t('nav.resources') }}</p>
             @foreach($nav as $item)
             <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span></a>
             @endforeach
             @if($mediaUrl !== null)<a class="fa-nav-link{{ $mediaActive ? ' is-active' : '' }}" href="{{ $mediaUrl }}"@if($mediaActive) aria-current="page"@endif>{!! $mediaIcon !!}<span>{{ $t('media.title') }}</span></a>@endif
+            @foreach($pageNav as $item)
+            <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span>@if($item['badge'] !== null)<span class="fa-nav-badge">{{ $item['badge'] }}</span>@endif</a>
+            @endforeach
             @endif
+            @foreach($navGroups as $group)
+            <p class="fa-nav-heading">{{ $group['label'] }}</p>
+            @foreach($group['items'] as $item)
+            <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span>@if($item['badge'] !== null)<span class="fa-nav-badge">{{ $item['badge'] }}</span>@endif</a>
+            @endforeach
+            @endforeach
             @if($pagesUrl !== null || $usersUrl !== null || $rolesUrl !== null || $settingsUrl !== null || $activityUrl !== null || $trashUrl !== null || $importsUrl !== null || $mailingsUrl !== null)
             <p class="fa-nav-heading">{{ $t('nav.site') }}</p>
             @endif

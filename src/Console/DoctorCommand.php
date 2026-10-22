@@ -131,6 +131,7 @@ final class DoctorCommand extends Command
         $this->checkPasswordReset($config, $db, $project);
         $this->checkLoginSecurity($config, $db, $project);
         $this->checkPages($config, $db, $project);
+        $this->checkPanelPages($config);
 
         try {
             $widgets = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig($config);
@@ -456,6 +457,52 @@ final class DoctorCommand extends Command
         $pages = (string) @file_get_contents($this->project()->path('controllers/PagesController.php'));
         if (!str_contains($pages, 'admin.home')) {
             $this->caution('/admin shows the skeleton\'s page (skeleton 1.8+ opens the dashboard): link /admin/dashboard from views/pages/admin_index.html');
+        }
+    }
+
+    /** The site's own panel pages (0.36): their classes, slugs, views, forms and the home page. */
+    private function checkPanelPages(\FloCMS\Admin\AdminConfig $config): void
+    {
+        $registry = Admin::panelPages();
+        $home = $config->home();
+        if (($config->all()['admin_pages'] ?? []) === [] && $registry->problems() === [] && $home === null) { return; }
+        $this->section('Panel pages  (admin_pages)');
+        foreach ($registry->problems() as $problem) { $this->bad($problem); }
+        foreach ($registry->all() as $slug => $class) {
+            $problems = [];
+            try {
+                $page = new $class();
+                new \FloCMS\Admin\PanelPages\PageFilters($page, []);
+                if ($page->hasForm()) { new \FloCMS\Admin\PanelPages\PageForm($page); }
+                elseif ($page->form(new \FloCMS\Admin\Form\Form())->fields() !== [] && !method_exists($page, 'submit')) { $problems[] = 'form() has fields but the page has no submit(array $data) method, so the form is not shown'; }
+                $view = $page->view();
+                if ($view !== null && $view !== '' && \FloCMS\Admin\Http\CustomPageController::viewFile($view) === null) { $problems[] = 'view "' . $view . '" not found: expected views/' . $view . '.html'; }
+                foreach ($page->widgets() as $widget) {
+                    if (!is_string($widget) || !is_subclass_of($widget, \FloCMS\Admin\Widgets\Widget::class)) { $problems[] = 'widgets() lists ' . (is_string($widget) ? $widget : get_debug_type($widget)) . ', which is not a widget class'; continue; }
+                    foreach ((new $widget())->configurationErrors() as $error) { $problems[] = 'widget ' . $widget . ': ' . $error; }
+                }
+                foreach ($page->actions() as $action) {
+                    if (!$action instanceof \FloCMS\Admin\Actions\Action || $action->getKind() !== 'custom') { $problems[] = 'actions() must return Action::make(...) objects'; break; }
+                    $action->getPageForm();
+                }
+                $table = $page->table(new \FloCMS\Admin\Table\Table());
+                if ($table->getQuery() !== null && $table->getColumns() === []) { $problems[] = 'table() sets a query but no columns, so no table is shown'; }
+                if ($table->getQuery() !== null && $table->getDefaultSort() === null) { $this->caution($class . ': table() has no defaultSort(): rows may change places between pages; sort by a unique column such as id'); }
+            } catch (Throwable $error) {
+                $problems[] = $error->getMessage();
+            }
+            foreach ($problems as $problem) { $this->bad($class . ': ' . $problem); }
+            if ($problems === []) {
+                $this->ok($class::getLabel() . '  /admin/' . $slug . '  (' . $class::permission() . ($class::getGroup() !== null ? ', group ' . $class::getGroup() : '') . ')');
+            }
+        }
+        if ($registry->all() !== []) {
+            $this->line('  Roles open a page with its permission (Roles page › Panel pages; Super Admin has them through *).');
+        }
+        if ($home !== null) {
+            $found = $registry->findClass($home);
+            $found !== null ? $this->ok('Home page: /admin/' . $found::getSlug() . ' (people who may not open it see the dashboard)')
+                : $this->bad("'home' => " . $home . ' is not one of admin_pages: /admin opens the dashboard.');
         }
     }
 

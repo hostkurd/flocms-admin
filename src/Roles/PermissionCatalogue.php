@@ -82,6 +82,26 @@ final class PermissionCatalogue
                 AdminLang::get('roles.all_settings'), AdminLang::get('roles.all_settings_help'), [], [], array_values($items));
         }
 
+        // The site's own panel pages (0.36); pages sharing a permission share a box
+        $items = [];
+        try {
+            foreach (Admin::panelPages()->all() as $class) {
+                $name = $class::permission();
+                if (!Roles::validPattern($name)) { continue; }
+                if (isset($items[$name])) {
+                    $items[$name]['label'] .= AdminLang::get('form.list_separator') . strip_tags($class::getLabel());
+                    continue;
+                }
+                $items[$name] = ['name' => $name, 'label' => strip_tags($class::getLabel()), 'sub' => $class::getGroup() ?? (string) ($class::getDescription() ?? '')];
+            }
+        } catch (\Throwable) {
+            $items = [];
+        }
+        if ($items !== []) {
+            $groups[] = self::group('panel_pages', AdminLang::get('roles.group.panel_pages'), AdminLang::get('roles.group.panel_pages_help'), 'panel.*',
+                AdminLang::get('roles.all_panel_pages'), AdminLang::get('roles.all_panel_pages_help'), [], [], array_values($items));
+        }
+
         // Users
         if (Admin::config()->usersEnabled()) {
             $groups[] = self::group('users', AdminLang::get('nav.users'), AdminLang::get('roles.group.users_help'), null, '', '', [], [], [

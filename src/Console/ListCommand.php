@@ -105,7 +105,21 @@ final class ListCommand extends Command
             }
         }
 
-        $problems = array_merge($registry->problems(), array_map(static fn (string $p): string => 'Widget: ' . $p, $widgets->problems()), array_map(static fn (string $p): string => 'Settings: ' . $p, $settings->problems()));
+        // The site's own panel pages (0.36)
+        $panelPages = \FloCMS\Admin\Admin::panelPages();
+        $this->section('Panel pages');
+        if ($panelPages->all() === []) {
+            $this->note('None: php flo make:admin-page SalesReport --view --table');
+        } else {
+            $rows = [];
+            foreach ($panelPages->all() as $slug => $class) {
+                $rows[] = [$class::getLabel(), '/admin/' . $slug, $class::getGroup() ?? '-', $class::permission(), $this->short($class)];
+            }
+            $this->table(['Page', 'URL', 'Group', 'Permission', 'Class'], $rows);
+        }
+
+        $problems = array_merge($registry->problems(), array_map(static fn (string $p): string => 'Widget: ' . $p, $widgets->problems()), array_map(static fn (string $p): string => 'Settings: ' . $p, $settings->problems()),
+            array_map(static fn (string $p): string => 'Panel page: ' . $p, $panelPages->problems()));
         foreach ($problems as $problem) {
             $this->warn($problem);
         }

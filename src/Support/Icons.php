@@ -121,6 +121,12 @@ final class Icons
     }
 
     /** An icon by exact name (no fallback); for toolbar buttons. */
+    /** Whether $name is one of the panel's icons. */
+    public static function exists(string $name): bool
+    {
+        return isset(self::PATHS[$name]);
+    }
+
     public static function svgFor(string $name): string
     {
         if (!isset(self::PATHS[$name])) { throw new \InvalidArgumentException('Unknown icon ' . $name . '.'); }

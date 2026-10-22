@@ -13,7 +13,18 @@ abstract class Widget
     protected array $resources = [];
     protected int $sort = 0;
     protected int|string $columnSpan = 1;
+    /** @var array<string, mixed> */
+    private array $pageFilters = [];
     final public function __construct() {}
+    /**
+     * The filters' values of the panel page showing the widget (0.36), by field
+     * name; empty on the dashboard. Read them in stats(), records() or data().
+     *
+     * @return array<string, mixed>
+     */
+    final public function pageFilters(): array { return $this->pageFilters; }
+    /** @internal */
+    final public function usePageFilters(array $filters): static { $this->pageFilters = $filters; return $this; }
     final public function title(): string { return AdminLang::label($this->title !== '' ? $this->title : Str::headline(preg_replace('/Widget$/', '', (new \ReflectionClass($this))->getShortName()) ?? '')); }
     final public function sort(): int { return $this->sort; }
     /** The widget's own permission, or null (0.21: listed on the Roles page). */

@@ -45,6 +45,9 @@ final class PanelView
             ];
         }
 
+        // The site's own panel pages (0.36): ungrouped ones under Content, then their groups.
+        $pageNav = \FloCMS\Admin\PanelPages\CustomPages::navigation($activeSlug);
+
         $flash = Session::getFlash();
         if ($flash !== null) {
             $type = in_array($flash['type'] ?? '', ['success', 'danger', 'warning', 'info'], true) ? $flash['type'] : 'info';
@@ -64,6 +67,8 @@ final class PanelView
             'brand' => \FloCMS\Admin\Support\Appearance::brand(),
             'page' => $page,
             'nav' => $nav,
+            'pageNav' => $pageNav['content'],
+            'navGroups' => $pageNav['groups'],
             'notifications' => \FloCMS\Admin\Notifications\NotificationView::pending(),
             'securityBanner' => \FloCMS\Admin\Auth\EmailVerification::banner(),
             'user' => $user,
@@ -293,6 +298,13 @@ final class PanelView
     {
         if ($activeSlug === null || in_array($activeSlug, ['dashboard', 'profile'], true) || ($activeSlug === 'search' && Admin::registry()->find('search') === null)) {
             return [['label' => $title, 'url' => null]];
+        }
+        // The site's own panel pages (0.36): their group (or Content), the page, then an action's title.
+        if (($pageClass = Admin::panelPages()->find($activeSlug)) !== null && Admin::registry()->find($activeSlug) === null) {
+            $label = $pageClass::getLabel();
+            $items = [['label' => $pageClass::getGroup() ?? AdminLang::get('nav.resources'), 'url' => null], ['label' => $label, 'url' => $title === $label ? null : Admin::url($activeSlug)]];
+            if ($title !== $label) { $items[] = ['label' => $title, 'url' => null]; }
+            return $items;
         }
         if ($activeSlug === 'settings') {
             $items = [['label' => AdminLang::get('nav.site'), 'url' => null], ['label' => AdminLang::get('settings.title'), 'url' => null]];
