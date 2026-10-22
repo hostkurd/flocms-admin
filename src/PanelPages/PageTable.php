@@ -61,10 +61,19 @@ final class PageTable
             $dir = $this->table->getDefaultDirection();
         }
         $dir = strtolower((string) $dir) === 'desc' ? 'desc' : 'asc';
+        // defaultSort() on a column that isn't shown (the key, "id"): still the order of the rows.
+        if ($column === null && $this->table->getDefaultSort() !== null && $this->table->column((string) $this->table->getDefaultSort()) === null) {
+            return [$query->orderBy((string) $this->table->getDefaultSort(), $this->table->getDefaultDirection()), null, $this->table->getDefaultDirection()];
+        }
         if ($column !== null && $column->isDatabaseColumn()) {
             $query = $column->isTranslatable()
                 ? $query->orderByRaw(Translations::store()->sortExpression($query, $column->getName(), in_array(AdminLang::language(), Languages::all(), true) ? AdminLang::language() : Languages::default(), Languages::default()) . ' ' . strtoupper($dir))
                 : $query->orderBy($column->getName(), $dir);
+            // Rows with equal values keep one order: the default sort decides between them.
+            $default = $this->table->getDefaultSort();
+            if ($default !== null && $default !== $column->getName() && ($this->table->column($default) === null || !$this->table->column($default)->isTranslatable())) {
+                $query = $query->orderBy($default, $this->table->getDefaultDirection());
+            }
         }
         return [$query, $column?->getName(), $dir];
     }

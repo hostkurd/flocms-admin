@@ -2,6 +2,19 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.36.2 - 2026-10-22
+
+**`make:admin-page` reads the table it lists.** See [Custom pages: making a page](docs/custom-pages.md#making-a-page).
+
+- **`--table=listings`**: the page lists that database table. The generator checks it exists (a misspelt name stops with "Did you mean --table=listings?") and writes up to six columns that fit it:
+  - text searchable and sortable, numbers sortable, dates as `DateColumn`, true/false as `BooleanColumn`;
+  - columns holding the panel's translations found from their values and marked `->translatable()`;
+  - the key as the default sort.
+- It adds From/To filters on a date column and a select filter for a `status` / `type` / `category` column with a few values. It leaves out long text, binary data, `_id` keys and secret-looking columns, and lists what it left out.
+- **Plain `--table`** shows the database's tables to pick one; without a terminal it names them and stops. 0.36.1 used `users` without asking.
+- **`--resource=Listing`**: the page lists a resource's table with its list's columns, labels and translatable setting, and rows open the record's edit page. Relation, media and count columns are listed to add by hand.
+- **Custom pages' tables**: `defaultSort()` on a column the table doesn't show (the key) now orders the rows (it was ignored), and decides between rows with equal values when sorting by a column.
+
 ## 0.36.1 - 2026-10-22
 
 - **Custom pages**: a part of a page that throws (filters, widgets, view, table, form) no longer breaks the whole page with `APP_DEBUG=true`; the rest of the page works.

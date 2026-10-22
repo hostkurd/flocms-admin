@@ -287,14 +287,22 @@ echo \FloCMS\Admin\Admin::homePath();');
         $root = self::$root;
         @mkdir($root . '/config', 0777, true);
         $tester = new \FloCMS\CLI\Console\Testing\CommandTester(new \FloCMS\Admin\Console\MakeAdminPageCommand(), new \FloCMS\CLI\Project($root));
-        $tester->execute(['MadeReport', '--view', '--table', '--group=Reports'], [], ['interactive' => false, 'decorated' => false]);
+        // The generator reads the table from the test database.
+        file_put_contents($root . '/.env', getenv('FLO_ADMIN_TEST_DB_NAME')
+            ? sprintf("DB_TYPE=mysql\nDB_HOST=%s\nDB_PORT=%s\nDB_NAME=%s\nDB_USERNAME=%s\nDB_PASSWORD=%s\n", getenv('FLO_ADMIN_TEST_DB_HOST') ?: '127.0.0.1', getenv('FLO_ADMIN_TEST_DB_PORT') ?: '3306', getenv('FLO_ADMIN_TEST_DB_NAME'), getenv('FLO_ADMIN_TEST_DB_USER') ?: 'root', getenv('FLO_ADMIN_TEST_DB_PASS') ?: '')
+            : "DB_TYPE=sqlite\nDB_NAME=db.sqlite\n");
+        $tester->execute(['MadeReport', '--view', '--table=users', '--group=Reports'], [], ['interactive' => false, 'decorated' => false]);
+        unlink($root . '/.env');
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
         $opts = ['admin_config' => ['admin_pages' => ['App\\Admin\\Pages\\MadeReport']], 'session' => self::SUPER, 'env' => ['APP_DEBUG' => 'true']];
         $r = self::request('GET', '/en/admin/made-report', $opts);
         self::assertSame(200, $r['status']);
         self::assertStringNotContainsString('could not be shown', $r['body'], substr($r['body'], strpos($r['body'], 'fa-custom-page')));
         self::assertStringContainsString('root@example.test', $r['body']);
-        $f = self::request('GET', '/en/admin/made-report?filter%5B_%5D=1&filter%5Bname%5D=Ali', $opts);
+        $code = (string) file_get_contents($root . '/admin/Pages/MadeReport.php');
+        self::assertStringContainsString("TextColumn::make('full_name')->searchable()->sortable(),", $code);
+        self::assertStringNotContainsString("'password'", $code);
+        $f = self::request('GET', '/en/admin/made-report?q=Ali', $opts);
         self::assertStringContainsString('ali@example.test', $f['body']);
         self::assertStringNotContainsString('root@example.test', $f['body']);
     }

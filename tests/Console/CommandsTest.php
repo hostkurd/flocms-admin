@@ -473,15 +473,17 @@ final class CommandsTest extends TestCase
     public function testMakeAdminPageWritesTheClassTheViewAndRegistersIt(): void
     {
         $this->runCommand(new InstallCommand());
-        $tester = $this->runCommand(new MakeAdminPageCommand(), ['SalesReport', '--view', '--table', '--group=Reports']);
+        $tester = $this->runCommand(new MakeAdminPageCommand(), ['SalesReport', '--view', '--table=orders', '--group=Reports']);
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        // No database here: the page is written with the table's name and a warning.
+        self::assertStringContainsString('The database could not be read, so the table "orders" was not checked', $tester->getDisplay() . $tester->getErrorOutput());
         $code = (string) file_get_contents($this->root . '/admin/Pages/SalesReport.php');
         self::assertStringContainsString('namespace App\Admin\Pages;', $code);
         self::assertStringContainsString('final class SalesReport extends AdminPage', $code);
         self::assertStringContainsString("protected static ?string \$group = 'Reports';", $code);
         self::assertStringContainsString("return 'admin/sales-report';", $code);
         self::assertStringContainsString('->query(function (Database $db, array $filters): Database {', $code);
-        self::assertStringContainsString('$db->table(\'users\')', $code);
+        self::assertStringContainsString('$db->table(\'orders\')', $code);
         $this->lint($this->root . '/admin/Pages/SalesReport.php');
         self::assertStringContainsString('class="fa-stat-row"', (string) file_get_contents($this->root . '/views/admin/sales-report.html'));
         self::assertStringContainsString('Page ready at /admin/sales-report', $tester->getDisplay() . $tester->getErrorOutput());
@@ -531,6 +533,119 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('view "admin/broken" not found: expected views/admin/broken.html', $display);
         self::assertStringContainsString('expected the file admin/Pages/Gone.php', $display);
         self::assertStringContainsString("'home' => App\\Admin\\Pages\\Other is not one of admin_pages", $display);
+    }
+
+    /** A SQLite database with a listings table, for make:admin-page --table and --resource. */
+    private function listingsDatabase(): \PDO
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        @mkdir($this->root . '/storage');
+        $pdo = new \PDO('sqlite:' . $this->root . '/storage/db.sqlite');
+        $pdo->exec('CREATE TABLE listings (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, status VARCHAR(20), price DECIMAL(12,2), featured BOOLEAN, city_id INTEGER, password VARCHAR(255), body TEXT, created_at DATETIME)');
+        $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name VARCHAR(190), email VARCHAR(190))');
+        $insert = $pdo->prepare('INSERT INTO listings (title, status, price, featured, body, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+        $insert->execute(['{"en":"Sea view villa","ar":"فيلا"}', 'published', 100, 1, str_repeat('Long text. ', 40), '2026-10-01 10:00:00']);
+        $insert->execute(['{"en":"Garden house"}', 'draft', 80, 0, str_repeat('More text. ', 40), '2026-10-02 10:00:00']);
+        return $pdo;
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testMakeAdminPageReadsTheNamedTable(): void
+    {
+        $this->listingsDatabase();
+        $this->runCommand(new InstallCommand());
+        $tester = $this->runCommand(new MakeAdminPageCommand(), ['ListingsReport', '--table=listings']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        $code = (string) file_get_contents($this->root . '/admin/Pages/ListingsReport.php');
+        $this->lint($this->root . '/admin/Pages/ListingsReport.php');
+        self::assertStringContainsString("\$query = \$db->table('listings');", $code);
+        self::assertStringContainsString("TextColumn::make('title')->translatable()->searchable(),", $code);
+        self::assertStringContainsString("TextColumn::make('status')->searchable()->sortable(),", $code);
+        self::assertStringContainsString("TextColumn::make('price')->sortable(),", $code);
+        self::assertStringContainsString("BooleanColumn::make('featured')->sortable(),", $code);
+        self::assertStringContainsString("DateColumn::make('created_at')->sortable(),", $code);
+        self::assertStringContainsString("Select::make('status')->options(['draft' => 'Draft', 'published' => 'Published']),", $code);
+        self::assertStringContainsString("where('created_at', '>=', \$filters['from'])", $code);
+        self::assertStringContainsString("->defaultSort('id', 'desc');", $code);
+        foreach (["'password'", "'city_id'", "'body'"] as $out) { self::assertStringNotContainsString($out, $code); }
+        $display = $tester->getDisplay() . $tester->getErrorOutput();
+        self::assertStringContainsString('Left out: password (kept out: it looks secret)', $display);
+        self::assertStringContainsString('Left out: body (long text)', $display);
+
+        // A misspelt table, plain --table without a terminal, and a picked one.
+        $typo = $this->runCommand(new MakeAdminPageCommand(), ['Typo', '--table=listing']);
+        self::assertNotSame(0, $typo->getStatusCode());
+        self::assertStringContainsString('The table "listing" was not found in the database. Did you mean --table=listings?', $typo->getErrorOutput() . $typo->getDisplay());
+        self::assertFileDoesNotExist($this->root . '/admin/Pages/Typo.php');
+        $tester = new CommandTester(new MakeAdminPageCommand(), new Project($this->root));
+        $tester->execute(['Plain', '--table'], [], ['interactive' => false, 'decorated' => false]);
+        self::assertNotSame(0, $tester->getStatusCode());
+        self::assertStringContainsString('Which table? Name it: --table=listings (tables: listings, users)', $tester->getErrorOutput() . $tester->getDisplay());
+        $tester = new CommandTester(new MakeAdminPageCommand(), new Project($this->root));
+        $tester->execute(['Picked', '--table'], ['2'], ['interactive' => true, 'decorated' => false]);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        self::assertStringContainsString("\$db->table('users')", (string) file_get_contents($this->root . '/admin/Pages/Picked.php'));
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testMakeAdminPageUsesAResourcesColumns(): void
+    {
+        $this->listingsDatabase();
+        $this->runCommand(new InstallCommand());
+        @mkdir($this->root . '/admin/Resources', 0777, true);
+        file_put_contents($this->root . '/admin/Resources/ListingResource.php', <<<'PHP'
+<?php
+namespace App\Admin\Resources;
+
+use FloCMS\Admin\Form\Fields\TextInput;
+use FloCMS\Admin\Form\Form;
+use FloCMS\Admin\Resource;
+use FloCMS\Admin\Table\Columns\{BadgeColumn, RelationColumn, TextColumn};
+use FloCMS\Admin\Table\Table;
+
+final class ListingResource extends Resource
+{
+    protected static string $table = 'listings';
+    protected static string $slug = 'listings';
+
+    public function form(Form $form): Form
+    {
+        return $form->schema([TextInput::make('title')->translatable(), TextInput::make('status')]);
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table->columns([
+            TextColumn::make('title')->label('Listing')->searchable(),
+            BadgeColumn::make('status')->sortable(),
+            RelationColumn::make('city_id')->label('City')->table('cities', 'name'),
+        ]);
+    }
+}
+PHP);
+        $tester = $this->runCommand(new MakeAdminPageCommand(), ['ListingsReport', '--resource=Listing']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        $code = (string) file_get_contents($this->root . '/admin/Pages/ListingsReport.php');
+        $this->lint($this->root . '/admin/Pages/ListingsReport.php');
+        self::assertStringContainsString("TextColumn::make('title')->label('Listing')->translatable()->searchable(),", $code);
+        self::assertStringContainsString("TextColumn::make('status')->sortable(),", $code);
+        self::assertStringNotContainsString('city_id', $code);
+        self::assertStringContainsString("->url(fn (object \$row): string => Admin::url('listings/edit/' . \$row->id))", $code);
+        self::assertStringContainsString("Select::make('status')", $code);
+        self::assertStringContainsString('Left out: city_id (RelationColumn: add it by hand)', $tester->getDisplay() . $tester->getErrorOutput());
+        $missing = $this->runCommand(new MakeAdminPageCommand(), ['Other', '--resource=Nothing']);
+        self::assertNotSame(0, $missing->getStatusCode());
+        self::assertStringContainsString('The resource "Nothing" was not found. Resources: ListingResource', $missing->getErrorOutput() . $missing->getDisplay());
     }
 
     public function testMakeWidgetRegistersInListsWrittenByHand(): void

@@ -1,3 +1,12 @@
+# Upgrading to Admin 0.36.2
+
+Update with `composer require "hostkurd/flocms-admin:^0.36.2" -W` and run `php flo view:clear`. Nothing else to do.
+
+- `make:admin-page --table` now asks which table (or takes `--table=listings`) instead of using `users`. In scripts, name the table.
+- A page whose `defaultSort()` names a column that isn't in its `columns()` (such as `id`) now shows its rows in that order. Before, they came in the database's own order.
+
+---
+
 # Upgrading to Admin 0.36.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.36.1" -W` and run `php flo view:clear`. Nothing else to do. A page made with `make:admin-page --table` in 0.36.0 still reads the example `bookings` table: change its `query()` to your own table.

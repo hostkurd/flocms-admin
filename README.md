@@ -436,7 +436,7 @@ Admin 0.28 adds photos (or the first letter) and a bio to users, a user page wit
 
 ## Custom pages
 
-Admin 0.36 lets a site add **its own pages to the panel**: a report with filters kept in the address, widgets and a read-only table from any query (search, sort, Columns, CSV); a tool page with a form and Save; a help page with its own view and the panel's UI pieces. Pages get sidebar groups and badges, a `panel.<slug>` permission on the Roles page, Ctrl+K search, header actions and declared routes, and one can be the home page. `php flo make:admin-page SalesReport --view --table` makes one. See [Custom pages](docs/custom-pages.md).
+Admin 0.36 lets a site add **its own pages to the panel**: a report with filters kept in the address, widgets and a read-only table from any query (search, sort, Columns, CSV); a tool page with a form and Save; a help page with its own view and the panel's UI pieces. Pages get sidebar groups and badges, a `panel.<slug>` permission on the Roles page, Ctrl+K search, header actions and declared routes, and one can be the home page. `php flo make:admin-page SalesReport --view --table=listings` makes one, with columns and filters read from the table (or `--resource=Listing` for a resource's columns). See [Custom pages](docs/custom-pages.md).
 
 ## Login security
 
