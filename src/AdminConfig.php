@@ -175,6 +175,17 @@ final class AdminConfig
         return is_string($density) && in_array($density, \FloCMS\Admin\Settings\PanelSettings::DENSITIES, true) ? $density : 'comfortable';
     }
 
+    /**
+     * How times of day are shown in lists, view pages and the activity log
+     * (0.37): a PHP date() format of hours, minutes and seconds, default 'H:i'
+     * (24-hour); 'g:i A' gives 12-hour time.
+     */
+    public function timeFormat(): string
+    {
+        $format = $this->values['time_format'] ?? 'H:i';
+        return is_string($format) && preg_match('/^[GgHhisAa :.\-]{1,20}$/D', $format) === 1 ? $format : 'H:i';
+    }
+
     /** Sidebar style: light (default) or dark. */
     public function sidebar(): string
     {

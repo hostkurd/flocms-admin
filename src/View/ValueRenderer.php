@@ -64,6 +64,8 @@ final class ValueRenderer
             $field instanceof Fields\RichEditor => $this->rich($field, (string) $state),
             $field instanceof Fields\Placeholder => self::blank($state) ? self::empty() : Str::e((string) $state),
             $field instanceof Fields\Toggle => $this->toggle((string) $state),
+            $field instanceof Fields\ListField => $this->chips($field, $state),
+            $field instanceof Fields\TimePicker => $this->time($field, (string) $state),
             $field instanceof Fields\Select => $this->select($field, (string) $state),
             $field instanceof Fields\BelongsToMany => $this->related($field, self::idList($state)),
             $field instanceof Fields\BelongsTo => $this->related($field, self::blank($state) ? [] : [(string) $state]),
@@ -190,6 +192,22 @@ final class ValueRenderer
         return '<time datetime="' . Str::e($value) . '" title="' . Str::e(Dates::full($time)) . '">' . Str::e($withTime ? Dates::full($time) : Dates::date($time)) . '</time>';
     }
 
+    /** CheckboxList / TagsInput (0.37): the items as chips, options by their labels. */
+    private function chips(Fields\ListField $field, mixed $state): string
+    {
+        $items = $field->readable($field->values($state));
+        if ($items === []) { return self::empty(); }
+        return '<span class="fa-view-chips">' . implode('', array_map(static fn (string $item): string => '<span>' . Str::e($item) . '</span>', $items)) . '</span>';
+    }
+
+    private function time(Fields\TimePicker $field, string $value): string
+    {
+        if (trim($value) === '') { return self::empty(); }
+        $text = \FloCMS\Admin\Support\Dates::timeOfDay($value, $field->hasSeconds());
+        if ($text === '') { return Str::e($value); }
+        return '<time datetime="' . Str::e($value) . '">' . Str::e($text) . '</time>';
+    }
+
     private function color(string $value): string
     {
         if (preg_match('/^#[0-9a-f]{3,8}$/iD', $value) !== 1) { return self::blank($value) ? self::empty() : Str::e($value); }
@@ -272,6 +290,8 @@ final class ValueRenderer
         if ($field === null) { return ''; }
         $value = $field->isTranslatable() ? (self::pick($state, $this->lang) ?: self::pick($state, $this->defaultLang)) : $state;
         if ($field instanceof Fields\Select) { $options = $field->getOptions(); return (string) ($options[(string) $value] ?? $value); }
+        if ($field instanceof Fields\ListField) { return implode(', ', $field->readable($field->values($value))); }
+        if ($field instanceof Fields\TimePicker) { return \FloCMS\Admin\Support\Dates::timeOfDay(is_scalar($value) ? (string) $value : '', $field->hasSeconds()); }
         return is_scalar($value) ? trim((string) $value) : '';
     }
 

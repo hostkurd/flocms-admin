@@ -92,6 +92,21 @@ final class Schema
                     'cell' => static fn (object $row, ExportBatch $batch): string => implode(' | ', array_map(static fn (string $id): string => $batch->title($name, $id), $batch->related($name, $row)))];
                 continue;
             }
+            if ($field instanceof Fields\ListField) {
+                // "pool | parking"; options by their labels in a readable export (0.37)
+                $columns[] = ['heading' => $name, 'label' => $label, 'cell' => static function (object $row, ExportBatch $batch) use ($field, $name): string {
+                    $values = $field->values($row->{$name} ?? null);
+                    return implode(' | ', $batch->readable() ? $field->readable($values) : $values);
+                }];
+                continue;
+            }
+            if ($field instanceof Fields\TimePicker) {
+                $columns[] = ['heading' => $name, 'label' => $label, 'cell' => static function (object $row, ExportBatch $batch) use ($field, $name): string {
+                    $value = is_scalar($row->{$name} ?? null) ? (string) $row->{$name} : '';
+                    return $batch->readable() ? \FloCMS\Admin\Support\Dates::timeOfDay($value, $field->hasSeconds()) : (Fields\TimePicker::parse($value) ?? $value);
+                }];
+                continue;
+            }
             if ($field instanceof Fields\Select) {
                 $columns[] = ['heading' => $name, 'label' => $label, 'cell' => static fn (object $row, ExportBatch $batch): string
                     => $batch->readable() ? (string) ($field->getOptions()[(string) ($row->{$name} ?? '')] ?? ($row->{$name} ?? '')) : (string) ($row->{$name} ?? '')];

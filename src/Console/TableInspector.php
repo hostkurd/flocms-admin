@@ -93,6 +93,10 @@ final class TableInspector
                 $picked[] = ['class' => 'DateColumn', 'name' => $name, 'searchable' => false, 'sortable' => true, 'translatable' => false];
                 continue;
             }
+            if ($kind === 'time') {
+                $picked[] = ['class' => 'TimeColumn', 'name' => $name, 'searchable' => false, 'sortable' => true, 'translatable' => false];
+                continue;
+            }
             if ($kind === 'bool') {
                 $picked[] = ['class' => 'BooleanColumn', 'name' => $name, 'searchable' => false, 'sortable' => true, 'translatable' => false];
                 continue;
@@ -123,13 +127,14 @@ final class TableInspector
         return ['table' => $table, 'primary' => $primary, 'columns' => $picked, 'date' => $date, 'choice' => $choice, 'left' => $left];
     }
 
-    /** text, long, number, date, bool or binary */
+    /** text, long, number, date, time, bool or binary */
     public static function kind(string $type, bool $sqlite = false): string
     {
         // SQLite's TEXT is any text: its values decide (sample() length) whether it is long.
         if ($sqlite && ($type === 'text' || $type === '' || str_starts_with($type, 'varchar') || str_starts_with($type, 'char'))) { return 'text'; }
         return match (true) {
             preg_match('/^(tinyint\(1\)|bool|boolean)/', $type) === 1 => 'bool',
+            preg_match('/^time\b(?!stamp)/', $type) === 1 => 'time',
             preg_match('/(date|time)/', $type) === 1 => 'date',
             preg_match('/(int|dec|numeric|float|double|real)/', $type) === 1 => 'number',
             preg_match('/(blob|binary)/', $type) === 1 => 'binary',

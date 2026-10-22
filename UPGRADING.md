@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.37.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.37.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and nothing changes until you use the new fields.
+
+- **New fields** `CheckboxList`, `TagsInput` and `TimePicker`, with `TagsColumn`, `TimeColumn` and three filters. A column that already holds comma-separated text can switch to `CheckboxList` or `TagsInput` as it is. See [Checkbox lists, tags and times](docs/choice-fields.md).
+- **Times** in lists and view pages show as 24-hour `09:30`. For 12-hour time add `'time_format' => 'g:i A'` to `config/admin.php`.
+- **Translations**: the new Arabic and Kurdish words (Select all, the tags' messages, the time and list errors) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.36.2
 
 Update with `composer require "hostkurd/flocms-admin:^0.36.2" -W` and run `php flo view:clear`. Nothing else to do.

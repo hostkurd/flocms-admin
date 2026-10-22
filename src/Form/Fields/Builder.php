@@ -738,7 +738,7 @@ class Builder extends Field
                 $isSetting = in_array($name, $this->settingNames($block), true);
                 $state = (string) ($isSetting ? ($node['settings'][$name] ?? '') : ($node['data'][$name] ?? ''));
                 $value = $field->dehydrate($state);
-                if (($field instanceof Repeater || $field instanceof MediaPicker) && is_string($value) && str_starts_with(ltrim($value), '[')) {
+                if (($field instanceof Repeater || $field instanceof MediaPicker || $field instanceof ListField) && is_string($value) && str_starts_with(ltrim($value), '[')) {
                     $decoded = json_decode($value, true);
                     $value = is_array($decoded) ? $decoded : $value;
                 }

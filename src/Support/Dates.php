@@ -53,6 +53,21 @@ final class Dates
         return self::format($time, 'd MMM y', 'j M Y');
     }
 
+    /**
+     * A time of day as config 'time_format' says ("14:30", or "2:30 PM"), with
+     * seconds when asked; '' when the value is not a time (0.37).
+     */
+    public static function timeOfDay(string $value, bool $seconds = false, ?string $format = null): string
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[ T](.+)$/D', trim($value), $m) === 1) { $value = $m[1]; }
+        $parsed = \FloCMS\Admin\Form\Fields\TimePicker::parse($value);
+        if ($parsed === null) { return ''; }
+        $format ??= \FloCMS\Admin\Admin::config()->timeFormat();
+        if ($seconds && !str_contains($format, 's')) { $format = str_replace('i', 'i:s', $format); }
+        [$h, $i, $s] = array_map('intval', explode(':', $parsed));
+        return (new \DateTimeImmutable('2000-01-01'))->setTime($h, $i, $s)->format($format);
+    }
+
     /** "17 Oct 2026, 14:32". */
     public static function full(int $time): string
     {

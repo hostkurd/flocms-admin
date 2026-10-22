@@ -123,6 +123,46 @@ if (!function_exists('media_folder')) {
     }
 }
 
+if (!function_exists('list_values')) {
+    /**
+     * The items of a CheckboxList or TagsInput column (0.37) as a list of
+     * strings: the stored JSON list, or plain "a, b" text left from before.
+     *
+     *     @foreach(list_values($listing->keywords) as $tag)
+     *         <span class="tag">{{ $tag }}</span>
+     *     @endforeach
+     *
+     * @return list<string>
+     */
+    function list_values(mixed $value): array
+    {
+        return \FloCMS\Admin\Support\ListValues::decode($value);
+    }
+}
+
+if (!function_exists('option_labels')) {
+    /**
+     * CheckboxList keys turned into labels (0.37), in the order stored; a key
+     * without a label stays as it is. Labels may be lang keys, translated in the
+     * page's language.
+     *
+     *     option_labels($listing->features, ['pool' => 'Pool', 'parking' => 'Parking'])
+     *
+     * @param array<int|string, string> $options key => label
+     * @return list<string>
+     */
+    function option_labels(mixed $value, array $options): array
+    {
+        $labels = [];
+        foreach (\FloCMS\Admin\Support\ListValues::decode($value) as $key) {
+            $label = $options[$key] ?? $key;
+            $label = (string) $label;
+            $labels[] = class_exists(\FloCMS\Core\Lang::class) ? (string) \FloCMS\Core\Lang::get($label, $label) : $label;
+        }
+        return $labels;
+    }
+}
+
 if (!function_exists('repeater_items')) {
     /**
      * The items of a Repeater column (0.24), as plain arrays in the page's

@@ -194,6 +194,11 @@ final class SettingsEditor
             }
             return is_string($state) && $state !== '' && $state !== SettingsUploads::PENDING ? $state : null;
         }
+        if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) {
+            // Stored as the list itself (0.37), so setting('site.tags') is an array.
+            $list = $field->values(is_string($state) ? $state : '');
+            return $list === [] ? null : $list;
+        }
         if ($field instanceof \FloCMS\Admin\Form\Fields\Repeater || $field instanceof \FloCMS\Admin\Form\Fields\Builder) {
             // Stored as the list itself (0.24; blocks 0.29), so setting('contact.links') is an array.
             $encoded = $field->dehydrate(is_string($state) ? $state : '');
