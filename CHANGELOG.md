@@ -2,6 +2,11 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.36.1 - 2026-10-22
+
+- **Custom pages**: a part of a page that throws (filters, widgets, view, table, form) no longer breaks the whole page with `APP_DEBUG=true`: the part shows "could not be shown" with the error, its file and line, and the rest of the page works. Without `APP_DEBUG` the error goes only to the log, as before.
+- `php flo make:admin-page --table` makes a table of the site's `users` (Name, Email, with Name and Status filters), so a new page works at once. It used an example `bookings` table that sites don't have.
+
 ## 0.36.0 - 2026-10-22
 
 **Custom pages: a site's own reports, tools and help pages inside the panel.** Nothing to migrate. Pages are listed in `'admin_pages'` in `config/admin.php`. See [Custom pages](docs/custom-pages.md).

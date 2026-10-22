@@ -110,36 +110,39 @@ final class MakeAdminPageCommand extends Command
         $parts = [];
         if ($table) {
             $uses[] = 'FloCMS\\Admin\\Form\\Form';
-            $uses[] = 'FloCMS\\Admin\\Form\\Fields\\Date';
+            $uses[] = 'FloCMS\\Admin\\Form\\Fields\\Select';
+            $uses[] = 'FloCMS\\Admin\\Form\\Fields\\TextInput';
             $uses[] = 'FloCMS\\Admin\\Table\\Table';
             $uses[] = 'FloCMS\\Admin\\Table\\Columns\\TextColumn';
-            $uses[] = 'FloCMS\\Admin\\Table\\Columns\\DateColumn';
             $uses[] = 'FloCMS\\Core\\Database';
             $parts[] = <<<'PHP'
     /** Filters at the top: their values are kept in the address and reach data(), table() and widgets. */
     public function filters(Form $form): Form
     {
         return $form->schema([
-            Date::make('from')->label('From'),
-            Date::make('to')->label('To'),
+            TextInput::make('name')->label('Name contains'),
+            Select::make('status')->options(['1' => 'Active', '2' => 'Pending', '3' => 'Suspended']),
         ]);
     }
 
-    /** A read-only table from any query: search, sort, pages, column choice and a CSV download. */
+    /**
+     * A read-only table from any query: search, sort, pages, column choice and a CSV download.
+     * It lists the site's users so the page works at once: replace the table and columns with yours.
+     */
     public function table(Table $table): Table
     {
         return $table
             ->query(function (Database $db, array $filters): Database {
-                $query = $db->table('bookings'); // your table
-                if (isset($filters['from'])) { $query = $query->where('created_at', '>=', $filters['from']); }
-                if (isset($filters['to'])) { $query = $query->where('created_at', '<=', $filters['to'] . ' 23:59:59'); }
+                $query = $db->table('users');
+                if (isset($filters['name'])) { $query = $query->where('full_name', 'LIKE', '%' . $filters['name'] . '%'); }
+                if (isset($filters['status'])) { $query = $query->where('status', '=', $filters['status']); }
                 return $query;
             })
             ->columns([
-                TextColumn::make('name')->searchable()->sortable(),
-                DateColumn::make('created_at')->label('Date')->sortable(),
+                TextColumn::make('full_name')->label('Name')->searchable()->sortable(),
+                TextColumn::make('email')->searchable()->sortable(),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('id', 'desc');
     }
 PHP;
         }

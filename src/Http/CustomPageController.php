@@ -31,8 +31,10 @@ use FloCMS\Core\ValidationException;
 final class CustomPageController extends PanelController
 {
     private AdminPage $page;
-    /** Set by guard() when a part failed. */
+    /** Set by guard() when a part failed, with its error. */
     private bool $failed = false;
+    private ?\Throwable $lastError = null;
+    private ?\Throwable $filtersError = null;
 
     public function __construct($data = [])
     {
@@ -249,7 +251,7 @@ final class CustomPageController extends PanelController
             'description' => $page::getDescription(),
             'actions' => $actions,
             'filters' => $filters->exists() ? ['fields' => $filters->render(), 'active' => $filters->changed(), 'q' => $search, 'sort' => $sort, 'dir' => $dir, 'marker' => PageFilters::MARKER] : null,
-            'filtersFailed' => $filters->hasFailed(),
+            'filtersFailed' => $filters->hasFailed() ? $this->unavailable($this->filtersError ?? new \RuntimeException('filters() failed')) : '',
             'widgets' => $widgets,
             'widgetColumns' => $columns,
             'view' => $view,
@@ -398,7 +400,7 @@ final class CustomPageController extends PanelController
             $filters = new PageFilters($this->page, $input);
         } catch (\Throwable $error) {
             Log::error('Admin page ' . $this->page::class . ': filters(): ' . $error->getMessage());
-            if (\FloCMS\Core\Env::get('APP_DEBUG') === true) { throw $error; }
+            $this->filtersError = $error;
             $filters = PageFilters::failed($this->page);
         }
         $this->page->useFilterValues($filters->values());
@@ -439,14 +441,21 @@ final class CustomPageController extends PanelController
             throw $error;
         } catch (\Throwable $error) {
             $this->failed = true;
+            $this->lastError = $error;
             Log::error('Admin page ' . $this->page::class . ': ' . $error->getMessage());
-            if (\FloCMS\Core\Env::get('APP_DEBUG') === true) { throw $error; }
             return null;
         }
     }
 
-    private function unavailable(): string
+    /** "Could not be shown"; with APP_DEBUG also the error, so the rest of the page still works while developing. */
+    private function unavailable(?\Throwable $error = null): string
     {
-        return '<p class="fa-card fa-blank" role="status">' . Str::e(AdminLang::get('pages_api.unavailable')) . '</p>';
+        $error ??= $this->lastError;
+        $this->lastError = null;
+        $detail = '';
+        if ($error !== null && \FloCMS\Core\Env::get('APP_DEBUG') === true) {
+            $detail = '<span class="fa-page-error"><code>' . Str::e(get_class($error) . ': ' . $error->getMessage()) . '</code><span class="fa-muted">' . Str::e(basename($error->getFile()) . ':' . $error->getLine()) . '</span></span>';
+        }
+        return '<div class="fa-card fa-blank fa-page-failed" role="status"><p>' . Str::e(AdminLang::get('pages_api.unavailable')) . '</p>' . $detail . '</div>';
     }
 }

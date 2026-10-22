@@ -19,7 +19,7 @@
         </div>
     </form>
     @endif
-    @if($filtersFailed)<p class="fa-card fa-blank" role="status">{{ $t('pages_api.unavailable') }}</p>@endif
+    @if($filtersFailed !== ''){!! $filtersFailed !!}@endif
     @if($widgets !== '')<div class="fa-widget-grid fa-widget-grid-{{ $widgetColumns }} fa-page-widgets">{!! $widgets !!}</div>@endif
     @if($view !== '')<div class="fa-page-view">{!! $view !!}</div>@endif
     @if($table !== '')<section class="fa-page-section" aria-label="{{ $tableLabel }}">{!! $table !!}</section>@endif

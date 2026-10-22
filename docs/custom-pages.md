@@ -43,7 +43,7 @@ The command writes `admin/Pages/<Name>.php` and adds it to `'admin_pages'` (it a
 
 - `--view` also writes `views/admin/<slug>.html` with the panel's UI pieces.
 - `--form` makes a tool page: a form with Save.
-- `--table` adds filters and a read-only table.
+- `--table` adds filters and a read-only table. It lists the site's `users` so the page works at once; replace the query and columns with your own.
 
 Then run `php flo admin:doctor`. It lists the pages and names anything wrong: a class that wasn't found, a view that doesn't exist, a slug that is already taken, a form without `submit()`.
 
@@ -344,7 +344,7 @@ Panel navigation loads links as panel pages, so give a link to a route that down
 
 ## When a part fails
 
-A widget, the view, the table or the form that throws is logged (`storage/logs/app.log`) and shows "This part of the page could not be shown". The rest of the page still works. With `APP_DEBUG=true` the error is shown instead.
+A part that throws (the filters, a widget, the view, the table or the form) shows "This part of the page could not be shown". The error goes to the log (`storage/logs/app.log`), and the rest of the page still works. With `APP_DEBUG=true` the error and its file and line are also shown inside that part, so you see what to fix without losing the page.
 
 ## Not in 0.36
 

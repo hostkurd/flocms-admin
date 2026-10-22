@@ -2833,3 +2833,7 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-empty>p{margin:0;max-width:34em}
 @media(max-width:900px){.fa-split,.fa-split.is-even{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:640px){.fa-page-filters{flex-direction:column;align-items:stretch}.fa-page-filter-fields{flex-basis:auto}.fa-page-filters .fa-form-grid{grid-template-columns:minmax(0,1fr)}.fa-page-filter-actions>.fa-btn{flex:1}.fa-custom-page>.fa-page-head .fa-action-group{width:100%}}
+.fa-page-failed{padding:24px 16px;gap:8px}
+.fa-page-failed>p{margin:0}
+.fa-page-error{display:flex;flex-direction:column;gap:4px;max-width:100%;text-align:start}
+.fa-page-error code{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fa-danger,#b42318);font-size:13px}
