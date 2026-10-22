@@ -1,0 +1,82 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * Login security (flocms-admin 0.35).
+ *
+ * "{{ two_factor_table }}": one row per user with two-factor sign-in on: the
+ * authenticator secret (encrypted with APP_KEY), the hashes of the backup
+ * codes and the wrong-code counter.
+ * "{{ roles_table }}": roles whose people must use two-factor sign-in, as set
+ * on the Roles page (config 'required_roles' applies to roles without a row).
+ * "{{ devices_table }}": devices that skip the code for a while ("Remember
+ * this device"); only a hash of each device's token is stored.
+ * "{{ tokens_table }}": email verification, invitation and email change
+ * links; only a hash of each link's token is stored.
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $text = $db->driver() === 'sqlite' ? 'TEXT' : 'LONGTEXT';
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ two_factor_table }}` (
+            `user_id` INTEGER NOT NULL PRIMARY KEY,
+            `secret` TEXT NOT NULL,
+            `last_step` BIGINT NOT NULL DEFAULT 0,
+            `backup_codes` ' . $text . ' NOT NULL,
+            `failures` INTEGER NOT NULL DEFAULT 0,
+            `failures_since` DATETIME NULL,
+            `locked_until` DATETIME NULL,
+            `confirmed_at` DATETIME NOT NULL,
+            `updated_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ roles_table }}` (
+            `role` INTEGER NOT NULL PRIMARY KEY,
+            `required` SMALLINT NOT NULL DEFAULT 0,
+            `updated_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ devices_table }}` (
+            ' . $this->id($db) . ',
+            `user_id` INTEGER NOT NULL,
+            `token_hash` CHAR(64) NOT NULL,
+            `password_stamp` VARCHAR(64) NOT NULL,
+            `name` VARCHAR(120) NOT NULL,
+            `created_at` DATETIME NOT NULL,
+            `last_used_at` DATETIME NOT NULL,
+            `expires_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ tokens_table }}` (
+            ' . $this->id($db) . ',
+            `user_id` INTEGER NOT NULL,
+            `kind` VARCHAR(10) NOT NULL,
+            `email` VARCHAR(190) NOT NULL,
+            `token_hash` CHAR(64) NOT NULL,
+            `created_at` DATETIME NOT NULL,
+            `expires_at` DATETIME NOT NULL,
+            `used_at` DATETIME NULL
+        )' . $this->tableOptions($db));
+
+        foreach ([
+            '{{ devices_table }}_user_index' => '`{{ devices_table }}` (`user_id`)',
+            '{{ devices_table }}_token_index' => '`{{ devices_table }}` (`token_hash`)',
+            '{{ tokens_table }}_user_index' => '`{{ tokens_table }}` (`user_id`, `kind`)',
+            '{{ tokens_table }}_token_index' => '`{{ tokens_table }}` (`token_hash`)',
+        ] as $index => $on) {
+            try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }
+        }
+    }
+
+    public function down(Database $db): void
+    {
+        foreach (['{{ tokens_table }}', '{{ devices_table }}', '{{ roles_table }}', '{{ two_factor_table }}'] as $table) {
+            $db->query('DROP TABLE IF EXISTS `' . $table . '`');
+        }
+    }
+};

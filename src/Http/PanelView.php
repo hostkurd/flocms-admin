@@ -65,6 +65,7 @@ final class PanelView
             'page' => $page,
             'nav' => $nav,
             'notifications' => \FloCMS\Admin\Notifications\NotificationView::pending(),
+            'securityBanner' => \FloCMS\Admin\Auth\EmailVerification::banner(),
             'user' => $user,
             'dir' => self::direction($lang),
             'lang' => $lang,

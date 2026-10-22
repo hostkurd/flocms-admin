@@ -25,7 +25,7 @@ use FloCMS\Core\TemplateEngine;
  */
 final class RolesController extends PanelController
 {
-    protected array $actionPermissions = ['admin_index' => null, 'admin_create' => null, 'admin_edit' => null, 'admin_reset' => null, 'admin_delete' => null];
+    protected array $actionPermissions = ['admin_index' => null, 'admin_create' => null, 'admin_edit' => null, 'admin_reset' => null, 'admin_delete' => null, 'admin_two_factor' => null];
 
     public function admin_index(): string|\FloCMS\Core\Http\Response
     {
@@ -78,6 +78,41 @@ final class RolesController extends PanelController
             Notification::make()->title(AdminLang::get('roles.reset_done'))->success()->send();
         }
         $this->redirect(Admin::url('roles/edit/' . $role->number));
+    }
+
+    /** Require two-factor sign-in for a role, or stop requiring it (0.35). POST /admin/roles/two_factor/<number>. */
+    public function admin_two_factor(): string
+    {
+        if (!$this->isPost()) { header('Allow: POST'); throw new HttpException(405); }
+        $this->guardOrFail();
+        $role = $this->role();
+        if (!\FloCMS\Admin\Auth\TwoFactor::available()) { throw new HttpException(409); }
+        if (!self::canRequireTwoFactor($role)) { throw new HttpException(403); }
+        $required = $this->request->input('two_factor') === '1';
+        \FloCMS\Admin\Auth\TwoFactor::setRequired($role->number, $required);
+        \FloCMS\Admin\Activity\Activity::record('role_two_factor', 'roles', (string) $role->number, $role->label(), meta: ['required' => $required ? 1 : 0]);
+        Notification::make()->title(AdminLang::get($required ? 'roles.two_factor_now_required' : 'roles.two_factor_now_optional', ['role' => $role->label()]))->success()->send();
+        $this->redirect(Admin::url('roles/edit/' . $role->number));
+    }
+
+    /** Roles up to your own level: requiring a step can't lock anyone out, so your own role (and the top role, if it's yours) counts. */
+    private static function canRequireTwoFactor(Role $role): bool
+    {
+        $own = Roles::ownLevel();
+        return $own !== null && $role->level <= $own && Auth::can(Roles::PERMISSION);
+    }
+
+    /** @return array{required: bool, canChange: bool, url: string, missing: int, total: int, config: bool}|null */
+    private static function twoFactorData(Role $role): ?array
+    {
+        if (!\FloCMS\Admin\Auth\TwoFactor::available()) { return null; }
+        $required = \FloCMS\Admin\Auth\TwoFactor::isRequired($role->number);
+        $coverage = \FloCMS\Admin\Auth\TwoFactor::roleCoverage($role->number);
+        return [
+            'required' => $required, 'canChange' => self::canRequireTwoFactor($role), 'url' => Admin::url('roles/two_factor/' . $role->number),
+            'missing' => max(0, $coverage['total'] - $coverage['on']), 'total' => $coverage['total'],
+            'config' => in_array($role->number, Admin::config()->twoFactor()['required_roles'], true),
+        ];
     }
 
     public function admin_delete(): string|\FloCMS\Core\Http\Response
@@ -158,6 +193,7 @@ final class RolesController extends PanelController
             'holders' => $creating ? [] : Roles::holders($current->number),
             'more' => max(0, $count - 5),
             'usersUrl' => PanelView::pageUrls()['users'],
+            'twoFactor' => $creating ? null : self::twoFactorData($current),
             'zeroWarning' => !$creating && $current->number === 0 && $current->adminAccess ? AdminLang::get('roles.access_zero', ['number' => 0]) : null,
             'lockIcon' => Icons::svg('lock', 'fa-icon fa-icon-sm'),
             'infoIcon' => Icons::svg('info', 'fa-icon fa-icon-sm'),

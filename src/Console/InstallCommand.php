@@ -14,7 +14,7 @@ final class InstallCommand extends Command
 
     protected string $description = 'Set up flocms-admin: create config/admin.php and admin/Resources/';
 
-    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences, media library, trash, activity log, roles and import tables (once). Running it again only adds what is missing.';
+    protected string $help = 'Creates config/admin.php (never overwrites it), the admin/Resources/ folder for your resource classes, and the migrations of the settings, preferences, media library, trash, activity log, roles, import and login security tables (once). Running it again only adds what is missing.';
 
     protected function handle(): int
     {
@@ -73,6 +73,13 @@ final class InstallCommand extends Command
         $reset = $settings->passwordReset();
         if ($reset['enabled']) {
             $migrations[] = ['password-resets-migration', $reset['table'], []];
+        }
+        // Login security (0.35): two-factor sign-in and email verification, one migration for their tables.
+        $twoFactor = $settings->twoFactor();
+        $verification = $settings->emailVerification();
+        if ($twoFactor['enabled'] || $verification['enabled']) {
+            $migrations[] = ['login-security-migration', 'login_security', ['two_factor_table' => $twoFactor['table'], 'roles_table' => $twoFactor['roles_table'],
+                'devices_table' => $twoFactor['devices_table'], 'tokens_table' => $verification['table']], 'tables'];
         }
         // Emails to users (0.28): mailings, their recipients and the unsubscribed addresses.
         $mailings = $settings->mailings();

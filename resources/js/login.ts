@@ -4,6 +4,8 @@ export function initializeLogin(): void {
   document.documentElement.lang = login.lang;
   document.documentElement.dir = login.dir;
   login.querySelectorAll<HTMLButtonElement>('[data-admin-password-toggle]').forEach(button => button.removeAttribute('hidden'));
+  // Two-factor sign-in (0.35): Copy and Print on the setup and backup code screens (the click handlers are in view.ts).
+  login.querySelectorAll<HTMLElement>('[data-admin-copy], [data-admin-print]').forEach(button => button.removeAttribute('hidden'));
 }
 document.addEventListener('click', event => {
   if (!(event.target instanceof Element)) return;

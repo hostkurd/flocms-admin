@@ -45,7 +45,10 @@ Config::set('default_language', 'en');
 Config::set('reactive.key', hash('sha256', __FILE__));
 Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']]);
 Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin', 4 => 'Writer']);
-Config::set('auth.user_loader', static fn (int $id) => ['role' => Session::get('read_only') ? 1 : (Session::get('writer') ? 4 : 3), 'status' => Session::get('expired') ? 3 : 1]);
+Config::set('auth.user_loader', static fn (int $id) => Session::get('security_demo') && App::$db !== null
+    // Login security (0.35): the real row, so the sign-in steps see the account.
+    ? App::$db->table('users')->where('id', '=', $id)->first()
+    : ['role' => Session::get('read_only') ? 1 : (Session::get('writer') ? 4 : 3), 'status' => Session::get('expired') ? 3 : 1]);
 Config::set('admin_access_roles', [1, 3, 4]);
 if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
@@ -53,8 +56,10 @@ if (!Session::get('fixture')) {
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EstateResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\UnitResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\VillaResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Builder\LandingResource::class, \FloCMS\Admin\Tests\Fixtures\ImportExport\ProductResource::class]), 'pages' => (bool) Session::get('pages_demo'), 'block_styles' => ['heading' => ['underlined' => 'Underlined', 'eyebrow' => ['en' => 'With eyebrow', 'ar' => 'مع عنوان صغير']], 'cards' => ['shadow' => 'With shadow']], 'brand' => 'FloCMS Studio', 'login_theme' => true, 'password_reset' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
-$pdo = new PDO('sqlite:' . ROOT . '/' . hash('sha256', session_id()) . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EstateResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\UnitResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\VillaResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Builder\LandingResource::class, \FloCMS\Admin\Tests\Fixtures\ImportExport\ProductResource::class]), 'pages' => (bool) Session::get('pages_demo'), 'two_factor' => (bool) Session::get('security_demo'), 'email_verification' => (bool) Session::get('security_demo'), 'block_styles' => ['heading' => ['underlined' => 'Underlined', 'eyebrow' => ['en' => 'With eyebrow', 'ar' => 'مع عنوان صغير']], 'cards' => ['shadow' => 'With shadow']], 'brand' => 'FloCMS Studio', 'login_theme' => true, 'password_reset' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
+// One database per browser session, kept when the session id changes (a held sign-in's release gives a new id, 0.35).
+if (!is_string($_SESSION['_test_db'] ?? null)) { $_SESSION['_test_db'] = hash('sha256', session_id()); }
+$pdo = new PDO('sqlite:' . ROOT . '/' . $_SESSION['_test_db'] . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 App::$db = new Database($pdo);
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='posts'")->fetchColumn()) {
     $pdo->exec('CREATE TABLE posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, slug TEXT UNIQUE, body TEXT, status TEXT, views INTEGER, featured INTEGER, published_on TEXT, created_at TEXT, updated_at TEXT)');
@@ -325,6 +330,36 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             header('Content-Type: application/json');
             preg_match_all('#https?://[^/\s]+(/[a-z]{2}/admin/password/reset/[A-Za-z0-9_-]{43})#', (string) @file_get_contents(ROOT . '/storage/logs/admin-mail.log'), $links);
             echo json_encode(['path' => $links[1] === [] ? null : end($links[1]), 'mails' => substr_count((string) @file_get_contents(ROOT . '/storage/logs/admin-mail.log'), '==== ')]); exit;
+        case '/__test/security':
+            // Login security (0.35): its tables, the activity log, and Sara (Super admin) not yet confirmed.
+            Session::set('security_demo', true);
+            foreach ([['login-security-migration', ['two_factor_table' => 'admin_two_factor', 'roles_table' => 'admin_two_factor_roles', 'devices_table' => 'admin_trusted_devices', 'tokens_table' => 'admin_email_tokens'], 'security'], ['trash-activity-migration', ['trash_table' => 'admin_trash', 'activity_table' => 'admin_activity'], 'history']] as [$stub, $values, $name]) {
+                $file = ROOT . '/' . $name . '-migration.php';
+                file_put_contents($file, \FloCMS\Admin\Console\Stub::render($stub, $values));
+                (require $file)->up(App::$db);
+            }
+            foreach (['admin_two_factor', 'admin_two_factor_roles', 'admin_trusted_devices', 'admin_email_tokens'] as $table) { App::$db->query('DELETE FROM ' . $table); }
+            App::$db->table('users')->where('id', '=', 1)->update(['is_verified' => (int) ($_POST['verified'] ?? 0), 'role' => 3, 'status' => 1, 'password' => password_hash('secret-pass-1', PASSWORD_DEFAULT)]);
+            Session::delete('auth_holds_asked'); Session::delete('admin_password_stamp');
+            @unlink(ROOT . '/storage/logs/admin-mail.log');
+            break;
+        case '/__test/security-require': \FloCMS\Admin\Auth\TwoFactor::setRequired(3, ($_POST['required'] ?? '1') === '1'); break;
+        case '/__test/signin':
+            // A fresh sign-in of Sara: what the skeleton's login action leaves in the session.
+            foreach (['auth_held', 'auth_holds_asked', 'admin_2fa_wrong', 'admin_password_stamp'] as $key) { Session::delete($key); }
+            Session::set('isloggedin', true); Session::set('admin_access', true); Session::set('user_id', 1); Session::set('role', 3);
+            Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
+            break;
+        case '/__test/totp':
+            header('Content-Type: application/json');
+            $secret = \FloCMS\Admin\Auth\Totp::base32Decode((string) ($_POST['key'] ?? '')) ?? '';
+            echo json_encode(['code' => \FloCMS\Admin\Auth\Totp::code($secret, \FloCMS\Admin\Auth\Totp::step() + (int) ($_POST['offset'] ?? 0))]); exit;
+        case '/__test/security-state': header('Content-Type: application/json'); echo json_encode([
+            'two_factor' => App::$db->query('SELECT user_id, failures FROM admin_two_factor')->fetchAll(PDO::FETCH_ASSOC),
+            'devices' => (int) App::$db->query('SELECT COUNT(*) FROM admin_trusted_devices')->fetchColumn(),
+            'session' => array_intersect_key($_SESSION, array_flip(['isloggedin', 'auth_held', 'user_id'])),
+            'link' => preg_match_all('#https?://[^/\s]+(/[a-z]{2}/admin/verify/link/[A-Za-z0-9_-]{43})#', (string) @file_get_contents(ROOT . '/storage/logs/admin-mail.log'), $links) ? end($links[1]) : null,
+            'verified' => (int) App::$db->table('users')->where('id', '=', 1)->first()->is_verified]); exit;
         case '/__test/managers': $seedManagers($pdo); break;
         case '/__test/apartments': $seedApartments($pdo); break;
         case '/__test/pages': Session::set('pages_demo', true); $seedPages($pdo); break;

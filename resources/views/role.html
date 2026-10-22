@@ -93,6 +93,18 @@
                 {!! $fields !!}
                 @if($zeroWarning !== null)<p class="fa-alert fa-alert-warning fa-role-zero" role="status">{{ $zeroWarning }}</p>@endif
             </section>
+            @if(!$creating && $twoFactor !== null)
+            <section class="fa-card fa-role-side fa-role-two-factor" aria-labelledby="fa-role-signin">
+                <h2 class="fa-section-title" id="fa-role-signin">{{ $t('roles.signin') }}</h2>
+                <div class="fa-role-two-factor-row">
+                    <span class="fa-badge {{ $twoFactor['required'] ? 'fa-badge-green' : 'fa-badge-gray' }}">{{ $twoFactor['required'] ? $t('roles.two_factor_required') : $t('roles.two_factor_optional') }}</span>
+                    @if($twoFactor['canChange'])<button type="submit" class="fa-btn fa-btn-sm" formaction="{{ $twoFactor['url'] }}" formnovalidate name="two_factor" value="{{ $twoFactor['required'] ? '0' : '1' }}" data-admin-leave-ok>{{ $twoFactor['required'] ? $t('roles.two_factor_stop') : $t('roles.two_factor_require') }}</button>@endif
+                </div>
+                <p class="fa-help">{{ $t('roles.two_factor_help') }}</p>
+                @if($twoFactor['required'] && $twoFactor['missing'] > 0)<p class="fa-alert fa-alert-warning" role="status">{{ $t('roles.two_factor_missing', ['count' => $twoFactor['missing'], 'total' => $twoFactor['total']]) }}</p>@endif
+                @if($twoFactor['config'])<p class="fa-help">{{ $t('roles.two_factor_config') }}</p>@endif
+            </section>
+            @endif
             @if(!$creating)
             <section class="fa-card fa-role-side">
                 <h2 class="fa-section-title">{{ $t('roles.summary') }}</h2>

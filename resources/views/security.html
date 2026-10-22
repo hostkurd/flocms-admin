@@ -1,0 +1,165 @@
+<div class="fa-record fa-settings fa-security">
+    <div class="fa-record-head">
+        <div class="fa-record-heading">
+            <h1 class="fa-page-title">{{ $title }}</h1>
+            <p class="fa-page-description">{{ $t('security.description') }}</p>
+        </div>
+    </div>
+    <div class="fa-settings-layout">
+        <nav class="fa-settings-nav" aria-label="{{ $pagesLabel }}">
+            <ul class="fa-settings-tabs">
+                @foreach($pages as $item)
+                <li><a class="fa-settings-tab{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>
+                    <span class="fa-settings-tab-icon" aria-hidden="true">{!! $item['icon'] !!}</span>
+                    <span class="fa-settings-tab-text"><span class="fa-settings-tab-label">{{ $item['label'] }}</span><span class="fa-settings-tab-sub">{{ $item['description'] }}</span></span>
+                </a></li>
+                @endforeach
+            </ul>
+        </nav>
+        <div class="fa-settings-body">
+            @if($twoFactor)
+            <section class="fa-card fa-security-card" aria-labelledby="fa-two-factor-title">
+                <header class="fa-security-head">
+                    <div class="fa-security-heading">
+                        <h2 id="fa-two-factor-title">{{ $codes !== [] ? $t($codesFirst ? 'security.on_title' : 'security.new_codes_title') : ($setup ? $t('security.setup_title') : $t('security.two_factor')) }}</h2>
+                        @if($on && $codes === [])<span class="fa-badge fa-badge-green fa-badge-dot">{{ $t('security.on_since', ['date' => $since]) }}</span>@endif
+                        @if(!$on && !$setup && $codes === [] && $twoFactorStatus === 'ready')<span class="fa-badge fa-badge-gray">{{ $t('security.off') }}</span>@endif
+                    </div>
+                    @if($setup)<span class="fa-badge fa-badge-green">{!! $icons['check'] !!}{{ $t('security.password_confirmed') }}</span>@endif
+                </header>
+
+                @if($twoFactorStatus !== 'ready')
+                <div class="fa-security-row"><p class="fa-alert fa-alert-warning" role="status">{{ $t('security.not_ready') }}</p></div>
+
+                @elseif($codes !== [])
+                <div class="fa-security-row is-stack">
+                    <p class="fa-security-text">{{ $t('two_factor.codes_description') }}</p>
+                    <ul class="fa-backup-codes" dir="ltr" aria-label="{{ $t('two_factor.codes_label') }}">@foreach($codes as $code)<li>{{ $code }}</li>@endforeach</ul>
+                    <div class="fa-security-actions">
+                        <a class="fa-btn" href="{{ $codesFile }}" download="backup-codes.txt" data-admin-local>{{ $t('two_factor.download') }}</a>
+                        <button type="button" class="fa-btn" data-admin-copy="{{ implode("\n", $codes) }}" data-copied-text="{{ $t('view.copied') }}" aria-label="{{ $t('two_factor.copy_codes') }}" hidden>{{ $t('two_factor.copy') }}</button>
+                        <button type="button" class="fa-btn" data-admin-print hidden>{{ $t('two_factor.print') }}</button>
+                    </div>
+                    <p class="fa-alert fa-alert-warning">{{ $t('two_factor.codes_warning') }}</p>
+                    <form method="post" action="{{ $action }}" class="fa-security-end">{!! $csrf !!}<button type="submit" name="_action" value="codes_done" class="fa-btn fa-btn-primary">{{ $t('two_factor.saved_them') }}</button></form>
+                </div>
+
+                @elseif($setup)
+                <div class="fa-security-setup">
+                    <div class="fa-security-step">
+                        <h3><span class="fa-security-step-number">1</span>{{ $t('two_factor.step_scan') }}</h3>
+                        <div class="fa-security-scan">
+                            <div class="fa-two-factor-qr">{!! $qr !!}</div>
+                            <p class="fa-help">{{ $t('two_factor.apps') }}</p>
+                        </div>
+                        <div class="fa-two-factor-key"><span>{{ $t('two_factor.key_label') }}</span><code dir="ltr">{{ $key }}</code><button type="button" class="fa-btn fa-btn-sm" data-admin-copy="{{ str_replace(' ', '', $key) }}" data-copied-text="{{ $t('view.copied') }}" aria-label="{{ $t('two_factor.copy_key') }}" hidden>{{ $t('two_factor.copy') }}</button></div>
+                    </div>
+                    <form method="post" action="{{ $action }}" class="fa-security-step" novalidate>
+                        {!! $csrf !!}
+                        <h3><span class="fa-security-step-number">2</span>{{ $t('two_factor.step_code') }}</h3>
+                        <div class="fa-field">
+                            <label class="fa-label" for="fa-security-code">{{ $t('two_factor.app_code_label') }}</label>
+                            <input class="fa-input fa-security-code" id="fa-security-code" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" dir="ltr" placeholder="000 000" @if(isset($errors['confirm'])) aria-invalid="true" aria-describedby="fa-security-code-error" @endif>
+                            @if(isset($errors['confirm']))<p class="fa-error" id="fa-security-code-error">{{ $errors['confirm'] }}</p>@endif
+                            <p class="fa-help">{{ $t('security.setup_help') }}</p>
+                        </div>
+                        <div class="fa-security-actions"><button type="submit" name="_action" value="confirm" class="fa-btn fa-btn-primary">{{ $t('security.turn_on') }}</button><button type="submit" name="_action" value="cancel_setup" class="fa-btn" formnovalidate>{{ $t('actions.cancel') }}</button></div>
+                        <p class="fa-alert fa-alert-info">{{ $t('security.codes_next') }}</p>
+                    </form>
+                </div>
+
+                @elseif(!$on)
+                <form method="post" action="{{ $action }}" class="fa-security-row is-stack" novalidate>
+                    {!! $csrf !!}
+                    <p class="fa-security-text">{{ $t('security.off_text') }}</p>
+                    @if($required)<p class="fa-alert fa-alert-warning">{{ $t('security.required_note') }}</p>@endif
+                    <div class="fa-field fa-security-proof">
+                        <label class="fa-label" for="fa-security-start">{{ $t('profile.current_password') }}</label>
+                        <input class="fa-input" id="fa-security-start" type="password" name="proof" autocomplete="current-password" @if(isset($errors['start'])) aria-invalid="true" aria-describedby="fa-security-start-error" @endif>
+                        @if(isset($errors['start']))<p class="fa-error" id="fa-security-start-error">{{ $errors['start'] }}</p>@endif
+                    </div>
+                    <div class="fa-security-actions"><button type="submit" name="_action" value="start" class="fa-btn fa-btn-primary">{{ $t('security.set_up') }}</button></div>
+                </form>
+
+                @else
+                <div class="fa-security-row">
+                    <span class="fa-security-icon" aria-hidden="true">{!! $icons['phone'] !!}</span>
+                    <div class="fa-security-main"><strong>{{ $t('security.app') }}</strong><span>{{ $t('security.app_text', ['date' => $since]) }}</span></div>
+                </div>
+                <form method="post" action="{{ $action }}" class="fa-security-row" novalidate>
+                    {!! $csrf !!}
+                    <span class="fa-security-icon" aria-hidden="true">{!! $icons['key'] !!}</span>
+                    <div class="fa-security-main"><strong>{{ $t('security.backup_codes') }}</strong><span class="{{ $codesLeft <= 2 ? 'is-warning' : '' }}">{{ $t('security.codes_left', ['left' => $codesLeft, 'total' => $total]) }}</span></div>
+                    <details class="fa-security-confirm"@if(isset($errors['new_codes'])) open @endif>
+                        <summary class="fa-btn">{{ $t('security.new_codes') }}</summary>
+                        <div class="fa-security-confirm-body">
+                            <label class="fa-label" for="fa-security-new-codes">{{ $t('security.proof_label') }}</label>
+                            <input class="fa-input" id="fa-security-new-codes" type="password" name="proof" autocomplete="current-password" @if(isset($errors['new_codes'])) aria-invalid="true" aria-describedby="fa-security-new-codes-error" @endif>
+                            @if(isset($errors['new_codes']))<p class="fa-error" id="fa-security-new-codes-error">{{ $errors['new_codes'] }}</p>@endif
+                            <p class="fa-help">{{ $t('security.new_codes_help') }}</p>
+                            <button type="submit" name="_action" value="new_codes" class="fa-btn fa-btn-primary">{{ $t('security.new_codes') }}</button>
+                        </div>
+                    </details>
+                </form>
+                @if($remembers)
+                <div class="fa-security-row is-stack">
+                    <div class="fa-security-row-head">
+                        <div class="fa-security-main"><strong>{{ $t('security.devices') }}</strong><span>{{ $t('security.devices_text', ['days' => $days]) }}</span></div>
+                        @if($devices !== [])<form method="post" action="{{ $action }}">{!! $csrf !!}<button type="submit" name="_action" value="forget_devices" class="fa-btn fa-btn-sm fa-btn-ghost">{{ $t('security.forget_all') }}</button></form>@endif
+                    </div>
+                    @if($devices === [])
+                    <p class="fa-security-empty">{{ $t('security.no_devices') }}</p>
+                    @else
+                    <ul class="fa-security-devices">
+                        @foreach($devices as $device)
+                        <li>
+                            <span class="fa-security-icon is-small" aria-hidden="true">{!! $icons['device'] !!}</span>
+                            <div class="fa-security-main"><strong>{{ $device['name'] }}@if($device['current']) <span class="fa-badge fa-badge-blue fa-badge-xs">{{ $t('security.this_device') }}</span>@endif</strong><span>{{ $t('security.device_dates', ['used' => $device['last_used_label'], 'until' => $device['expires_label']]) }}</span></div>
+                            <form method="post" action="{{ $action }}">{!! $csrf !!}<input type="hidden" name="device" value="{{ $device['id'] }}"><button type="submit" name="_action" value="forget_device" class="fa-btn fa-btn-sm" aria-label="{{ $t('security.forget_named', ['name' => $device['name']]) }}">{{ $t('security.forget') }}</button></form>
+                        </li>
+                        @endforeach
+                    </ul>
+                    @endif
+                </div>
+                @endif
+                @if($required)
+                <div class="fa-security-row"><p class="fa-security-note">{{ $t('security.required_cannot_off') }}</p></div>
+                @else
+                <form method="post" action="{{ $action }}" class="fa-security-row is-end" novalidate>
+                    {!! $csrf !!}
+                    <details class="fa-security-confirm"@if(isset($errors['disable'])) open @endif>
+                        <summary class="fa-btn fa-btn-danger-outline">{{ $t('security.turn_off') }}</summary>
+                        <div class="fa-security-confirm-body">
+                            <label class="fa-label" for="fa-security-disable">{{ $t('security.proof_label') }}</label>
+                            <input class="fa-input" id="fa-security-disable" type="password" name="proof" autocomplete="current-password" @if(isset($errors['disable'])) aria-invalid="true" aria-describedby="fa-security-disable-error" @endif>
+                            @if(isset($errors['disable']))<p class="fa-error" id="fa-security-disable-error">{{ $errors['disable'] }}</p>@endif
+                            <p class="fa-help">{{ $t('security.turn_off_help') }}</p>
+                            <button type="submit" name="_action" value="disable" class="fa-btn fa-btn-danger">{{ $t('security.turn_off') }}</button>
+                        </div>
+                    </details>
+                </form>
+                @endif
+                @endif
+            </section>
+            @endif
+
+            @if($verification)
+            <section class="fa-card fa-security-card" aria-labelledby="fa-email-title">
+                <header class="fa-security-head"><div class="fa-security-heading"><h2 id="fa-email-title">{{ $t('security.email_title') }}</h2></div></header>
+                <div class="fa-security-row">
+                    <span class="fa-security-icon" aria-hidden="true">{!! $icons['mail'] !!}</span>
+                    <div class="fa-security-main"><strong dir="ltr">{{ $email }}</strong>@if($verified)<span class="is-success">{{ $t('security.confirmed') }}</span>@else<span class="is-warning">{{ $t('security.not_confirmed') }}</span>@endif</div>
+                    @if(!$verified)<form method="post" action="{{ $action }}">{!! $csrf !!}<button type="submit" name="_action" value="send_verification" class="fa-btn">{{ $t('security.send_link') }}</button></form>@endif
+                </div>
+                @if($pendingEmail !== null)
+                <div class="fa-security-row fa-security-pending">
+                    <div class="fa-security-main"><strong><span dir="ltr">{{ $pendingEmail }}</span> <span class="fa-security-waiting">{{ $t('security.waiting') }}</span></strong><span>{{ $t('security.waiting_text', ['hours' => $hours]) }}</span></div>
+                    <form method="post" action="{{ $action }}" class="fa-security-actions">{!! $csrf !!}<button type="submit" name="_action" value="resend_change" class="fa-btn fa-btn-sm">{{ $t('security.send_again') }}</button><button type="submit" name="_action" value="cancel_change" class="fa-btn fa-btn-sm fa-btn-danger-ghost">{{ $t('security.cancel_change') }}</button></form>
+                </div>
+                @endif
+                <div class="fa-security-row"><p class="fa-security-note">{{ $t('security.change_hint') }} <a href="{{ $accountUrl }}">{{ $t('profile.account') }}</a></p></div>
+            </section>
+            @endif
+        </div>
+    </div>
+</div>

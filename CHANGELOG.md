@@ -2,6 +2,22 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.35.0 - 2026-10-22
+
+**Login security: two-factor sign-in with an authenticator app, and email verification.** Both are off until `'two_factor' => true` / `'email_verification' => true` in `config/admin.php`; they need flocms-core 2.7, `php flo admin:install` and `php flo migrate`. See [Login security](docs/login-security.md).
+
+- **Two-factor sign-in**: people set it up under **Profile → Security** (password, then a QR code or key for any authenticator app, then the first code); 10 single-use **backup codes** shown once with Download, Copy and Print; **New backup codes**; **Turn off** with the password or a code.
+- **The sign-in step** (`/admin/two-factor`): after the password a fresh sign-in is held by flocms-core 2.7 (`Auth::holdSessionsUsing()`) until a code from the app or a backup code; until then the person counts as signed out everywhere. A code works once; five wrong codes end the sign-in; ten within an hour pause the account's codes for 15 minutes and email the owner. **Use another account** signs out.
+- **Remember this device** for 30 days (`'remember_days'`, 0 turns it off): only a keyed hash of the browser's token is stored; a password change, a reset or turning it off forgets every device; the Security tab lists them with **Forget**.
+- **Roles can require it**: **Require two-factor** on a role's page (roles up to your own level), or `'required_roles'`; people with such a role set it up at their next sign-in before anything else and can't turn it off. The role page counts who still has to.
+- **Reset two-factor** on Users (**More**, `users.manage`, the same rules as Suspend) with an optional notice email, and `php flo admin:two-factor-reset <email>` for the server.
+- **Email verification**: **Send an invitation** on the new-account form keeps the account Pending until its link is opened and a password chosen; a banner asks people with an unconfirmed address to confirm it; a new address on the profile applies only after its link is opened (the old address gets a notice), with **Send again** and **Cancel change**; **More → Send verification email** on Users; an admin's change of an address marks it unconfirmed; a password reset confirms the address. With `'required' => true`, unconfirmed people wait at **Check your email** after signing in.
+- Secrets are encrypted with `APP_KEY` (AES-256-GCM, at least 32 characters); backup codes, device tokens and link tokens are stored as hashes. The TOTP codes (RFC 6238) and the QR code (SVG) are written in the package, without a third-party package.
+- New tables `admin_two_factor`, `admin_two_factor_roles`, `admin_trusted_devices` and `admin_email_tokens` (one migration, `login_security`). The `users` table is not changed.
+- `admin:doctor` checks core 2.7, `APP_KEY`, the user loader, the tables, mail and who still has to set up two-factor sign-in for a role that requires it.
+- Activity log entries for turning two-factor on and off, resets, new backup codes, a backup code used, paused codes, the role rule, verification links, invitations and email changes.
+- New words in `en`, `ar` and `ku`: `two_factor.*`, `security.*`, `verify.*`, `mail.verify_*`, `mail.invite_*`, `mail.change_*`, `mail.change_notice_*`, `mail.two_factor_locked_*`, `mail.two_factor_reset_*`, `users.invite*`, `users.send_verification`, `users.verify_*`, `users.reason_verified`, `users.reset_two_factor*`, `users.two_factor_reset_one`, `users.reason_two_factor_off`, `roles.signin`, `roles.two_factor_*`, and `activity.badge.*` / `activity.what.*` for the new entries.
+
 ## 0.34.0 - 2026-10-22
 
 **Six new blocks, and better Video, Hero and Gallery blocks.** Nothing to migrate: stored blocks don't change. See [Builder: the blocks of 0.34](docs/builder.md#the-blocks-of-034).
