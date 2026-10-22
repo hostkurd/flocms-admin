@@ -254,7 +254,25 @@ echo \FloCMS\Admin\Admin::homePath();');
         self::assertSame(200, $broken['status'], $broken['body']);
         self::assertStringContainsString('Still here', $broken['body']);
         self::assertSame(3, substr_count($broken['body'], 'could not be shown'));
+        self::assertStringContainsString('An error in table() of admin/Pages/BrokenParts.php', $broken['body']);
+        self::assertStringContainsString('An error in filters() of admin/Pages/BrokenParts.php', $broken['body']);
         self::assertStringNotContainsString('This page has nothing to show yet', $broken['body']);
+        self::assertStringNotContainsString('table broke', $broken['body'], 'the error stays in the log');
+        // With APP_DEBUG the error shows inside the part, and the page still opens.
+        $debug = self::get('/en/admin/broken-parts', ['session' => self::SUPER, 'env' => ['APP_DEBUG' => 'true']]);
+        self::assertSame(200, $debug['status']);
+        self::assertStringContainsString('RuntimeException: table broke', $debug['body']);
+        self::assertStringContainsString('RuntimeException: filters broke', $debug['body']);
+        self::assertStringContainsString('Still here', $debug['body']);
+    }
+
+    public function testAMissingTableIsNamedOnThePage(): void
+    {
+        $response = self::get('/en/admin/missing-table', ['session' => self::SUPER, 'admin_config' => ['admin_pages' => [\FloCMS\Admin\Tests\Fixtures\PanelPages\MissingTable::class]]]);
+        self::assertSame(200, $response['status']);
+        self::assertStringContainsString('The table &quot;bookings&quot; was not found in the database. Check table() in admin/Pages/MissingTable.php.', $response['body']);
+        self::assertStringContainsString('The column &quot;nickname&quot; was not found. Check view() / data() in admin/Pages/MissingTable.php.', $response['body']);
+        self::assertStringNotContainsString('SQLSTATE', $response['body'], 'raw errors only with APP_DEBUG');
     }
 
     public function testPanelNavigationReturnsTheShell(): void
@@ -262,5 +280,22 @@ echo \FloCMS\Admin\Admin::homePath();');
         $response = self::get('/en/admin/sales-report', ['headers' => ['X-Flo-Admin' => 'navigate']]);
         self::assertSame(200, $response['status']);
         self::assertStringContainsString('fa-custom-page', $response['body']);
+    }
+
+    public function testAPageMadeByTheGeneratorWorksAtOnce(): void
+    {
+        $root = self::$root;
+        @mkdir($root . '/config', 0777, true);
+        $tester = new \FloCMS\CLI\Console\Testing\CommandTester(new \FloCMS\Admin\Console\MakeAdminPageCommand(), new \FloCMS\CLI\Project($root));
+        $tester->execute(['MadeReport', '--view', '--table', '--group=Reports'], [], ['interactive' => false, 'decorated' => false]);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay() . $tester->getErrorOutput());
+        $opts = ['admin_config' => ['admin_pages' => ['App\\Admin\\Pages\\MadeReport']], 'session' => self::SUPER, 'env' => ['APP_DEBUG' => 'true']];
+        $r = self::request('GET', '/en/admin/made-report', $opts);
+        self::assertSame(200, $r['status']);
+        self::assertStringNotContainsString('could not be shown', $r['body'], substr($r['body'], strpos($r['body'], 'fa-custom-page')));
+        self::assertStringContainsString('root@example.test', $r['body']);
+        $f = self::request('GET', '/en/admin/made-report?filter%5B_%5D=1&filter%5Bname%5D=Ali', $opts);
+        self::assertStringContainsString('ali@example.test', $f['body']);
+        self::assertStringNotContainsString('root@example.test', $f['body']);
     }
 }

@@ -2181,4 +2181,11 @@ return [
     'roles.group.panel_pages_help' => 'The site\'s own pages in the panel: reports, tools and help pages. Unticked pages leave the sidebar and search.',
     'roles.all_panel_pages' => 'All panel pages',
     'roles.all_panel_pages_help' => 'Every panel.* page, including ones added later.',
+    'pages_api.unavailable_title' => 'This part of the page could not be shown.',
+    'pages_api.problem_table' => 'The table ":table" was not found in the database. Check :method in :file.',
+    'pages_api.problem_column' => 'The column ":column" was not found. Check :method in :file.',
+    'pages_api.problem_database' => 'The database is not connected. Check the database settings in .env.',
+    'pages_api.problem_query' => 'The database query failed. Check :method in :file.',
+    'pages_api.problem_setup' => 'Error in the page\'s setup (:method in :file): :message',
+    'pages_api.problem_other' => 'An error in :method of :file. The details are in the site\'s log.',
 ];

@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.36.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.36.1" -W` and run `php flo view:clear`. Nothing else to do. A page made with `make:admin-page --table` in 0.36.0 still reads the example `bookings` table: change its `query()` to your own table.
+
+---
+
 # Upgrading to Admin 0.36.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.36.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and no change until you add a page.

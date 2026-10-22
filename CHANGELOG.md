@@ -2,6 +2,13 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.36.1 - 2026-10-22
+
+- **Custom pages**: a part of a page that throws (filters, widgets, view, table, form) no longer breaks the whole page with `APP_DEBUG=true`; the rest of the page works.
+- The part now says what went wrong in plain words, for everyone: *The table "bookings" was not found in the database. Check table() in admin/Pages/SalesReport.php.*, a missing column, no database connection, the panel's own setup messages, or else the method and file to check. With `APP_DEBUG` it also shows the error, its file and line.
+- `php flo make:admin-page --table` makes a table of the site's `users` (Name, Email, with Name and Status filters), so a new page works at once. It used an example `bookings` table that sites don't have.
+- New words in `en`, `ar` and `ku`: `pages_api.unavailable_title`, `pages_api.problem_*`.
+
 ## 0.36.0 - 2026-10-22
 
 **Custom pages: a site's own reports, tools and help pages inside the panel.** Nothing to migrate. Pages are listed in `'admin_pages'` in `config/admin.php`. See [Custom pages](docs/custom-pages.md).

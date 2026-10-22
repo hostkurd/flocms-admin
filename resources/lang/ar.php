@@ -2150,4 +2150,11 @@ return [
     'roles.group.panel_pages_help' => 'صفحات الموقع الخاصة في اللوحة: التقارير والأدوات وصفحات المساعدة. الصفحات غير المحددة تختفي من القائمة الجانبية والبحث.',
     'roles.all_panel_pages' => 'كل صفحات اللوحة',
     'roles.all_panel_pages_help' => 'كل صفحات panel.*، ومنها ما يُضاف لاحقاً.',
+    'pages_api.unavailable_title' => 'تعذّر عرض هذا الجزء من الصفحة.',
+    'pages_api.problem_table' => 'لم يُعثر على الجدول ":table" في قاعدة البيانات. راجع :method في :file.',
+    'pages_api.problem_column' => 'لم يُعثر على العمود ":column". راجع :method في :file.',
+    'pages_api.problem_database' => 'قاعدة البيانات غير متصلة. راجع إعدادات قاعدة البيانات في ملف ‎.env.',
+    'pages_api.problem_query' => 'فشل استعلام قاعدة البيانات. راجع :method في :file.',
+    'pages_api.problem_setup' => 'خطأ في إعداد الصفحة (:method في :file): :message',
+    'pages_api.problem_other' => 'حدث خطأ في :method في :file. التفاصيل في سجل الموقع.',
 ];

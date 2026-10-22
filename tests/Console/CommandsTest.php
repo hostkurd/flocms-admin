@@ -481,6 +481,7 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString("protected static ?string \$group = 'Reports';", $code);
         self::assertStringContainsString("return 'admin/sales-report';", $code);
         self::assertStringContainsString('->query(function (Database $db, array $filters): Database {', $code);
+        self::assertStringContainsString('$db->table(\'users\')', $code);
         $this->lint($this->root . '/admin/Pages/SalesReport.php');
         self::assertStringContainsString('class="fa-stat-row"', (string) file_get_contents($this->root . '/views/admin/sales-report.html'));
         self::assertStringContainsString('Page ready at /admin/sales-report', $tester->getDisplay() . $tester->getErrorOutput());

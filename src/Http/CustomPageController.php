@@ -31,8 +31,11 @@ use FloCMS\Core\ValidationException;
 final class CustomPageController extends PanelController
 {
     private AdminPage $page;
-    /** Set by guard() when a part failed. */
+    /** Set by guard() when a part failed, with its error. */
     private bool $failed = false;
+    private ?\Throwable $lastError = null;
+    private string $lastPart = 'page';
+    private ?\Throwable $filtersError = null;
 
     public function __construct($data = [])
     {
@@ -47,14 +50,14 @@ final class CustomPageController extends PanelController
         $this->authorizePage();
         $filters = $this->filters();
         $this->failed = false;
-        $table = $this->guard(fn (): ?PageTable => PageTable::of($this->page));
+        $table = $this->guard(fn (): ?PageTable => PageTable::of($this->page), 'table');
         $tableFailed = $this->failed;
 
         if ($this->isPost()) {
             if (($this->request->input('_columns') ?? '') === 'apply' && $table !== null) {
                 $this->saveColumns($table);
             }
-            if (($this->request->input('_page_form') ?? '') !== '1' || $this->guard(fn (): bool => $this->page->hasForm()) !== true) { throw new HttpException(400); }
+            if (($this->request->input('_page_form') ?? '') !== '1' || $this->guard(fn (): bool => $this->page->hasForm(), 'form') !== true) { throw new HttpException(400); }
             return $this->savePage($filters, $table, $tableFailed);
         }
         return $this->render($filters, $table, $tableFailed);
@@ -213,12 +216,12 @@ final class CustomPageController extends PanelController
                 $current = (int) $result['pagination']['cur_page'];
                 if ($current > 1 && $last > 0 && $current > $last) { $this->redirect(Admin::url($slug, $state + ['page' => $last > 1 ? $last : null])); }
                 return $table->render($result, $search, array_replace($state, ['sort' => $result['sort'] === $sort ? $sort : null]));
-            }) ?? $this->unavailable();
+            }, 'table') ?? $this->unavailable();
         }
 
         $form = null;
         $this->failed = false;
-        $hasForm = $this->guard(fn (): bool => $this->page->hasForm());
+        $hasForm = $this->guard(fn (): bool => $this->page->hasForm(), 'form');
         if ($this->failed) {
             $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save'), 'broken' => true];
         } elseif ($hasForm === true) {
@@ -228,13 +231,13 @@ final class CustomPageController extends PanelController
                 $renderer = new FormRenderer($state, $formErrors, Languages::all(), Languages::default(), true);
                 return ['fields' => $renderer->render($pageForm->form()), 'errors' => $formErrors, 'dirty' => $formState !== null,
                     'submit' => $this->page::getSubmitLabel(), 'broken' => false];
-            });
+            }, 'form');
             if ($form === null) { $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save'), 'broken' => true]; }
         }
 
-        $widgets = $this->guard(fn (): string => $this->widgets($filters->values())) ?? $this->unavailable();
-        $view = $this->guard(fn (): string => $this->view($filters->values())) ?? $this->unavailable();
-        $actions = $this->guard(fn (): string => $this->actions($filters)) ?? '';
+        $widgets = $this->guard(fn (): string => $this->widgets($filters->values()), 'widgets') ?? $this->unavailable();
+        $view = $this->guard(fn (): string => $this->view($filters->values()), 'view') ?? $this->unavailable();
+        $actions = $this->guard(fn (): string => $this->actions($filters), 'actions') ?? $this->unavailable();
         $columns = 2;
         try { $columns = Admin::config()->widgetColumns(); } catch (\InvalidArgumentException) {}
 
@@ -249,7 +252,7 @@ final class CustomPageController extends PanelController
             'description' => $page::getDescription(),
             'actions' => $actions,
             'filters' => $filters->exists() ? ['fields' => $filters->render(), 'active' => $filters->changed(), 'q' => $search, 'sort' => $sort, 'dir' => $dir, 'marker' => PageFilters::MARKER] : null,
-            'filtersFailed' => $filters->hasFailed(),
+            'filtersFailed' => $filters->hasFailed() ? $this->unavailable($this->filtersError ?? new \RuntimeException('filters() failed'), 'filters') : '',
             'widgets' => $widgets,
             'widgetColumns' => $columns,
             'view' => $view,
@@ -265,7 +268,7 @@ final class CustomPageController extends PanelController
 
     private function savePage(PageFilters $filters, ?PageTable $table, bool $tableFailed): string|\FloCMS\Core\Http\Response
     {
-        $pageForm = $this->guard(fn (): PageForm => new PageForm($this->page)) ?? throw new HttpException(500);
+        $pageForm = $this->guard(fn (): PageForm => new PageForm($this->page), 'form') ?? throw new HttpException(500);
         $input = $this->request->all();
         if ($this->request->input('_repeater') !== null) {
             return $this->render($filters, $table, $tableFailed, $pageForm->operate($input, $this->request->input('_repeater')));
@@ -398,7 +401,7 @@ final class CustomPageController extends PanelController
             $filters = new PageFilters($this->page, $input);
         } catch (\Throwable $error) {
             Log::error('Admin page ' . $this->page::class . ': filters(): ' . $error->getMessage());
-            if (\FloCMS\Core\Env::get('APP_DEBUG') === true) { throw $error; }
+            $this->filtersError = $error;
             $filters = PageFilters::failed($this->page);
         }
         $this->page->useFilterValues($filters->values());
@@ -431,7 +434,7 @@ final class CustomPageController extends PanelController
      * @param \Closure(): T $part
      * @return T|null
      */
-    private function guard(\Closure $part): mixed
+    private function guard(\Closure $part, string $name = 'page'): mixed
     {
         try {
             return $part();
@@ -439,14 +442,25 @@ final class CustomPageController extends PanelController
             throw $error;
         } catch (\Throwable $error) {
             $this->failed = true;
+            $this->lastError = $error;
+            $this->lastPart = $name;
             Log::error('Admin page ' . $this->page::class . ': ' . $error->getMessage());
-            if (\FloCMS\Core\Env::get('APP_DEBUG') === true) { throw $error; }
             return null;
         }
     }
 
-    private function unavailable(): string
+    /** "Could not be shown"; with APP_DEBUG also the error, so the rest of the page still works while developing. */
+    private function unavailable(?\Throwable $error = null, ?string $part = null): string
     {
-        return '<p class="fa-card fa-blank" role="status">' . Str::e(AdminLang::get('pages_api.unavailable')) . '</p>';
+        $part ??= $this->lastPart;
+        $error ??= $this->lastError;
+        $this->lastError = null;
+        $detail = '';
+        if ($error !== null && \FloCMS\Core\Env::get('APP_DEBUG') === true) {
+            $detail = '<span class="fa-page-error"><code>' . Str::e(get_class($error) . ': ' . $error->getMessage()) . '</code><span class="fa-muted">' . Str::e(basename($error->getFile()) . ':' . $error->getLine()) . '</span></span>';
+        }
+        // What went wrong in plain words ("The table "bookings" was not found…"), for everyone.
+        $reason = $error !== null ? \FloCMS\Admin\PanelPages\PageProblem::describe($error, $this->page, $part) : AdminLang::get('pages_api.unavailable');
+        return '<div class="fa-card fa-blank fa-page-failed" role="alert"><p class="fa-page-failed-title">' . Str::e(AdminLang::get('pages_api.unavailable_title')) . '</p><p>' . Str::e($reason) . '</p>' . $detail . '</div>';
     }
 }
