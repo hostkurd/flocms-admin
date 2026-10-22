@@ -1,0 +1,22 @@
+@php /* Logos block (flocms-admin 0.34): a grid or a row, greyscale until hovered. */ $list = repeater_items($logos ?? []); @endphp
+@if($list)
+<div class="flo-logos is-{{ $layout === 'row' ? 'row' : 'grid' }} is-size-{{ in_array($size, ['small', 'large'], true) ? $size : 'medium' }}{{ $greyscale === '1' ? ' is-greyscale' : '' }} is-cols-{{ max(3, min(6, (int) $columns)) }}">
+    @if($heading !== '')
+    <h2 class="flo-logos-heading">{{ $heading }}</h2>
+    @endif
+    <ul class="flo-logos-list">
+        @foreach($list as $logo)
+        @php $image = media($logo['image'] ?? null); $url = (string) ($logo['link'] ?? ''); @endphp
+        @if($image)
+        <li>
+            @if($url !== '')
+            <a href="{{ $url }}"{!! $new_tab === '1' ? ' target="_blank" rel="noopener"' : '' !!}>{!! $image->img(['sizes' => '200px', 'alt' => (string) ($logo['name'] ?? '')]) !!}</a>
+            @else
+            {!! $image->img(['sizes' => '200px', 'alt' => (string) ($logo['name'] ?? '')]) !!}
+            @endif
+        </li>
+        @endif
+        @endforeach
+    </ul>
+</div>
+@endif

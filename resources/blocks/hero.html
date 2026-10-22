@@ -1,5 +1,5 @@
-@php /* Hero block (flocms-admin 0.29; 0.32: heading level, height on phones, new tab, reduced motion). */ $item = media($media ?? null); $tag = ($level ?? 'h1') === 'h2' ? 'h2' : 'h1'; $phone = in_array($height_phone ?? 'same', ['medium', 'small'], true) ? ' is-phone-' . $height_phone : ''; $target = ($new_tab ?? '') === '1' ? ' target="_blank" rel="noopener"' : ''; @endphp
-<div class="flo-hero is-{{ $height }} is-align-{{ $align }}{{ $phone }}" style="--flo-hero-overlay: {{ max(0, min(90, (int) $overlay)) / 100 }}">
+@php /* Hero block (flocms-admin 0.29; 0.32: heading level, height on phones, new tab, reduced motion; 0.34: text position, 3 x 3). */ $item = media($media ?? null); $tag = ($level ?? 'h1') === 'h2' ? 'h2' : 'h1'; $phone = in_array($height_phone ?? 'same', ['medium', 'small'], true) ? ' is-phone-' . $height_phone : ''; $target = ($new_tab ?? '') === '1' ? ' target="_blank" rel="noopener"' : ''; @endphp
+<div class="flo-hero is-{{ $height }} is-pos-{{ $position }} is-align-{{ $align }}{{ $phone }}" style="--flo-hero-overlay: {{ max(0, min(90, (int) $overlay)) / 100 }}">
     @if($item)
     <div class="flo-hero-media">
         @if($item->isVideo())

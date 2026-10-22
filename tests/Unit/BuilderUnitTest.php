@@ -17,7 +17,7 @@ final class BuilderUnitTest extends TestCase
     public function testEveryCoreBlockHasAFormWithTheSharedSettings(): void
     {
         $field = Builder::make('content');
-        self::assertCount(12, $field->available());
+        self::assertCount(18, $field->available()); // 0.34: six more
         foreach ($field->available() as $type => $block) {
             $names = array_keys($field->blockForm($block)->fields());
             self::assertContains('status', $names, $type);

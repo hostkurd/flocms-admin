@@ -35,12 +35,40 @@ final class Hero extends Block
             Toggle::make('new_tab')->label($t('new_tab'))->columnSpan('full'),
             Select::make('height')->label($t('hero_height'))->options(['screen' => $t('height_screen'), 'large' => $t('size_large'), 'medium' => $t('size_medium')])->default('large')->segmented()->columnSpan('full'),
             Select::make('height_phone')->label($t('height_on_phones'))->options(['same' => $t('same_as_desktop'), 'medium' => $t('size_medium'), 'small' => $t('size_small')])->default('same')->segmented()->columnSpan('full'),
-            Select::make('align')->label($t('align'))->options(['start' => $t('align_start'), 'center' => $t('align_center')])->default('start')->segmented(),
+            // 0.34: where the text sits, as on a slide (was Start / Centre alignment, stored as "align").
+            Select::make('position')->label($t('text_position'))->positions()->columnSpan('full'),
+            // A hero saved before 0.34 keeps its alignment until its position is chosen.
+            \FloCMS\Admin\Form\Fields\Hidden::make('align'),
             Select::make('overlay')->label($t('slider_overlay'))->help($t('overlay_help'))->options(['0' => '0%', '20' => '20%', '35' => '35%', '50' => '50%', '65' => '65%', '80' => '80%'])->default('35'),
         ];
     }
 
     public function defaultWidth(): string { return 'full'; }
+
+    public const POSITIONS = ['top-start', 'top-center', 'top-end', 'middle-start', 'middle-center', 'middle-end', 'bottom-start', 'bottom-center', 'bottom-end'];
+
+    /** The text's position (0.34); a hero saved before it has "align": Start → bottom-start, Centre → bottom-center. */
+    public static function position(array $fields): string
+    {
+        $position = (string) ($fields['position'] ?? '');
+        if (in_array($position, self::POSITIONS, true)) { return $position; }
+        return ($fields['align'] ?? 'start') === 'center' ? 'bottom-center' : 'bottom-start';
+    }
+
+    /** In the dialog, an older hero's alignment shows as its position. */
+    public function prepareState(array $state, string $id = ''): array
+    {
+        $state['position'] = self::position($state);
+        return $state;
+    }
+
+    /** $position for the template, and $align (start, center, end) for templates copied before 0.34. */
+    public function data(array $fields): array
+    {
+        $position = self::position($fields);
+        $align = substr($position, (int) strpos($position, '-') + 1);
+        return ['position' => $position, 'align' => $align === 'center' ? 'center' : ($align === 'end' ? 'end' : 'start')];
+    }
 
     /** A background video stops for visitors who ask for less motion (0.32). */
     public function assets(): array { return ['motion']; }

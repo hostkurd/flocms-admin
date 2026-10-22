@@ -1,10 +1,18 @@
-@php /* Video block (flocms-admin 0.29; 0.32: Vimeo autoplay, reduced motion). */ $item = media($video ?? null); $cover = media($poster ?? null); @endphp
+@php /* Video block (flocms-admin 0.29; 0.32: Vimeo autoplay, reduced motion; 0.34: aspect ratio, YouTube and Vimeo load when clicked). */ $item = media($video ?? null); $cover = media($poster ?? null); $title = $caption !== '' ? $caption : \FloCMS\Admin\Support\AdminLang::get('blocks.video'); @endphp
 @if($item || $embed)
-<figure class="flo-video">
+<figure class="flo-video is-{{ $aspect ?? '16-9' }}">
     @if($item)
     {!! $item->video(['poster' => $cover ? $cover->url() : null, 'autoplay' => $autoplay === '1', 'muted' => $autoplay === '1', 'loop' => $loop === '1', 'data-flo-motion' => $autoplay === '1' ? 'controls' : null]) !!}
+    @elseif($autoplay === '1')
+    <div class="flo-video-frame"><iframe src="{{ $embed . ($autoplay_query ?? '?autoplay=1&mute=1') }}" title="{{ $title }}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
     @else
-    <div class="flo-video-frame"><iframe src="{{ $embed . ($autoplay === '1' ? ($autoplay_query ?? '?autoplay=1&mute=1') : '') }}" title="{{ $caption !== '' ? $caption : \FloCMS\Admin\Support\AdminLang::get('blocks.video') }}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+    <div class="flo-video-frame is-waiting" data-flo-video-embed data-src="{{ $embed . ($play_query ?? '?autoplay=1') }}" data-title="{{ $title }}">
+        @if($cover)
+        {!! $cover->img(['sizes' => '(max-width: 900px) 100vw, 900px', 'alt' => '']) !!}
+        @endif
+        <a class="flo-video-play" href="{{ $watch !== '' ? $watch : $embed }}" target="_blank" rel="noopener" aria-label="{{ \FloCMS\Admin\Support\AdminLang::get('blocks.video_play', ['title' => $title]) }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>
+        <span class="flo-video-from">{{ \FloCMS\Admin\Support\AdminLang::get('blocks.video_plays_from', ['site' => $provider !== '' ? $provider : 'YouTube']) }}</span>
+    </div>
     @endif
     @if($caption !== '')
     <figcaption>{{ $caption }}</figcaption>

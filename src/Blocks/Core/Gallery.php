@@ -27,6 +27,8 @@ final class Gallery extends Block
             MediaPicker::make('images')->label($t('gallery_images'))->multiple()->max(60)->required()->columnSpan('full'),
             Select::make('columns')->label($t('gallery_columns'))->options(['2' => '2', '3' => '3', '4' => '4', '5' => '5', '6' => '6'])->default('3')->segmented(),
             Toggle::make('lightbox')->label($t('gallery_lightbox'))->default('1'),
+            // 0.34: each image's title from the media library, under it and in the larger view.
+            Toggle::make('captions')->label($t('gallery_captions'))->help($t('gallery_captions_help')),
         ];
     }
 

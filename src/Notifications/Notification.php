@@ -43,10 +43,17 @@ final class Notification
     /** Keep it until the user closes it (the default for warning and danger). */
     public function persistent(): self { return $this->duration(0); }
 
-    /** Success and info close after DURATION seconds; warning and danger stay until dismissed. */
+    /** How long warnings and errors stay (0.34): longer, so they are read; ->persistent() keeps one until closed. */
+    public const LONG_DURATION = 12;
+
+    /**
+     * Success and info close after DURATION seconds; warnings and errors (0.34)
+     * after LONG_DURATION, paused while the pointer is over them or they have
+     * focus. Errors beside a form's fields are not toasts and always stay.
+     */
     public static function defaultDuration(string $level): int
     {
-        return in_array($level, ['warning', 'danger'], true) ? 0 : self::DURATION;
+        return in_array($level, ['warning', 'danger'], true) ? self::LONG_DURATION : self::DURATION;
     }
     public function send(): void
     {

@@ -1,0 +1,44 @@
+@php /* Team block (flocms-admin 0.34). */ $icons = [
+    'mail' => '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+    'phone' => '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+    'linkedin' => '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 11v5M8 8v.01M12 16v-5M16 16v-3a2 2 0 0 0-4 0"/>',
+    'x' => '<path d="M4 4l16 16M20 4 4 20"/>',
+    'instagram' => '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5v.01"/>',
+    'facebook' => '<path d="M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z"/>',
+    'github' => '<path d="M9 19c-4 1.5-4-2-6-2.5M15 21v-3.5a3 3 0 0 0-1-2.5c3 0 6-1.5 6-6a4.5 4.5 0 0 0-1.3-3.3A4 4 0 0 0 18.6 2S17.5 1.7 15 3.4a12 12 0 0 0-6 0C6.5 1.7 5.4 2 5.4 2a4 4 0 0 0-.1 3.7A4.5 4.5 0 0 0 4 9c0 4.5 3 6 6 6a3 3 0 0 0-1 2.5V21"/>',
+    'youtube' => '<rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3z"/>',
+    'tiktok' => '<path d="M14 3v11a3.5 3.5 0 1 1-3.5-3.5M14 3c.5 2.5 2.5 4 5 4"/>',
+    'website' => '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+]; @endphp
+@if($members)
+<div class="flo-team is-{{ $shape === 'round' ? 'round' : 'square' }} is-cols-{{ max(2, min(4, (int) $columns)) }}">
+    @if($heading !== '' || $intro !== '')
+    <div class="flo-block-head">
+        @if($heading !== '')<h2 class="flo-heading">{{ $heading }}</h2>@endif
+        @if($intro !== '')<p class="flo-intro">{{ $intro }}</p>@endif
+    </div>
+    @endif
+    <ul class="flo-team-list">
+        @foreach($members as $person)
+        @php $photo = media($person['photo'] ?? null); @endphp
+        <li class="flo-person">
+            @if($photo)
+            <div class="flo-person-photo">{!! $photo->img(['sizes' => '(max-width: 640px) 50vw, 25vw', 'alt' => '']) !!}</div>
+            @else
+            <div class="flo-person-photo is-initials" aria-hidden="true">{{ $person['initials'] }}</div>
+            @endif
+            <{{ $heading !== '' ? 'h3' : 'h2' }} class="flo-person-name">{{ $person['name'] }}</{{ $heading !== '' ? 'h3' : 'h2' }}>
+            @if(($person['role'] ?? '') !== '')<p class="flo-person-role">{{ $person['role'] }}</p>@endif
+            @if(($person['bio'] ?? '') !== '')<p class="flo-person-bio">{{ $person['bio'] }}</p>@endif
+            @if($person['links'])
+            <p class="flo-person-links">
+                @foreach($person['links'] as $link)
+                <a href="{{ $link['url'] }}" aria-label="{{ $link['label'] }}" title="{{ $link['label'] }}"{!! str_starts_with($link['url'], 'http') ? ' target="_blank" rel="noopener"' : '' !!}><svg viewBox="0 0 24 24" aria-hidden="true">{!! $icons[$link['kind']] ?? $icons['website'] !!}</svg></a>
+                @endforeach
+            </p>
+            @endif
+        </li>
+        @endforeach
+    </ul>
+</div>
+@endif

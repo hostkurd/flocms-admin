@@ -11,7 +11,7 @@
         </form>
         @endif
         <button type="button" class="fa-icon-btn" data-admin-notification-dismiss aria-label="{{ $notification['dismiss'] }}">×</button>
-        @if($notification['action'] !== null && $notification['duration'] > 0)<span class="fa-notification-timer" aria-hidden="true"><i></i></span>@endif
+        @if(($notification['action'] !== null || in_array($notification['level'] ?? '', ['warning', 'danger'], true)) && $notification['duration'] > 0)<span class="fa-notification-timer" aria-hidden="true"><i></i></span>@endif
     </div>
     @endforeach
 </div>

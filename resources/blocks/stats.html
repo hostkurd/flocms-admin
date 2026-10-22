@@ -1,0 +1,19 @@
+@php /* Stats block (flocms-admin 0.34): the number is in the HTML; stats.js counts up to it and writes it in the page's digits. */ @endphp
+@if($numbers)
+<div class="flo-stats is-align-{{ $align === 'center' ? 'center' : 'start' }}{{ $dividers === '1' ? ' has-dividers' : '' }} is-cols-{{ max(2, min(4, (int) $columns)) }}">
+    @if($heading !== '' || $intro !== '')
+    <div class="flo-block-head">
+        @if($heading !== '')<h2 class="flo-heading">{{ $heading }}</h2>@endif
+        @if($intro !== '')<p class="flo-intro">{{ $intro }}</p>@endif
+    </div>
+    @endif
+    <dl class="flo-stats-list">
+        @foreach($numbers as $stat)
+        <div class="flo-stat">
+            <dt class="flo-stat-label">{{ $stat['label'] }}</dt>
+            <dd class="flo-stat-value">@if($stat['prefix'] !== '')<span>{{ $stat['prefix'] }}</span>@endif<span data-flo-count="{{ $stat['number'] }}" data-decimals="{{ $stat['decimals'] }}"{!! $count_up === '1' ? ' data-flo-count-up' : '' !!}>{{ $stat['number'] }}</span>@if($stat['suffix'] !== '')<span>{{ $stat['suffix'] }}</span>@endif</dd>
+        </div>
+        @endforeach
+    </dl>
+</div>
+@endif

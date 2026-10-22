@@ -75,7 +75,7 @@ final class BlockRendererTest extends TestCase
         ];
         $html = blocks(json_encode($page));
         self::assertStringContainsString('<h2 class="flo-hero-heading">Hi</h2>', $html);
-        self::assertStringContainsString('flo-hero is-large is-align-start is-phone-small', $html);
+        self::assertStringContainsString('flo-hero is-large is-pos-bottom-start is-align-start is-phone-small', $html);
         self::assertStringContainsString('href="/go" target="_blank" rel="noopener"', $html);
         self::assertStringContainsString('<p class="flo-subtitle is-align-end">A line under it</p>', $html);
         self::assertStringContainsString('flo-columns is-count-4', $html);

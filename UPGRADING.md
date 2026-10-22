@@ -1,3 +1,17 @@
+# Upgrading to Admin 0.34.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.34.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.
+
+- **YouTube and Vimeo videos now load when clicked**, on existing pages too: visitors see the cover (the block's Cover image, or a dark frame) and a play button. Videos with Autoplay still load at once. Tell your editors; add a Cover to videos that need one.
+- **Heroes on phones**: below 768 px a hero's text is aligned to the start, also for heroes saved with Centre (as the 0.34 design asks, so it stays readable). Set a CSS rule of your own if you want it centred there.
+- **Warnings and errors close after 12 seconds** instead of staying until closed. Use `->persistent()` on a notification that must stay.
+- **Copied templates and styles** (`php flo admin:blocks`): run it again to get the new templates (`contact.html`, `faq.html`, `testimonials.html`, `stats.html`, `team.html`, `logos.html`) and scripts (`contact.js`, `faq.js`, `stats.js`, `video.js`); it never overwrites files that are there. If you copied `blocks.css`, `video.html`, `hero.html`, `gallery.html`, `gallery.js` or `gallery.css`, take the 0.34 changes from the package (or `--force=` the ones you didn't change): without them the video shapes and click-to-load, the hero's position and the gallery's captions don't show. A copied `hero.html` keeps working with Start and Centre.
+- **Site blocks** whose type is `contact`, `faq`, `testimonials`, `stats`, `team` or `logos` replace the new core ones, as before.
+- **Content-Security-Policy**: a site that sends one allows the Contact map in `frame-src` (`https://www.google.com` and/or `https://www.openstreetmap.org`).
+- **Translations**: the new Arabic and Kurdish words (the six blocks, the website's labels, video shape, gallery captions) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.33.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.33.0" -W`, run `php flo view:clear` and reload open Admin pages. No migration: stored blocks don't change.

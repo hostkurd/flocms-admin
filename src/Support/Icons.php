@@ -110,6 +110,8 @@ final class Icons
         'monitor' => 'M3 4h18v12H3zM8 21h8M12 16v5',
         'tablet' => 'M5 2h14v20H5zM11 18h2',
         'smartphone' => 'M7 2h10v20H7zM11 18h2',
+        // 0.34: the FAQ block
+        'help-circle' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4M12 17h.01',
     ];
 
     /** @return list<string> */
