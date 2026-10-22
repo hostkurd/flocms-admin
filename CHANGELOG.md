@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.32.2 - 2026-10-21
+
+- **Builder**: a Columns block had no space below its Add block buttons in the editor; it now keeps the same space from the card's bottom edge as a Section.
+
 ## 0.32.1 - 2026-10-21
 
 - **Builder**: a Rich text block added to a page had a plain text box instead of the editor until the page was saved; it has the editor at once.

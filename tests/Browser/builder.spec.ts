@@ -207,6 +207,10 @@ test('columns sit side by side as wide as their layout, and stack when the struc
   let second = (await cols.nth(1).boundingBox())!;
   expect(Math.abs(first.y - second.y)).toBeLessThan(2);
   expect(second.x).toBeGreaterThan(first.x + first.width - 1);
+  // The columns keep a space from the card's bottom edge, like a Section's Add block button (0.32.2)
+  const card = (await row(page, 'bcols1').boundingBox())!;
+  const add = (await cols.nth(0).locator('[data-builder-add]').boundingBox())!;
+  expect(card.y + card.height - (add.y + add.height)).toBeGreaterThanOrEqual(10);
   // 67 / 33: the first column is twice as wide
   await row(page, 'bcols1').locator(':scope > .fa-builder-row .fa-builder-row-main').dblclick();
   await editor(page).locator('input[value="67-33"]').check({ force: true });
