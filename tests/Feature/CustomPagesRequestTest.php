@@ -93,6 +93,8 @@ final class CustomPagesRequestTest extends RequestTestCase
         self::assertTrue($saved['redirected']);
         $hidden = self::get('/en/admin/sales-report', ['session' => $saved['session']]);
         self::assertStringNotContainsString('data-label="Status"', $hidden['body']);
+        // Back to the defaults (on MySQL the preferences table outlives the test).
+        self::post('/en/admin/sales-report', ['_columns' => 'apply', '_columns_reset' => '1', '_back' => 'https://example.test/en/admin/sales-report'], self::options(['session' => $saved['session']]));
     }
 
     public function testCsvDownloadHasTheVisibleColumnsAndTheFilters(): void
