@@ -63,19 +63,35 @@ The field shows the page's **structure** on the left, one row per block, and the
 | Type | Category | Fields |
 | --- | --- | --- |
 | `slider` | Media | Name, Height (Full screen, Fixed, Like the first image), heights on desktop and phones (with Fixed), Effect (Fade, Slide), Play automatically, Next slide after (with autoplay), arrows, dots, Fill or Fit, Image overlay; **Slides**: image or video, heading, text, button, link, open in a new tab, text position (3 × 3), text colour, Show this slide |
-| `hero` | Marketing | Background image or video, heading, heading level (H1, H2), text, two buttons, open in a new tab, height, height on phones, alignment, image overlay |
+| `hero` | Marketing | Background image or video, heading, heading level (H1, H2), text, two buttons, open in a new tab, height, height on phones, text position (3 × 3, 0.34; a hero saved with Start or Centre shows bottom-start or bottom-center), image overlay |
 | `image` | Media | Image, alt text, caption, link, open in a new tab, size (text width, wide, full) |
-| `gallery` | Media | Heading, images (up to 60), columns, open larger on click |
-| `video` | Media | A file from the library, or a YouTube or Vimeo link (played from youtube-nocookie), cover, caption, autoplay (muted), loop; one of the two is needed |
+| `gallery` | Media | Heading, images (up to 60), columns, open larger on click, show captions (each image's title from the media library, 0.34) |
+| `video` | Media | A file from the library, or a YouTube or Vimeo link (played from youtube-nocookie), cover, caption, autoplay (muted), loop, shape (16:9, 4:3, 1:1, 9:16, 21:9, for YouTube and Vimeo; 0.34); one of the two is needed. A YouTube or Vimeo video without autoplay shows its cover and a play button and loads only when clicked (0.34) |
 | `heading` | Text | Text, level (H1–H4), alignment (start, centre, end), subtitle |
 | `rich_text` | Text | The rich text editor (cleaned when saved) |
 | `cards` | Text | Heading, cards per row; **Cards**: image, title, text, link (the whole card opens it), button text, open in a new tab |
 | `call_to_action` | Marketing | Heading, text, button, link, open in a new tab, style |
 | `html` | Other | Raw HTML, printed as written: see below |
+| `contact` | Your site | Heading, intro, address, phone, email, WhatsApp number; **Opening hours** (days, hours; up to 14); **Map**: none, Google Maps (an address) or OpenStreetMap (coordinates), zoom, beside or below, load at once (0.34) |
+| `faq` | Text | Heading, intro, open the first, one open at a time, data for search engines; **Questions** (question, answer; up to 30) (0.34) |
+| `testimonials` | Marketing | Heading, intro, layout (grid, carousel, single), per row; **Quotes** (quote, name, role, photo, rating; up to 24) (0.34) |
+| `stats` | Marketing | Heading, intro, per row, alignment, lines between, count up; **Numbers** (before, number, after, label; up to 8) (0.34) |
+| `team` | Marketing | Heading, intro, per row, square or round photos; **People** (photo, name, role, short bio, email, phone, three links; up to 40) (0.34) |
+| `logos` | Marketing | Heading, grid or row, per row, logo height, grey until pointed at, open in a new tab; **Logos** (image, name, link; up to 40) (0.34) |
 | `section` | Layout | Name, content width (Full, Boxed, Narrow), background (none, the theme's colours, a colour, an image), text colour and image overlay (with a colour or image), inner space; holds blocks |
 | `columns` | Layout | Name, layout (50/50, 67/33, 33/67, 25/75, 75/25, 40/60, 60/40, thirds, 25/50/25, quarters, from pictures), space between, vertical alignment, stack on phones, last column first on phones; holds blocks |
 
 A button's text and its link need each other: one without the other is an error. Empty Slider, Section and Columns blocks print nothing on the website.
+
+### The blocks of 0.34
+
+- **Contact and map**: the phone is a `tel:` link, the email a `mailto:` link, WhatsApp opens `wa.me`, and **Get directions** opens Google Maps. The map shows a placeholder with **Show map** and loads nothing from Google or OpenStreetMap until the visitor clicks (`contact.js`); without JavaScript the button opens the map on its site. **Load the map at once** prints the map straight away (use it when your cookie notice covers it). A site with a Content-Security-Policy allows the map in `frame-src`: `https://www.google.com` or `https://www.openstreetmap.org`.
+- **FAQ**: each question is a `<details>`, so it works without a script; **One open at a time** uses its `name` attribute (browsers without it allow several). Answers are plain text: a blank line starts a paragraph, a line break is kept, and web and email addresses become links. Each question has an id, `faq-<anchor or block id>-<number>`; a link to it opens it (`faq.js`). **Data for search engines** prints FAQPage JSON-LD (a data block, which a strict CSP allows).
+- **Testimonials**: a grid (1–3 per row), a carousel (one quote at a time, the slider's script, no autoplay) or one large quote. A rating is read out as "Rated 5 out of 5"; without a photo the person's initials are shown.
+- **Stats**: the number is in the HTML for search engines, screen readers and visitors without JavaScript; `stats.js` writes it in the page's digits (`Intl.NumberFormat` with the page's `lang`) and, with **Count up**, counts up to it once it is in view. Visitors who ask for less motion see the number at once.
+- **Team**: links become icon buttons named for screen readers ("Sara on LinkedIn"): LinkedIn, X, Instagram, Facebook, GitHub, YouTube and TikTok by their address, any other as a website.
+- **Logos**: each logo's name is its alt text; **Logo height** keeps logos of different shapes balanced.
+- Columns per row are classes (`is-cols-3`), not style attributes, so a strict Content-Security-Policy keeps them.
 
 `->blocks([...])` offers only the kinds named, in that order (types or classes); `->only(['media', 'text'])` offers those categories. Without either every kind is offered, the site's own included.
 

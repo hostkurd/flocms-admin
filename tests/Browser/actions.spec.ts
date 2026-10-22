@@ -93,13 +93,14 @@ test('page and toolbar definitions use the shared action renderer and notificati
   await stable(page);
 });
 
-test('info and success close by themselves (hover pauses), warnings stay until dismissed', async ({ page }) => {
+test('info and success close by themselves (hover pauses), warnings after 12 seconds (0.34)', async ({ page }) => {
   await page.clock.install();
   await ready(page);
-  // Warning: stays
+  // Warning: 12 seconds, with its countdown line
   await page.locator('[data-admin-action=announce][data-admin-placement=page]').click();
   await editor(page).getByRole('button', { name: 'Announcement', exact: true }).click();
-  await expect(notices(page)).toHaveAttribute('data-admin-notification-duration', '0');
+  await expect(notices(page)).toHaveAttribute('data-admin-notification-duration', '12');
+  await expect(notices(page).locator('.fa-notification-timer')).toHaveCount(1);
   // Info: 5 seconds, paused while the pointer is on it
   await page.locator('[data-admin-action=help][data-admin-placement=table]').click();
   await expect(notices(page)).toHaveCount(2);
@@ -113,7 +114,7 @@ test('info and success close by themselves (hover pauses), warnings stay until d
   await expect(notices(page)).toHaveCount(1);
   await expect(notices(page)).toContainText('Review pending drafts.');
   await page.clock.runFor(60000);
-  await expect(notices(page)).toHaveCount(1);
+  await expect(notices(page)).toHaveCount(0);
   await stable(page);
 });
 

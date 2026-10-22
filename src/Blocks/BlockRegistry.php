@@ -18,6 +18,8 @@ final class BlockRegistry
         Core\Heading::class, Core\RichText::class, Core\Cards::class,
         Core\Section::class, Core\Columns::class,
         Core\CallToAction::class, Core\Html::class,
+        // 0.34
+        Core\Contact::class, Core\Faq::class, Core\Testimonials::class, Core\Stats::class, Core\Team::class, Core\Logos::class,
     ];
 
     /** @var array<string, Block>|null */

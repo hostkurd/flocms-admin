@@ -1,0 +1,55 @@
+@php /* Testimonials block (flocms-admin 0.34): a grid, a carousel (the slider's script) or one large quote. */ $t = [\FloCMS\Admin\Support\AdminLang::class, 'get']; $list = $layout === 'single' ? array_slice($quotes, 0, 1) : $quotes; $carousel = $layout === 'carousel' && count($list) > 1; @endphp
+@if($list)
+<div class="flo-testimonials is-{{ $carousel ? 'carousel' : ($layout === 'single' ? 'single' : 'grid') }} is-cols-{{ max(1, min(3, (int) ($columns ?? 3))) }}">
+    @if($heading !== '' || $intro !== '')
+    <div class="flo-block-head">
+        @if($heading !== '')<h2 class="flo-heading">{{ $heading }}</h2>@endif
+        @if($intro !== '')<p class="flo-intro">{{ $intro }}</p>@endif
+    </div>
+    @endif
+    @if($carousel)
+    <div class="flo-testimonials-carousel" data-flo-slider data-autoplay="0" role="region" aria-roledescription="carousel" aria-label="{{ $heading !== '' ? $heading : $t('blocks.testimonials') }}">
+        @foreach($list as $index => $quote)
+        <div class="flo-slide{{ $index === 0 ? ' is-current' : '' }}" role="group" aria-roledescription="slide" aria-label="{{ ($index + 1) . ' / ' . count($list) }}"{!! $index === 0 ? '' : ' aria-hidden="true" inert' !!}>
+            <figure class="flo-testimonial">
+                @if($quote['stars'] > 0)
+                <p class="flo-stars" role="img" aria-label="{{ $quote['rated'] }}">@for($i = 1; $i <= 5; $i++)<span class="{{ $i <= $quote['stars'] ? 'is-on' : '' }}" aria-hidden="true">★</span>@endfor</p>
+                @endif
+                <blockquote class="flo-testimonial-quote"><p>{{ $quote['quote'] }}</p></blockquote>
+                <figcaption class="flo-testimonial-person">
+                    @php $photo = media($quote['photo'] ?? null); @endphp
+                    @if($photo){!! $photo->img(['sizes' => '48px', 'alt' => '', 'class' => 'flo-avatar']) !!}@else<span class="flo-avatar" aria-hidden="true">{{ $quote['initials'] }}</span>@endif
+                    <span><strong>{{ $quote['name'] ?? '' }}</strong>@if(($quote['role'] ?? '') !== '')<span>{{ $quote['role'] }}</span>@endif</span>
+                </figcaption>
+            </figure>
+        </div>
+        @endforeach
+        <div class="flo-testimonials-nav">
+            <button type="button" class="flo-testimonials-arrow" data-flo-prev aria-label="{{ $t('blocks.site_previous') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <div class="flo-testimonials-dots">
+                @foreach($list as $index => $quote)
+                <button type="button" data-flo-dot="{{ $index }}" aria-label="{{ $t('blocks.site_go_to', ['number' => (string) ($index + 1)]) }}"{!! $index === 0 ? ' aria-current="true"' : '' !!}></button>
+                @endforeach
+            </div>
+            <button type="button" class="flo-testimonials-arrow" data-flo-next aria-label="{{ $t('blocks.site_next') }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>
+        </div>
+    </div>
+    @else
+    <ul class="flo-testimonials-list">
+        @foreach($list as $quote)
+        <li><figure class="flo-testimonial">
+                @if($quote['stars'] > 0)
+                <p class="flo-stars" role="img" aria-label="{{ $quote['rated'] }}">@for($i = 1; $i <= 5; $i++)<span class="{{ $i <= $quote['stars'] ? 'is-on' : '' }}" aria-hidden="true">★</span>@endfor</p>
+                @endif
+                <blockquote class="flo-testimonial-quote"><p>{{ $quote['quote'] }}</p></blockquote>
+                <figcaption class="flo-testimonial-person">
+                    @php $photo = media($quote['photo'] ?? null); @endphp
+                    @if($photo){!! $photo->img(['sizes' => '48px', 'alt' => '', 'class' => 'flo-avatar']) !!}@else<span class="flo-avatar" aria-hidden="true">{{ $quote['initials'] }}</span>@endif
+                    <span><strong>{{ $quote['name'] ?? '' }}</strong>@if(($quote['role'] ?? '') !== '')<span>{{ $quote['role'] }}</span>@endif</span>
+                </figcaption>
+            </figure></li>
+        @endforeach
+    </ul>
+    @endif
+</div>
+@endif

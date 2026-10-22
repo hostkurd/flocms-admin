@@ -3,6 +3,7 @@
 .flo-lightbox::backdrop { background: rgba(0,0,0,.6); }
 .flo-lightbox img { position: absolute; inset: 0; margin: auto; max-width: calc(100vw - 120px); max-height: calc(100vh - 80px); object-fit: contain; }
 .flo-lightbox button { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+.flo-lightbox-caption { position: absolute; inset-inline: 0; bottom: 18px; margin: 0 auto; max-width: min(720px, calc(100vw - 140px)); text-align: center; font-size: .95rem; color: #e4e7ec; }
 .flo-lightbox button:hover { background: rgba(255,255,255,.24); }
 .flo-lightbox [data-close] { top: 16px; inset-inline-end: 16px; }
 .flo-lightbox [data-prev] { top: 50%; inset-inline-start: 16px; } .flo-lightbox [data-next] { top: 50%; inset-inline-end: 16px; }

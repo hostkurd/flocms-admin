@@ -2,6 +2,24 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.34.0 - 2026-10-22
+
+**Six new blocks, and better Video, Hero and Gallery blocks.** Nothing to migrate: stored blocks don't change. See [Builder: the blocks of 0.34](docs/builder.md#the-blocks-of-034).
+
+- **Contact and map** (`contact`, Your site): address, phone (`tel:`), email (`mailto:`), WhatsApp (`wa.me`), Get directions, opening hours, and a map (Google Maps by address, OpenStreetMap by coordinates) that loads only when the visitor clicks **Show map** (`contact.js`), unless **Load the map at once**.
+- **FAQ** (`faq`, Text): questions on the browser's own `<details>`, the first open, one open at a time (`name`), a link opens a question (`faq.js`), FAQPage data for search engines. Answers are plain text with paragraphs and automatic links.
+- **Testimonials** (`testimonials`, Marketing): a grid, a carousel (the slider's script) or one large quote; ratings read out as "Rated 5 out of 5"; initials without a photo.
+- **Stats** (`stats`, Marketing): numbers with a prefix, suffix and label; counting up once in view (`stats.js`), in the page's digits; still for "reduce motion"; the number always in the HTML.
+- **Team** (`team`, Marketing): photo, name, role, short bio, email, phone and three links as labelled icon buttons.
+- **Logos** (`logos`, Marketing): a grid or a row, logo height, grey until pointed at.
+- **Video**: a shape for YouTube and Vimeo (16:9, 4:3, 1:1, 9:16, 21:9), and **click-to-load**: a YouTube or Vimeo video without autoplay shows its cover (or a dark frame) and loads only when clicked (`video.js`), on existing pages too. With autoplay it loads at once, as before.
+- **Hero**: a 3 × 3 **Text position** replaces Start / Centre; a hero saved with Start or Centre shows bottom-start or bottom-center, as before. On phones the text is aligned to the start.
+- **Gallery**: **Show captions**, each image's title from the media library, also in the larger view.
+- **Toasts**: warnings and errors close after 12 seconds (`Notification::LONG_DURATION`), with a line showing the time left; hovering or focusing one pauses it; `->persistent()` keeps one. Errors beside a form's fields always stay.
+- New blocks print their columns as classes (`is-cols-3`), so a strict Content-Security-Policy keeps them; each has `sample()` content for the Blocks preview.
+- For developers: `Hero::position()`, `Faq::answerHtml()`, `Contact::coordinates()`, `Stats::number()`, `Team::network()`, `Testimonials::initials()`; site scripts `contact.js`, `faq.js`, `stats.js`, `video.js`; icon `help-circle`.
+- New words in `en`, `ar` and `ku`: `blocks.contact*`, `blocks.faq*`, `blocks.testimonials*`, `blocks.stats*`, `blocks.team*`, `blocks.logos*`, `blocks.layout_*`, `blocks.shape_*`, `blocks.person_*`, `blocks.photo`, `blocks.intro`, `blocks.per_row`, `blocks.video_aspect(_help)`, `blocks.video_play`, `blocks.video_plays_from`, `blocks.gallery_captions(_help)` and `blocks.site_*` for the website.
+
 ## 0.33.0 - 2026-10-22
 
 **A block's Display tab for frontend developers: styles, theme colours, phone spacing, hooks, scoped custom CSS and a preview of every block.** Nothing to migrate: stored blocks don't change. See [Builder: styling the blocks](docs/builder.md#styling-the-blocks).

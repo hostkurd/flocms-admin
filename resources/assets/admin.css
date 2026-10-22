@@ -1957,6 +1957,7 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-notification-timer{position:absolute;inset-inline:0;inset-block-end:0;height:3px;background:var(--fa-surface-3)}
 .fa-notification-timer i{position:absolute;inset-block:0;inset-inline-start:0;width:100%;background:var(--fa-primary);animation:fa-timer linear forwards;animation-duration:10s}
 .fa-notification.is-paused .fa-notification-timer i{animation-play-state:paused}
+.fa-alert-danger .fa-notification-timer i{background:var(--fa-danger-solid)}.fa-alert-warning .fa-notification-timer i{background:var(--fa-warning-solid)}
 @keyframes fa-timer{from{width:100%}to{width:0}}
 @media (prefers-reduced-motion:reduce){.fa-notification-timer{display:none}}
 

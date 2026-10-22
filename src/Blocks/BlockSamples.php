@@ -68,6 +68,31 @@ final class BlockSamples
                 ['type' => 'rich_text', 'column' => 0, 'data' => ['body' => '<h3>First column</h3><p>Strategy and design.</p>']],
                 ['type' => 'rich_text', 'column' => 1, 'data' => ['body' => '<h3>Second column</h3><p>Development and support.</p>']],
             ]],
+            // 0.34
+            'contact' => ['heading' => 'Visit or call us', 'intro' => 'We are in the city centre, five minutes from the main square.', 'address' => "[Street and number]\n[City, postcode]",
+                'phone' => '+964 750 000 0000', 'email' => 'hello@example.com', 'whatsapp' => '964 750 000 0000', 'map' => 'google', 'location' => 'Erbil Citadel',
+                'hours' => [['_key' => 'k0', 'days' => 'Sun–Thu', 'time' => '9:00–17:00'], ['_key' => 'k1', 'days' => 'Saturday', 'time' => '10:00–14:00'], ['_key' => 'k2', 'days' => 'Friday', 'time' => 'Closed']]],
+            'faq' => ['heading' => 'Questions we hear often', 'items' => [
+                ['_key' => 'k0', 'question' => 'How long does a website take?', 'answer' => "Most sites take four to eight weeks, from the first meeting to launch.\n\nWe agree the dates with you before we start."],
+                ['_key' => 'k1', 'question' => 'Can I update the site myself?', 'answer' => 'Yes. You edit pages, blocks and pictures in the panel, in every language of the site.'],
+                ['_key' => 'k2', 'question' => 'What happens after launch?', 'answer' => 'We keep the site updated and backed up. Write to hello@example.com any time.'],
+            ]],
+            'testimonials' => ['heading' => 'What our clients say', 'columns' => '3', 'items' => [
+                ['_key' => 'k0', 'quote' => 'Clear plan, fast site, and a team that answers the phone.', 'name' => 'Sara Ahmed', 'role' => 'Director, Northwind', 'rating' => '5'],
+                ['_key' => 'k1', 'quote' => 'We update our pages ourselves now, in Arabic and English.', 'name' => 'Karwan Jalal', 'role' => 'Owner, Atlas Build', 'rating' => '5'],
+                ['_key' => 'k2', 'quote' => 'Launched a week early. Our enquiries doubled in a month.', 'name' => 'Rania Mahmoud', 'role' => 'Marketing, Kalo', 'rating' => '4'],
+            ]],
+            'stats' => ['heading' => 'Ten years of work in numbers', 'items' => [
+                ['_key' => 'k0', 'number' => '250', 'suffix' => '+', 'label' => 'Websites launched'], ['_key' => 'k1', 'number' => '98', 'suffix' => '%', 'label' => 'Clients who come back'],
+                ['_key' => 'k2', 'number' => '12', 'label' => 'People on the team'], ['_key' => 'k3', 'number' => '3', 'label' => 'Languages we build in'],
+            ]],
+            'team' => ['heading' => 'The people behind the work', 'people' => array_map(static fn (array $p, int $i): array => ['_key' => 'k' . $i] + (isset($images[$i]) ? ['photo' => $images[$i]] : []) + $p, [
+                ['name' => 'Sara Ahmed', 'role' => 'Founder and designer', 'bio' => 'Plans each site with the client, from the first sketch.', 'email' => 'sara@example.com', 'link' => 'https://www.linkedin.com/in/example'],
+                ['name' => 'Karwan Jalal', 'role' => 'Lead developer', 'bio' => 'Builds fast, accessible sites on FloCMS.', 'link' => 'https://github.com/example'],
+                ['name' => 'Rania Mahmoud', 'role' => 'Project manager', 'bio' => 'Keeps dates and people in step.'],
+                ['name' => 'Lana Hassan', 'role' => 'Content and SEO', 'bio' => 'Writes and translates the words on the page.'],
+            ], [0, 1, 2, 3])],
+            'logos' => count($images) >= 2 ? ['heading' => 'Trusted by teams across the region', 'logos' => array_map(static fn (string $id, int $i): array => ['_key' => 'k' . $i, 'image' => $id, 'name' => 'Partner ' . ($i + 1)], $images, array_keys($images))] : [],
             default => [],
         };
     }

@@ -5,6 +5,7 @@ namespace FloCMS\Admin\Blocks\Core;
 
 use FloCMS\Admin\Blocks\Block;
 use FloCMS\Admin\Form\Fields\MediaPicker;
+use FloCMS\Admin\Form\Fields\Select;
 use FloCMS\Admin\Form\Fields\TextInput;
 use FloCMS\Admin\Form\Fields\Toggle;
 use FloCMS\Admin\Support\AdminLang;
@@ -28,6 +29,8 @@ final class Video extends Block
             TextInput::make('caption')->label($t('caption'))->rules('max:300')->columnSpan('full'),
             Toggle::make('autoplay')->label($t('video_autoplay'))->help($t('video_autoplay_help')),
             Toggle::make('loop')->label($t('video_loop')),
+            // 0.34: the shape of a YouTube or Vimeo video (a file keeps its own).
+            Select::make('aspect')->label($t('video_aspect'))->help($t('video_aspect_help'))->options(['16-9' => '16:9', '4-3' => '4:3', '1-1' => '1:1', '9-16' => '9:16', '21-9' => '21:9'])->default('16-9')->segmented()->columnSpan('full'),
         ];
     }
 
@@ -49,10 +52,16 @@ final class Video extends Block
         $embed = self::embedUrl((string) ($fields['url'] ?? ''));
         // Autoplay in an embed needs sound off: YouTube's "mute", Vimeo's "muted" (0.32).
         $autoplay = $embed !== null && str_contains($embed, 'vimeo.com') ? '?autoplay=1&muted=1' : '?autoplay=1&mute=1';
-        return ['embed' => $embed, 'autoplay_query' => $autoplay];
+        $url = trim((string) ($fields['url'] ?? ''));
+        return ['embed' => $embed, 'autoplay_query' => $autoplay,
+            // 0.34: a YouTube or Vimeo video loads only when clicked (unless it plays by itself).
+            'provider' => $embed === null ? '' : (str_contains($embed, 'vimeo.com') ? 'Vimeo' : 'YouTube'),
+            'watch' => $embed === null ? '' : \FloCMS\Admin\Blocks\BlockRenderer::safeUrl($url),
+            'play_query' => $embed !== null && str_contains($embed, 'vimeo.com') ? '?autoplay=1' : '?autoplay=1&rel=0',
+            'aspect' => in_array($fields['aspect'] ?? '', ['16-9', '4-3', '1-1', '9-16', '21-9'], true) ? (string) $fields['aspect'] : '16-9'];
     }
 
-    public function assets(): array { return ['motion']; }
+    public function assets(): array { return ['motion', 'video']; }
 
     /** A file or a YouTube or Vimeo address (0.32). */
     public function check(array $fields): array

@@ -72,7 +72,7 @@ final class NotificationsTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
-    public function testSuccessAndInfoCloseByThemselvesWarningsStay(): void
+    public function testToastsCloseByThemselvesWarningsLaterPersistentOnesStay(): void
     {
         if (!defined('DS')) { define('DS', DIRECTORY_SEPARATOR); }
         if (!defined('VIEWS_PATH')) { define('VIEWS_PATH', sys_get_temp_dir()); }
@@ -85,6 +85,7 @@ final class NotificationsTest extends TestCase
         // An entry queued by an older version has no duration
         $_SESSION['_flo_admin_notifications'][] = ['id' => 'old', 'level' => 'success', 'title' => 'Old', 'body' => '', 'lang' => 'en', 'dir' => 'ltr', 'dismiss' => 'Dismiss', 'issued' => time()];
         preg_match_all('/data-admin-notification-duration="(\d+)"/', NotificationView::pending(), $durations);
-        self::assertSame(['5', '12', '0', '0', '9', '5'], $durations[1]);
+        // 0.34: warnings and errors close after 12 seconds; persistent() stays
+        self::assertSame(['5', '12', '0', '12', '9', '5'], $durations[1]);
     }
 }
