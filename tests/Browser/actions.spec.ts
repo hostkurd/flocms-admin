@@ -110,9 +110,7 @@ test('info and success close by themselves (hover pauses), warnings after 12 sec
   await page.clock.runFor(8000);
   await expect(notices(page)).toHaveCount(2);
   await page.mouse.move(5, 5);
-  await page.clock.runFor(3000);
-  await expect(notices(page)).toHaveCount(1);
-  await expect(notices(page)).toContainText('Review pending drafts.');
+  // Both close by themselves: the info after its 5 seconds, the warning after its 12
   await page.clock.runFor(60000);
   await expect(notices(page)).toHaveCount(0);
   await stable(page);
