@@ -94,7 +94,7 @@ test('a pasted list becomes tags; the Arabic comma adds one on a right-to-left p
   await input.fill('');
   await input.click();
   await page.keyboard.insertText('جبل، ثلج، ');
-  await expect(chips(page)).toHaveText(['cabin', 'جبل', 'ثلج']);
+  await expect(chips(page)).toHaveText(['lodge', 'جبل', 'ثلج']);
   // Right to left: the right arrow goes back to the tags
   await input.press('ArrowRight');
   await expect(keywords(page).locator('.fa-tag-chip').last()).toBeFocused();
@@ -148,7 +148,7 @@ test('the dialog form sends the fields too', async ({ page }) => {
   await expect(dialog).toBeHidden();
   const row = (await state(page))[3];
   expect(row.features).toBe('["pool","sauna"]');
-  expect(row.keywords).toBe('["cabin","wood"]');
+  expect(row.keywords).toBe('["lodge","wood"]');
 });
 
 test('list: chips, times and the three filters', async ({ page }) => {

@@ -190,7 +190,7 @@ $seedHouses = static function (PDO $pdo): void {
     $insert->execute(['Seaside villa with garden', '["pool","parking","sea_view","garden"]', '["villa","sea view","garden"]', '09:30:00', '18:00:00']);
     $insert->execute(['Harbour apartment', '["pool","lift","balcony"]', '["apartment","Sea View"]', '10:00:00', '16:00:00']);
     $insert->execute(['Stone house near the old port', '["pool","garden","fireplace","balcony","furnished"]', '["house","sea view","quiet","stone"]', '11:00:00', '13:00:00']);
-    $insert->execute(['Mountain cabin', '["fireplace","sauna"]', '["cabin"]', '15:00:00', null]);
+    $insert->execute(['Alpine lodge', '["fireplace","sauna"]', '["lodge"]', '15:00:00', null]);
 };
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='houses'")->fetchColumn()) { $seedHouses($pdo); }
 // Pages (0.30): on after /__test/pages
