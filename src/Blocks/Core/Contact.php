@@ -84,6 +84,10 @@ final class Contact extends Block
     public function data(array $fields): array
     {
         $address = trim((string) ($fields['address'] ?? ''));
+        $digits = static fn (string $phone): string => preg_replace('/[^\d+]/', '', $phone) ?? '';
+        $fmt = static fn (float $n): string => rtrim(rtrim(sprintf('%.6F', $n), '0'), '.');
+        // A plain address: nothing that would add parameters to the mailto: link
+        $mailOk = static fn (string $email): bool => $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false && preg_match('/[?&#%]/', $email) !== 1;
         $phone = trim((string) ($fields['phone'] ?? ''));
         $whatsapp = preg_replace('/\D+/', '', (string) ($fields['whatsapp'] ?? '')) ?? '';
         $email = trim((string) ($fields['email'] ?? ''));
@@ -97,14 +101,16 @@ final class Contact extends Block
         } elseif ($map === 'osm' && ($point = self::coordinates($place)) !== null) {
             [$lat, $lng] = $point;
             $span = 0.6 / (2 ** ($zoom - 10));
-            $bbox = implode(',', array_map(static fn (float $n): string => rtrim(rtrim(sprintf('%.6F', $n), '0'), '.'), [$lng - $span, $lat - $span / 2, $lng + $span, $lat + $span / 2]));
-            $src = 'https://www.openstreetmap.org/export/embed.html?bbox=' . $bbox . '&layer=mapnik&marker=' . $lat . ',' . $lng;
-            $link = 'https://www.openstreetmap.org/?mlat=' . $lat . '&mlon=' . $lng . '#map=' . $zoom . '/' . $lat . '/' . $lng;
+            $bbox = implode(',', array_map($fmt, [max(-180, $lng - $span), max(-90, $lat - $span / 2), min(180, $lng + $span), min(90, $lat + $span / 2)]));
+            [$la, $lo] = [$fmt($lat), $fmt($lng)];
+            $src = 'https://www.openstreetmap.org/export/embed.html?bbox=' . $bbox . '&layer=mapnik&marker=' . $la . ',' . $lo;
+            $link = 'https://www.openstreetmap.org/?mlat=' . $la . '&mlon=' . $lo . '#map=' . $zoom . '/' . $la . '/' . $lo;
         }
         $hours = array_values(array_filter(repeater_items($fields['hours'] ?? []), static fn (array $row): bool => trim((string) ($row['days'] ?? '')) !== ''));
         return [
-            'tel' => $phone !== '' ? 'tel:' . (preg_replace('/[^\d+]/', '', $phone) ?? '') : '',
-            'mailto' => $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? 'mailto:' . $email : '',
+            'tel' => $digits($phone) !== '' ? 'tel:' . $digits($phone) : '',
+            'mailto' => $mailOk($email) ? 'mailto:' . $email : '',
+            'address' => $address, 'phone' => $digits($phone) !== '' ? $phone : '',
             'wa' => $whatsapp !== '' ? 'https://wa.me/' . $whatsapp : '',
             'directions' => $place !== '' ? 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($place) : '',
             'map_src' => $src, 'map_link' => BlockRenderer::safeUrl($link), 'map_host' => $map === 'osm' ? 'OpenStreetMap' : 'Google Maps',

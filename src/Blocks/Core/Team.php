@@ -77,16 +77,17 @@ final class Team extends Block
             if ($name === '') { continue; }
             $links = [];
             $email = trim((string) ($person['email'] ?? ''));
-            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) { $links[] = ['url' => 'mailto:' . $email, 'kind' => 'mail', 'label' => AdminLang::get('blocks.site_email', ['name' => $name])]; }
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false && preg_match('/[?&#%]/', $email) !== 1) { $links[] = ['url' => 'mailto:' . $email, 'kind' => 'mail', 'label' => AdminLang::get('blocks.site_email', ['name' => $name])]; }
             $phone = trim((string) ($person['phone'] ?? ''));
-            if ($phone !== '') { $links[] = ['url' => 'tel:' . (preg_replace('/[^\d+]/', '', $phone) ?? ''), 'kind' => 'phone', 'label' => AdminLang::get('blocks.site_call', ['name' => $name])]; }
+            if (($tel = preg_replace('/[^\d+]/', '', $phone) ?? '') !== '') { $links[] = ['url' => 'tel:' . $tel, 'kind' => 'phone', 'label' => AdminLang::get('blocks.site_call', ['name' => $name])]; }
             foreach (['link', 'link2', 'link3'] as $key) {
                 $url = BlockRenderer::safeUrl((string) ($person[$key] ?? ''));
                 if ($url === '' || !preg_match('~^https?://~i', $url)) { continue; }
                 $network = self::network($url);
                 $links[] = ['url' => $url, 'kind' => $network['kind'], 'label' => AdminLang::get('blocks.site_on', ['name' => $name, 'site' => $network['name']])];
             }
-            $people[] = $person + ['initials' => Testimonials::initials($name), 'links' => $links];
+            // The computed values win over anything stored under the same names.
+            $people[] = array_merge($person, ['initials' => Testimonials::initials($name), 'links' => $links]);
         }
         return ['members' => $people];
     }

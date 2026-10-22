@@ -218,13 +218,15 @@
 /* Stats (0.34) */
 .flo-stats-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 0; margin: 0; }
 .flo-stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 8px; padding-inline: 28px; }
-.flo-stats.has-dividers .flo-stat + .flo-stat { border-inline-start: 1px solid rgba(16,24,40,.12); }
-.flo-stats.is-align-start .flo-stat:first-child { padding-inline-start: 0; }
+.flo-stats.has-dividers .flo-stat { border-inline-start: 1px solid rgba(16,24,40,.12); }
+/* The first of each row: no line, and (aligned to the start) no space before it */
+.flo-stats.is-cols-4 .flo-stat:nth-child(4n+1), .flo-stats.is-cols-3 .flo-stat:nth-child(3n+1), .flo-stats.is-cols-2 .flo-stat:nth-child(2n+1) { border-inline-start: 0; }
+.flo-stats.is-align-start.is-cols-4 .flo-stat:nth-child(4n+1), .flo-stats.is-align-start.is-cols-3 .flo-stat:nth-child(3n+1), .flo-stats.is-align-start.is-cols-2 .flo-stat:nth-child(2n+1) { padding-inline-start: 0; }
 .flo-stats.is-align-center .flo-stat { text-align: center; }
 .flo-stat-value { margin: 0; font-size: clamp(2.2rem, 4.5vw, 3.25rem); font-weight: 700; line-height: 1; color: var(--flo-brand); font-variant-numeric: tabular-nums; }
 .flo-stat-label { color: var(--flo-muted); }
-.has-text-light .flo-stat-value, .has-text-light .flo-stat-label { color: inherit; } .has-text-light.flo-block .flo-stats.has-dividers .flo-stat + .flo-stat { border-color: rgba(255,255,255,.25); }
-@media (max-width: 767px) { .flo-stat { padding-inline: 0 16px; } .flo-stats.has-dividers .flo-stat + .flo-stat { border-inline-start: 0; } }
+.has-text-light .flo-stat-value, .has-text-light .flo-stat-label { color: inherit; } .has-text-light.flo-block .flo-stats.has-dividers .flo-stat { border-color: rgba(255,255,255,.25); }
+@media (max-width: 767px) { .flo-stat, .flo-stats.is-align-start .flo-stat { padding-inline: 0 16px; } .flo-stats.has-dividers .flo-stat { border-inline-start: 0; } }
 
 /* Team (0.34) */
 .flo-team-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 28px; margin: 0; padding: 0; list-style: none; }

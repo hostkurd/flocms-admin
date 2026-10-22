@@ -27,7 +27,7 @@
             @else
             <div class="flo-person-photo is-initials" aria-hidden="true">{{ $person['initials'] }}</div>
             @endif
-            <h3 class="flo-person-name">{{ $person['name'] }}</h3>
+            <{{ $heading !== '' ? 'h3' : 'h2' }} class="flo-person-name">{{ $person['name'] }}</{{ $heading !== '' ? 'h3' : 'h2' }}>
             @if(($person['role'] ?? '') !== '')<p class="flo-person-role">{{ $person['role'] }}</p>@endif
             @if(($person['bio'] ?? '') !== '')<p class="flo-person-bio">{{ $person['bio'] }}</p>@endif
             @if($person['links'])

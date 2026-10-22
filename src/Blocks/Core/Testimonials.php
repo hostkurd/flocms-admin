@@ -63,8 +63,8 @@ final class Testimonials extends Block
         foreach (repeater_items($fields['items'] ?? []) as $item) {
             if (trim((string) ($item['quote'] ?? '')) === '') { continue; }
             $rating = max(0, min(5, (int) ($item['rating'] ?? 0)));
-            $items[] = $item + ['initials' => self::initials((string) ($item['name'] ?? '')), 'stars' => $rating,
-                'rated' => $rating > 0 ? AdminLang::get('blocks.site_rated', ['stars' => (string) $rating]) : ''];
+            $items[] = array_merge($item, ['initials' => self::initials((string) ($item['name'] ?? '')), 'stars' => $rating,
+                'rated' => $rating > 0 ? AdminLang::get('blocks.site_rated', ['stars' => (string) $rating]) : '']);
         }
         return ['quotes' => $items, 'layout' => in_array($fields['layout'] ?? '', ['grid', 'carousel', 'single'], true) ? (string) $fields['layout'] : 'grid'];
     }

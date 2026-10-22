@@ -98,7 +98,8 @@ export function notify(title: string, level: 'success' | 'danger' | 'warning' | 
   message.setAttribute('role', level === 'danger' || level === 'warning' ? 'alert' : 'status');
   message.dataset.adminNotice = '';
   message.dataset.adminNotification = `browser-${Date.now()}-${++counter}`;
-  message.dataset.adminNotificationDuration = level === 'success' || level === 'info' ? '5' : '0';
+  // 0.34: warnings and errors close after 12 seconds, as the server's do, with the line showing the time left.
+  message.dataset.adminNotificationDuration = level === 'success' || level === 'info' ? '5' : '12';
   const text = document.createElement('div');
   const line = document.createElement('p');
   line.className = 'fa-notification-title';
@@ -111,6 +112,13 @@ export function notify(title: string, level: 'success' | 'danger' | 'warning' | 
   dismiss.setAttribute('aria-label', panel.dataset.adminDismiss || 'Dismiss');
   dismiss.textContent = '×';
   message.append(text, dismiss);
+  if (level === 'danger' || level === 'warning') {
+    const timer = document.createElement('span');
+    timer.className = 'fa-notification-timer';
+    timer.setAttribute('aria-hidden', 'true');
+    timer.append(document.createElement('i'));
+    message.append(timer);
+  }
   payload.append(message);
   document.body.append(payload);
   receiveNotifications();

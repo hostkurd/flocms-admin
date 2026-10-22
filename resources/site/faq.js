@@ -3,7 +3,9 @@
   'use strict';
   function open() {
     if (!location.hash) return;
-    var item = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
+    var item = document.getElementById(id);
     if (item && item.matches('details.flo-faq-item')) { item.open = true; item.scrollIntoView({ block: 'start' }); }
   }
   window.addEventListener('hashchange', open);

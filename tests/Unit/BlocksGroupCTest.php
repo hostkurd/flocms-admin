@@ -75,6 +75,9 @@ final class BlocksGroupCTest extends TestCase
         self::assertSame(['location' => 'Add an address, or the place on the map.'], $contact->check(['map' => 'google']));
         self::assertSame([], $contact->check(['map' => 'none']));
         self::assertNull(Contact::coordinates('91, 10'));
+        $near = (new Contact())->data(['map' => 'osm', 'location' => '0.00001, -0.00001', 'zoom' => '15', 'address' => '   ', 'phone' => 'ask us', 'email' => 'a?b=c@x.io']);
+        self::assertStringContainsString('&marker=0.00001,-0.00001', $near['map_src'], 'never 1.0E-5');
+        self::assertSame(['', '', '', ''], [$near['address'], $near['tel'], $near['phone'], $near['mailto']]);
     }
 
     public function testFaqIsDetailsWithOneOpenAndSearchData(): void
@@ -88,6 +91,9 @@ final class BlocksGroupCTest extends TestCase
         self::assertStringContainsString('<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage"', $html);
         // Answers are text: markup is escaped, links only for web and mail addresses, never </script> in the data
         self::assertSame('<p>&lt;b&gt;Hi&lt;/b&gt; see <a href="https://example.com/a?b=1&amp;c=2">https://example.com/a?b=1&amp;c=2</a>.<br>javascript:alert(1)</p>', Faq::answerHtml("<b>Hi</b> see https://example.com/a?b=1&c=2.\njavascript:alert(1)"));
+        // Addresses in brackets or quotes (review of 0.34): the link stops before them
+        self::assertSame('<p>&lt;<a href="https://a.com/x">https://a.com/x</a>&gt; and &quot;<a href="https://b.com/y">https://b.com/y</a>&quot;</p>', Faq::answerHtml('<https://a.com/x> and "https://b.com/y"'));
+        self::assertSame('<p>(<a href="https://a.com">https://a.com</a>), <a href="mailto:me@x.io">me@x.io</a>.</p>', Faq::answerHtml('(https://a.com), me@x.io.'));
         $data = (new Faq())->data(['items' => [['question' => 'Q', 'answer' => '</script><script>alert(1)</script>']], 'schema' => '1']);
         self::assertStringNotContainsString('</script>', $data['schema_json']);
         $plain = self::render('faq', ['items' => [['question' => 'Q', 'answer' => 'A']], 'one_open' => '0', 'open_first' => '0', 'schema' => '0'], 'bplain');
@@ -107,8 +113,8 @@ final class BlocksGroupCTest extends TestCase
         self::assertStringContainsString('data-flo-slider data-autoplay="0" role="region" aria-roledescription="carousel" aria-label="What our clients say"', $carousel);
         self::assertSame(3, substr_count($carousel, 'aria-roledescription="slide"'));
         self::assertStringContainsString('data-flo-dot="2"', $carousel);
-        $single = self::render('testimonials', ['layout' => 'single'] + $sample, 'b3');
-        self::assertStringContainsString('flo-testimonials is-single', $single);
+        $single = self::render('testimonials', ['layout' => 'single', 'columns' => '2'] + $sample, 'b3');
+        self::assertStringContainsString('<div class="flo-testimonials is-single">', $single, 'no column class but for the grid');
         self::assertSame(1, substr_count($single, '<figure'));
         self::assertSame('KJ', Testimonials::initials(' karwan  jalal  x'));
         self::assertSame('سأ', Testimonials::initials('سارا أحمد'));
@@ -123,6 +129,8 @@ final class BlocksGroupCTest extends TestCase
         self::assertStringNotContainsString('Bad', $html, 'a number that is not one is left out');
         self::assertSame(['items.1.number' => 'Enter a number, e.g. 250 or 98.5.'], (new Stats())->check(['items' => json_encode([['number' => '12'], ['number' => '12abc']])]));
         self::assertStringNotContainsString('data-flo-count-up', self::render('stats', ['items' => [['number' => '3', 'label' => 'x']], 'count_up' => '0'], 'b2'));
+        // A decimal comma, or commas between thousands
+        self::assertSame(['98.5', '1250000', '1.25', null, null], array_map([Stats::class, 'number'], ['98,5', '1,250,000', '1,25', '1,2345', '12,50,0']));
     }
 
     public function testTeamLinksAreLabelledAndSafe(): void
@@ -134,6 +142,12 @@ final class BlocksGroupCTest extends TestCase
         self::assertStringNotContainsString('javascript:', $html);
         self::assertStringContainsString('<div class="flo-person-photo is-initials" aria-hidden="true">SA</div>', $html);
         self::assertSame(['kind' => 'x', 'name' => 'X'], Team::network('https://twitter.com/sara'));
+        // Stored values never take the place of the computed links (review of 0.34); no empty or parameter-adding links
+        $forged = self::render('team', ['people' => [['name' => 'A', 'phone' => 'call me', 'email' => 'x?cc=boss@evil.com', 'links' => [['url' => 'javascript:alert(1)', 'kind' => 'x', 'label' => 'l']]]]], 'b2');
+        self::assertStringNotContainsString('javascript:', $forged);
+        self::assertStringNotContainsString('tel:', $forged);
+        self::assertStringNotContainsString('mailto:', $forged);
+        self::assertStringContainsString('<h2 class="flo-person-name">A</h2>', $forged, 'without the block\'s heading, names are h2');
     }
 
     public function testHeroPositionReplacesAlignmentAndKeepsOldPages(): void

@@ -54,15 +54,18 @@ final class Faq extends Block
     /** Plain text as HTML: paragraphs at blank lines, <br> at line breaks, links for web and mail addresses. */
     public static function answerHtml(string $text): string
     {
-        $paragraphs = preg_split('/\R\s*\R/u', trim($text)) ?: [];
+        $e = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
         $html = '';
-        foreach ($paragraphs as $paragraph) {
-            $escaped = htmlspecialchars(trim($paragraph), ENT_QUOTES, 'UTF-8');
-            $linked = preg_replace_callback('~\b(https?://[^\s<>"\']+[^\s<>"\'.,;:!?)\]]|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})~u', static function (array $m): string {
-                $href = str_contains($m[1], '@') && !str_starts_with($m[1], 'http') ? 'mailto:' . $m[1] : $m[1];
-                return '<a href="' . $href . '">' . $m[1] . '</a>';
-            }, $escaped) ?? $escaped;
-            $html .= '<p>' . (preg_replace('/\R/u', '<br>', $linked) ?? $linked) . '</p>';
+        foreach (preg_split('/\R\s*\R/u', trim($text)) ?: [] as $paragraph) {
+            // Links are found in the text itself, then every piece is escaped (an address never ends in punctuation or a closing bracket or quote).
+            $parts = preg_split('~(https?://[^\s<>"\'`]+[^\s<>"\'`.,;:!?)\]}]|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})~u', trim($paragraph), -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
+            $out = '';
+            foreach ($parts as $index => $part) {
+                if ($index % 2 === 0) { $out .= str_replace("\n", '<br>', $e(preg_replace('/\R/u', "\n", $part) ?? $part)); continue; }
+                $href = str_starts_with($part, 'http') ? $part : 'mailto:' . $part;
+                $out .= '<a href="' . $e($href) . '">' . $e($part) . '</a>';
+            }
+            $html .= '<p>' . $out . '</p>';
         }
         return $html;
     }

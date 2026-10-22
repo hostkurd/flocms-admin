@@ -1,6 +1,6 @@
 @php /* Testimonials block (flocms-admin 0.34): a grid, a carousel (the slider's script) or one large quote. */ $t = [\FloCMS\Admin\Support\AdminLang::class, 'get']; $list = $layout === 'single' ? array_slice($quotes, 0, 1) : $quotes; $carousel = $layout === 'carousel' && count($list) > 1; @endphp
 @if($list)
-<div class="flo-testimonials is-{{ $carousel ? 'carousel' : ($layout === 'single' ? 'single' : 'grid') }} is-cols-{{ max(1, min(3, (int) ($columns ?? 3))) }}">
+<div class="flo-testimonials is-{{ $carousel ? 'carousel' : ($layout === 'single' ? 'single' : 'grid') }}{{ !$carousel && $layout !== 'single' ? ' is-cols-' . max(1, min(3, (int) ($columns ?? 3))) : '' }}">
     @if($heading !== '' || $intro !== '')
     <div class="flo-block-head">
         @if($heading !== '')<h2 class="flo-heading">{{ $heading }}</h2>@endif

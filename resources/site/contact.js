@@ -15,5 +15,7 @@
     iframe.referrerPolicy = 'no-referrer-when-downgrade';
     box.classList.remove('is-waiting');
     box.replaceChildren(iframe);
+    // The button is gone: the map takes the focus, so keyboard users stay where they were.
+    iframe.focus();
   });
 })();

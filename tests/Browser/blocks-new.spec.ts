@@ -62,7 +62,8 @@ test('Stats count up, and stay still for less motion; testimonials turn as a car
   // Less motion: the number is shown at once, with no counting
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/__test/landing-view');
-  await expect(page.locator('[data-flo-count="250"]')).toHaveText('250');
+  // Right after the page loads, before any counting could end: already the number
+  expect(await page.locator('[data-flo-count="250"]').evaluate(el => el.textContent)).toBe('250');
 });
 
 test('the new blocks are added from Add block and saved', async ({ page }) => {

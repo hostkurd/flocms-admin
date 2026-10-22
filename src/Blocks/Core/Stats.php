@@ -54,10 +54,13 @@ final class Stats extends Block
         return $heading !== '' ? mb_strimwidth($heading, 0, 80, '…') : self::label();
     }
 
-    /** "250", "98.5", "1,200" (digits, one . or , decimal part); null otherwise. */
+    /** "250", "98.5", "98,5", "1,200", "1 200.5": digits with a decimal part; null otherwise. */
     public static function number(string $value): ?string
     {
-        $value = str_replace([',', ' '], ['', ''], trim($value));
+        $value = str_replace(' ', '', trim($value));
+        // Thousands with commas ("1,250,000"), or a decimal comma ("98,5")
+        if (preg_match('/^-?\d{1,3}(,\d{3})+(\.\d{1,3})?$/', $value) === 1) { $value = str_replace(',', '', $value); }
+        elseif (preg_match('/^-?\d+,\d{1,2}$/', $value) === 1) { $value = str_replace(',', '.', $value); }
         return preg_match('/^-?\d{1,12}(\.\d{1,3})?$/', $value) === 1 ? $value : null;
     }
 
