@@ -58,11 +58,11 @@ final class BlockDisplayTest extends TestCase
     public function testCustomCssIsScopedToTheBlock(): void
     {
         $scope = '.flo-block[data-block-id="b8f2c1"]';
-        $css = "& { border-radius: 24px; }\n.flo-card, .flo-card:is(.a, .b) { gap: 2rem; }\n.flo-card:hover &x {}\n@media (max-width: 767px) {\n  & { padding-inline: 0; }\n  h2 { font-size: 1.5rem }\n}\ncolor: red;\n@keyframes pop { from { opacity: 0 } to { opacity: 1 } }\n/* a comment { */ p::before { content: \"{ ; }\"; }";
+        $css = "& { border-radius: 24px; }\n.flo-card, .flo-card:is(.a, .b) { gap: 2rem; }\n&.is-wide > .x:hover {}\n@media (max-width: 767px) {\n  & { padding-inline: 0; }\n  h2 { font-size: 1.5rem }\n}\ncolor: red;\n@keyframes pop { from { opacity: 0 } to { opacity: 1 } }\n/* a comment { */ p::before { content: \"{ ; }\"; }";
         self::assertNull(BlockCss::problem($css));
         self::assertSame($scope . '{border-radius: 24px;}'
             . $scope . ' .flo-card,' . $scope . ' .flo-card:is(.a, .b){gap: 2rem;}'
-            . '.flo-card:hover ' . $scope . 'x{}'
+            . $scope . '.is-wide > .x:hover{}'
             . '@media (max-width: 767px){' . $scope . '{padding-inline: 0;}' . $scope . ' h2{font-size: 1.5rem}}'
             . $scope . '{color: red}'
             . '@keyframes pop{from { opacity: 0 } to { opacity: 1 }}'
@@ -86,12 +86,30 @@ final class BlockDisplayTest extends TestCase
             "\n\n{ color: red }" => 'Line 3: a rule needs a selector before {.',
             '& { behavior: x; }' => 'Line 1: “behavior” isn’t allowed in custom CSS.',
             str_repeat('a', BlockCss::MAX + 1) => 'Custom CSS may have at most 5000 characters.',
+            // Strings a browser ends where this parser wouldn't (review of 0.33): a CR, a form feed, a line break
+            "& { content: 'x\r}body{background:red}z{a:'; }" => 'Line 1: “U+000D” isn’t allowed in custom CSS.',
+            "& { content: 'x\f}body{background:red}z{a:'; }" => 'Line 1: “U+000C” isn’t allowed in custom CSS.',
+            "& { content: 'x\n}\n[data-a='}body{background:red}'] { color: blue }" => 'Line 1: a text in quotes must close on the same line.',
+            "@media 'x\n { & { color: red } }" => 'Line 1: a text in quotes must close on the same line.',
+            // Brackets a browser would read past the rule
+            '& { a: ( { ) }' => 'Line 1: a ( or [ has no partner, or holds {, } or ;.',
+            ':is( ] { color: red }' => 'Line 1: a ( or [ has no partner, or holds {, } or ;.',
+            // "&" only at the start of a selector, never reaching its neighbours or the page
+            ':root:has(&) body { color: red }' => 'Line 1: & may only start a selector, and not be followed by + or ~.',
+            "a,\nhtml:has(&) header { color: red }" => 'Line 1: & may only start a selector, and not be followed by + or ~.',
+            '& ~ * { color: red }' => 'Line 1: & may only start a selector, and not be followed by + or ~.',
+            '&.x + main { color: red }' => 'Line 1: & may only start a selector, and not be followed by + or ~.',
+            '& & { color: red }' => 'Line 1: & may only start a selector, and not be followed by + or ~.',
+            '&x { color: red }' => 'Line 1: & may only start a selector, and not be followed by + or ~.',
         ];
         foreach ($cases as $css => $message) {
             self::assertSame($message, BlockCss::problem($css), $css);
             self::assertSame('', BlockCss::scope($css, 'b1'), $css);
         }
         self::assertNull(BlockCss::problem('& { background-image: linear-gradient(red, blue); color: var(--x); }'), 'functions that load nothing are fine');
+        self::assertNull(BlockCss::problem("& {\r\n  color: red;\r\n}\r\n.x[data-y=\"a;b\"] { gap: 1px }"), 'Windows line ends and ; in a string are fine');
+        self::assertSame(5000, mb_strlen(str_repeat('ب', 5000)));
+        self::assertNull(BlockCss::problem('/* ' . str_repeat('ب', 4990) . ' */'), 'the limit counts characters, not bytes');
     }
 
     public function testStylesComeFromTheConfigPhpAndTheBlock(): void
@@ -117,8 +135,8 @@ final class BlockDisplayTest extends TestCase
         self::config(['block_colours' => ['sand' => ['label' => 'Sand', 'value' => '#F4EDE1'], 'ink' => ['value' => '#101828', 'text' => 'light'], 'none' => ['value' => '#fff'], 'bad' => ['value' => 'red']]]);
         self::assertTrue(BlockColours::configured());
         self::assertSame(['sand' => ['label' => 'Sand', 'value' => '#f4ede1', 'text' => 'dark'], 'ink' => ['label' => 'Ink', 'value' => '#101828', 'text' => 'light']], BlockColours::all());
-        self::assertSame('.has-bg-sand{background-color:#f4ede1;color:var(--flo-dark,#101828)}', BlockCss::colourRule('sand'));
-        self::assertSame('.has-bg-ink{background-color:#101828;color:#fff}', BlockCss::colourRule('ink'));
+        self::assertSame('.has-bg-sand,.flo-section.has-bg-sand{background-color:#f4ede1;color:var(--flo-dark,#101828)}', BlockCss::colourRule('sand'));
+        self::assertSame('.has-bg-ink,.flo-section.has-bg-ink{background-color:#101828;color:#fff}', BlockCss::colourRule('ink'));
         self::assertCount(2, BlockColours::problems());
         self::assertSame('light', BlockColours::textFor('#0b6e91'));
         self::assertSame('dark', BlockColours::textFor('#fc0'));
@@ -141,7 +159,8 @@ final class BlockDisplayTest extends TestCase
         self::assertStringNotContainsString('<style', $html, 'the CSS goes to blocks_assets()');
         $assets = blocks_assets();
         self::assertSame(1, preg_match('~<link rel="stylesheet" href="[^"]*/flo-admin/asset/block-styles-([a-f0-9]{24})\.css">~', $assets, $m), $assets);
-        self::assertSame('.flo-block[data-block-id="bh1"]{color: red}.has-bg-sand{background-color:#f4ede1;color:var(--flo-dark,#101828)}', file_get_contents((string) BlockCss::path($m[1])));
+        self::assertSame('.flo-block[data-block-id="bh1"]{color: red}.has-bg-sand,.flo-section.has-bg-sand{background-color:#f4ede1;color:var(--flo-dark,#101828)}', file_get_contents((string) BlockCss::path($m[1])));
+        self::assertSame([], glob(Admin::root() . '/storage/cache/blocks/*.tmp') ?: [], 'written whole, then renamed');
         // From the cache, the same; blocks printed after blocks_assets() link their own CSS
         BlockRenderer::reset(strtotime('2026-10-22 12:00'));
         blocks_assets();
@@ -150,6 +169,7 @@ final class BlockDisplayTest extends TestCase
         $data = blocks_data(json_encode($page));
         self::assertSame(['style' => 'underlined', 'bg' => 'sand', 'text' => 'light'], array_intersect_key($data[0]['settings'], ['style' => 1, 'bg' => 1, 'text' => 1]));
         self::assertArrayNotHasKey('_css', $data[0]['settings']);
+        self::assertSame([], array_intersect_key($data[1]['settings'], ['style' => 1, 'bg' => 1, 'text' => 1, '_style' => 1]), 'a style or colour the theme no longer has is left out, as on the page');
     }
 
     public function testSpacingDefaultsAreNamedAndSavedAsNothing(): void
@@ -174,9 +194,11 @@ final class BlockDisplayTest extends TestCase
         $style = $field->blockForm(BlockRegistry::find('heading'))->fields()['_style'];
         self::assertStringContainsString('The style “glass” no longer exists.', $style->renderControl('x', 'x', 'glass'));
         self::assertStringNotContainsString('fa-choice-gone', $style->renderControl('x', 'x', 'underlined'));
-        $state = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'heading', 'f' => ['text' => 'Hi', '_style' => 'glass']], 'bk' => ['type' => 'heading', 'f' => ['text' => 'Ok', '_style' => 'underlined']]]]], self::LANGS);
+        $state = $field->stateFromInput(['content' => ['_' => ['bh' => ['type' => 'heading', 'f' => ['text' => 'Hi', '_style' => 'glass', '_bg' => 'gone']], 'bk' => ['type' => 'heading', 'f' => ['text' => 'Ok', '_style' => 'underlined', '_bg' => 'dark']]]]], self::LANGS);
         $lists = $field->lists($state)['_'];
         self::assertSame('', $lists[0]['settings']['_style']);
+        self::assertSame('', $lists[0]['settings']['_bg'], 'a colour the theme no longer has goes too');
+        self::assertSame('dark', $lists[1]['settings']['_bg']);
         self::assertSame('underlined', $lists[1]['settings']['_style']);
         self::assertSame([], $field->validateBlocks($state, static fn (): array => []));
     }
@@ -204,8 +226,13 @@ final class BlockDisplayTest extends TestCase
         $kept = $field->stateFromInput($post('bh', ['_css' => '& { color: blue }', '_css_signed' => $signed]), self::LANGS);
         self::assertSame('& { color: red }', $field->lists($kept)['_'][0]['settings']['_css']);
         self::assertStringNotContainsString('_css_signed', (string) $field->dehydrate($kept));
-        foreach ([$post('bh', ['_css' => '& { color: blue }']), $post('bh', ['_css' => 'x', '_css_signed' => 'x|' . base64_encode('x')]), $post('bnew', ['_css_signed' => $signed])] as $input) {
-            self::assertSame('', $field->lists($field->stateFromInput($input, self::LANGS))['_'][0]['settings']['_css']);
+        // No copy (a new block): no CSS
+        self::assertSame('', $field->lists($field->stateFromInput($post('bh', ['_css' => '& { color: blue }']), self::LANGS))['_'][0]['settings']['_css']);
+        // A copy that doesn't match (forged, another block's, an old tab): not saved, the page asks for a reload
+        foreach ([$post('bh', ['_css' => 'x', '_css_signed' => 'x|' . base64_encode('x')]), $post('bnew', ['_css_signed' => $signed])] as $input) {
+            $stale = $field->stateFromInput($input, self::LANGS);
+            self::assertSame([], $field->lists($stale)['_']);
+            self::assertStringContainsString('out of date', $field->validateBlocks($stale, static fn (): array => [])['content']);
         }
         // Their saves aren't checked against the CSS rules (it is the stored copy)
         self::assertSame([], $field->validateBlocks($kept, static fn (): array => []));

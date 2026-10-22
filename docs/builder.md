@@ -113,7 +113,7 @@ and the inside comes from **`views/blocks/<type>.html`** in the site, or the pac
 
 A site styles its blocks with its own CSS, in four ways, from the broadest:
 
-1. **The CSS variables** of `blocks.css`, set in the theme's stylesheet: `--flo-container`, `--flo-narrow`, `--flo-gutter`, `--flo-block-gap`, `--flo-radius`, `--flo-brand`, `--flo-brand-text`, `--flo-light`, `--flo-dark`, `--flo-muted`, and (0.33) the spacing sizes `--flo-space-sm`, `--flo-space-md`, `--flo-space-lg`, `--flo-space-xl` (by default a third, half, all and one and a half of `--flo-block-gap`) and `--flo-bg-padding`, the space inside a block with a background. They change every block at once, without touching the panel's files.
+1. **The CSS variables** of `blocks.css`, set in the theme's stylesheet: `--flo-container`, `--flo-narrow`, `--flo-gutter`, `--flo-block-gap`, `--flo-radius`, `--flo-brand`, `--flo-brand-text`, `--flo-light`, `--flo-dark`, `--flo-muted`, and (0.33, optional) the spacing sizes `--flo-space-sm`, `--flo-space-md`, `--flo-space-lg`, `--flo-space-xl` (by default a third, half, all and one and a half of `--flo-block-gap`, wherever it is set) and `--flo-bg-padding` / `--flo-bg-padding-phone` (40 / 24 px), the space inside a block with a background. They change every block at once, without touching the panel's files.
 2. **The classes every block prints**: the wrapper `flo-block flo-block-<type>` (`.flo-block-cards`, `.flo-block-hero`), its width (`is-boxed`, `is-full`), spacing (`flo-space-above-large`, `flo-space-above-phone-small`), devices, style (`is-style-shadow`) and colour (`has-bg-brand`); inside, each template's own classes (`.flo-card`, `.flo-hero-heading`, `.flo-section.is-bg-dark`). Rules for these go in the site's stylesheet, loaded after `{!! blocks_assets() !!}`.
 3. **Styles** (0.33): named looks a developer defines and editors pick from a list; better than asking editors to type class names. See below.
 4. **The CSS class** in a block's Display tab, for one block: `is-highlight` there, and `.flo-block.is-highlight { … }` in the stylesheet. The anchor gives one block an `id` too.
@@ -149,7 +149,7 @@ A name is lower-case letters, digits and `-`; a label is words, a translation ke
 ],
 ```
 
-The panel then prints each colour's rule (`.has-bg-sand { background-color: #f4ede1; color: … }`) in the page's block stylesheet (below), so a theme needs no CSS for them; it can add its own for `.has-bg-sand` all the same. A block with a background gets `--flo-bg-padding` (40 px, 24 px on phones) inside. Names are lower-case letters, digits and `-`, and not `none`, `colour`, `image` or `auto`.
+The panel then prints each colour's rule (`.has-bg-sand, .flo-section.has-bg-sand { background-color: #f4ede1; color: … }`) in the page's block stylesheet (below), so a theme needs no CSS for them; it can add its own for `.has-bg-sand` all the same. A block with a background gets `--flo-bg-padding` (40 px; `--flo-bg-padding-phone`, 24 px, on phones) inside. Names are lower-case letters, digits and `-`, and not `none`, `colour`, `image` or `auto`.
 
 ### Custom CSS
 
@@ -161,9 +161,9 @@ People with the **`blocks.custom_css`** permission (Roles page, System; Super ad
 @media (max-width: 767px) { & { padding-inline: 0; } }
 ```
 
-The panel checks it when the page is saved and scopes every rule to `.flo-block[data-block-id="b8f2c1"]`. It refuses, with the line: braces that don't match, a rule inside a rule, `url()` and the other functions that load files (`image-set()`, `image()`, `src()`…), `@import` and any at-rule but `@media`, `@supports`, `@container` and `@keyframes`, backslashes, `<`, `javascript:`, `expression()`, `behavior` and `-moz-binding`, and more than 5,000 characters. A background image is set with a Section instead.
+The panel checks it when the page is saved and scopes every rule to `.flo-block[data-block-id="b8f2c1"]`. `&` may only start a selector (`&`, `&.is-wide`, `& > h2`), never be followed by `+` or `~`, nor sit inside `:has()` or `:is()`, so a rule never reaches outside the block. It refuses, with the line: braces that don't match, ( and [ that don't close in order (or hold `{`, `}` or `;`), text in quotes that doesn't close on its line, control characters, a rule inside a rule, `url()` and the other functions that load files (`image-set()`, `image()`, `src()`…), `@import` and any at-rule but `@media`, `@supports`, `@container` and `@keyframes`, backslashes, `<`, `javascript:`, `expression()`, `behavior` and `-moz-binding`, and more than 5,000 characters. A background image is set with a Section instead.
 
-For everyone else the box is hidden and the block's CSS is kept as it is (a copy signed for that block travels with the form); a block they duplicate or paste has none. Changes show in the activity log with the page.
+For everyone else the box is hidden and the block's CSS is kept as it is (a copy signed for that block travels with the form); a block they duplicate or paste has none, and a copy that no longer matches (a tab left open across a sign-in) asks them to reload instead of saving without it. Changes show in the activity log with the page.
 
 On the website the CSS of the blocks on a page, and the rules of the theme's colours, are one small stylesheet named by its content, `/flo-admin/asset/block-styles-<hash>.css`, cached for good and linked by `{!! blocks_assets() !!}` after the base styles. Being a file, it works under a strict Content-Security-Policy. When `storage/cache/blocks` can't be written it is a `<style>` tag instead; give it your policy's nonce with `'block_style_nonce' => fn () => $nonce` in `config/admin.php`. Stylesheets no page has used for 30 days are removed.
 

@@ -98,15 +98,22 @@ final class BlockSettings
 
     /**
      * Submitted settings: without the permission the CSS is the signed copy (a
-     * new or duplicated block has none); a style that no longer exists goes.
+     * new or duplicated block has none, and one that no longer matches asks for
+     * a reload); a style or colour that no longer exists goes.
      */
     public static function acceptInput(Block $block, array $state, string $id): array
     {
         if (!BlockCss::allowed()) {
-            $state['_css'] = \FloCMS\Admin\Form\Fields\Builder::unsign((string) ($state['_css_signed'] ?? ''), 'css|' . $id) ?? '';
+            $signed = (string) ($state['_css_signed'] ?? '');
+            $css = \FloCMS\Admin\Form\Fields\Builder::unsign($signed, 'css|' . $id);
+            // A copy that no longer matches (an old tab, a changed key): reload rather than lose the CSS.
+            if ($css === null && $signed !== '') { $state['_rejected'] ??= 'stale'; }
+            $state['_css'] = $css ?? '';
         }
         $state['_css_signed'] = '';
+        // A style or colour the theme no longer has goes.
         if (($state['_style'] ?? '') !== '' && !array_key_exists((string) $state['_style'], BlockStyles::for($block))) { $state['_style'] = ''; }
+        if (($state['_bg'] ?? '') !== '' && BlockColours::find((string) $state['_bg']) === null) { $state['_bg'] = ''; }
         return $state;
     }
 

@@ -342,6 +342,8 @@ function snapshot(list: HTMLElement, node: HTMLElement): Snapshot | null {
     if (control.parentElement === pane) return;
     const s = suffix(control.name);
     if (s === null) return;
+    // A block's CSS (0.33) is copied only by people who may write it: its signed copy belongs to this block.
+    if (s.endsWith('[_css_signed]') || (s.endsWith('[_css]') && control.type === 'hidden')) return;
     const value: Value = { s, t: control.type, v: control.value };
     if (control instanceof HTMLInputElement && (control.type === 'radio' || control.type === 'checkbox')) value.c = control.checked;
     if (control instanceof HTMLSelectElement) value.o = [...control.options].map(option => option.selected);

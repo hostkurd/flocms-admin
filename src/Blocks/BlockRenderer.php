@@ -153,7 +153,7 @@ final class BlockRenderer
             $extra = $block !== null ? $block->data($fields) : [];
             array_walk_recursive($extra, static function (mixed &$item): void { if (is_object($item) && method_exists($item, 'toArray')) { $item = $item->toArray(); } });
             $entry = ['id' => (string) ($node['id'] ?? ''), 'type' => (string) ($node['type'] ?? ''), 'fields' => $extra + $fields,
-                'settings' => self::publicSettings($node['settings'] ?? null)];
+                'settings' => self::publicSettings($node['settings'] ?? null, $block)];
             if ((int) ($node['column'] ?? 0) > 0) { $entry['column'] = (int) $node['column']; }
             if (is_array($node['children'] ?? null)) { $entry['children'] = self::data($node['children'], $lang); }
             $out[] = $entry;
@@ -220,7 +220,7 @@ final class BlockRenderer
         $fields = self::withDefaults($block, $fields);
         $vars = $block->data($fields) + $fields;
         $info = [
-            'id' => (string) ($node['id'] ?? ''), 'type' => $type, 'settings' => self::publicSettings($settings), 'lang' => $lang,
+            'id' => (string) ($node['id'] ?? ''), 'type' => $type, 'settings' => self::publicSettings($settings, $block), 'lang' => $lang,
             'anchor' => BlockSettings::anchor((string) ($settings['anchor'] ?? '')),
         ];
         if ($block instanceof Columns) {
@@ -256,13 +256,20 @@ final class BlockRenderer
      * A block's settings for the website: without the editors' own (_label,
      * _note) and the CSS; style and colours (0.33) without their "_".
      */
-    private static function publicSettings(mixed $settings): array
+    private static function publicSettings(mixed $settings, ?Block $block = null): array
     {
         if (!is_array($settings)) { return []; }
         $out = [];
         foreach ($settings as $key => $value) {
-            if (in_array($key, ['_style', '_bg', '_text'], true)) { $out[substr($key, 1)] = $value; }
-            elseif (!is_string($key) || !str_starts_with($key, '_')) { $out[$key] = $value; }
+            if (!is_string($key) || !str_starts_with($key, '_')) { $out[$key] = $value; }
+        }
+        // Only a style and colour the theme still has, as the wrapper prints them.
+        $style = (string) ($settings['_style'] ?? '');
+        if ($block !== null && $style !== '' && array_key_exists($style, BlockStyles::for($block))) { $out['style'] = $style; }
+        $bg = (string) ($settings['_bg'] ?? '');
+        if ($bg !== '' && !$block instanceof Core\Section && ($colour = BlockColours::find($bg)) !== null) {
+            $out['bg'] = $bg;
+            $out['text'] = in_array($settings['_text'] ?? '', ['light', 'dark'], true) ? (string) $settings['_text'] : $colour['text'];
         }
         return $out;
     }
@@ -433,7 +440,9 @@ final class BlockRenderer
         };
         $walk($nodes);
         ksort($templates);
-        $key = hash('sha256', $lang . '|' . Admin::VERSION . '|' . json_encode($nodes) . '|' . json_encode($templates));
+        // The theme's styles and colours (0.33) too, so a change in config/admin.php shows at once.
+        $looks = json_encode([Admin::config()->blockStyles(), Admin::config()->blockColours()]);
+        $key = hash('sha256', $lang . '|' . Admin::VERSION . '|' . json_encode($nodes) . '|' . json_encode($templates) . '|' . $looks);
         return $directory . '/' . substr($key, 0, 40) . '.json';
     }
 

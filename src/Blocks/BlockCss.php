@@ -59,10 +59,18 @@ final class BlockCss
      */
     private static function parse(string $css): array
     {
-        if (strlen($css) > self::MAX) { return ['items' => [], 'error' => [1, 'too_long', ['max' => (string) self::MAX]]]; }
+        if (mb_strlen($css, 'UTF-8') > self::MAX) { return ['items' => [], 'error' => [1, 'too_long', ['max' => (string) self::MAX]]]; }
+        $css = str_replace("\r\n", "\n", $css);
         // Comments go (their line breaks stay, so the lines keep their numbers).
         $plain = preg_replace_callback('~/\*.*?(\*/|$)~s', static fn (array $m): string => preg_replace('/[^\n]/', ' ', $m[0]) ?? '', $css) ?? '';
         $lineAt = static fn (int $offset): int => substr_count(substr($plain, 0, $offset), "\n") + 1;
+        // Control characters (a lone CR or a form feed ends a string in a browser, not here).
+        if (preg_match('/[\x00-\x08\x0B-\x1F\x7F]/', $plain, $m, PREG_OFFSET_CAPTURE) === 1) {
+            return ['items' => [], 'error' => [$lineAt((int) $m[0][1]), 'not_allowed', ['what' => sprintf('U+%04X', ord($m[0][0]))]]];
+        }
+        if (($problem = self::structure($plain)) !== null) {
+            return ['items' => [], 'error' => [$lineAt($problem[0]), $problem[1], []]];
+        }
         $refused = [
             '/\\\\/' => '\\', '/</' => '<',
             '/@import\b/i' => '@import',
@@ -79,6 +87,37 @@ final class BlockCss
         $error = null;
         $items = self::items($plain, $pos, false, $lineAt, $error);
         return ['items' => $error === null ? $items : [], 'error' => $error];
+    }
+
+    /**
+     * Strings close on their own line, and ( and [ close in order with nothing
+     * of { } ; inside them: what a browser would read differently from this
+     * parser (and so out of the block) is refused. Returns [offset, problem].
+     *
+     * @return array{0: int, 1: string}|null
+     */
+    private static function structure(string $css): ?array
+    {
+        $stack = [];
+        $length = strlen($css);
+        for ($i = 0; $i < $length; $i++) {
+            $c = $css[$i];
+            if ($c === '"' || $c === "'") {
+                $close = strpos($css, $c, $i + 1);
+                $newline = strpos($css, "\n", $i + 1);
+                if ($close === false || ($newline !== false && $newline < $close)) { return [$i, 'string']; }
+                $i = $close;
+                continue;
+            }
+            if ($c === '(' || $c === '[') { $stack[] = [$c === '(' ? ')' : ']', $i]; continue; }
+            if ($c === ')' || $c === ']') {
+                if ($stack === [] || end($stack)[0] !== $c) { return [$i, 'brackets']; }
+                array_pop($stack);
+                continue;
+            }
+            if (($c === '{' || $c === '}' || $c === ';') && $stack !== []) { return [end($stack)[1], 'brackets']; }
+        }
+        return $stack !== [] ? [end($stack)[1], 'brackets'] : null;
     }
 
     /**
@@ -142,6 +181,14 @@ final class BlockCss
                 }
                 $error = [$at, 'at_rule', []];
                 break;
+            }
+            // "&" is the block: only at the start of a selector, and never followed by + or ~ (its neighbours).
+            foreach (self::split($prelude) as $selector) {
+                $amps = substr_count($selector, '&');
+                if ($amps > 1 || ($amps === 1 && preg_match('/^&(?![\w-])/', $selector) !== 1) || preg_match('/^&[^\s>+~]*\s*[+~]/', $selector) === 1) {
+                    $error = [$at, 'ampersand', []];
+                    break 2;
+                }
             }
             $bodyStart = $pos;
             $c = self::until($css, $pos, '{}');
@@ -218,7 +265,8 @@ final class BlockCss
     public static function colourRule(string $name): string
     {
         if (!BlockColours::configured() || ($colour = BlockColours::find($name)) === null) { return ''; }
-        return '.has-bg-' . $name . '{background-color:' . $colour['value'] . ';color:' . ($colour['text'] === 'light' ? '#fff' : 'var(--flo-dark,#101828)') . '}';
+        // A Section's own is-bg-<name> rules (blocks.css) are more specific: this one matches them.
+        return '.has-bg-' . $name . ',.flo-section.has-bg-' . $name . '{background-color:' . $colour['value'] . ';color:' . ($colour['text'] === 'light' ? '#fff' : 'var(--flo-dark,#101828)') . '}';
     }
 
     /** The tag of a page's block CSS: a link to its cached file, else a <style> tag. */
@@ -228,7 +276,11 @@ final class BlockCss
         $hash = substr(hash('sha256', $css), 0, 24);
         $file = self::file($hash);
         if ($file !== null) {
-            if (!is_file($file)) { @file_put_contents($file, $css, LOCK_EX); }
+            // Written whole, then renamed into place: a file served for a year is never half written.
+            if (!is_file($file)) {
+                $temporary = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
+                if (@file_put_contents($temporary, $css) !== false && !@rename($temporary, $file)) { @unlink($temporary); }
+            }
             elseif ((int) @filemtime($file) < time() - 86400) { @touch($file); }
             if (is_file($file)) {
                 return '<link rel="stylesheet" href="' . htmlspecialchars(\FloCMS\Admin\Assets::blockStylesUrl($hash), ENT_QUOTES, 'UTF-8') . '">' . "\n";
