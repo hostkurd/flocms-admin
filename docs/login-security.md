@@ -53,6 +53,8 @@ Each person turns it on under **Profile → Security**:
 2. They scan the QR code with their app (or type the key shown under it) and enter the 6-digit code it shows. Only a right code turns it on.
 3. The **10 backup codes** are shown once, with Download, Copy and Print. Each works once.
 
+Turning it on or off emails the owner, since anyone with the password could do it. Five wrong passwords or codes on the Security tab pause these buttons for 15 minutes.
+
 The Security tab then shows when it was turned on, how many backup codes are left (**New backup codes** makes a new set), the **remembered devices** with **Forget**, and **Turn off**. New backup codes and Turn off ask for the password or a current code.
 
 ### Signing in
@@ -62,6 +64,7 @@ After the password, the panel shows **Enter your code** (`/admin/two-factor`) in
 - A code from the app, or **Use a backup code instead**.
 - **Remember this device for 30 days** skips the step on this browser. The browser keeps a random token in a cookie; only a keyed hash of it is stored. Changing the password forgets every device; so do resetting and turning off two-factor sign-in.
 - **Use another account** signs out.
+- If two-factor sign-in is on but not working (for example `APP_KEY` was lost in a deploy, or its tables can't be read), people who use it, or whose role requires it, can't sign in until it is fixed: the step never lets a sign-in through without a code. `admin:doctor` says what is wrong.
 - A code works once (one 30-second step either side is accepted for clock drift).
 - Five wrong codes in a row end the sign-in: the person starts again at the login page, where the skeleton's login throttle applies. Ten wrong codes within an hour pause the account's codes for 15 minutes and email the owner, since their password is known to someone.
 
@@ -69,7 +72,7 @@ Until the step is done the person counts as signed out everywhere, the website i
 
 ### Requiring it for a role
 
-On **Site → Roles**, a role's page has a **Sign-in** card with **Require two-factor**. People with that role who haven't set it up are taken to the setup at their next sign-in, before anything else, and can't turn it off. The card counts who still has to. You can change it for roles up to your own level (Super admin for its own role too); it goes to the activity log. Without the Roles page, list the role numbers in `'required_roles'`.
+On **Site → Roles**, a role's page has a **Sign-in** card with **Require two-factor**. People with that role who haven't set it up are taken to the setup at their next sign-in, before anything else, and can't turn it off. The card counts who still has to. You can change it for roles up to your own level (Super admin for its own role too); it goes to the activity log. Without the Roles page, list the role numbers in `'required_roles'`; a role listed there can't be switched off on the Roles page.
 
 ### When someone loses their phone
 
@@ -82,8 +85,10 @@ On **Site → Roles**, a role's page has a **Sign-in** card with **Require two-f
 The skeleton's `users.is_verified` column says whether an address is confirmed. Links are sent to it and work once, for `'expires'` minutes; a newer link replaces older ones; three links per account and hour. Only a hash of each link's token is stored.
 
 - **Invitations**: the new-account form gets **Send an invitation** (on by default with `'invite' => true`). The account is saved **Pending** without a password; the email's link confirms the address and lets the person choose a password, then the account becomes active. The skeleton already refuses Pending accounts at sign-in ("pending verification"). Turn the switch off to set a password yourself, as before.
+- **Opening a link** asks first: the address is confirmed (or changed) only with the **Confirm** button, because mail scanners open links on their own. An invitation asks for the password instead.
 - **The banner**: signed-in people with an unconfirmed address see **Confirm your email address** at the top of the panel, with **Send link**.
 - **Changing your address** on the profile: the new address applies only when the link sent to it is opened; the old address gets a notice. Profile → Security shows the waiting address with **Send again** and **Cancel change**.
+- When a changed address is confirmed, links sent to the old address (password resets, verification links) stop working.
 - **Admins changing an address** on Users: it applies at once and is marked unconfirmed. **More → Send verification email** (an invitation for a Pending account) sends the link.
 - A completed **password reset** confirms the address too.
 - With `'required' => true`, people whose address isn't confirmed wait at **Check your email** after signing in, with **Send a new link**; opening the link lets them in. Existing accounts are affected too, so confirm addresses first.

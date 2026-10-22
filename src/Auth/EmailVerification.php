@@ -196,6 +196,7 @@ final class EmailVerification
         if ($found === null) { return 'invalid'; }
         if ($found['kind'] === 'invite' && ($password === null || $password === '')) { return 'invalid'; }
         $user = $found['user'];
+        try {
         $result = $db->transaction(static function (Database $db) use ($token, $found, $user, $password): string {
             $stamp = gmdate('Y-m-d H:i:s');
             $claimed = $db->query('UPDATE `' . self::table() . '` SET `used_at` = ? WHERE `token_hash` = ? AND `used_at` IS NULL', [$stamp, hash('sha256', $token)])->rowCount();
@@ -210,12 +211,29 @@ final class EmailVerification
                 $data['status'] = UsersResource::ACTIVE;
                 $data['password'] = password_hash((string) $password, PASSWORD_DEFAULT);
             }
-            $db->table('users')->where('id', '=', (int) $user->id)->update($data);
+            // The account as the link was read: an admin may have suspended it or changed its address meanwhile.
+            $sets = implode(', ', array_map(static fn (string $column): string => '`' . $column . '` = ?', array_keys($data)));
+            $expectedStatus = $found['kind'] === 'invite' ? UsersResource::PENDING : UsersResource::ACTIVE;
+            $changed = $db->query('UPDATE `users` SET ' . $sets . ' WHERE `id` = ? AND `status` = ? AND LOWER(`email`) = ?',
+                [...array_values($data), (int) $user->id, $expectedStatus, mb_strtolower((string) $user->email)])->rowCount();
+            if ($changed !== 1) { throw new \RuntimeException('account changed'); }
+            if ($found['kind'] === 'change') {
+                // Links sent to the old address stop working: password resets and verification links.
+                $db->table(self::table())->where('user_id', '=', (int) $user->id)->whereNull('used_at')->where('expires_at', '>', $stamp)->update(['expires_at' => $stamp]);
+                if (PasswordReset::available($db)) {
+                    $db->table(PasswordReset::table())->where('user_id', '=', (int) $user->id)->where('kind', '=', 'request')->whereNull('used_at')
+                        ->where('expires_at', '>', $stamp)->update(['expires_at' => $stamp]);
+                }
+            }
             // Other links of the same kind stop working.
             $db->table(self::table())->where('user_id', '=', (int) $user->id)->where('kind', '=', $found['kind'])->whereNull('used_at')
                 ->where('expires_at', '>', $stamp)->update(['expires_at' => $stamp]);
             return 'done';
         });
+        } catch (\RuntimeException $error) {
+            if ($error->getMessage() !== 'account changed') { throw $error; }
+            return 'invalid';
+        }
         if ($result === 'done') {
             self::log(match ($found['kind']) { 'change' => 'email_changed', 'invite' => 'invite_accepted', default => 'email_verified' }, $user, $db,
                 $found['kind'] === 'change' ? ['from' => (string) $user->email, 'to' => $found['email']] : []);

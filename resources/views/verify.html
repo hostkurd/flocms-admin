@@ -14,7 +14,7 @@
         <a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>
         <section class="fa-login-card" aria-labelledby="fa-login-title">
             @if($screen === 'done')<div class="fa-login-icon is-success" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4 10-10"/></svg></div>@endif
-            @if($screen === 'waiting')<div class="fa-login-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>@endif
+            @if($screen === 'waiting' || $screen === 'confirm')<div class="fa-login-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>@endif
             @if($screen === 'invalid')<div class="fa-login-icon is-warning" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>@endif
             <header>
                 <p class="fa-login-eyebrow">{{ $t('login.admin') }}</p>
@@ -46,6 +46,13 @@
                 <div><label for="fa-invite-password">{{ $t('password.new') }}</label><div class="fa-login-password"><input id="fa-invite-password" type="password" name="password" required minlength="{{ $min }}" autocomplete="new-password" dir="ltr" @if($confirmError === '') autofocus @endif aria-describedby="fa-invite-password-help{{ $passwordError !== '' ? ' fa-invite-password-error' : '' }}" @if($passwordError !== '') aria-invalid="true" @endif><button type="button" data-admin-password-toggle aria-controls="fa-invite-password" aria-pressed="false" data-show-text="{{ $t('login.show') }}" data-hide-text="{{ $t('login.hide') }}" hidden>{{ $t('login.show') }}</button></div><p class="fa-login-help" id="fa-invite-password-help">{{ $t('password.rule', ['min' => $min]) }}</p>@if($passwordError !== '')<p class="fa-login-error" id="fa-invite-password-error">{!! $errorIcon !!}{{ $passwordError }}</p>@endif</div>
                 <div><label for="fa-invite-confirm">{{ $t('password.confirm') }}</label><div class="fa-login-password"><input id="fa-invite-confirm" type="password" name="password_confirmation" required autocomplete="new-password" dir="ltr" @if($confirmError !== '') autofocus aria-invalid="true" aria-describedby="fa-invite-confirm-error" @endif><button type="button" data-admin-password-toggle aria-controls="fa-invite-confirm" aria-pressed="false" data-show-text="{{ $t('login.show') }}" data-hide-text="{{ $t('login.hide') }}" hidden>{{ $t('login.show') }}</button></div>@if($confirmError !== '')<p class="fa-login-error" id="fa-invite-confirm-error">{!! $errorIcon !!}{{ $confirmError }}</p>@endif</div>
                 <button type="submit" class="fa-login-submit">{{ $t('verify.invite_save') }}</button>
+            </form>
+            @endif
+
+            @if($screen === 'confirm')
+            <form method="post" action="{{ $action }}">
+                {!! $csrf !!}
+                <button type="submit" class="fa-login-submit">{{ $t('verify.confirm_button') }}</button>
             </form>
             @endif
 

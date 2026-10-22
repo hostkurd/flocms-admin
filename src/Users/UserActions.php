@@ -158,9 +158,9 @@ final class UserActions
         return $action->label(AdminLang::get('users.send_verification'))->icon('mail')->permission('users.manage')
             ->visible(static fn (?object $r = null): bool => \FloCMS\Admin\Auth\EmailVerification::available())
             ->disabled(static fn (?object $r): ?string => self::reason($r === null ? null
-                : ((int) ($r->status ?? 0) === UsersResource::SUSPENDED ? 'users.reason_activate_first'
+                : (self::protectedReason($r) ?? ((int) ($r->status ?? 0) === UsersResource::SUSPENDED ? 'users.reason_activate_first'
                 : (\FloCMS\Admin\Auth\EmailVerification::isVerified($r) ? 'users.reason_verified'
-                : (filter_var((string) ($r->email ?? ''), FILTER_VALIDATE_EMAIL) === false ? 'users.reason_no_email' : null)))))
+                : (filter_var((string) ($r->email ?? ''), FILTER_VALIDATE_EMAIL) === false ? 'users.reason_no_email' : null))))))
             ->modalHeading(static fn (?object $r): string => $r !== null ? AdminLang::get((int) ($r->status ?? 0) === UsersResource::PENDING ? 'users.invite_title' : 'users.verify_title', ['name' => self::name($r)]) : '')
             ->modalDescription(static fn (?object $r): string => $r !== null ? AdminLang::get((int) ($r->status ?? 0) === UsersResource::PENDING ? 'users.invite_text' : 'users.verify_text',
                 ['email' => (string) ($r->email ?? ''), 'hours' => max(1, intdiv(Admin::config()->emailVerification()['expires'], 60))]) : '')

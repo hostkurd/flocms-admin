@@ -49,7 +49,7 @@ final class TwoFactorRequestTest extends RequestTestCase
     /** @param array<string, mixed> $extra */
     private static function on(array $extra = []): array
     {
-        return ['admin_config' => ['two_factor' => true] + ($extra['admin_config'] ?? []), 'env' => self::ENV, 'user_loader' => true,
+        return ['admin_config' => ($extra['admin_config'] ?? []) + ['two_factor' => true], 'env' => self::ENV, 'user_loader' => true,
             'config' => ['admin_access_roles' => ['1', '2', '3']]] + $extra;
     }
 
@@ -222,10 +222,9 @@ final class TwoFactorRequestTest extends RequestTestCase
 
         $right = self::post('/en/admin/two-factor', ['code' => self::code($secret, 1)], ['session' => self::signIn()] + self::on());
         self::assertStringContainsString('Too many wrong codes', $right['body'], 'even the right code waits');
-        $mails = self::mails();
-        self::assertCount(1, $mails);
+        $mails = array_values(array_filter(self::mails(), static fn (string $mail): bool => str_contains($mail, 'Wrong two-factor codes')));
+        self::assertCount(1, $mails, 'one notice, however many wrong codes');
         self::assertStringContainsString('To: ali@example.test', $mails[0]);
-        self::assertStringContainsString('Wrong two-factor codes', $mails[0]);
     }
 
     public function testARememberedDeviceSkipsTheCodeUntilThePasswordChanges(): void
@@ -317,6 +316,47 @@ final class TwoFactorRequestTest extends RequestTestCase
         self::assertTrue($guest['redirected']);
         $signedIn = self::request('GET', '/en/admin/two-factor', ['session' => self::ADMIN] + self::on());
         self::assertTrue($signedIn['redirected']);
+    }
+
+    public function testTheOwnerHearsWhenItIsTurnedOnOrOff(): void
+    {
+        [$secret] = self::enableForAli();
+        self::post('/en/admin/profile/security', ['_action' => 'disable', 'proof' => self::PASSWORD], ['session' => self::signedIn()] + self::on());
+        $all = implode('', self::mails());
+        self::assertStringContainsString('Two-factor sign-in is on for your Test Panel account', $all);
+        self::assertStringContainsString('Two-factor sign-in is off for your Test Panel account', $all);
+    }
+
+    public function testWrongPasswordsOnTheSecurityTabAreLimited(): void
+    {
+        $session = self::ADMIN;
+        for ($i = 0; $i < 5; $i++) {
+            $session = self::post('/en/admin/profile/security', ['_action' => 'start', 'proof' => 'guess-' . $i], ['session' => $session] + self::on())['session'];
+        }
+        $right = self::post('/en/admin/profile/security', ['_action' => 'start', 'proof' => self::PASSWORD], ['session' => $session] + self::on());
+        self::assertStringContainsString('Too many wrong tries', $right['body']);
+        self::assertArrayNotHasKey('admin_2fa_profile_setup', $right['session']);
+    }
+
+    public function testASignInIsStoppedWhenTwoFactorIsNotReady(): void
+    {
+        self::enableForAli();
+        // APP_KEY lost after a deploy: the secret can't be read, so the sign-in is held and ended, never let through.
+        $env = ['env' => ['APP_KEY' => 'short'] + self::ENV];
+        $held = self::request('GET', '/en/admin/dashboard', ['session' => self::ADMIN] + $env + self::on());
+        self::assertSame('two-factor', $held['session']['auth_held']['path'] ?? null);
+        $step = self::request('GET', '/en/admin/two-factor', ['session' => $held['session']] + $env + self::on());
+        self::assertTrue($step['redirected']);
+        self::assertArrayNotHasKey('auth_held', $step['session']);
+        self::assertArrayNotHasKey('isloggedin', $step['session']);
+    }
+
+    public function testARoleRequiredInConfigCantBeSwitchedOff(): void
+    {
+        $config = self::on(['admin_config' => ['two_factor' => ['required_roles' => [2]]]]);
+        $page = self::request('GET', '/en/admin/roles/edit/2', ['session' => self::SUPER] + $config);
+        self::assertStringNotContainsString('Stop requiring', $page['body']);
+        self::assertSame(403, self::post('/en/admin/roles/two_factor/2', ['two_factor' => '0'], ['session' => self::SUPER] + $config)['status']);
     }
 
     public function testWithTwoFactorOffInConfigNothingIsHeld(): void

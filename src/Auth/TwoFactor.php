@@ -50,7 +50,9 @@ final class TwoFactor
                 $db->query('SELECT `id`, `user_id`, `token_hash`, `password_stamp`, `expires_at` FROM `' . $config['devices_table'] . '` WHERE 1 = 0');
                 self::$status = 'ready';
             } catch (\Throwable) {
-                self::$status = 'missing';
+                // Not cached: a passing database error must not count as "no tables" for the rest of the request.
+                self::$status = null;
+                return 'missing';
             }
         }
         return self::$status;
@@ -75,16 +77,60 @@ final class TwoFactor
         Auth::holdSessionsUsing(static fn (array $user): ?string => self::holdFor($user));
     }
 
-    /** @param array<string, mixed> $user the row FloCMS loaded for the session */
+    /**
+     * Fails closed: when the feature is on but not ready (APP_KEY too short,
+     * tables unreadable), a user who has it on, or whose role requires it, is
+     * still held; the step page then explains and ends the sign-in.
+     *
+     * @param array<string, mixed> $user the row FloCMS loaded for the session
+     */
     public static function holdFor(array $user): ?string
     {
-        if (!self::available()) { return null; }
+        $status = self::status();
+        if ($status === 'off' || $status === 'core') { return null; }
         $id = (int) ($user['id'] ?? 0);
         if ($id <= 0) { return null; }
+        if ($status !== 'ready') {
+            return self::hasRecord($id) || self::requiredWhileBroken($user['role'] ?? null) ? self::PATH : null;
+        }
         if (self::isOn($id)) {
             return TrustedDevices::check($id, (string) ($user['password'] ?? '')) ? null : self::PATH;
         }
         return self::isRequired($user['role'] ?? null) ? self::PATH : null;
+    }
+
+    /**
+     * Whether $userId has a two-factor row, read even when the feature isn't
+     * ready. A table that doesn't exist means nobody has it on; any other
+     * database error counts as "has it" (closed).
+     */
+    public static function hasRecord(int $userId, ?Database $db = null): bool
+    {
+        $db ??= App::db();
+        if ($db === null) { return true; }
+        try {
+            $db->query('SELECT 1 FROM `' . self::table() . '` WHERE 1 = 0');
+        } catch (\Throwable) {
+            return false;
+        }
+        try {
+            return $db->table(self::table())->where('user_id', '=', $userId)->count() > 0;
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
+    private static function requiredWhileBroken(mixed $role): bool
+    {
+        if (!is_numeric($role)) { return false; }
+        if (in_array((int) $role, Admin::config()->twoFactor()['required_roles'], true)) { return true; }
+        $db = App::db();
+        try {
+            $row = $db?->table(Admin::config()->twoFactor()['roles_table'])->where('role', '=', (int) $role)->first();
+            return $row !== null && (int) $row->required === 1;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public static function record(int $userId, ?Database $db = null): ?object
@@ -172,6 +218,7 @@ final class TwoFactor
         });
         TrustedDevices::forgetAll($userId, $db);
         self::log('two_factor_enabled', $userId, $db);
+        self::notify($userId, $db, true);
         return $codes;
     }
 
@@ -182,6 +229,17 @@ final class TwoFactor
         $db->table(self::table())->where('user_id', '=', $userId)->delete();
         TrustedDevices::forgetAll($userId, $db);
         self::log($action, $userId, $db);
+        // A reset has its own optional notice; turning it off yourself always tells the owner.
+        if ($action === 'two_factor_disabled') { self::notify($userId, $db, false); }
+    }
+
+    /** Tell the owner that two-factor sign-in was turned on or off (someone with only the password could). */
+    private static function notify(int $userId, Database $db, bool $on): void
+    {
+        $user = $db->table('users')->where('id', '=', $userId)->first();
+        if ($user !== null && filter_var((string) ($user->email ?? ''), FILTER_VALIDATE_EMAIL) !== false) {
+            SecurityMail::later(static fn () => SecurityMail::twoFactorChanged($user, $on));
+        }
     }
 
     /**
@@ -281,15 +339,22 @@ final class TwoFactor
     private static function fail(object $record, Database $db): string
     {
         $now = time();
-        $since = $record->failures_since !== null ? strtotime((string) $record->failures_since . ' UTC') : false;
-        $fresh = $since === false || $now - $since > 3600;
-        $failures = $fresh ? 1 : (int) $record->failures + 1;
-        $data = ['failures' => $failures, 'failures_since' => $fresh ? gmdate('Y-m-d H:i:s', $now) : $record->failures_since];
-        $lock = $failures >= self::MAX_FAILURES;
-        if ($lock) {
-            $data = ['failures' => 0, 'failures_since' => null, 'locked_until' => gmdate('Y-m-d H:i:s', $now + self::LOCK_MINUTES * 60)];
+        $userId = (int) $record->user_id;
+        $hourAgo = gmdate('Y-m-d H:i:s', $now - 3600);
+        $stamp = gmdate('Y-m-d H:i:s', $now);
+        // One statement, so wrong codes sent at the same moment all count.
+        $db->query('UPDATE `' . self::table() . '` SET '
+            . '`failures` = CASE WHEN `failures_since` IS NULL OR `failures_since` < ? THEN 1 ELSE `failures` + 1 END, '
+            . '`failures_since` = CASE WHEN `failures_since` IS NULL OR `failures_since` < ? THEN ? ELSE `failures_since` END WHERE `user_id` = ?',
+            [$hourAgo, $hourAgo, $stamp, $userId]);
+        $failures = (int) $db->query('SELECT `failures` FROM `' . self::table() . '` WHERE `user_id` = ?', [$userId])->fetchColumn();
+        $lock = false;
+        if ($failures >= self::MAX_FAILURES) {
+            // Only the request that resets the counter locks and tells the owner.
+            $lock = $db->query('UPDATE `' . self::table() . '` SET `failures` = 0, `failures_since` = NULL, `locked_until` = ? WHERE `user_id` = ? AND `failures` >= ?',
+                [gmdate('Y-m-d H:i:s', $now + self::LOCK_MINUTES * 60), $userId, self::MAX_FAILURES])->rowCount() === 1;
+            if (!$lock) { return 'locked'; }
         }
-        $db->table(self::table())->where('user_id', '=', (int) $record->user_id)->update($data);
         if ($lock) {
             self::log('two_factor_locked', (int) $record->user_id, $db);
             $user = $db->table('users')->where('id', '=', (int) $record->user_id)->first();

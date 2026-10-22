@@ -15,7 +15,14 @@ final class ResourceRegistry
     public const RESERVED = ['users', 'pages'];
 
     /** URL segments of this package's own pages. */
-    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings', 'media', 'password', 'page-preview', 'two-factor', 'verify'];
+    public const PACKAGE_PAGES = ['dashboard', 'accounts', 'profile', 'settings', 'media', 'password', 'page-preview'];
+
+    /** The package's pages, with the sign-in steps when login security is on (0.35). @return list<string> */
+    public static function packagePages(): array
+    {
+        $config = \FloCMS\Admin\Admin::config();
+        return array_merge(self::PACKAGE_PAGES, $config->twoFactor()['enabled'] ? ['two-factor'] : [], $config->emailVerification()['enabled'] ? ['verify'] : []);
+    }
 
     /** @var array<string, class-string<Resource>> slug => class */
     private array $resources = [];
@@ -95,9 +102,9 @@ final class ResourceRegistry
             return false;
         }
 
-        if (!$builtIn && in_array($slug, self::PACKAGE_PAGES, true)) {
+        if (!$builtIn && in_array($slug, self::packagePages(), true)) {
             $this->problems[] = $class . ': slug "' . $slug . '" is reserved for the admin panel\'s own pages ('
-                . implode(', ', self::PACKAGE_PAGES) . '); set another $slug';
+                . implode(', ', self::packagePages()) . '); set another $slug';
             return false;
         }
 

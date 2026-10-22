@@ -89,6 +89,7 @@ final class RolesController extends PanelController
         if (!\FloCMS\Admin\Auth\TwoFactor::available()) { throw new HttpException(409); }
         if (!self::canRequireTwoFactor($role)) { throw new HttpException(403); }
         $required = $this->request->input('two_factor') === '1';
+        if (!$required && in_array($role->number, Admin::config()->twoFactor()['required_roles'], true)) { throw new HttpException(403); }
         \FloCMS\Admin\Auth\TwoFactor::setRequired($role->number, $required);
         \FloCMS\Admin\Activity\Activity::record('role_two_factor', 'roles', (string) $role->number, $role->label(), meta: ['required' => $required ? 1 : 0]);
         Notification::make()->title(AdminLang::get($required ? 'roles.two_factor_now_required' : 'roles.two_factor_now_optional', ['role' => $role->label()]))->success()->send();
@@ -109,7 +110,7 @@ final class RolesController extends PanelController
         $required = \FloCMS\Admin\Auth\TwoFactor::isRequired($role->number);
         $coverage = \FloCMS\Admin\Auth\TwoFactor::roleCoverage($role->number);
         return [
-            'required' => $required, 'canChange' => self::canRequireTwoFactor($role), 'url' => Admin::url('roles/two_factor/' . $role->number),
+            'required' => $required, 'canChange' => self::canRequireTwoFactor($role) && !($required && in_array($role->number, Admin::config()->twoFactor()['required_roles'], true)), 'url' => Admin::url('roles/two_factor/' . $role->number),
             'missing' => max(0, $coverage['total'] - $coverage['on']), 'total' => $coverage['total'],
             'config' => in_array($role->number, Admin::config()->twoFactor()['required_roles'], true),
         ];

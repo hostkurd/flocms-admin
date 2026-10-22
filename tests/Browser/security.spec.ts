@@ -118,6 +118,8 @@ test('an unconfirmed address shows the banner, and the emailed link confirms it'
   const { link } = await state(page);
   expect(link).toMatch(/^\/en\/admin\/verify\/link\/[A-Za-z0-9_-]{43}$/);
   await page.goto(link!);
+  await expect(page.getByRole('heading', { name: 'Confirm your email address' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm' }).click();
   await expect(page.getByRole('heading', { name: 'Email address confirmed' })).toBeVisible();
   expect((await state(page)).verified).toBe(1);
   await page.goto('/en/admin/dashboard');

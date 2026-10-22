@@ -51,6 +51,14 @@ final class VerifyController extends Controller
         if ($found['kind'] === 'invite') {
             return $this->invitation($token, $found['user']);
         }
+        // Mail scanners open links on their own: the change happens only on the button's POST.
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            return $this->page('confirm', [
+                'title' => AdminLang::get($found['kind'] === 'change' ? 'verify.confirm_change_title' : 'verify.confirm_title'),
+                'description' => AdminLang::get($found['kind'] === 'change' ? 'verify.confirm_change_description' : 'verify.confirm_description', ['email' => $found['email']]),
+                'action' => Admin::url(EmailVerification::PATH . '/link/' . $token), 'path' => 'verify/link/' . $token,
+            ]);
+        }
 
         $result = EmailVerification::complete($token);
         if ($result !== 'done') {

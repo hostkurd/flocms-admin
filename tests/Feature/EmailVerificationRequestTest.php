@@ -86,7 +86,11 @@ final class EmailVerificationRequestTest extends RequestTestCase
         $stored = self::pdo()->query('SELECT token_hash FROM admin_email_tokens')->fetchColumn();
         self::assertSame(hash('sha256', $token), $stored, 'only the hash is stored');
 
-        $opened = self::request('GET', $link, ['session' => self::GUEST] + self::on());
+        // Opening the link only asks (mail scanners open links too); the button confirms.
+        $asked = self::request('GET', $link, ['session' => self::GUEST] + self::on());
+        self::assertStringContainsString('Confirm that ali@example.test is your address', $asked['body']);
+        self::assertSame('0', (string) self::row('users', 2)['is_verified']);
+        $opened = self::post($link, [], ['session' => self::GUEST] + self::on());
         self::assertSame(200, $opened['status']);
         self::assertStringContainsString('Email address confirmed', $opened['body']);
         self::assertSame('1', (string) self::row('users', 2)['is_verified']);
@@ -114,10 +118,45 @@ final class EmailVerificationRequestTest extends RequestTestCase
         self::assertStringContainsString('ali.new@example.test', $security['body']);
         self::assertStringContainsString('Waiting for confirmation', $security['body']);
 
-        $opened = self::request('GET', self::linkFrom($mails[0]), ['session' => self::GUEST] + self::on());
+        $opened = self::post(self::linkFrom($mails[0]), [], ['session' => self::GUEST] + self::on());
         self::assertStringContainsString('is now the address on your account', $opened['body']);
         self::assertSame('ali.new@example.test', self::row('users', 2)['email']);
         self::assertContains('email_changed', self::pdo()->query('SELECT action FROM admin_activity')->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    public function testAChangedAddressEndsTheLinksSentToTheOldOne(): void
+    {
+        self::post('/en/admin/password/forgot', ['email' => 'ali@example.test'], ['session' => self::GUEST] + self::on());
+        self::assertSame(1, preg_match('#/admin/password/reset/([A-Za-z0-9_-]{43})#', self::mails()[0], $reset));
+        @unlink(self::$root . '/storage/logs/admin-mail.log');
+        $data = ['full_name' => 'Ali', 'email' => 'ali.new@example.test', 'login' => 'ali@example.test', 'password' => '', 'current_password' => self::PASSWORD];
+        self::post('/en/admin/profile', $data, ['session' => self::ADMIN] + self::on());
+        self::post(self::linkFrom(self::mails()[0]), [], ['session' => self::GUEST] + self::on());
+        self::assertSame('ali.new@example.test', self::row('users', 2)['email']);
+
+        $old = self::request('GET', '/en/admin/password/reset/' . $reset[1], ['session' => self::GUEST] + self::on());
+        self::assertStringContainsString('This link no longer works', $old['body']);
+    }
+
+    public function testAnInvitationCantActivateAnAccountItCantManage(): void
+    {
+        self::pdo()->exec('UPDATE users SET status = 2, is_verified = 0 WHERE id = 3');
+        self::assertSame(403, self::request('GET', '/en/admin/accounts/action/row/verify_link/3', ['session' => self::ADMIN] + self::on())['status']);
+    }
+
+    public function testALinkStopsWorkingWhenTheAccountChanges(): void
+    {
+        self::pdo()->exec('UPDATE users SET status = 2, is_verified = 0 WHERE id = 4');
+        $page = self::request('GET', '/en/admin/accounts/action/row/verify_link/4', ['session' => self::ADMIN] + self::on());
+        self::assertSame(1, preg_match('/name="_operation" value="([^"]+)"/', $page['body'], $match));
+        $sent = self::post('/en/admin/accounts/action/row/verify_link/4', ['_operation' => $match[1]], ['session' => $page['session']] + self::on());
+        self::assertNull($sent['error']);
+        $link = self::linkFrom(self::mails()[0] ?? $sent['body']);
+        // Suspended meanwhile: the invitation can't activate it.
+        self::pdo()->exec('UPDATE users SET status = 3 WHERE id = 4');
+        $done = self::post($link, ['password' => 'dara-pass-123', 'password_confirmation' => 'dara-pass-123'], ['session' => self::GUEST] + self::on());
+        self::assertStringContainsString('This link has expired', $done['body']);
+        self::assertSame('3', (string) self::row('users', 4)['status']);
     }
 
     public function testACancelledChangeIsNoLongerApplied(): void
@@ -207,7 +246,7 @@ final class EmailVerificationRequestTest extends RequestTestCase
         self::assertTrue($sent['redirected']);
         $link = self::linkFrom(self::mails()[0]);
 
-        $opened = self::request('GET', $link, ['session' => $sent['session']] + self::on(['required' => true]));
+        $opened = self::post($link, [], ['session' => $sent['session']] + self::on(['required' => true]));
         self::assertStringContainsString('Email address confirmed', $opened['body']);
         self::assertTrue($opened['session']['isloggedin'], 'the held sign-in goes on');
         self::assertArrayNotHasKey('auth_held', $opened['session']);

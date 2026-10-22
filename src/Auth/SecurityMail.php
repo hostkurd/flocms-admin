@@ -49,6 +49,11 @@ final class SecurityMail
         self::send($user, (string) $user->email, 'two_factor_locked', null, ['minutes' => TwoFactor::LOCK_MINUTES]);
     }
 
+    public static function twoFactorChanged(object $user, bool $on): void
+    {
+        self::send($user, (string) $user->email, $on ? 'two_factor_on' : 'two_factor_off', null, []);
+    }
+
     public static function twoFactorReset(object $user): void
     {
         self::send($user, (string) $user->email, 'two_factor_reset', ['url' => PasswordReset::absolute('users/login'), 'label' => AdminLang::get('mail.activated_button')], []);

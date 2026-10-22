@@ -30,7 +30,10 @@ final class ProfileController extends PanelController
 
     private const SETUP_KEY = 'admin_2fa_profile_setup';
     private const CODES_KEY = 'admin_2fa_profile_codes';
-    private const SETUP_SECONDS = 900;
+    private const SETUP_SECONDS = 600;
+    private const PROOF_KEY = 'admin_security_wrong';
+    private const MAX_WRONG_PROOFS = 5;
+    private const PROOF_MINUTES = 15;
 
     public function admin_index(): string|\FloCMS\Core\Http\Response
     {
@@ -266,10 +269,14 @@ final class ProfileController extends PanelController
         $twoFactor = \FloCMS\Admin\Auth\TwoFactor::available($db);
         $proof = is_string($_POST['proof'] ?? null) ? (string) $_POST['proof'] : '';
         $on = $twoFactor && \FloCMS\Admin\Auth\TwoFactor::isOn($id, $db);
+        // Wrong passwords or codes on this tab are limited, so a stolen session can't guess the password.
+        if (in_array($action, ['start', 'new_codes', 'disable'], true) && self::proofsLocked()) {
+            return [$action => AdminLang::get('security.too_many', ['minutes' => self::PROOF_MINUTES])];
+        }
         switch ($action) {
             case 'start':
                 if (!$twoFactor || $on) { return []; }
-                if (!password_verify($proof, (string) ($user->password ?? ''))) { return ['start' => AdminLang::get('profile.current_password_wrong')]; }
+                if (!password_verify($proof, (string) ($user->password ?? ''))) { self::wrongProof(); return ['start' => AdminLang::get('profile.current_password_wrong')]; }
                 Session::set(self::SETUP_KEY, ['user' => $id, 'secret' => \FloCMS\Admin\Auth\SecretBox::encrypt(\FloCMS\Admin\Auth\Totp::newSecret()), 'at' => time()]);
                 return [];
             case 'cancel_setup':
@@ -290,13 +297,13 @@ final class ProfileController extends PanelController
                 return [];
             case 'new_codes':
                 if (!$on) { return []; }
-                if (!self::proves($db, $user, $proof)) { return ['new_codes' => AdminLang::get('security.proof_wrong')]; }
+                if (!self::proves($db, $user, $proof)) { self::wrongProof(); return ['new_codes' => AdminLang::get('security.proof_wrong')]; }
                 Session::set(self::CODES_KEY, ['user' => $id, 'codes' => \FloCMS\Admin\Auth\TwoFactor::regenerateCodes($id, $db), 'first' => false]);
                 return [];
             case 'disable':
                 if (!$on) { return []; }
                 if (\FloCMS\Admin\Auth\TwoFactor::isRequired($user->role ?? null, $db)) { return ['disable' => AdminLang::get('security.required_cannot_off')]; }
-                if (!self::proves($db, $user, $proof)) { return ['disable' => AdminLang::get('security.proof_wrong')]; }
+                if (!self::proves($db, $user, $proof)) { self::wrongProof(); return ['disable' => AdminLang::get('security.proof_wrong')]; }
                 \FloCMS\Admin\Auth\TwoFactor::disable($id, db: $db);
                 Session::setFlash(AdminLang::get('security.turned_off'), 'success');
                 return [];
@@ -332,6 +339,20 @@ final class ProfileController extends PanelController
         return [];
     }
 
+    private static function proofsLocked(): bool
+    {
+        $wrong = Session::get(self::PROOF_KEY);
+        if (!is_array($wrong) || time() - (int) ($wrong['since'] ?? 0) > self::PROOF_MINUTES * 60) { return false; }
+        return (int) ($wrong['count'] ?? 0) >= self::MAX_WRONG_PROOFS;
+    }
+
+    private static function wrongProof(): void
+    {
+        $wrong = Session::get(self::PROOF_KEY);
+        $fresh = !is_array($wrong) || time() - (int) ($wrong['since'] ?? 0) > self::PROOF_MINUTES * 60;
+        Session::set(self::PROOF_KEY, ['count' => $fresh ? 1 : (int) ($wrong['count'] ?? 0) + 1, 'since' => $fresh ? time() : (int) $wrong['since']]);
+    }
+
     /** The current password, or a code from the app. */
     private static function proves(Database $db, object $user, string $proof): bool
     {
@@ -361,6 +382,8 @@ final class ProfileController extends PanelController
         $secret = $status === 'ready' && $record === null ? self::pendingSecret($id) : null;
         $shown = Session::get(self::CODES_KEY);
         $codes = is_array($shown) && (int) ($shown['user'] ?? 0) === $id ? array_values(array_map('strval', (array) ($shown['codes'] ?? []))) : [];
+        // Shown once: a reload or another page doesn't show them again.
+        if ($codes !== []) { Session::delete(self::CODES_KEY); }
         $uri = $secret !== null ? \FloCMS\Admin\Auth\Totp::uri($secret, Admin::config()->twoFactor()['issuer'], (string) ($user->email ?? '')) : '';
         $devices = $record !== null ? \FloCMS\Admin\Auth\TrustedDevices::list($id, $db) : [];
         $date = static fn (string $utc): string => $utc !== '' ? \FloCMS\Admin\Support\Dates::date((int) strtotime($utc . ' UTC')) : '';

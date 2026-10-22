@@ -37,7 +37,7 @@ final class TwoFactorController extends Controller
     public const CODES_KEY = 'admin_2fa_codes';
     private const WRONG_KEY = 'admin_2fa_wrong';
     private const MAX_WRONG = 5;
-    private const SETUP_SECONDS = 900;
+    private const SETUP_SECONDS = 600;
 
     protected array $actionPermissions = ['admin_index' => null, 'admin_backup' => null, 'admin_codes' => null];
 
@@ -92,8 +92,11 @@ final class TwoFactorController extends Controller
             return $this->finish($user, false);
         }
 
-        return $this->page('codes', ['title' => AdminLang::get('two_factor.codes_title'), 'codes' => (array) $shown['codes'],
-            'action' => Admin::url(TwoFactor::PATH . '/codes'), 'file' => self::codesFile((array) $shown['codes'])]);
+        // Shown once: the session keeps only that they were shown, for Continue.
+        $codes = array_values(array_map('strval', (array) ($shown['codes'] ?? [])));
+        Session::set(self::CODES_KEY, ['user' => (int) $user->id, 'codes' => []]);
+        return $this->page('codes', ['title' => AdminLang::get('two_factor.codes_title'), 'codes' => $codes,
+            'action' => Admin::url(TwoFactor::PATH . '/codes'), 'file' => self::codesFile($codes)]);
     }
 
     /** Setting it up at sign-in: the role requires it. */
@@ -159,6 +162,13 @@ final class TwoFactorController extends Controller
         $id = Auth::heldPath() === TwoFactor::PATH ? Auth::heldUserId() : null;
         if ($id === null) {
             Router::redirect(Admin::url(Session::get('admin_access') ? '' : 'users/login'));
+        }
+        // Held, but two-factor sign-in isn't working (APP_KEY, tables): never let the sign-in through.
+        if (!TwoFactor::available()) {
+            try { App::logger()->warning('flocms-admin: two-factor sign-in is on but not ready (' . TwoFactor::status() . '); a sign-in was stopped. Run php flo admin:doctor.'); } catch (\Throwable) { /* no log folder */ }
+            Auth::cancelHold();
+            Session::setFlash(AdminLang::get('two_factor.unavailable'), 'danger');
+            Router::redirect(Admin::url('users/login'));
         }
         $db = App::db() ?? throw new \RuntimeException('No database connection.');
         $user = $db->table('users')->where('id', '=', (int) $id)->first();
