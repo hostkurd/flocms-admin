@@ -100,7 +100,7 @@ final class TextInputColumn extends EditableColumn
         $max = !$this->numeric && $field instanceof TextInput && !in_array("numeric", $field->getRules(), true) ? self::maxLength($field) : null;
         return '<button type="button" class="fa-cell-display" data-admin-cell-display aria-label="' . Str::e(AdminLang::get('cells.edit', ['label' => $label])) . '">'
             . ($shown === '' ? '<span class="fa-muted">&ndash;</span>' : '<span dir="auto">' . Str::e($shown) . '</span>')
-            . \FloCMS\Admin\Support\Icons::svg('pencil', 'fa-icon fa-cell-pen') . '</button>'
+            . '</button>'
             . '<span class="fa-cell-editor" data-admin-cell-editor>'
             . '<label class="fa-sr" for="' . Str::e($id) . '">' . Str::e($label) . '</label>'
             . '<input class="fa-input fa-cell-input" type="text" id="' . Str::e($id) . '" name="value" value="' . Str::e($state) . '" data-admin-cell-input aria-describedby="' . Str::e($id) . '-hint ' . Str::e($id) . '-status"'

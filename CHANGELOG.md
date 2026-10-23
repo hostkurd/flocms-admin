@@ -2,6 +2,13 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.1 - 2026-10-23
+
+**Quieter editable cells.** Nothing to migrate.
+
+- A select cell no longer gets a dark border on hover: its badge darkens slightly, and keyboard focus shows a soft ring in the panel colour.
+- A text cell shows only a soft border on hover (the pencil icon is gone); keyboard focus shows the panel colour.
+
 ## 0.39.0 - 2026-10-23
 
 **Wizard forms.** Nothing to migrate. See [Wizard forms](docs/wizards.md).

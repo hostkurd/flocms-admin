@@ -2937,18 +2937,22 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-cell-select-wrap.fa-badge-red{background:var(--fa-danger-soft);color:var(--fa-danger)}
 .fa-cell-select-wrap.fa-badge-purple{background:var(--fa-purple-soft);color:var(--fa-purple)}
 .fa-cell-select{appearance:none;-webkit-appearance:none;margin:0;border:1px solid transparent;border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:12.5px;font-weight:500;line-height:1.6;padding-block:2px;padding-inline:10px 26px;cursor:pointer;max-inline-size:16rem}
-.fa-cell-select:hover{border-color:currentColor}
-.fa-cell-select:focus-visible{outline:2px solid var(--fa-focus);outline-offset:2px}
+/* Hover: the badge darkens a little (any colour, light or dark theme); focus: a soft ring in the panel colour (0.39.1). */
+.fa-cell-select-wrap{transition:box-shadow .15s,background-image .15s}
+.fa-cell-select-wrap:hover{background-image:linear-gradient(rgba(16,24,40,.07),rgba(16,24,40,.07))}
+.fa-panel[data-theme="dark"] .fa-cell-select-wrap:hover{background-image:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08))}
+@media (prefers-color-scheme:dark){.fa-panel[data-theme="auto"] .fa-cell-select-wrap:hover{background-image:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08))}}
+.fa-cell-select:focus{outline:none}
+.fa-cell-select-wrap:has(.fa-cell-select:focus-visible){box-shadow:0 0 0 2px var(--fa-surface),0 0 0 4px var(--fa-focus)}
 .fa-cell-select option{color:var(--fa-text);background:var(--fa-surface)}
 .fa-cell-select-caret{position:absolute;inset-inline-end:8px;inline-size:12px;block-size:12px;pointer-events:none}
 .fa-cell[aria-busy="true"] .fa-cell-select-wrap{opacity:.6}
 /* Text and number: the value as text; a click or Enter opens the input in the cell */
 .fa-cell-display{display:none;align-items:center;gap:6px;max-inline-size:100%;margin-block:-4px;margin-inline:-8px;padding:3px 7px;border:1px solid transparent;border-radius:var(--fa-radius-sm);background:transparent;color:inherit;font:inherit;text-align:start;cursor:text;overflow-wrap:break-word}
 .fa-js-cells .fa-cell-display{display:inline-flex}
-.fa-cell-display:hover,.fa-cell-display:focus-visible{border-color:var(--fa-border-strong);background:var(--fa-surface)}
-.fa-cell-display:focus-visible{outline:2px solid var(--fa-focus);outline-offset:1px}
-.fa-cell-pen{inline-size:14px;block-size:14px;color:var(--fa-muted);opacity:0}
-.fa-cell-display:hover .fa-cell-pen,.fa-cell-display:focus-visible .fa-cell-pen{opacity:1}
+.fa-cell-display{transition:border-color .15s,background-color .15s}
+.fa-cell-display:hover{border-color:var(--fa-border-strong);background:var(--fa-surface)}
+.fa-cell-display:focus-visible{outline:none;border-color:var(--fa-primary);background:var(--fa-surface);box-shadow:0 0 0 3px var(--fa-primary-soft)}
 .fa-cell-editor{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
 .fa-js-cells .fa-cell-editor{display:none}
 .fa-js-cells .fa-cell.is-editing .fa-cell-editor{display:flex;flex-direction:column;align-items:stretch;inline-size:100%}
