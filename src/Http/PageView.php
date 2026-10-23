@@ -281,7 +281,7 @@ final class PageView
 
     public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors,
         ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false, ?array $history = null,
-        string $managers = '', ?string $relatedText = null, ?array $parent = null, ?array $translation = null): string
+        string $managers = '', ?string $relatedText = null, ?array $parent = null, ?array $translation = null, bool $wizard = false): string
     {
         $class = $this->resource;
         $trashed = $deleteUrl !== null && \FloCMS\Admin\Trash\Trash::enabledFor($class);
@@ -315,7 +315,22 @@ final class PageView
             'closeIcon' => Icons::svg('x'),
             // Page-level translation (0.23): the switch, the note and the language shown first.
             'translation' => $translation,
+            // A wizard (0.39) prints its own final buttons in its footer.
+            'wizard' => $wizard,
         ]);
+    }
+
+    /**
+     * A wizard's final buttons (0.39): Create on a new record; Save and close plus
+     * Save when editing. The wizard's footer shows them on the steps that allow them.
+     */
+    public static function wizardActions(bool $isEdit, ?string $label = null, bool $canContinue = true): string
+    {
+        if (!$isEdit) {
+            return '<button type="submit" name="_close" value="1" class="fa-btn fa-btn-primary" data-wizard-finish>' . Str::e($label ?? AdminLang::get('actions.create')) . '</button>';
+        }
+        return ($canContinue ? '<button type="submit" name="_close" value="1" class="fa-btn">' . Str::e(AdminLang::get('actions.save_close')) . '</button>' : '')
+            . '<button type="submit" name="' . ($canContinue ? '_continue' : '_close') . '" value="1" class="fa-btn fa-btn-primary" data-admin-save data-wizard-finish>' . Str::e($label ?? AdminLang::get('actions.save')) . '</button>';
     }
 
     /**

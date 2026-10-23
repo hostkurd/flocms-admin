@@ -57,8 +57,78 @@ final class Form
             }
         };
         $walk($components); $walk($aside);
+        $this->steps = self::wizardSteps($components, $aside, $flat);
         $this->components = $components; $this->aside = $aside; $this->fields = $flat; return $this;
     }
+
+    /** @var array<string, string> field name => the wizard step holding it (0.39) */
+    private array $steps = [];
+
+    /**
+     * Wizard rules (0.39): a Wizard is the whole schema (aside() fields may sit beside it),
+     * passwords only on its last step (their typed value is never printed back, so an
+     * earlier step would lose it on Next), and a step's visibleWhen() names a field of an
+     * earlier step. Returns which step holds each field.
+     *
+     * @param array<string, Field> $flat
+     * @return array<string, string>
+     */
+    private static function wizardSteps(array $components, array $aside, array $flat): array
+    {
+        $wizards = array_values(array_filter($components, static fn ($node): bool => $node instanceof Layout\Wizard));
+        foreach ($aside as $node) {
+            if ($node instanceof Layout\Wizard) { throw new InvalidArgumentException('A Wizard goes in schema(), not aside().'); }
+        }
+        if ($wizards === []) { return []; }
+        if (count($components) !== 1) { throw new InvalidArgumentException('A Wizard is the whole form: put every field of schema() in its steps (aside() fields may sit beside it).'); }
+        $steps = $wizards[0]->steps();
+        if ($steps === []) { throw new InvalidArgumentException('A Wizard needs at least one Step.'); }
+        $map = []; $names = [];
+        $collect = function (array $nodes, string $step) use (&$collect, &$map): void {
+            foreach ($nodes as $node) {
+                if ($node instanceof Layout\Layout) { $collect($node->children(), $step); }
+                elseif ($node instanceof Field) { $map[$node->getName()] = $step; }
+            }
+        };
+        foreach ($steps as $index => $step) {
+            if (isset($names[$step->getName()])) { throw new InvalidArgumentException('Step names must be unique in a wizard: "' . $step->getName() . '".'); }
+            $names[$step->getName()] = $index;
+            $collect($step->children(), $step->getName());
+        }
+        $last = $steps[count($steps) - 1]->getName();
+        foreach ($map as $name => $step) {
+            $field = $flat[$name];
+            if ($field instanceof Fields\TextInput && $field->getType() === 'password' && $step !== $last) {
+                throw new InvalidArgumentException('The password field "' . $name . '" must be on the last step of the wizard (or in aside()): a typed password is never shown again, so it would be lost on Next.');
+            }
+        }
+        foreach ($steps as $index => $step) {
+            $condition = $step->getVisibleCondition();
+            if ($condition !== null) {
+                $owner = $map[$condition[0]] ?? null;
+                if (!isset($flat[$condition[0]])) { throw new InvalidArgumentException('Step "' . $step->getName() . '" depends on an unknown field "' . $condition[0] . '".'); }
+                if ($owner !== null && $names[$owner] >= $index) { throw new InvalidArgumentException('Step "' . $step->getName() . '" depends on "' . $condition[0] . '": use a field of an earlier step.'); }
+            }
+            foreach ($map as $name => $owner) {
+                if ($owner === $step->getName()) { $flat[$name]->inStepShownWhen($condition); }
+            }
+        }
+        if (($start = $wizards[0]->getStartOn()) !== null && !isset($names[$start])) { throw new InvalidArgumentException('Wizard::startOn() names an unknown step "' . $start . '".'); }
+        return $map;
+    }
+
+    /** The form's wizard (0.39), or null when the form is not shown as steps. */
+    public function wizard(): ?Layout\Wizard
+    {
+        $first = $this->components[0] ?? null;
+        return $first instanceof Layout\Wizard ? $first : null;
+    }
+
+    /** The wizard step holding a field, or null (no wizard, or an aside() field). */
+    public function stepOf(string $field): ?string { return $this->steps[$field] ?? null; }
+
+    /** @return list<string> the fields of one wizard step */
+    public function stepFields(string $step): array { return array_keys(array_filter($this->steps, static fn (string $owner): bool => $owner === $step)); }
 
     /** Resolve dependencies in order; hidden submitted values never control other fields. */
     public function evaluate(array &$state, ?object $record = null): self
@@ -124,13 +194,14 @@ final class Form
      *
      * @param array<string, mixed> $errors
      * @param array<string, mixed> $state the values, for the names of blocks with errors (0.29)
+     * @param bool $steps name the wizard step of each field (0.39); off for the errors of the step shown
      */
-    public function errorSummary(array $errors, array $state = []): string
+    public function errorSummary(array $errors, array $state = [], bool $steps = true): string
     {
         $tabs = [];
-        $walk = function (array $nodes, ?string $tab) use (&$walk, &$tabs): void {
+        $walk = function (array $nodes, ?string $tab) use (&$walk, &$tabs, $steps): void {
             foreach ($nodes as $node) {
-                if ($node instanceof \FloCMS\Admin\Form\Layout\Tab) { $walk($node->children(), $node->getLabel()); }
+                if ($node instanceof \FloCMS\Admin\Form\Layout\Tab || ($steps && $node instanceof \FloCMS\Admin\Form\Layout\Step)) { $walk($node->children(), $node->getLabel()); }
                 elseif ($node instanceof \FloCMS\Admin\Form\Layout\Layout) { $walk($node->children(), $tab); }
                 elseif ($node instanceof Field) { $tabs[$node->getName()] = $tab; }
             }

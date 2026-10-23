@@ -857,6 +857,8 @@ final class ResourceController extends PanelController
         $default = Languages::default();
         $isEdit = $record !== null;
         $errors = [];
+        $flow = \FloCMS\Admin\Form\WizardFlow::for($form, $isEdit);
+        $wizardState = null;
         // Page-level translation (0.23): the language the form shows first.
         $switch = $class::usesLanguageSwitchFor($form);
         $editing = $switch ? \FloCMS\Admin\Translation\EditingLanguage::resolve($this->isPost() ? $this->request->input('_editing') : $this->request->queryValue('editing'), $isEdit) : $default;
@@ -871,7 +873,18 @@ final class ResourceController extends PanelController
             if ($operation !== null) { $form->evaluate($state, $record)->applyRepeaterOperation($state, $operation); }
             $refreshing = $this->request->input('_refresh') !== null || $operation !== null;
             if ($refreshing) { $form->refreshState($state, $record); }
-            $errors = $refreshing ? [] : $submission->errors($form, $state, $record);
+            $checked = false;
+            // A wizard (0.39): Back, Next and the step buttons show the form again on another step, never save.
+            if ($flow !== null) {
+                $result = $flow->handle($this->request->all(), $state, $record, fn (): array => $submission->errors($form, $state, $record), $refreshing);
+                $wizardState = $result['state'];
+                if (!$refreshing && !$result['save']) {
+                    $refreshing = true;
+                    $errors = $result['errors'];
+                    if ($errors !== []) { Session::setFlash(AdminLang::get('wizard.fix_step', ['fields' => $form->errorSummary($errors, $state, false)]), 'danger'); }
+                } elseif (!$refreshing) { $errors = $result['errors']; $checked = true; }
+            }
+            if (!$checked && !($flow !== null && $refreshing)) { $errors = $refreshing ? [] : $submission->errors($form, $state, $record); }
 
             if (!$refreshing && $errors === []) {
                 try {
@@ -909,11 +922,16 @@ final class ResourceController extends PanelController
             foreach ($form->fields() as $name => $field) {
                 $state[$name] = $field->stateFromRecord($record, $default);
             }
+            $wizardState = $flow?->initial($state, $record);
         }
 
         $renderer = new FormRenderer($state, $errors, $languages, $default, $isEdit, fileUrl: \FloCMS\Admin\Uploads\Uploads::url($this->resource, $record), mediaUrl: Admin::url($this->resource::getSlug() . '/media'),
             lookupUrl: Admin::url($this->resource::getSlug() . '/lookup'), recordId: $isEdit ? $this->recordId() : null, ownTable: $class::getTable(),
             languageSwitch: $switch, editing: $editing, sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name($default)]) : null);
+        if ($wizardState !== null) {
+            $renderer->wizard($wizardState, PageView::wizardActions($isEdit, $form->wizard()?->getSubmitLabel(), $this->can('update')),
+                \FloCMS\Admin\View\WizardSummary::closure($this->resource, $form, $state, $record, $wizardState));
+        }
         $fieldsHtml = $renderer->render($form);
         $translation = $switch ? [
             'editing' => $editing,
@@ -948,7 +966,7 @@ final class ResourceController extends PanelController
         $html = $view->form($title, $action, $fieldsHtml, $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
             !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== [], $history, $managers, $deleteText,
             $this->scope !== null ? ['url' => $this->scope->parentUrl(), 'title' => $this->scope->parentTitle()]
-                : ($isEdit && !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null), $translation);
+                : ($isEdit && !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null), $translation, $wizardState !== null);
 
         return $this->panel($title, $html, $this->activeSlug());
     }

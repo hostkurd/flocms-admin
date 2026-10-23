@@ -5,6 +5,7 @@ import { initializeTranslations } from './translations';
 import { initializeSelection } from './selection';
 import { initializeLogin } from './login';
 import { initializeForms } from './forms';
+import { initializeWizards } from './wizard';
 import { initializeEditors } from './editors';
 import { initializeView } from './view';
 import { initializeUsers } from './users';
@@ -64,6 +65,7 @@ function initialize(): void {
   const root = panel();
   if (!root) return;
   initializeForms(root);
+  initializeWizards(root);
   initializeTranslations(root);
   initializeRepeaters(root);
   initializeBuilders(root);
@@ -349,7 +351,7 @@ document.addEventListener('flo-admin:url-replaced', () => { displayedUrl = locat
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) { initializeForms(root); initializeTranslations(root); initializeRepeaters(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
+  if (root) { initializeForms(root); initializeWizards(root); initializeTranslations(root); initializeRepeaters(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

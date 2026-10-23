@@ -44,7 +44,7 @@ abstract class Field
      * and not written. A relation manager omits the parent's key and its
      * hideFields(); the server fills the key itself. @internal
      */
-    public function omit(?string $value = null): static { $this->omitted = true; $this->fixed = $value; $this->visible = false; $this->visibleCondition = null; $this->requiredCondition = null; return $this; }
+    public function omit(?string $value = null): static { $this->omitted = true; $this->fixed = $value; $this->visible = false; $this->visibleCondition = null; $this->requiredCondition = null; $this->stepCondition = null; return $this; }
     public function isOmitted(): bool { return $this->omitted; }
     /** The value an omitted field holds anyway (a relation manager's parent key), so other fields and rules see it. */
     public function fixedValue(): ?string { return $this->fixed; }
@@ -65,13 +65,18 @@ abstract class Field
     public function shownWhen(string $field, string|array $values): static { $this->shownCondition = self::condition($field, $values); return $this; }
     /** @return array{0: string, 1: list<string>}|null */
     public function getShownWhen(): ?array { return $this->shownCondition; }
-    public function dependencies(): array { return array_values(array_unique(array_filter([$this->visibleCondition[0] ?? null, $this->requiredCondition[0] ?? null]))); }
+    public function dependencies(): array { return array_values(array_unique(array_filter([$this->visibleCondition[0] ?? null, $this->requiredCondition[0] ?? null, $this->stepCondition[0] ?? null]))); }
+    /** @var array{0: string, 1: list<string>}|null the visibleWhen() of the wizard step holding this field (0.39) */
+    private ?array $stepCondition = null;
+    /** @internal set by Form for fields of a Step with visibleWhen(): hidden while the step is. */
+    public function inStepShownWhen(?array $condition): static { $this->stepCondition = $this->omitted ? null : $condition; return $this; }
     public function isVisible(): bool { return $this->visible; }
     public function resolve(array $state): static
     {
         $field = clone $this;
         if ($this->omitted) { return $field; }
         if ($this->visibleCondition !== null) { [$parent, $values] = $this->visibleCondition; $field->visible = in_array($state[$parent] ?? '', $values, true); }
+        if ($this->stepCondition !== null) { [$parent, $values] = $this->stepCondition; $field->visible = $field->visible && in_array($state[$parent] ?? '', $values, true); }
         if ($this->requiredCondition !== null) { [$parent, $values] = $this->requiredCondition; $field->required(in_array($state[$parent] ?? '', $values, true)); }
         return $field;
     }
