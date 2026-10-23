@@ -42,7 +42,7 @@ public function form(Form $form): Form
 | Method | On | What it does |
 | --- | --- | --- |
 | `Wizard::make($name)->schema([...])` | Wizard | The steps, in order. A wizard takes `Step`s only. |
-| `->summary()` | Wizard | Adds a last **Review** step that lists the answers, grouped by step, each group with an Edit button. Off by default. |
+| `->summary()` | Wizard | Adds a last **Review** step that lists the answers, grouped by step, each group with an Edit button. Off by default. Not available on custom pages (their forms and header actions), which have no resource to show the values with. |
 | `->startOn('location')` | Wizard | The step a new record's form opens on (default: the first). |
 | `->submitLabel('Publish listing')` | Wizard | The final button's text on the record's create and edit pages (default Create / Save). In an action's form the action's own label is used. |
 | `Step::make($name)->schema([...])` | Step | Fields and layouts (`Section`, `Grid`, `Tabs`), as anywhere in a form. |
@@ -58,7 +58,7 @@ Rules, checked when the form is built (each breaks with a message that says what
 - A `Step` goes directly in a `Wizard`, and a `Wizard` never sits inside another layout: wizards are never nested, and repeater items and blocks can't be wizards.
 - Step names are unique in the wizard; field names stay unique across the whole form (they are the columns, as always).
 - **Passwords go on the last step** (or in `aside()`). A typed password is never printed back into the page, so on an earlier step it would be lost on Next.
-- A step's `visibleWhen()` names a field of an **earlier** step (or an `aside()` field).
+- A step's `visibleWhen()` names a field of an **earlier** step (or an `aside()` field) with one plain value (not an upload, a password or a translatable field). The first step is always shown.
 - Settings pages and custom pages' filters can't be wizards.
 
 ## How it moves
@@ -97,7 +97,7 @@ Translatable fields work inside steps with both the language badges and the page
 
 ## Phones
 
-The header becomes "Step 2 of 5 · Location" with a progress bar, and **All steps** opens the list. Back and Next sit in a bar fixed at the bottom of the screen.
+The header becomes "Step 2 of 5 · Location" with a progress bar, and **All steps** opens the list (a step with errors still says so). On the create and edit pages Back and Next sit in a bar fixed at the bottom of the screen; in dialogs and on action pages they stay below the step.
 
 ## Strings
 

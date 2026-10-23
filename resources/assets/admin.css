@@ -3153,12 +3153,13 @@ button.fa-wizard-step:focus-visible{outline:2px solid var(--fa-focus);outline-of
   .is-current .fa-wizard-step,[data-wizard-mode="edit"] .is-current .fa-wizard-step{background:var(--fa-primary-soft)}
   .fa-wizard-mark,[data-wizard-mode="edit"] .fa-wizard-mark{width:26px;height:26px;font-size:12px}
   .fa-wizard-text{padding:0}
-  .fa-wizard-note{display:none}
+  .fa-wizard-item:not(.has-error) .fa-wizard-note{display:none}
   .fa-wizard-panel{padding:16px 14px 6px}
   .fa-wizard-answers{grid-template-columns:minmax(0,1fr)}
   .fa-wizard-answers dt{padding-block-end:0;border:0}
   .fa-record .fa-wizard-nav{position:fixed;inset-inline:0;inset-block-end:0;z-index:21;margin:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));flex-wrap:nowrap;border-radius:0;background:var(--fa-surface);box-shadow:0 -4px 16px rgba(16,24,40,.08)}
   .fa-record .fa-wizard-nav .fa-btn{min-height:44px}
+  .fa-record [data-wizard-mode="edit"] .fa-wizard-nav{flex-wrap:wrap}
   .fa-record .fa-wizard-nav [data-wizard-next],.fa-record .fa-wizard-nav [data-wizard-finish]{flex:1;justify-content:center}
   .fa-record .fa-wizard-count,.fa-record [data-wizard-mode="edit"] .fa-wizard-nav [name="_close"]:not([data-wizard-finish]){display:none}
   .fa-record:has(.fa-wizard) .fa-record-actions{position:static;flex-wrap:wrap;padding:0;border:0;background:none;box-shadow:none}

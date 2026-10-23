@@ -76,6 +76,16 @@ test('a file chosen on one step is kept through the later ones', async ({ page }
   expect((await state(page))[1].brochure).toMatch(/\.txt$/);
 });
 
+test('a file chosen on the last move of an action page is saved', async ({ page }) => {
+  // The edit action's own page (the fallback of a dialog resource): every Save is a final submit.
+  await page.goto('/en/admin/rental-dialogs/action/row/edit/1');
+  await page.locator('.fa-wizard-item').filter({ hasText: 'Pricing' }).getByRole('button').click();
+  await onStep(page, 'pricing');
+  await page.locator('#f-brochure').setInputFiles({ name: 'plan.txt', mimeType: 'text/plain', buffer: Buffer.from('Floor plan.') });
+  await page.locator('.fa-form-actions button[type="submit"]').first().click();
+  await expect.poll(async () => String((await state(page))[0].brochure)).toMatch(/\.txt$/);
+});
+
 test('the edit page opens any step and Save opens the step with an error', async ({ page }) => {
   await page.goto('/en/admin/rentals/edit/1');
   await page.locator('.fa-wizard-item').filter({ hasText: 'Rental terms' }).getByRole('button').click();

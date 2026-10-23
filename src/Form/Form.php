@@ -106,7 +106,12 @@ final class Form
             $condition = $step->getVisibleCondition();
             if ($condition !== null) {
                 $owner = $map[$condition[0]] ?? null;
+                if ($index === 0) { throw new InvalidArgumentException('The first step of a wizard is always shown: remove visibleWhen() from "' . $step->getName() . '".'); }
                 if (!isset($flat[$condition[0]])) { throw new InvalidArgumentException('Step "' . $step->getName() . '" depends on an unknown field "' . $condition[0] . '".'); }
+                $controller = $flat[$condition[0]];
+                if ($controller instanceof Fields\FileUpload || $controller->isTranslatable() || ($controller instanceof Fields\TextInput && $controller->getType() === 'password')) {
+                    throw new InvalidArgumentException('Step "' . $step->getName() . '" depends on "' . $condition[0] . '": use a field with one plain value (not an upload, a password or a translatable field).');
+                }
                 if ($owner !== null && $names[$owner] >= $index) { throw new InvalidArgumentException('Step "' . $step->getName() . '" depends on "' . $condition[0] . '": use a field of an earlier step.'); }
             }
             foreach ($map as $name => $owner) {

@@ -244,9 +244,14 @@ final class WizardRequestTest extends RequestTestCase
         $next = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => '', '_wizard' => 'next', '_wizard_step' => 'who'], $options);
         self::assertSame('when', self::current($next['body']));
         self::assertStringContainsString('name="_save"', $next['body']);
-        $sent = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => 'feb', '_save' => '1', '_wizard_step' => 'when', '_wizard_reached' => 'when'], $options);
+        // A live field (a later step depends on the month) refreshes the form: same step, nothing sent.
+        $refresh = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => 'feb', '_refresh' => '1', '_wizard_step' => 'when', '_wizard_reached' => 'when'], $options);
+        self::assertSame('when', self::current($refresh['body']));
+        self::assertStringContainsString('Step 2 of 3', $refresh['body']);
+        self::assertArrayNotHasKey('moving_in', $refresh['session']);
+        $sent = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => 'jan', '_save' => '1', '_wizard_step' => 'when', '_wizard_reached' => 'when'], $options);
         self::assertTrue($sent['redirected'], (string) $sent['error']);
-        self::assertSame('Sara/feb', $sent['session']['moving_in'] ?? null);
+        self::assertSame('Sara/jan/', $sent['session']['moving_in'] ?? null);
     }
 
     public function testThePageLevelLanguageSwitchStaysAboveTheSteps(): void

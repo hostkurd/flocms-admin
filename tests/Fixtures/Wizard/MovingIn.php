@@ -20,13 +20,14 @@ final class MovingIn extends AdminPage
             Wizard::make('moving')->schema([
                 Step::make('who')->label('Who')->schema([TextInput::make('tenant')->required()]),
                 Step::make('when')->label('When')->schema([Select::make('month')->options(['jan' => 'January', 'feb' => 'February'])->required()]),
+                Step::make('keys')->label('Keys')->visibleWhen('month', 'feb')->schema([TextInput::make('keys')]),
             ]),
         ]);
     }
 
     public function submit(array $data): ?string
     {
-        $_SESSION['moving_in'] = $data['tenant'] . '/' . $data['month'];
+        $_SESSION['moving_in'] = $data['tenant'] . '/' . $data['month'] . '/' . ($data['keys'] ?? '');
         return 'Sent.';
     }
 }

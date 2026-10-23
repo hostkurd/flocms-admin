@@ -176,10 +176,11 @@ final class ResourceComponent extends Component
      */
     private function moveWizard(): bool
     {
-        if ($this->mode === 'delete') { return false; }
+        if ($this->mode === 'delete' || $this->mode === '') { return false; }
+        $action = $this->active();
+        if ($action->getForm($this->resource())->wizard() === null) { return false; }
         $input = json_decode($this->draft, true);
         if (!is_array($input) || !json_decode($this->draft) instanceof \stdClass) { throw new HttpException(400); }
-        $action = $this->active();
         $result = $this->mode === 'bulk' && $action instanceof \FloCMS\Admin\Actions\BulkAction
             ? $this->bulkExecutor()->wizard($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation, $input)
             : $this->executor()->wizard($action, $this->activePlacement, $this->editingId, $this->operation, $input);
@@ -212,7 +213,14 @@ final class ResourceComponent extends Component
                     json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 64000);
             }
         } catch (ValidationException $error) {
-            $this->draft = json_encode((object) ($accepted + \FloCMS\Admin\Form\WizardFlow::posted((array) json_decode($this->draft, true))), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            $posted = (array) json_decode($this->draft, true);
+            $keys = \FloCMS\Admin\Form\WizardFlow::posted($posted);
+            // A wizard's final submit failed: the dialog opens on the first step with an error.
+            if (($flow = \FloCMS\Admin\Form\WizardFlow::for($action->getForm($this->resource()), $this->mode === 'edit')) !== null && in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true)) {
+                $shown = $flow->forErrors($posted, $error->getErrors(), $accepted, $this->editingId !== '' ? $this->repository()->find($this->editingId) : null);
+                $keys = ['_wizard_step' => $shown->step, '_wizard_reached' => $shown->visible[min($shown->reached, count($shown->visible) - 1)], '_wizard_moved' => '1'];
+            }
+            $this->draft = json_encode((object) ($accepted + $keys), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
             // The dialog opens on the language of the first error.
             if ($this->switches($action)) { $this->editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($error->getErrors(), $this->editingLanguage()); }
             throw $error;

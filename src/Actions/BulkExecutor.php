@@ -128,7 +128,7 @@ final class BulkExecutor
      */
     public function wizard(BulkAction $action, array $ids, string $token, array $input): ?array
     {
-        $this->authorize($action, $ids, $token);
+        $this->preview($action, $ids, $token);
         $form = $action->getForm($this->resource);
         $flow = \FloCMS\Admin\Form\WizardFlow::for($form, false);
         if ($flow === null) { return null; }

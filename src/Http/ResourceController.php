@@ -503,7 +503,10 @@ final class ResourceController extends PanelController
                     $form->refreshState($state);
                 } else { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect($this->listUrl(true)); }
             }
-            catch (\FloCMS\Core\ValidationException $error) { foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); } }
+            catch (\FloCMS\Core\ValidationException $error) {
+                foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); }
+                if ($wizardState === null && ($wizardFlow = \FloCMS\Admin\Form\WizardFlow::for($form, false)) !== null) { $wizardState = $wizardFlow->forErrors($this->request->all(), $errors, $state); }
+            }
         } else {
             try { $opened = $executor->open($action, $ids); }
             catch (\FloCMS\Core\ValidationException $error) {
@@ -521,7 +524,7 @@ final class ResourceController extends PanelController
         $renderer = new FormRenderer($safe, $errors, Languages::all(), Languages::default());
         if (($flow = \FloCMS\Admin\Form\WizardFlow::for($form, false)) !== null) {
             $wizardState ??= $this->isPost() ? $flow->restore($this->request->all(), $state) : $flow->initial($state);
-            $renderer->wizard($wizardState);
+            $renderer->wizard($wizardState, '', \FloCMS\Admin\View\WizardSummary::closure($this->resource, $form, $state, null, $wizardState));
         }
         return $this->panel($action->getTitle($this->resource), \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('bulk'), [
             't' => PageView::translator(), 'title' => $action->getTitle($this->resource),
@@ -582,6 +585,10 @@ final class ResourceController extends PanelController
             } catch (\FloCMS\Core\ValidationException $error) {
                 foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); }
                 $record = $id !== '' ? $this->repository()->find($id) : null;
+                // A wizard's final submit failed: open the first step with an error.
+                if ($wizardState === null && ($wizardFlow = \FloCMS\Admin\Form\WizardFlow::for($form, $action->getKind() === 'edit')) !== null && $action->getKind() !== 'delete') {
+                    $wizardState = $wizardFlow->forErrors($this->request->all(), $errors, $state, $record);
+                }
             }
         } else {
             try { $opened = $executor->open($action, $placement, $id); }

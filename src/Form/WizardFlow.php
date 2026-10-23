@@ -141,6 +141,14 @@ final class WizardFlow
         return [$errors, $errors === [] ? null : ($failed ?? $this->firstWithErrors($errors, $this->visibleSteps($state, $record)))];
     }
 
+    /** The form shown again after a final submit failed: on the first step with an error (or the posted one). */
+    public function forErrors(array $input, array $errors, array $state, ?object $record = null): WizardState
+    {
+        $first = $this->firstWithErrors($errors, $this->visibleSteps($state, $record));
+        $shown = $this->restore($first !== null ? ['_wizard_step' => $first] + $input : $input, $state, $record);
+        return new WizardState($shown->step, $shown->reached, $shown->visible, $shown->isEdit, true);
+    }
+
     /** The posted wizard values (the step shown and the furthest reached) to keep in a dialog's draft. */
     public static function posted(array $input): array
     {

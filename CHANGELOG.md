@@ -16,7 +16,8 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 - **Phones**: "Step 2 of 5 · Location" with a progress bar and the step list in a menu; Back and Next fixed at the bottom.
 - Rules checked when the form is built: a wizard is the whole form (`aside()` fields may sit beside it), steps only in a wizard, wizards never nested, passwords only on the last step, a step's `visibleWhen()` names a field of an earlier step; settings pages and custom pages' filters can't be wizards.
 - `Form::wizard()`, `stepOf()`, `stepFields()`; `Form::errorSummary()` names a field's step (`$steps = false` leaves it out); the record page, the action page, the bulk page and dialogs hide their final button until a wizard's last step.
-- The bulk action page has a hidden default button, so Enter submits the action rather than the first button in the form.
+- The bulk action page has a hidden default button, so Enter submits the action rather than the first button in the form, and a repeater's Add/Remove button there changes the list instead of running the action.
+- A custom page form's live fields refresh the form instead of saving it.
 - New words in `en`, `ar` and `ku`: `wizard.*`.
 
 ## 0.38.0 - 2026-10-23

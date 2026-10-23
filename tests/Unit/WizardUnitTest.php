@@ -47,6 +47,8 @@ final class WizardUnitTest extends TestCase
             'a password before the last step' => static fn () => (new Form())->schema([Wizard::make('w')->schema([Step::make('a')->schema([TextInput::make('pw')->password()]), Step::make('b')->schema([TextInput::make('b')])])]),
             'a step depending on a later field' => static fn () => (new Form())->schema([Wizard::make('w')->schema([Step::make('a')->visibleWhen('kind', 'x')->schema([TextInput::make('a')]), Step::make('b')->schema([TextInput::make('kind')])])]),
             'a step depending on an unknown field' => static fn () => (new Form())->schema([Wizard::make('w')->schema([Step::make('a')->visibleWhen('nope', 'x')->schema([TextInput::make('a')])])]),
+            'a first step that can be hidden' => static fn () => (new Form())->schema([Wizard::make('w')->schema([Step::make('a')->visibleWhen('kind', 'x')->schema([TextInput::make('a')]), Step::make('b')->schema([TextInput::make('b')])])])->aside([TextInput::make('kind')]),
+            'a step depending on a translatable field' => static fn () => (new Form())->schema([Wizard::make('w')->schema([Step::make('a')->schema([TextInput::make('kind')->translatable()]), Step::make('b')->visibleWhen('kind', 'x')->schema([TextInput::make('b')])])]),
             'an unknown start step' => static fn () => (new Form())->schema([Wizard::make('w')->startOn('zzz')->schema([Step::make('a')->schema([TextInput::make('a')])])]),
             'a settings page' => static fn () => SettingsPage::make('general')->schema([Wizard::make('w')->schema([Step::make('a')->schema([TextInput::make('a')])])]),
         ];

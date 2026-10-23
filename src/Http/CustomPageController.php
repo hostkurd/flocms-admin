@@ -104,6 +104,7 @@ final class CustomPageController extends PanelController
         if (!$action->allowedOnPage($this->page)) { throw new HttpException(403); }
         $filters = $this->filters();
         $form = $action->getPageForm();
+        if ($form->wizard()?->hasSummary()) { throw new \LogicException('Wizard::summary() is not available on custom pages: the review step lists a resource\'s values.'); }
         $slug = $this->page::getSlug();
         $back = Admin::url($slug, ['filter' => $filters->active() ?: null]);
         $operationSlug = 'page:' . $slug;
@@ -284,6 +285,11 @@ final class CustomPageController extends PanelController
         $input = $this->request->all();
         if ($this->request->input('_repeater') !== null) {
             return $this->render($filters, $table, $tableFailed, $pageForm->operate($input, $this->request->input('_repeater')));
+        }
+        if ($this->request->input('_refresh') !== null) {
+            // A live field changed: the form again with dependent fields updated (and a wizard on its step); nothing saved.
+            $state = $pageForm->refresh($input);
+            return $this->render($filters, $table, $tableFailed, $state, [], $pageForm->wizardState($input, $state));
         }
         $moved = $pageForm->wizard($input);
         if ($moved !== null && !($moved['save'] && $moved['errors'] === [])) {

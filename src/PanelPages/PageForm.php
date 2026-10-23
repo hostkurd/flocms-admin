@@ -23,6 +23,7 @@ final class PageForm
     public function __construct(private readonly AdminPage $page)
     {
         $this->form = $page->form(new Form());
+        if ($this->form->wizard()?->hasSummary()) { throw new \LogicException('Wizard::summary() is not available on custom pages: the review step lists a resource\'s values.'); }
         foreach ($this->form->fields() as $field) {
             if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload) {
                 throw new \LogicException('Field "' . $field->getName() . '": upload fields are not supported on panel pages yet; use a MediaPicker or a settings page.');
@@ -53,6 +54,20 @@ final class PageForm
         foreach ($this->form->fields() as $name => $field) {
             $state[$name] = $field->stateFromRecord($record, Languages::default());
         }
+        return $state;
+    }
+
+    /**
+     * A live field changed (0.39): dependent fields updated, nothing saved.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, string|array<string, string>>
+     */
+    public function refresh(array $input): array
+    {
+        $record = $this->record();
+        $state = $this->stateFromInput($input, $record);
+        $this->form->refreshState($state, $record);
         return $state;
     }
 

@@ -108,6 +108,11 @@ final class ActionExecutor
         $kind = $action->getKind();
         $flow = \FloCMS\Admin\Form\WizardFlow::for($form, $kind === 'edit');
         if ($flow === null || $kind === 'delete') { return null; }
+        // A final submit is left to execute(), which receives the uploaded files once and runs every check.
+        if (!$refreshing && ($input['_wizard'] ?? null) === null) {
+            $current = $flow->restore($input, in_array($kind, ['create', 'edit'], true) ? (new FormSubmission($this->resource, $this->repository))->state($form, $input, $record) : ActionForm::state($action, $form, $input, $record), $record);
+            if ($kind === 'edit' || $current->isLast()) { return ['state' => $current, 'save' => true, 'errors' => [], 'values' => []]; }
+        }
         if (in_array($kind, ['create', 'edit'], true)) {
             $submission = new FormSubmission($this->resource, $this->repository);
             $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $input, $_FILES['_uploads'] ?? [], $this->resource, $record);

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace FloCMS\Admin\Tests\Fixtures\Wizard;
 
-use FloCMS\Admin\Actions\{Action, ActionContext, BulkAction, BulkActionContext};
+use FloCMS\Admin\Actions\{Action, ActionContext, BulkAction, BulkActionContext, DeleteAction, EditAction};
 use FloCMS\Admin\Form\Form;
 use FloCMS\Admin\Form\Fields\{TextInput, Textarea, TimePicker};
 use FloCMS\Admin\Form\Layout\{Step, Wizard};
@@ -19,6 +19,7 @@ class RentalDialogResource extends RentalResource
     public function table(Table $table): Table
     {
         return parent::table($table)->actions([
+            EditAction::make(), DeleteAction::make(),
             Action::make('schedule')->label('Schedule a viewing')->form(static fn (Form $form): Form => $form->schema([
                 Wizard::make('viewing')->schema([
                     Step::make('visitor')->label('Visitor')->schema([TextInput::make('visitor')->required()]),
