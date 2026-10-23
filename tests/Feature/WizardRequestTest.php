@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace FloCMS\Admin\Tests\Feature;
 
-use FloCMS\Admin\Tests\Fixtures\Wizard\{MovingIn, RentalDialogResource, RentalResource};
+use FloCMS\Admin\Tests\Fixtures\Wizard\{MovingIn, RentalDialogResource, RentalPageModeResource, RentalResource};
 
 /**
  * Wizard forms (0.39) through whole requests, as a browser without JavaScript
@@ -16,7 +16,7 @@ final class WizardRequestTest extends RequestTestCase
 {
     private static function options(array $extra = []): array
     {
-        return ['admin_config' => ['resources' => [RentalResource::class, RentalDialogResource::class], 'admin_pages' => [MovingIn::class], 'reactive' => false], 'permissions' => [0 => [], 1 => ['*'], 2 => ['*'], 3 => ['*']]] + $extra;
+        return ['admin_config' => ['resources' => [RentalResource::class, RentalDialogResource::class, RentalPageModeResource::class], 'admin_pages' => [MovingIn::class], 'reactive' => false], 'permissions' => [0 => [], 1 => ['*'], 2 => ['*'], 3 => ['*']]] + $extra;
     }
 
     protected function setUp(): void
@@ -247,5 +247,20 @@ final class WizardRequestTest extends RequestTestCase
         $sent = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => 'feb', '_save' => '1', '_wizard_step' => 'when', '_wizard_reached' => 'when'], $options);
         self::assertTrue($sent['redirected'], (string) $sent['error']);
         self::assertSame('Sara/feb', $sent['session']['moving_in'] ?? null);
+    }
+
+    public function testThePageLevelLanguageSwitchStaysAboveTheSteps(): void
+    {
+        $page = self::request('GET', '/en/admin/rental-pages/edit/1?editing=ar', self::options());
+        self::assertSame(200, $page['status'], (string) $page['error']);
+        self::assertStringContainsString('name="_editing" value="ar"', $page['body']);
+        self::assertLessThan(strpos($page['body'], 'data-admin-wizard'), strpos($page['body'], 'fa-record-switch'));
+        $moved = self::post('/en/admin/rental-pages/edit/1', self::answers(['type' => 'rent', 'lease_months' => '12', 'title' => ['en' => 'Villa', 'ar' => 'فيلا'], '_editing' => 'ar', '_wizard' => 'go:pricing', '_wizard_step' => 'details']), self::options());
+        self::assertSame('pricing', self::current($moved['body']));
+        self::assertStringContainsString('name="_editing" value="ar"', $moved['body'], 'the language shown stays');
+        $saved = self::post('/en/admin/rental-pages/edit/1', self::answers(['type' => 'rent', 'lease_months' => '12', 'price' => '2400', 'title' => ['en' => 'Villa', 'ar' => 'فيلا'], '_editing' => 'ar', '_continue' => '1', '_wizard_step' => 'pricing']), self::options());
+        preg_match('/fa-notification-title">([^<]*)/', $saved['body'], $flash);
+        self::assertTrue($saved['redirected'], (string) $saved['error'] . ($flash[1] ?? ''));
+        self::assertSame('{"en":"Villa","ar":"فيلا"}', self::row('rentals', 1)['title']);
     }
 }

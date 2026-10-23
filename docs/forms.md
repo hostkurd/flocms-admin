@@ -42,6 +42,10 @@ public function form(Form $form): Form
 
 Tabs support native buttons, ARIA selection/panel relationships, Home/End and direction-aware Arrow keys. Validation reveals the tab containing an invalid field; existing translation dialogs still open for secondary-language errors. Tab selection survives live form refreshes. Without JavaScript, the tab buttons remain hidden and every tab is a normal visible section, including translation fallbacks.
 
+### Steps (0.39)
+
+A long form can be shown as steps with Back and Next: `Wizard::make('listing')->schema([Step::make('details')->schema([...]), …])`. Each step is checked on the server before the next one opens, and the record is saved once at the end. A wizard is the whole form (`aside()` fields may sit beside it). See [Wizard forms](wizards.md).
+
 ## Pages, dialogs and slide-overs (0.12)
 
 Create and Edit open as a **full page** by default: room for long forms, a sidebar, and a header with **Cancel · Save · Save and close** (plus **Save and create another** on new records) that stays visible while scrolling. Small records read better in a dialog over the list; choose per resource:

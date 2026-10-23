@@ -262,7 +262,8 @@ final class FormRenderer
             $reachable = !$isCurrent && ($state->isEdit || $i <= $state->reached);
             $classes = ['fa-wizard-item', $isCurrent ? 'is-current' : ($done ? 'is-done' : 'is-upcoming')];
             if ($errors > 0) { $classes[] = 'has-error'; }
-            $mark = $errors > 0 ? '!' : ($done ? Icons::svg('check', 'fa-icon') : (string) ($i + 1));
+            // The step's icon (if any) stands for its number until the step is done.
+            $mark = $errors > 0 ? '!' : ($done ? Icons::svg('check', 'fa-icon') : ($step?->getIcon() !== null ? Icons::svg($step->getIcon(), 'fa-icon') : (string) ($i + 1)));
             $note = $errors > 0 ? AdminLang::get($errors === 1 ? 'wizard.problem' : 'wizard.problems', ['count' => (string) $errors]) : ($description ?? '');
             $inner = '<span class="fa-wizard-mark" aria-hidden="true">' . $mark . '</span><span class="fa-wizard-text"><span class="fa-wizard-label">' . Str::e($title) . '</span>'
                 . ($note !== '' ? '<span class="fa-wizard-note">' . Str::e($note) . '</span>' : '') . '</span>'

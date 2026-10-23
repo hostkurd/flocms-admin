@@ -36,6 +36,7 @@ final class PageFilters
     public function __construct(AdminPage $page, array $input)
     {
         $this->form = $page->filters(new Form());
+        if ($this->form->wizard() !== null) { throw new \LogicException('Filters cannot be a wizard (0.39): use simple fields.'); }
         foreach ($this->form->fields() as $field) {
             if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload || $field instanceof \FloCMS\Admin\Form\Fields\BelongsTo
                 || $field instanceof \FloCMS\Admin\Form\Fields\BelongsToMany || $field instanceof \FloCMS\Admin\Form\Fields\Repeater

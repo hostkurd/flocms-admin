@@ -13,6 +13,7 @@ final class Step extends Layout
     private ?array $visibleCondition = null;
     private ?\Closure $afterValidation = null;
 
+    /** An icon (a name from the panel's icon set) shown instead of the step's number until it is done. */
     public function icon(string $icon): static { $this->icon = $icon; return $this; }
     public function getIcon(): ?string { return $this->icon; }
 
