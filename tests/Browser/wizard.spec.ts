@@ -3,6 +3,9 @@ import { test, expect, Page } from '@playwright/test';
 /* Wizard forms (0.39): fixtures tests/Fixtures/Wizard (rentals), reset by /__test/rentals. */
 const state = async (page: Page) => (await (await page.request.post('/__test/rentals-state')).json()) as Array<Record<string, string | null>>;
 const shown = (page: Page) => page.locator('.fa-wizard-panel:not([hidden])');
+// The type is a live field (a step depends on it): wait until its refresh, or a move, has landed.
+const settled = async (page: Page) => { await expect(page.locator('.fa-panel[aria-busy="true"]')).toHaveCount(0); };
+const onStep = async (page: Page, step: string) => { await expect(page.locator('input[name="_wizard_step"]')).toHaveValue(step); await settled(page); };
 
 test.beforeEach(async ({ page }) => {
   await page.request.post('/__test/rentals');
@@ -21,6 +24,7 @@ test('a new record goes step by step; Enter means Next and focus moves to the ne
 
   await page.locator('#f-title').fill('Stone house');
   await page.locator('#f-type').selectOption('sale');
+  await settled(page);
   await page.locator('#f-title').press('Enter');
   await expect(shown(page).locator('.fa-wizard-title')).toHaveText('Location');
   await expect(shown(page).locator('.fa-wizard-title')).toBeFocused();
@@ -49,17 +53,23 @@ test('a file chosen on one step is kept through the later ones', async ({ page }
   await page.goto('/en/admin/rentals/create');
   await page.locator('#f-title').fill('With brochure');
   await page.locator('#f-type').selectOption('sale');
+  await settled(page);
   await page.getByRole('button', { name: 'Next: Location' }).click();
+  await onStep(page, 'location');
   await page.locator('#f-city').fill('Athens');
   await page.getByRole('button', { name: 'Next: Pricing' }).click();
+  await onStep(page, 'pricing');
   await page.locator('#f-brochure').setInputFiles({ name: 'brochure.txt', mimeType: 'text/plain', buffer: Buffer.from('Three rooms, sea view.') });
   // The price is missing: Next shows the error, the file stays chosen.
   await page.getByRole('button', { name: 'Next: Review' }).click();
   await expect(page.locator('#f-price-error')).toBeVisible();
   await page.locator('#f-price').fill('300000');
   await page.getByRole('button', { name: 'Back' }).click();
+  await onStep(page, 'location');
   await page.getByRole('button', { name: 'Next: Pricing' }).click();
+  await onStep(page, 'pricing');
   await page.getByRole('button', { name: 'Next: Review' }).click();
+  await onStep(page, '_review');
   await expect(shown(page)).toContainText('brochure.txt');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/rentals$/);
