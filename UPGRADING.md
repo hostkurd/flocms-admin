@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.39.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.1" -W` and reload open Admin pages. Nothing else to do: only the look of editable list cells changed.
+
+---
+
 # Upgrading to Admin 0.39.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and nothing changes until a form uses `Wizard`. See [Wizard forms](docs/wizards.md).
