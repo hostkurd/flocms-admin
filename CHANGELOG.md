@@ -2,6 +2,11 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.2 - 2026-10-23
+
+- A text cell's hover border now wraps its text: before, the box was 8px too narrow, so a number such as "€ 400.00" ran over its end edge.
+- "Saving…" and "Saved" next to an editable cell no longer push the column wider (and back when they go): they float beside the cell. Error messages still show under the cell. On phones they stay under the value.
+
 ## 0.39.1 - 2026-10-23
 
 **Quieter editable cells.** Nothing to migrate.

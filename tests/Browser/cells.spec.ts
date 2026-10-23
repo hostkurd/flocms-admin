@@ -194,3 +194,33 @@ test.describe('without JavaScript', () => {
     expect((await offer(page, 1)).published).toBe('draft');
   });
 });
+
+test('"Saving…" and "Saved" never move the columns or the row (0.39.2)', async ({ page }) => {
+  await page.goto('/en/admin/offers?group=none');
+  // The cell's own box: it grows when the note takes room, which widens the column in a fuller list.
+  const width = async (cell: import('@playwright/test').Locator) => Math.round((await cell.boundingBox())!.width);
+  const height = async () => Math.round((await row(page, 'Garden flat, Erbil').boundingBox())!.height);
+  const rowHeight = await height();
+
+  const status = row(page, 'Garden flat, Erbil').locator('form[data-admin-cell]').filter({ has: page.locator('input[name="column"][value="status"]') });
+  const statusWidth = await width(status);
+  await page.getByLabel('Status: Garden flat, Erbil').selectOption('draft');
+  await page.getByLabel('Status: Garden flat, Erbil').selectOption('published');
+  await expect(status).toHaveClass(/is-saved/);
+  expect(await width(status)).toBe(statusWidth);
+  expect(await height()).toBe(rowHeight);
+
+  const toggle = row(page, 'Seaside flat, Glyfada').locator('form[data-admin-cell]').filter({ has: page.getByRole('switch', { name: 'Featured: Seaside flat, Glyfada' }) });
+  const toggleWidth = await width(toggle);
+  await page.getByRole('switch', { name: 'Featured: Seaside flat, Glyfada' }).click();
+  await expect(toggle).toHaveClass(/is-saved/);
+  expect(await width(toggle)).toBe(toggleWidth);
+
+  const price = row(page, 'Townhouse, Pangrati').locator('form[data-admin-cell]').filter({ has: page.locator('input[name="column"][value="price"]') });
+  const priceWidth = await width(price);
+  await price.locator('[data-admin-cell-display]').click();
+  await price.locator('[data-admin-cell-input]').fill('410000');
+  await page.keyboard.press('Enter');
+  await expect(price).toHaveClass(/is-saved/);
+  expect(await width(price)).toBe(priceWidth);
+});
