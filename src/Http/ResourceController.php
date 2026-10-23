@@ -66,6 +66,8 @@ final class ResourceController extends PanelController
             'admin_history' => $class::permission('view'),
             'admin_export' => $class::permission('view'),
             'admin_import' => $class::permission('view'),
+            // A list cell (0.38): who may edit this record is checked in the action too.
+            'admin_cell' => $class::permission('update'),
         ];
     }
 
@@ -114,7 +116,12 @@ final class ResourceController extends PanelController
             $dir = null;
         }
 
-        $result = $this->repository()->paginate($table, $search, $sort, $dir, $page, $perPage, AdminLang::language(), $filters);
+        // Group by (0.38): ?group=city_id, remembered for this person
+        $grouping = new \FloCMS\Admin\Table\Grouping($table, $this->scope?->columnsKey() ?? $class::getSlug());
+        $requestedGroup = $this->query('group', '');
+        $grouping->resolve(preg_match('/^(none|[A-Za-z_][A-Za-z0-9_]{0,63}(:(asc|desc))?)$/D', $requestedGroup) === 1 ? $requestedGroup : '');
+
+        $result = $this->repository()->paginate($table, $search, $sort, $dir, $page, $perPage, AdminLang::language(), $filters, $grouping->active(), $grouping->direction());
 
         // Past the last page (e.g. after deleting its last row): go to the last one
         $lastPage = (int) $result['pagination']['last_page'];
@@ -134,7 +141,10 @@ final class ResourceController extends PanelController
             fn (object $r): bool => $this->resource->canDelete($r), $filters,
             // Tabs above the list (0.28), counted with the search
             \FloCMS\Admin\Table\TabsView::render($table, $filters, $this->repository()->whereSearch($this->repository()->newQuery(), $table, $search),
-                fn (array $state): string => Admin::url($class::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $this->scope?->token(), 'filter' => $state, 'q' => $search, 'sort' => $sort, 'dir' => $dir]))
+                fn (array $state): string => Admin::url($class::getSlug(), ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $this->scope?->token(), 'filter' => $state, 'q' => $search, 'sort' => $sort, 'dir' => $dir])),
+            // Totals of every row the list matches (0.38)
+            fn (): \FloCMS\Core\Database => $this->repository()->filteredQuery($table, $search, $filters),
+            $grouping
         );
 
         return $this->panel($this->scope !== null ? AdminLang::get('relations.list_title', ['label' => $class::getPluralLabel(), 'parent' => $this->scope->parentTitle()]) : $class::getPluralLabel(), $html, $this->activeSlug());
@@ -388,6 +398,73 @@ final class ResourceController extends PanelController
             $this->redirect($result->headers()['Location'] ?? \FloCMS\Admin\Admin::url($this->resourceClass::getSlug()));
         }
         return is_string($result) ? $this->panel($page->title(), $result, $this->resourceClass::getSlug()) : $result;
+    }
+
+    /**
+     * POST /admin/<slug>/cell/<id>: save one editable cell of the list (0.38).
+     * Scripts send X-Flo-Admin-Cell: 1 and get JSON; a form without JavaScript
+     * is sent back to the list with a message (a cell that asks first shows a
+     * confirm page).
+     */
+    public function admin_cell(): string|\FloCMS\Core\Http\Response
+    {
+        if (!$this->isPost()) { header('Allow: POST'); throw new HttpException(405); }
+        if (count($this->params) !== 1) { throw new HttpException(404); }
+        $this->enterParent();
+        $id = $this->recordId();
+        if ($id === '' || preg_match('/^[A-Za-z0-9_\-]{1,64}$/D', $id) !== 1) { throw new HttpException(404); }
+        $json = $this->request->header('X-Flo-Admin-Cell') === '1';
+        $name = $this->request->input('column');
+        $value = $this->request->input('value');
+        $was = $this->request->input('was');
+        $prefix = $this->request->input('_prefix', 'fa-cell');
+        if (!is_string($name) || !is_string($was) || !is_string($value)) { throw new HttpException(400); }
+        if (!is_string($prefix) || preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,47}$/D', $prefix) !== 1) { $prefix = 'fa-cell'; }
+        $table = $this->table();
+        $updater = new \FloCMS\Admin\Table\Cells\CellUpdater($this->resource, $this->repository(), $table, $this->form());
+        $column = $updater->column($name);
+        $back = $this->backUrl();
+        $context = new \FloCMS\Admin\Table\Cells\CellContext($this->resource, $back, $prefix);
+
+        // A cell that asks first: the dialog sends confirmed=1; without JavaScript, a confirm page.
+        if ($column->needsConfirmation() && $this->request->input('confirmed') !== '1') {
+            $record = $this->repository()->find($id) ?? throw new HttpException(404);
+            if (!$this->resource->mayEdit($record)) { throw new HttpException(403); }
+            if ($json) { return \FloCMS\Core\Http\Response::json(['ok' => false, 'confirm' => true], 409)->header('Cache-Control', 'no-store'); }
+            $words = $column->confirmation($record, $context);
+            return $this->panel($words['title'], \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('cell-confirm'), [
+                't' => PageView::translator(), 'words' => $words, 'record' => $context->title($record),
+                'actionUrl' => $context->url($id), 'csrf' => \FloCMS\Core\Csrf::field(), 'back' => $back,
+                'column' => $name, 'value' => $value, 'was' => $was, 'listLabel' => $this->resourceClass::getPluralLabel(),
+                'danger' => $column->confirmsDanger(),
+            ]), $this->activeSlug());
+        }
+
+        try {
+            $saved = $updater->update($id, $name, $value, $was);
+        } catch (\FloCMS\Admin\Table\Cells\CellConflict $conflict) {
+            $message = AdminLang::get($conflict->current === null ? 'cells.gone' : 'cells.conflict', ['label' => $column->getLabel()]);
+            if ($json) {
+                return \FloCMS\Core\Http\Response::json(['ok' => false, 'conflict' => true, 'message' => $message,
+                    'html' => $conflict->current !== null ? $column->renderCell($conflict->current, $context) : null], 409)->header('Cache-Control', 'no-store');
+            }
+            Session::setFlash($message, 'warning');
+            $this->redirect($back);
+        } catch (\FloCMS\Core\ValidationException $error) {
+            $messages = $error->getErrors();
+            $first = $messages[$name] ?? (array_values($messages)[0] ?? '');
+            $message = is_array($first) ? implode(' ', $first) : (string) $first;
+            if ($json) { return \FloCMS\Core\Http\Response::json(['ok' => false, 'message' => $message], 422)->header('Cache-Control', 'no-store'); }
+            Session::setFlash($message, 'danger');
+            $this->redirect($back);
+        }
+        $title = $context->title($saved);
+        if ($json) {
+            return \FloCMS\Core\Http\Response::json(['ok' => true, 'html' => $column->renderCell($saved, $context),
+                'message' => AdminLang::get('cells.saved')], 200)->header('Cache-Control', 'no-store');
+        }
+        Session::setFlash(AdminLang::get('cells.saved_named', ['label' => $column->getLabel(), 'title' => $title]), 'success');
+        $this->redirect($back);
     }
 
     /** Standard fallback for every declared action, also used by async navigation. */

@@ -16,6 +16,8 @@ import { initializeFileDrops } from './filedrop';
 import { initializeRoles } from './roles';
 import { initializeImports } from './import';
 import { updateManagerCounts } from './managers';
+import { initializeCells } from './cells';
+import { initializeGroups } from './groups';
 import { initialize as initializeRepeaters } from './repeater';
 import { initializeBuilders } from './builder';
 import { initializeCodeEditors } from './code-editor';
@@ -81,6 +83,8 @@ function initialize(): void {
   initializeMedia(root);
   initializeFileDrops(root);
   updateManagerCounts(root);
+  initializeCells(root);
+  initializeGroups(root);
   document.title = root.dataset.adminTitle || document.title;
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;

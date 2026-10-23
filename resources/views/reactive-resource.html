@@ -27,7 +27,7 @@
         <button class="fa-btn fa-btn-ghost fa-btn-sm" type="button" data-rx-action="clearSelection">{{ $t('bulk.clear') }}</button>
     </form>
     @endif
-    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || $export !== null || ($embedded && $pageActions !== ''))
+    @if(count($table->searchableColumns()) > 0 || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || $export !== null || $groupMenu !== null || ($embedded && $pageActions !== ''))
     <div class="fa-list-toolbar">
         @if(count($table->searchableColumns()) > 0)
         <form class="fa-search" data-rx-submit="refresh" role="search">
@@ -41,7 +41,24 @@
         <span class="fa-toolbar-spacer"></span>
         @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
         @if($trash !== null)<a class="fa-btn fa-trash-link" href="{{ $trash['url'] }}">{!! $trashIcon !!}<span>{{ $t('trash.button') }}</span><span class="fa-btn-count fa-ltr">{{ $trash['count'] }}</span></a>@endif
-        @if($reorderUrl !== null)<a class="fa-btn" href="{{ $reorderUrl }}" data-admin-reorder-link>{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span></a>@endif
+        @if($reorderUrl !== null && $grouped)<span class="fa-btn is-disabled fa-reorder-off" aria-disabled="true" title="{{ $t('groups.no_reorder') }}">{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span><span class="fa-sr"> {{ $t('groups.no_reorder') }}</span></span>@elseif($reorderUrl !== null)<a class="fa-btn" href="{{ $reorderUrl }}" data-admin-reorder-link>{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span></a>@endif
+        @if($groupMenu !== null)
+        <details class="fa-popover fa-group-menu" id="{{ $prefix }}-group-menu" data-admin-popover>
+            <summary class="fa-btn{{ $groupMenu['current'] !== null ? ' is-active' : '' }}">{!! $groupIcon !!}<span>{{ $groupMenu['label'] }}</span></summary>
+            <div class="fa-popover-panel fa-group-panel" role="group" aria-label="{{ $t('groups.title') }}">
+                <p class="fa-group-panel-title">{{ $t('groups.title') }}</p>
+                <ul class="fa-group-choices">
+                    @foreach($groupMenu['choices'] as $choice)<li><button type="button" class="fa-group-choice{{ $choice['active'] ? ' is-active' : '' }}" data-rx-set="group" data-rx-value="{{ $choice['value'] }}" data-rx-action="groupBy"@if($choice['active']) aria-current="true"@endif><span class="fa-group-radio" aria-hidden="true"></span>{{ $choice['label'] }}</button></li>@endforeach
+                </ul>
+                @if(count($groupMenu['directions']) > 0)
+                <div class="fa-group-directions" role="group" aria-label="{{ $t('groups.order') }}">@foreach($groupMenu['directions'] as $choice)<button type="button" class="fa-btn fa-btn-sm{{ $choice['active'] ? ' is-active' : '' }}" data-rx-set="group" data-rx-value="{{ $choice['value'] }}" data-rx-action="groupBy"@if($choice['active']) aria-pressed="true"@else aria-pressed="false"@endif>{{ $choice['label'] }}</button>@endforeach</div>
+                @endif
+                @if($groupMenu['collapsible'])
+                <div class="fa-group-all" data-admin-groups-all><button type="button" class="fa-btn fa-btn-ghost fa-btn-sm" data-admin-groups-collapse>{{ $t('groups.collapse_all') }}</button><button type="button" class="fa-btn fa-btn-ghost fa-btn-sm" data-admin-groups-expand>{{ $t('groups.expand_all') }}</button></div>
+                @endif
+            </div>
+        </details>
+        @endif
         @if(count($columnChoices) > 0)
         <details class="fa-popover" id="{{ $prefix }}-columns-menu" data-admin-popover>
             <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>
@@ -92,7 +109,7 @@
     </div>
     @endif
     @if(count($result['data']) > 0)
-    <div class="fa-table-wrap"><table class="fa-table fa-table-list">
+    <div class="fa-table-wrap" id="{{ $prefix }}-table-wrap"@if($refreshCells) data-admin-cells-refresh @endif>@if($refreshCells)<button type="button" hidden data-rx-action="refresh" data-admin-cells-reload tabindex="-1" aria-hidden="true"></button>@endif<table class="fa-table fa-table-list">
         <thead><tr>
             @if(count($bulkActions) > 0)<th class="fa-selection-col"><label class="fa-select-page"><input type="checkbox" data-admin-select-page aria-label="{{ $t('bulk.select_page') }}"><span class="fa-select-page-label" aria-hidden="true">{{ $t('bulk.select_page') }}</span></label></th>@endif
             @foreach($visibleColumns as $name => $column)
@@ -103,14 +120,26 @@
             <th scope="col" class="fa-actions-col"><span class="fa-sr">{{ $t('table.actions') }}</span></th>
         </tr></thead>
         <tbody>
-            @foreach($result['data'] as $record)
-            <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}"@if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) class="is-selected"@endif>
+            @foreach($result['data'] as $rowIndex => $record)
+            @if(isset($groupHeads[$rowIndex])){!! $groupHeads[$rowIndex] !!}@endif
+            <tr id="{{ $prefix }}-row-{{ $record->{$resource::getPrimaryKey()} }}"@if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) class="is-selected"@endif@if(isset($groupKeys[$rowIndex])) data-admin-group-member="{{ $groupKeys[$rowIndex] }}"@endif>
                 @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" data-admin-select value="{{ $record->{$resource::getPrimaryKey()} }}" aria-label="{{ $t('bulk.select_record', ['id' => $record->{$resource::getPrimaryKey()}]) }}" @if(in_array((string) $record->{$resource::getPrimaryKey()}, $selected, true)) checked @endif></td>@endif
-                @foreach($visibleColumns as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">@if($name === $table->primaryColumn()){!! $rowLink($record, $column->render($record)) !!}@else{!! $column->render($record) !!}@endif</td>@endforeach
+                @foreach($visibleColumns as $name => $column)<td class="{{ $column->cellClass() }}{{ $name === $table->primaryColumn() ? ' fa-cell-primary' : '' }}" data-label="{{ $column->getLabel() }}">@if($name === $table->primaryColumn()){!! $rowLink($record, $cell($column, $record)) !!}@else{!! $cell($column, $record) !!}@endif</td>@endforeach
                 <td class="fa-actions">{!! $rowActions($record) !!}</td>
             </tr>
             @endforeach
         </tbody>
+        @if(count($totals) > 0)
+        <tfoot class="fa-totals">
+            @foreach($totals as $line)
+            <tr class="fa-totals-row is-{{ $line['kind'] }}">
+                @if(count($bulkActions) > 0)<td class="fa-selection-col"></td>@endif
+                @foreach($line['cells'] as $cell)<td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>@endforeach
+                <td class="fa-actions"></td>
+            </tr>
+            @endforeach
+        </tfoot>
+        @endif
     </table></div>
     @elseif($embedded && $search === '' && !$hasActiveFilters)<div class="fa-blank fa-manager-empty"><span class="fa-blank-icon" aria-hidden="true">{!! $emptyIcon !!}</span><p>{{ $emptyText }}</p></div>
     @else<div class="fa-blank"><p>{{ $search !== '' ? $t('table.no_results', ['search' => $search]) : ($hasActiveFilters ? $t('filters.no_results') : $t('table.no_records')) }}</p></div>@endif

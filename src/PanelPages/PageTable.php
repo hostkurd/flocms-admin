@@ -33,6 +33,11 @@ final class PageTable
     public static function of(AdminPage $page): ?self
     {
         $table = $page->table(new Table());
+        foreach ($table->getColumns() as $name => $column) {
+            // A panel page's table is read-only (0.36): its rows come from any query.
+            if ($column->isEditable()) { throw new \LogicException('Column "' . $name . '" of ' . $page::class . ' cannot be editable: a panel page\'s table is read-only. Use TextColumn, BadgeColumn or BooleanColumn.'); }
+            $column->checkSummaries();
+        }
         return $table->getQuery() !== null && $table->getColumns() !== [] ? new self($page, $table) : null;
     }
 
@@ -134,6 +139,11 @@ final class PageTable
                 'aria' => $sorted === null ? 'none' : ($sorted === 'asc' ? 'ascending' : 'descending'), 'class' => $column->cellClass()];
         }
         $link = $this->table->getRowUrl();
+        // Totals of this page and of every row of the page's query (0.38)
+        $totals = PageView::totals($visible, $result, function () use ($search): Database {
+            $db = App::db() ?? throw new \RuntimeException('A panel page\'s table needs the database.');
+            return $this->search(($this->table->getQuery())($db, $this->page->filterValues()), $search);
+        }, $search !== '' || ($state['filter'] ?? []) !== [], $this->table->getSummaryMode());
         $rows = [];
         foreach ($result['data'] as $row) {
             $url = null;
@@ -170,7 +180,7 @@ final class PageTable
             'hasSearch' => $this->table->searchableColumns() !== [],
             'clearSearchUrl' => Admin::url($slug, array_replace($state, ['q' => null, 'page' => null])),
             'sort' => $result['sort'], 'dir' => $result['dir'],
-            'columns' => $columns, 'rows' => $rows,
+            'columns' => $columns, 'rows' => $rows, 'totals' => $totals,
             'summary' => $total === 0 ? '' : AdminLang::get('table.summary', ['from' => ($current - 1) * $perPage + 1, 'to' => min($total, $current * $perPage), 'total' => $total]),
             'pages' => $pages,
             'prevUrl' => $current > 1 ? Admin::url($slug, $state + ['page' => $current - 1 > 1 ? $current - 1 : null]) : null,

@@ -68,6 +68,24 @@ final class Dates
         return (new \DateTimeImmutable('2000-01-01'))->setTime($h, $i, $s)->format($format);
     }
 
+    /** "October 2026" (0.38, month groups). */
+    public static function month(int $time): string
+    {
+        return self::format($time, 'LLLL y', 'F Y');
+    }
+
+    /** "2026" (0.38, year groups). */
+    public static function year(int $time): string
+    {
+        return self::format($time, 'y', 'Y');
+    }
+
+    /** "Thursday, 15 Oct 2026" (0.38, day groups). */
+    public static function weekday(int $time): string
+    {
+        return self::format($time, 'EEEE, d MMM y', 'l, j M Y');
+    }
+
     /** "17 Oct 2026, 14:32". */
     public static function full(int $time): string
     {

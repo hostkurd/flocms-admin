@@ -58,6 +58,63 @@ final class Table
 
     public function isExportable(): bool { return $this->exportable; }
 
+    /** @var array<string, Group> */
+    private array $groups = [];
+    private ?string $defaultGroup = null;
+    private bool $groupingRequired = false;
+
+    /**
+     * Ways to group the rows under heading rows (0.38), chosen with the list's
+     * Group by menu: [Group::make('city_id'), Group::make('created_at')->date('month')].
+     *
+     * @param list<Group> $groups
+     */
+    public function groups(array $groups): self
+    {
+        if (count($groups) > 12) { throw new InvalidArgumentException('A table has at most 12 groups.'); }
+        $this->groups = [];
+        foreach ($groups as $group) {
+            if (!$group instanceof Group || isset($this->groups[$group->getName()])) { throw new InvalidArgumentException('Table::groups() takes Group objects with different columns.'); }
+            $this->groups[$group->getName()] = $group;
+        }
+        return $this;
+    }
+
+    /** The group a list starts with until the person chooses another (or none). */
+    public function defaultGroup(?string $name): self
+    {
+        $this->defaultGroup = $name;
+        return $this;
+    }
+
+    /** The Group by menu has no "No grouping" choice. */
+    public function groupingRequired(bool $required = true): self
+    {
+        $this->groupingRequired = $required;
+        return $this;
+    }
+
+    /** @return array<string, Group> */
+    public function getGroups(): array { return $this->groups; }
+    public function getDefaultGroup(): ?string { return $this->defaultGroup !== null && isset($this->groups[$this->defaultGroup]) ? $this->defaultGroup : null; }
+    public function isGroupingRequired(): bool { return $this->groupingRequired && $this->groups !== []; }
+
+    private string $summaryMode = 'both';
+
+    /**
+     * Which totals lines the list shows under columns with summarize() (0.38):
+     * 'both' (default: "This page" when there are more pages, and "All rows"),
+     * 'page' or 'all'.
+     */
+    public function summaries(string $mode): self
+    {
+        if (!in_array($mode, ['both', 'page', 'all'], true)) { throw new InvalidArgumentException('Table::summaries() takes "both", "page" or "all".'); }
+        $this->summaryMode = $mode;
+        return $this;
+    }
+
+    public function getSummaryMode(): string { return $this->summaryMode; }
+
     /** The most rows Reorder mode loads at once. */
     public const MAX_REORDER_LIMIT = 2000;
 
@@ -183,10 +240,25 @@ final class Table
         $missing = null;
         foreach ($this->columns as $name => $column) {
             $column->detectTranslatable(in_array($name, $translatable, true));
+            // Editable cells read, check and write through the form's field of the same name (0.38).
+            if ($column instanceof Columns\EditableColumn) { $column->useFormField($form->field($name), $form); }
+            $column->checkSummaries();
             if ($column instanceof Columns\TranslationsColumn) {
                 $column->useFormFields($translatable, $rich);
                 if ($column->addsFilter() && $missing === null) { $missing = $column; }
             }
+        }
+        // Group headings take their titles from the form and the columns (0.38).
+        foreach ($this->groups as $name => $group) {
+            $field = $form->field($name);
+            $column = $this->columns[$name] ?? null;
+            if (($field instanceof \FloCMS\Admin\Form\Fields\BelongsTo) && $field->hasRelation()) { $group->useRelation($field->relation()); }
+            if ($column instanceof Columns\RelationColumn && $column->hasRelation() && $column->getPivot() === null) { $group->useRelation($column->relation()); }
+            if ($column instanceof Columns\SelectColumn) { $group->useOptions($column->getOptions(), $column->getColors()); }
+            if ($column instanceof Columns\BadgeColumn) { $group->useOptions($column->getLabels(), $column->getColors()); }
+            if ($field instanceof \FloCMS\Admin\Form\Fields\Select && !$field->hasDependentOptions()) { $group->useOptions($field->getOptions()); }
+            if ($column !== null && $column->isTranslatable()) { throw new \LogicException('The list cannot be grouped by "' . $name . '": it is translatable.'); }
+            if ($field !== null && $field->isTranslatable()) { throw new \LogicException('The list cannot be grouped by "' . $name . '": it is translatable.'); }
         }
         $languages = count(\FloCMS\Admin\Translation\Languages::all()) > 1;
         foreach ($this->filters as $filter) {
@@ -253,6 +325,7 @@ final class Table
             $name !== $foreignKey && ($columns === null || in_array($name, $columns, true)), ARRAY_FILTER_USE_BOTH);
         unset($table->filters[$foreignKey]);
         $table->filters = array_filter($table->filters, static fn (Filters\Filter $filter): bool => $filter->getColumn() !== $foreignKey);
+        unset($table->groups[$foreignKey]);
         if ($perPage !== null) { $table->perPage = $perPage; }
         if ($sort !== null) { [$table->defaultSort, $table->defaultDirection] = $sort; }
         return $table;

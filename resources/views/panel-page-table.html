@@ -62,6 +62,15 @@
                 </tr>
                 @endforeach
             </tbody>
+            @if(count($totals) > 0)
+            <tfoot class="fa-totals">
+                @foreach($totals as $line)
+                <tr class="fa-totals-row is-{{ $line['kind'] }}">
+                    @foreach($line['cells'] as $cell)<td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>@endforeach
+                </tr>
+                @endforeach
+            </tfoot>
+            @endif
         </table>
     </div>
     <div class="fa-table-foot">

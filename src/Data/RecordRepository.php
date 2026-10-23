@@ -47,13 +47,12 @@ final class RecordRepository
      *
      * @return array{data: list<object>, pagination: array<string, mixed>, sort: ?string, dir: string}
      */
-    public function paginate(Table $table, string $search, ?string $sort, ?string $dir, int $page, int $perPage, string $lang, ?\FloCMS\Admin\Table\FilterSet $filters = null): array
+    public function paginate(Table $table, string $search, ?string $sort, ?string $dir, int $page, int $perPage, string $lang, ?\FloCMS\Admin\Table\FilterSet $filters = null, ?\FloCMS\Admin\Table\Group $group = null, ?string $groupDirection = null): array
     {
-        $query = $this->newQuery();
-        if ($filters !== null) { $query = $filters->apply($query); }
+        $query = $this->filteredQuery($table, $search, $filters);
         $default = Languages::default();
-
-        $query = $this->whereSearch($query, $table, $search);
+        // A grouped list (0.38): the group is the first sort, the clicked column sorts inside each group.
+        if ($group !== null) { $query = $group->orderQuery($query, $this->resource::getTable(), $lang, $groupDirection); }
 
         $sortColumn = $sort !== null ? $table->sortableColumn($sort) : null;
         // A reorderable list without its own default sort shows the editors' order.
@@ -83,14 +82,35 @@ final class RecordRepository
             $query = $query->orderBy($pk, $sortColumn === null ? ($ordered ? 'asc' : 'desc') : $dir);
         }
 
+        // A grouped page after the first: the group of the row just before it ("continued", 0.38).
+        $previous = null;
+        $ordered = $group !== null && $page > 1 ? $query->toSql() : null;
         $result = $query->paginate(max(1, $page), $perPage);
+        if ($ordered !== null && $page <= (int) ($result['pagination']['last_page'] ?? 0)) {
+            [$sql, $params] = $ordered;
+            $row = \FloCMS\Admin\Table\SqlRows::select($this->db, $sql . ' LIMIT 1 OFFSET ' . (int) (($page - 1) * $perPage - 1), $params)[0] ?? null;
+            $previous = $row !== null ? ['key' => $group->keyOf($row)] : null;
+        }
 
         return [
             'data' => $result['data'],
             'pagination' => $result['pagination'],
             'sort' => $sortColumn?->getName(),
             'dir' => $dir,
+            'previous' => $previous,
         ];
+    }
+
+    /**
+     * The rows the list shows, on every page, without an order: the
+     * resource's query() (and a relation manager's parent), the filters and
+     * the search. Totals and groups count over it (0.38).
+     */
+    public function filteredQuery(Table $table, string $search, ?\FloCMS\Admin\Table\FilterSet $filters = null): Database
+    {
+        $query = $this->newQuery();
+        if ($filters !== null) { $query = $filters->apply($query); }
+        return $this->whereSearch($query, $table, $search);
     }
 
     /** The editors' order of a reorderable table (Reorder mode, new-record positions). */

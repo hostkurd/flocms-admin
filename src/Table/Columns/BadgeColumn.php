@@ -51,6 +51,12 @@ class BadgeColumn extends Column
         return $this;
     }
 
+    /** @return array<string, string> value => colour (0.38: group headings) */
+    public function getColors(): array { return $this->colors; }
+
+    /** @return array<string, string> value => translated label (0.38: group headings) */
+    public function getLabels(): array { return array_map(static fn (string $label): string => AdminLang::label($label), $this->labels); }
+
     protected function renderValue(mixed $value): string
     {
         if ($value === null || $value === '' || !is_scalar($value)) {

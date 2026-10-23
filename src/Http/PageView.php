@@ -39,7 +39,10 @@ final class PageView
      * @param Closure(object): bool $canEditRecord
      * @param Closure(object): bool $canDeleteRecord
      */
-    public function index(Table $table, array $result, string $search, bool $canCreate, bool $canUpdate, bool $canDelete, Closure $canEditRecord, Closure $canDeleteRecord, ?\FloCMS\Admin\Table\FilterSet $filters = null, string $tabs = ''): string
+    /**
+     * @param (Closure(): \FloCMS\Core\Database)|null $rowsQuery the list's rows on every page, unordered (totals, 0.38)
+     */
+    public function index(Table $table, array $result, string $search, bool $canCreate, bool $canUpdate, bool $canDelete, Closure $canEditRecord, Closure $canDeleteRecord, ?\FloCMS\Admin\Table\FilterSet $filters = null, string $tabs = '', ?Closure $rowsQuery = null, ?\FloCMS\Admin\Table\Grouping $grouping = null): string
     {
         $class = $this->resource;
         $slug = $class::getSlug();
@@ -54,7 +57,8 @@ final class PageView
         foreach ($table->getFilters() as $filter) {
             if ($filter instanceof \FloCMS\Admin\Table\Filters\RelationFilter) { $filter->lookupFrom(Admin::url($slug . '/lookup')); }
         }
-        $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $scope?->token(), 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir']];
+        $state = ['static' => Admin::config()->reactiveEnabled() ? 1 : null, 'parent' => $scope?->token(), 'filter' => $filters->active(), 'q' => $search, 'sort' => $result['sort'], 'dir' => $result['dir'],
+            'group' => $grouping !== null && $grouping->has() ? $grouping->value() : null];
 
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $scope?->columnsKey() ?? $slug);
         $visible = $visibility->visibleColumns();
@@ -79,17 +83,25 @@ final class PageView
         }
 
         $backUrl = Admin::url($slug, $state + ['page' => $page > 1 ? $page : null]);
+        // Editable cells (0.38) post here and come back to this page of the list.
+        $cellContext = new \FloCMS\Admin\Table\Cells\CellContext($definition, $backUrl, 'fa-list-cell');
+        // Group headings with their counts and subtotals (0.38)
+        $groups = $grouping?->active() !== null
+            ? $grouping->headings($result['data'], $visible, $rowsQuery, ($result['previous'] ?? null) !== null, $result['previous']['key'] ?? null, count($bulkActions) > 0, $table->getActions() !== [], 'fa-list')
+            : ['heads' => [], 'keys' => []];
         $rows = [];
-        foreach ($result['data'] as $record) {
+        foreach ($result['data'] as $index => $record) {
             $id = property_exists($record, $pk) ? (string) $record->{$pk} : '';
             $cells = [];
             foreach ($visible as $name => $column) {
-                $html = $column->render($record);
+                $html = $column->renderCell($record, $cellContext);
                 if ($name === $table->primaryColumn()) { $html = self::rowLink($definition, $record, $html, ['parent' => $scope?->token()]); }
                 $cells[] = ['html' => $html, 'class' => $column->cellClass() . ($name === $table->primaryColumn() ? ' fa-cell-primary' : ''), 'label' => $column->getLabel()];
             }
             $rows[] = [
                 'id' => $id,
+                'head' => $groups['heads'][$index] ?? '',
+                'group' => $groups['keys'][$index] ?? null,
                 'cells' => $cells,
                 'actions' => $actions->render('row', $record, false, backUrl: $backUrl),
                 'editUrl' => $canUpdate && $id !== '' && $canEditRecord($record) ? Admin::url($slug . '/edit/' . $id, ['parent' => $scope?->token()]) : null,
@@ -99,6 +111,7 @@ final class PageView
 
         $total = (int) $pagination['items_count'];
         $perPage = (int) $pagination['per_page'];
+        $totals = self::totals($visible, $result, $rowsQuery, $search !== '' || $filters->active() !== [], $table->getSummaryMode());
         $from = $total === 0 ? 0 : ($page - 1) * $perPage + 1;
         $to = min($total, $page * $perPage);
 
@@ -121,6 +134,9 @@ final class PageView
             'dir' => $result['dir'],
             'columns' => $columns,
             'rows' => $rows,
+            'totals' => $totals, 'refreshCells' => $totals !== [] || $grouping?->active() !== null,
+            'groupMenu' => self::groupMenu($grouping, static fn (string $value): string => Admin::url($slug, array_replace($state, ['group' => $value, 'page' => null]))),
+            'grouped' => $grouping?->active() !== null,
             'hasActions' => $table->getActions() !== [],
             'bulkActions' => $bulkActions, 'resource' => $definition, 'bulkUrl' => Admin::url($slug . '/bulk'),
             'summary' => $total === 0 ? '' : AdminLang::get('table.summary', ['from' => $from, 'to' => $to, 'total' => $total]),
@@ -144,11 +160,54 @@ final class PageView
             // CSV export and import (0.25)
             'export' => \FloCMS\Admin\ImportExport\ListTools::export($definition, $filters, $search, $result['sort'], $result['dir'], $total),
             'importUrl' => \FloCMS\Admin\ImportExport\ListTools::importUrl($definition), 'importIcon' => Icons::svg('upload'),
-            'reorderIcon' => Icons::svg('arrows-up-down'),
+            'reorderIcon' => Icons::svg('arrows-up-down'), 'groupIcon' => Icons::svg('layers'),
             'filterErrors' => $filters->errors !== [],
             'filterCount' => $filters->panelCount(),
             'chips' => array_map(static fn (array $chip): array => $chip + ['url' => Admin::url($slug, array_replace($state, ['filter' => $chip['query']]))], $filters->chips()),
         ]);
+    }
+
+    /**
+     * The totals lines under a list (0.38), or [] when no visible column has totals.
+     *
+     * @param array<string, \FloCMS\Admin\Table\Column> $visible
+     * @param array{data: list<object>, pagination: array<string, mixed>} $result
+     * @param (Closure(): \FloCMS\Core\Database)|null $rowsQuery
+     * @return list<array{kind: string, cells: list<array{html: string, class: string, label: string}>}>
+     */
+    public static function totals(array $visible, array $result, ?Closure $rowsQuery, bool $filtered, string $mode = 'both'): array
+    {
+        $totals = new \FloCMS\Admin\Table\Totals($visible);
+        if (!$totals->has()) { return []; }
+        $last = (int) ($result['pagination']['last_page'] ?? 1);
+        $db = \FloCMS\Core\App::db();
+        try {
+            return $totals->lines($result['data'], $db, $last > 1 && $rowsQuery !== null ? $rowsQuery() : null, (int) $result['pagination']['items_count'], $last, $filtered, $mode);
+        } catch (\PDOException $error) {
+            // A query() the totals cannot wrap (a join with clashing column names): no totals rather than a broken list.
+            \FloCMS\Admin\Support\Log::error('List totals skipped: ' . $error->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * The Group by menu (0.38), or null when the list has no groups. $url
+     * makes a choice's link (page lists) or its value (Reactive lists).
+     *
+     * @return array{label: string, current: ?string, choices: list<array{value: string, label: string, active: bool, url: string}>, directions: list<array{value: string, label: string, active: bool, url: string}>, collapsible: bool}|null
+     */
+    public static function groupMenu(?\FloCMS\Admin\Table\Grouping $grouping, Closure $url): ?array
+    {
+        if ($grouping === null || !$grouping->has()) { return null; }
+        $active = $grouping->active();
+        $link = static fn (array $choice): array => $choice + ['url' => $url($choice['value'])];
+        return [
+            'label' => $active === null ? AdminLang::get('groups.title') : AdminLang::get('groups.title_active', ['label' => $active->getLabel()]),
+            'current' => $active?->getLabel(),
+            'choices' => array_map($link, $grouping->choices()),
+            'directions' => array_map($link, $grouping->directions()),
+            'collapsible' => $active !== null && $active->isCollapsible(),
+        ];
     }
 
     /** The Reorder button's link, or null when the list is not reorderable or the user may not reorder. */
