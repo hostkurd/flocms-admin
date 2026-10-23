@@ -2922,6 +2922,10 @@ a.fa-filedrop-name:hover{text-decoration:underline}
 .fa-js-cells .fa-cell-save{display:none}
 .fa-js-cells .fa-cell-toggle .fa-cell-status,.fa-js-cells .fa-cell-select .fa-cell-status{flex-basis:auto}
 .fa-js-cells .fa-cell-toggle .fa-cell-status:not(:empty),.fa-js-cells .fa-cell-select .fa-cell-status:not(:empty){flex-basis:auto}
+/* "Saving…" and "Saved" (0.39.2) float beside the cell, so the column keeps its width; errors stay in the flow. */
+.fa-js-cells .fa-cell:is(.is-saving,.is-saved) .fa-cell-status{position:absolute;inset-block-start:50%;inset-inline-start:calc(100% + 8px);transform:translateY(-50%);white-space:nowrap;pointer-events:none}
+.fa-js-cells .fa-cell-end .fa-cell:is(.is-saving,.is-saved) .fa-cell-status{inset-inline-start:auto;inset-inline-end:calc(100% + 8px)}
+@media (max-width:640px){.fa-js-cells .fa-cell:is(.is-saving,.is-saved) .fa-cell-status{position:static;transform:none}}
 /* Switch: a submit button with role="switch"; it sends the other value. */
 .fa-cell-switch{position:relative;flex:none;inline-size:38px;block-size:22px;margin:0;padding:0;border:0;border-radius:999px;background:var(--fa-border-strong);cursor:pointer;transition:background-color .15s}
 .fa-cell-switch[aria-checked="true"]{background:var(--fa-primary)}
