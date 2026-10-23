@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace FloCMS\Admin\Tests\Feature;
 
-use FloCMS\Admin\Tests\Fixtures\Wizard\RentalResource;
+use FloCMS\Admin\Tests\Fixtures\Wizard\{MovingIn, RentalDialogResource, RentalResource};
 
 /**
  * Wizard forms (0.39) through whole requests, as a browser without JavaScript
@@ -16,7 +16,7 @@ final class WizardRequestTest extends RequestTestCase
 {
     private static function options(array $extra = []): array
     {
-        return ['admin_config' => ['resources' => [RentalResource::class]]] + $extra;
+        return ['admin_config' => ['resources' => [RentalResource::class, RentalDialogResource::class], 'admin_pages' => [MovingIn::class], 'reactive' => false], 'permissions' => [0 => [], 1 => ['*'], 2 => ['*'], 3 => ['*']]] + $extra;
     }
 
     protected function setUp(): void
@@ -186,5 +186,66 @@ final class WizardRequestTest extends RequestTestCase
         self::assertSame(200, $view['status'], (string) $view['error']);
         foreach (['Details', 'Location', 'Rental terms', 'Pricing'] as $title) { self::assertStringContainsString('>' . $title . '</h2>', $view['body']); }
         self::assertStringNotContainsString('data-admin-wizard', $view['body']);
+    }
+
+    private static function operation(string $body): string
+    {
+        self::assertSame(1, preg_match('/name="_operation" value="([^"]+)"/', $body, $m));
+        return html_entity_decode($m[1], ENT_QUOTES);
+    }
+
+    public function testAnActionPageMovesThroughItsStepsThenRuns(): void
+    {
+        $page = self::request('GET', '/en/admin/rental-dialogs/action/row/schedule/1', self::options());
+        self::assertSame(200, $page['status'], (string) $page['error']);
+        self::assertSame('visitor', self::current($page['body']));
+        self::assertStringNotContainsString('fa-btn-primary">Schedule a viewing</button>', $page['body'], 'the action button waits for the last step');
+        $options = self::options(['session' => $page['session']]);
+        $token = self::operation($page['body']);
+
+        $empty = self::post('/en/admin/rental-dialogs/action/row/schedule/1', ['_operation' => $token, 'visitor' => '', 'at' => '', '_wizard' => 'next', '_wizard_step' => 'visitor'], $options);
+        self::assertSame('visitor', self::current($empty['body']));
+        self::assertStringContainsString('Visitor is required', $empty['body']);
+        self::assertStringNotContainsString('Time is required', $empty['body']);
+
+        $next = self::post('/en/admin/rental-dialogs/action/row/schedule/1', ['_operation' => $token, 'visitor' => 'Sara', 'at' => '', '_wizard_step' => 'visitor'], $options);
+        self::assertSame('time', self::current($next['body']), 'Enter before the last step means Next');
+        self::assertStringContainsString('fa-btn-primary">Schedule a viewing</button>', $next['body']);
+
+        $done = self::post('/en/admin/rental-dialogs/action/row/schedule/1', ['_operation' => $token, 'visitor' => 'Sara', 'at' => '17:30', 'message' => '', '_wizard_step' => 'time', '_wizard_reached' => 'time'], $options);
+        self::assertTrue($done['redirected'], (string) $done['error']);
+        self::assertSame('Viewing with Sara at 17:30:00', self::row('rentals', 1)['notes']);
+    }
+
+    public function testABulkActionPageMovesThroughItsStepsThenRuns(): void
+    {
+        $page = self::request('GET', '/en/admin/rental-dialogs/bulk/reprice?ids[]=1', self::options());
+        self::assertSame(200, $page['status'], (string) $page['error']);
+        self::assertSame('amount', self::current($page['body']));
+        $options = self::options(['session' => $page['session']]);
+        $token = self::operation($page['body']);
+        $next = self::post('/en/admin/rental-dialogs/bulk/reprice', ['_operation' => $token, '_ids' => '["1"]', 'percent' => '5', 'reason' => '', '_wizard' => 'next', '_wizard_step' => 'amount'], $options);
+        self::assertSame('why', self::current($next['body']));
+        self::assertStringNotContainsString('is required', $next['body']);
+        $failed = self::post('/en/admin/rental-dialogs/bulk/reprice', ['_operation' => $token, '_ids' => '["1"]', 'percent' => '', 'reason' => 'Season', '_wizard_step' => 'why', '_wizard_reached' => 'why'], $options);
+        self::assertSame('amount', self::current($failed['body']), 'the final submit opens the step with the error');
+        $done = self::post('/en/admin/rental-dialogs/bulk/reprice', ['_operation' => $token, '_ids' => '["1"]', 'percent' => '5', 'reason' => 'Season', '_wizard_step' => 'why', '_wizard_reached' => 'why'], $options);
+        self::assertTrue($done['redirected'], (string) $done['error']);
+        self::assertSame('Repriced by 5%: Season', self::row('rentals', 1)['notes']);
+    }
+
+    public function testACustomPageFormMovesThroughItsSteps(): void
+    {
+        $page = self::request('GET', '/en/admin/moving-in', self::options());
+        self::assertSame(200, $page['status'], (string) $page['error']);
+        self::assertSame('who', self::current($page['body']));
+        self::assertStringNotContainsString('name="_save"', $page['body']);
+        $options = self::options(['session' => $page['session']]);
+        $next = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => '', '_wizard' => 'next', '_wizard_step' => 'who'], $options);
+        self::assertSame('when', self::current($next['body']));
+        self::assertStringContainsString('name="_save"', $next['body']);
+        $sent = self::post('/en/admin/moving-in', ['_page_form' => '1', 'tenant' => 'Sara', 'month' => 'feb', '_save' => '1', '_wizard_step' => 'when', '_wizard_reached' => 'when'], $options);
+        self::assertTrue($sent['redirected'], (string) $sent['error']);
+        self::assertSame('Sara/feb', $sent['session']['moving_in'] ?? null);
     }
 }

@@ -58,6 +58,7 @@ final class ActionExecutor
                     $accepted = ActionForm::safe($form, $state);
                     $this->limit($accepted, $maxDraftBytes);
                     $errors = $submission->errors($form, $state, $record);
+                    if (($flow = \FloCMS\Admin\Form\WizardFlow::for($form, $kind === 'edit')) !== null) { $errors = $flow->finalErrors($errors, $state, $record)[0]; }
                     if ($errors !== []) { throw new ValidationException($errors); }
                     $submission->save($form, $state, $record, true, $batch);
                 } else {
@@ -65,6 +66,7 @@ final class ActionExecutor
                     $accepted = ActionForm::safe($form, $state);
                     $this->limit($accepted, $maxDraftBytes);
                     $errors = ActionForm::errors($action, $form, $state, $record);
+                    if (($flow = \FloCMS\Admin\Form\WizardFlow::for($form, false)) !== null) { $errors = $flow->finalErrors($errors, $state, $record)[0]; }
                     if ($errors !== []) { throw new ValidationException($errors); }
                     $action->invoke(new ActionContext($this->resource, $this->repository, $record, $batch), ActionForm::dehydrate($form, $state));
                     \FloCMS\Admin\Activity\Activity::record('action', $this->resource::getSlug(),
@@ -84,6 +86,39 @@ final class ActionExecutor
         } catch (\Throwable $error) { $batch->rollback(); throw $error; }
         $batch->commit();
         OperationStore::consume($token);
+    }
+
+    /**
+     * A wizard's Back, Next or step button in an action's form (0.39): the same
+     * checks as execute() up to the form's state, then the move. Never saves.
+     * "save" in the result is true when the submit was the final one and passed:
+     * the caller then runs execute().
+     *
+     * @return array{state: \FloCMS\Admin\Form\WizardState, save: bool, errors: array<string, string>, values: array<string, mixed>}|null null when the form has no wizard
+     */
+    public function wizard(Action $action, string $placement, string $id, string $token, array $input, bool $refreshing = false): ?array
+    {
+        self::validContext($placement, $id);
+        OperationStore::get($token, $this->resource::getSlug(), $placement, $action->getName(), $id);
+        Auth::authorize($this->resource::permission('view'));
+        $action->authorizePermission($this->resource);
+        $record = $this->record($placement, $id);
+        $action->authorizeRequest($this->resource, $record);
+        $form = $action->getForm($this->resource);
+        $kind = $action->getKind();
+        $flow = \FloCMS\Admin\Form\WizardFlow::for($form, $kind === 'edit');
+        if ($flow === null || $kind === 'delete') { return null; }
+        if (in_array($kind, ['create', 'edit'], true)) {
+            $submission = new FormSubmission($this->resource, $this->repository);
+            $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $input, $_FILES['_uploads'] ?? [], $this->resource, $record);
+            $state = $submission->state($form, $input, $record);
+            $validate = static fn (): array => $submission->errors($form, $state, $record);
+        } else {
+            $state = ActionForm::state($action, $form, $input, $record);
+            $validate = static fn (): array => ActionForm::errors($action, $form, $state, $record);
+        }
+        if ($refreshing) { $form->refreshState($state, $record); }
+        return $flow->handle($input, $state, $record, $validate, $refreshing) + ['values' => ActionForm::safe($form, $state)];
     }
 
     /** A record's title as the list shows it, for notices. */

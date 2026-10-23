@@ -484,7 +484,7 @@ final class ResourceController extends PanelController
             $action->authorizePermission($this->resource);
             $this->redirect($action->getBulkUrl($ids) ?? throw new HttpException(404));
         }
-        $form = $action->getForm($this->resource); $errors = [];
+        $form = $action->getForm($this->resource); $errors = []; $wizardState = null;
         if ($this->isPost()) {
             $token = $this->request->input('_operation');
             if (!is_string($token)) { throw new HttpException(400); }
@@ -492,9 +492,15 @@ final class ResourceController extends PanelController
             if ($this->request->input('_cancel') !== null) { \FloCMS\Admin\Actions\OperationStore::consume($token); $this->redirect($this->listUrl(true)); }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
             try {
-                if ($this->request->input('_refresh') !== null) {
+                $moved = $this->request->input('_refresh') === null && $this->request->input('_repeater') === null ? $executor->wizard($action, $ids, $token, $this->request->all()) : null;
+                if ($moved !== null && !($moved['save'] && $moved['errors'] === [])) {
+                    // A wizard's Back, Next or step button (0.39).
+                    $state = $moved['values']; $wizardState = $moved['state']; $errors = $moved['errors'];
+                } elseif ($this->request->input('_refresh') !== null || $this->request->input('_repeater') !== null) {
                     $executor->preview($action, $ids, $token);
-                    $state = \FloCMS\Admin\Actions\ActionForm::state($action, $form, $this->request->all(), null); $form->refreshState($state);
+                    $state = \FloCMS\Admin\Actions\ActionForm::state($action, $form, $this->request->all(), null);
+                    if ($this->request->input('_repeater') !== null) { $form->evaluate($state)->applyRepeaterOperation($state, $this->request->input('_repeater')); }
+                    $form->refreshState($state);
                 } else { $executor->execute($action, $ids, $token, $this->request->all(), $state); $this->redirect($this->listUrl(true)); }
             }
             catch (\FloCMS\Core\ValidationException $error) { foreach ($error->getErrors() as $field => $messages) { $errors[$field] = implode(' ', (array) $messages); } }
@@ -512,10 +518,15 @@ final class ResourceController extends PanelController
         foreach ($form->fields() as $fieldName => $field) {
             if (!$field->isWritable()) { $safe[$fieldName] = $field->stateFromRecord(null, Languages::default()); }
         }
+        $renderer = new FormRenderer($safe, $errors, Languages::all(), Languages::default());
+        if (($flow = \FloCMS\Admin\Form\WizardFlow::for($form, false)) !== null) {
+            $wizardState ??= $this->isPost() ? $flow->restore($this->request->all(), $state) : $flow->initial($state);
+            $renderer->wizard($wizardState);
+        }
         return $this->panel($action->getTitle($this->resource), \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('bulk'), [
             't' => PageView::translator(), 'title' => $action->getTitle($this->resource),
-            'description' => $executor->describe($action, $ids),
-            'fields' => (new FormRenderer($safe, $errors, Languages::all(), Languages::default()))->render($form),
+            'description' => $executor->describe($action, $ids), 'wizardFinal' => $wizardState?->isFinal() ?? true,
+            'fields' => $renderer->render($form),
             'errors' => $errors, 'ids' => json_encode($ids, JSON_THROW_ON_ERROR), 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($this->resource::getSlug() . '/bulk/' . $name, ['parent' => $this->scope?->token()]), 'submitLabel' => $action->getLabel($this->resource), 'submitColor' => $action->getColor(),
         ]), $this->resource::getSlug());
@@ -536,7 +547,7 @@ final class ResourceController extends PanelController
         $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find($placement, $name);
         $executor = new \FloCMS\Admin\Actions\ActionExecutor($this->resource, $this->repository());
         $form = $action->getForm($this->resource);
-        $errors = []; $state = []; $record = null;
+        $errors = []; $state = []; $record = null; $wizardState = null;
         // ?back= (0.28): an action opened from another page (the edit page's Quick actions) returns there.
         $backParam = is_string($back = $this->request->queryValue('back', '')) ? $back : '';
         $after = $this->safeBackUrl($backParam) ?? $this->listUrl();
@@ -550,7 +561,13 @@ final class ResourceController extends PanelController
             }
             $state = \FloCMS\Admin\Actions\ActionForm::safe($form, $this->request->all());
             try {
-                if ($this->request->input('_refresh') !== null || $this->request->input('_repeater') !== null) {
+                // A wizard (0.39): Back, Next and the step buttons show the page again on another step.
+                $moved = $this->request->input('_refresh') === null && $this->request->input('_repeater') === null
+                    ? $executor->wizard($action, $placement, $id, $token, $this->request->all()) : null;
+                if ($moved !== null && !($moved['save'] && $moved['errors'] === [])) {
+                    $state = $moved['values']; $wizardState = $moved['state']; $errors = $moved['errors'];
+                    $record = $executor->record($placement, $id);
+                } elseif ($this->request->input('_refresh') !== null || $this->request->input('_repeater') !== null) {
                     Auth::authorize($this->resource::permission('view'));
                     $record = $executor->record($placement, $id); $action->authorizeRequest($this->resource, $record);
                     $state = in_array($action->getKind(), ['create', 'edit'], true)
@@ -571,6 +588,10 @@ final class ResourceController extends PanelController
             catch (\FloCMS\Core\ValidationException) { throw new HttpException(404); }
             $token = $opened['operation']; $state = $opened['state']; $record = $opened['record'];
         }
+        $flow = $action->getKind() !== 'delete' ? \FloCMS\Admin\Form\WizardFlow::for($form, $action->getKind() === 'edit') : null;
+        if ($flow !== null && $wizardState === null) {
+            $wizardState = $this->isPost() ? $flow->restore($this->request->all(), $state, $record) : $flow->initial($state, $record);
+        }
         $safe = \FloCMS\Admin\Actions\ActionForm::safe($form, $state);
         foreach ($form->fields() as $fieldName => $field) {
             if (!$field->isWritable()) { $safe[$fieldName] = $field->stateFromRecord($record, Languages::default()); }
@@ -585,8 +606,12 @@ final class ResourceController extends PanelController
             lookupUrl: in_array($action->getKind(), ['create', 'edit'], true) ? Admin::url($this->resource::getSlug() . '/lookup') : null,
             recordId: $id !== '' ? $id : null, ownTable: $this->resource::getTable(),
             languageSwitch: $switch, editing: $editing, sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name(Languages::default())]) : null);
+        if ($wizardState !== null) {
+            $renderer->wizard($wizardState, '', \FloCMS\Admin\View\WizardSummary::closure($this->resource, $form, $state, $record, $wizardState, $editing));
+        }
         $fieldsHtml = $renderer->render($form);
         return $this->panel($title, \FloCMS\Core\TemplateEngine::renderFile(PageView::viewPath('action'), [
+            'wizardFinal' => $wizardState?->isFinal() ?? true,
             't' => PageView::translator(), 'title' => $title, 'description' => $action->getDescription($this->resource, $record),
             'fields' => $fieldsHtml,
             'translation' => $switch ? [

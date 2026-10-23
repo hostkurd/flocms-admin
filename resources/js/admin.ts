@@ -221,6 +221,15 @@ document.addEventListener('submit', event => {
       });
       node[path[path.length - 1]] = value;
     }
+    // A wizard's Back, Next or step button (0.39) names the move; the dialog asks the server for that step.
+    const mover = event.submitter as HTMLButtonElement | null;
+    if (mover?.name === '_wizard' && !form.dataset.adminRefreshing) {
+      values._wizard = mover.value;
+      const original = form.dataset.rxSubmit;
+      form.dataset.rxSubmit = 'wizard';
+      // A click is dispatched by the browser, which runs microtasks between listeners: restore after Reactive read it.
+      setTimeout(() => { form.dataset.rxSubmit = original; }, 0);
+    }
     const input = form.querySelector<HTMLInputElement>('[data-rx-bind="draft"]')!;
     input.value = JSON.stringify(values);
     if (form.dataset.adminRefreshing === 'true') {

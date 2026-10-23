@@ -96,7 +96,7 @@ final class WizardFlow
         if ($move === null && !$this->isEdit && $index < $last) { $move = 'next'; }
         if ($move === null) {
             [$errors, $failed] = $this->allErrors($validate(), $state, $record, $visible);
-            $step = $errors === [] ? $current : ($failed ?? $current);
+            $step = $errors === [] ? $current : ($failed ?? $this->firstWithErrors($errors, $visible) ?? $current);
             return ['state' => new WizardState($step, $reached, $visible, $this->isEdit, $errors !== []), 'save' => true, 'errors' => $errors];
         }
         if (!is_string($move)) { $move = ''; }
@@ -116,6 +116,36 @@ final class WizardFlow
         }
         // An unknown move only shows the form again, never saves.
         return ['state' => new WizardState($current, $reached, $visible, $this->isEdit, true), 'save' => false, 'errors' => []];
+    }
+
+    /**
+     * Where the wizard stands for posted values without moving (a dialog shown
+     * again, a live refresh): the posted step when it is still shown.
+     */
+    public function restore(array $input, array $state, ?object $record = null): WizardState
+    {
+        $result = $this->handle($input, $state, $record, static fn (): array => [], true)['state'];
+        return ($input['_wizard_moved'] ?? null) === '1' ? new WizardState($result->step, $result->reached, $result->visible, $result->isEdit, true) : $result;
+    }
+
+    /**
+     * The final submit's errors (0.39): the form's own plus each shown step's
+     * afterValidation(), and the step to open when there are any.
+     *
+     * @param array<string, string> $all
+     * @return array{0: array<string, string>, 1: ?string}
+     */
+    public function finalErrors(array $all, array $state, ?object $record): array
+    {
+        [$errors, $failed] = $this->allErrors($all, $state, $record, $this->visibleSteps($state, $record));
+        return [$errors, $errors === [] ? null : ($failed ?? $this->firstWithErrors($errors, $this->visibleSteps($state, $record)))];
+    }
+
+    /** The posted wizard values (the step shown and the furthest reached) to keep in a dialog's draft. */
+    public static function posted(array $input): array
+    {
+        return array_filter(['_wizard_step' => $input['_wizard_step'] ?? null, '_wizard_reached' => $input['_wizard_reached'] ?? null],
+            static fn ($value): bool => is_string($value) && strlen($value) <= 64);
     }
 
     /** @param list<string> $visible */

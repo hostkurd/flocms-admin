@@ -169,7 +169,7 @@
         @if($translation !== null)<input type="hidden" data-rx-bind="editing" data-rx-model="defer" value="{{ $translation['editing'] }}" data-lang-editing-value>@endif
         @if(in_array($mode, ['custom', 'delete', 'bulk'], true))<p class="fa-confirm-text">{{ $actionDescription }}</p>@endif
         @if($formFields !== '')<div class="fa-dialog-body{{ $formShowsFields ? '' : ' is-empty' }}">{!! $formFields !!}</div>@endif
-        <div class="fa-dialog-foot"><span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span><span class="fa-toolbar-spacer"></span><button type="button" class="fa-btn" data-rx-dialog-close="editor">{{ $t('actions.cancel') }}</button><button type="submit" class="fa-btn{{ $submitColor === 'default' ? ' fa-btn-primary' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button></div>
+        <div class="fa-dialog-foot"><span class="fa-loading" data-rx-loading>{{ $t('reactive.loading') }}</span><span class="fa-toolbar-spacer"></span><button type="button" class="fa-btn" data-rx-dialog-close="editor">{{ $t('actions.cancel') }}</button>@if($wizardFinal)<button type="submit" class="fa-btn{{ $submitColor === 'default' ? ' fa-btn-primary' : ' fa-btn-' . $submitColor }}">{{ $submitLabel }}</button>@endif</div>
     </form>
     @endif
     <p class="fa-muted" id="{{ $prefix }}-editor-fallback" data-admin-full-page hidden><a href="{{ $fullPageUrl }}">{{ $t('reactive.full_page') }}</a></p>
