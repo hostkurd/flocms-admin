@@ -56,6 +56,18 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringContainsString('data-width="boxed"', self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['content_width' => 'boxed']])['body']);
     }
 
+    public function testTheViewSiteLinkFollowsSiteLink(): void
+    {
+        $config = ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class]];
+        $count = static fn (string $body): int => substr_count($body, '>View site<');
+        self::assertSame(2, $count(self::request('GET', '/en/admin/posts', ['admin_config' => $config])['body']), 'the top bar and the user menu');
+        $off = self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['site_link' => false]]);
+        self::assertSame(200, $off['status'], (string) $off['error']);
+        self::assertSame(0, $count($off['body']), 'an admin panel without a website');
+        $elsewhere = self::request('GET', '/en/admin/posts', ['admin_config' => $config + ['site_link' => 'https://www.example.com']])['body'];
+        self::assertSame(2, substr_count($elsewhere, 'href="https://www.example.com"'));
+    }
+
     public function testRowActionsAreAnIconButtonAndANoScriptMenu(): void
     {
         $body = self::request('GET', '/en/admin/posts?static=1')['body'];

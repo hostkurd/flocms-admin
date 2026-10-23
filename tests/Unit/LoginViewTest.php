@@ -46,4 +46,20 @@ final class LoginViewTest extends TestCase
         self::assertStringContainsString('/en/admin/users/logout', $html);
         self::assertStringNotContainsString('name="password"', $html);
     }
+    public function testTheWebsiteLinkFollowsSiteLink(): void
+    {
+        Admin::useConfig(['login_theme' => true]);
+        $html = LoginView::render();
+        self::assertStringContainsString('<a class="fa-login-brand" href="', $html);
+        self::assertStringContainsString('fa-login-back', $html);
+        Admin::useConfig(['login_theme' => true, 'site_link' => false]);
+        $html = LoginView::render();
+        self::assertStringContainsString('<span class="fa-login-brand">', $html, 'the brand stays, without a link');
+        self::assertStringNotContainsString('fa-login-back', $html);
+        Admin::useConfig(['login_theme' => true, 'site_link' => 'https://example.com/']);
+        self::assertStringContainsString('href="https://example.com/"', LoginView::render());
+        Admin::useConfig(['login_theme' => true, 'site_link' => 'javascript:alert(1)']);
+        $this->expectException(\InvalidArgumentException::class);
+        LoginView::render();
+    }
 }

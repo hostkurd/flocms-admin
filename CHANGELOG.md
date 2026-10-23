@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.3 - 2026-10-23
+
+- New setting `'site_link'` in `config/admin.php` for the View site link in the top bar, the user menu and the login pages: `true` (this site, as before), `false` (no link: an admin panel without a website, or with an API only; the login page keeps the brand without a link and drops "Back to website"), or an `https://` address (a website hosted elsewhere, such as a panel on `admin.example.com`). `admin:doctor` reports an invalid value, and warns when Pages are on while `site_link` is `false`.
+
 ## 0.39.2 - 2026-10-23
 
 - A text cell's hover border now wraps its text: before, the box was 8px too narrow, so a number such as "€ 400.00" ran over its end edge.

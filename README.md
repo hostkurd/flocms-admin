@@ -341,6 +341,7 @@ Since 0.21 the roles and their permissions can be changed on **Site → Roles** 
 | `sidebar` | `'light'` | `'light'` or `'dark'` |
 | `content_width` | `'full'` | `'full'` uses the whole window; `'boxed'` centres pages at most 1280 px wide |
 | `density` | `'comfortable'` | List rows: `'comfortable'` or `'compact'` |
+| `site_link` | `true` | The View site link (top bar, user menu, login pages): `true` links to this site, `false` hides it (an admin panel without a website, or with an API only), an `https://` address links to a website hosted elsewhere (0.39.3) |
 | `search` | `true` | Ctrl+K search (`/admin/search`); `['per_group' => 5, 'shortcut' => true, 'sources' => [...]]`; `false` switches it off ([guide](docs/search.md)) |
 | `dialog_min_height` | `null` | Least height of the body of form and action dialogs: pixels (`240`) or a CSS length (`'20rem'`); `null` fits the content. One action: `->modalMinHeight(320)` |
 | `panel_settings` | `true` | The "Admin panel" settings page; its saved values override `brand`, `logo`, `primary_color`, `theme`, `sidebar`, `content_width` and `density` |

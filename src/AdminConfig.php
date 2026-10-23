@@ -498,6 +498,24 @@ final class AdminConfig
     }
 
     /**
+     * The website link (0.39.3): 'site_link' => true (the site's own address, the
+     * default), false (no View site link: an admin panel without a website), or an
+     * http(s) address (a website hosted elsewhere). Returns the address to link to,
+     * or null for no link.
+     */
+    public function siteLink(string $default): ?string
+    {
+        $value = $this->values['site_link'] ?? true;
+        if ($value === false) { return null; }
+        if (is_string($value)) {
+            $value = trim($value);
+            if (preg_match('#^https?://[^\s<>"]+$#i', $value) !== 1) { throw new \InvalidArgumentException("config/admin.php: 'site_link' must be true, false or an http(s) address."); }
+            return $value;
+        }
+        return $default;
+    }
+
+    /**
      * Pages (0.30): 'pages' => true, or an array. Off by default.
      *   'table'    the pages table (admin_pages)
      *   'missing'  a page not translated: 'default' shows the default language's (with hreflang), '404' does not

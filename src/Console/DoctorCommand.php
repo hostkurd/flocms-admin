@@ -924,7 +924,11 @@ final class DoctorCommand extends Command
     {
         $pages = $config->pages();
         $this->section('Pages  (/admin/site-pages)');
+        // The website link (0.39.3): checked here, next to the website's pages.
+        try { $link = $config->siteLink('/'); }
+        catch (\InvalidArgumentException $error) { $this->bad($error->getMessage()); $link = '/'; }
         if (!$pages['enabled']) { $this->line('  Off: add \'pages\' => true to config/admin.php to manage the website\'s pages in the panel.'); return; }
+        if ($link === null) { $this->caution('Pages are on, but \'site_link\' => false hides View site: Pages are website pages. Remove one of the two from config/admin.php.'); }
         if (!method_exists(\FloCMS\Core\App::class, 'fallbackUsing')) {
             $this->bad('Needs flocms-core 2.6 or later, so pages answer their addresses: composer require hostkurd/flocms-core:^2.6');
         }

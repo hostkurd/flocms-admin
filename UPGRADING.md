@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.39.3
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.3" -W` and reload open Admin pages. Nothing changes unless you add `'site_link' => false` (or an address) to `config/admin.php`.
+
+---
+
 # Upgrading to Admin 0.39.2
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.2" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do.

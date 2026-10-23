@@ -178,7 +178,7 @@ final class VerifyController extends Controller
             'brand' => Appearance::brand(), 'theme' => Appearance::theme(), 'logo' => Appearance::logo(),
             'brandInitial' => mb_strtoupper(mb_substr(trim(Appearance::brand()), 0, 1)),
             'assets' => Assets::loginTags(), 'csrf' => Csrf::field(), 'languages' => $languages,
-            'siteUrl' => $base . '/' . rawurlencode($lang) . '/', 'logoutUrl' => Admin::url('users/logout'), 'loginUrl' => Admin::url('users/login'),
+            'siteUrl' => Admin::config()->siteLink($base . '/' . rawurlencode($lang) . '/'), 'logoutUrl' => Admin::url('users/logout'), 'loginUrl' => Admin::url('users/login'),
             'description' => '', 'email' => '', 'passwordError' => '', 'confirmError' => '', 'continueUrl' => Admin::url('users/login'),
             'flash' => $flash !== null ? trim(strip_tags((string) $flash['message'])) : '', 'flashType' => $flash !== null ? (string) ($flash['type'] ?? '') : '',
             'errorIcon' => '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>',

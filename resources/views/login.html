@@ -1,7 +1,7 @@
 {!! $assets !!}
 <main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}" data-theme="{{ $theme }}">
     <div class="fa-login-container">
-        <a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>
+        @if($siteUrl !== null)<a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>@else<span class="fa-login-brand">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></span>@endif
         <section class="fa-login-card" aria-labelledby="fa-login-title">
             <header><p class="fa-login-eyebrow">{{ $t('login.admin') }}</p><h1 id="fa-login-title">{{ $t('login.title') }}</h1><p class="fa-login-description">{{ $t('login.description') }}</p></header>
             @if($message !== '' && $messageType === 'success')<div class="fa-login-alert is-success" role="status"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span>{{ $message }}</span></div>@elseif($message !== '')<div class="fa-login-alert" role="alert">{{ $message }}</div>@endif
@@ -17,6 +17,6 @@
             @endif
         </section>
         <nav class="fa-login-languages" aria-label="{{ $t('login.language') }}">@foreach($languages as $language)<a href="{{ $language['url'] }}" lang="{{ $language['code'] }}" @if($lang === $language['code']) aria-current="page" @endif>{{ $language['name'] }}</a>@endforeach</nav>
-        <a class="fa-login-back" href="{{ $siteUrl }}">{{ $t('login.back') }}</a>
+        @if($siteUrl !== null)<a class="fa-login-back" href="{{ $siteUrl }}">{{ $t('login.back') }}</a>@endif
     </div>
 </main>

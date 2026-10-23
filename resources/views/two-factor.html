@@ -11,7 +11,7 @@
 <body>
 <main class="fa-login" lang="{{ $lang }}" dir="{{ $dir }}" data-theme="{{ $theme }}">
     <div class="fa-login-container{{ $screen === 'setup' || $screen === 'codes' ? ' is-wide' : '' }}">
-        <a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>
+        @if($siteUrl !== null)<a class="fa-login-brand" href="{{ $siteUrl }}">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></a>@else<span class="fa-login-brand">@if($logo !== null)<img class="fa-brand-logo" src="{{ $logo }}" alt="">@else<span class="fa-brand-mark" aria-hidden="true">{{ $brandInitial }}</span>@endif<span>{{ $brand }}</span></span>@endif
         <section class="fa-login-card" aria-labelledby="fa-login-title">
             @if($screen === 'codes')<div class="fa-login-icon is-success" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div>@endif
             <header>
