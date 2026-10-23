@@ -214,7 +214,7 @@ final class TwoFactorController extends Controller
             'brand' => Appearance::brand(), 'theme' => Appearance::theme(), 'logo' => Appearance::logo(),
             'brandInitial' => mb_strtoupper(mb_substr(trim(Appearance::brand()), 0, 1)),
             'assets' => Assets::loginTags(), 'csrf' => Csrf::field(), 'languages' => $languages,
-            'siteUrl' => $base . '/' . rawurlencode($lang) . '/', 'logoutUrl' => Admin::url('users/logout'),
+            'siteUrl' => Admin::config()->siteLink($base . '/' . rawurlencode($lang) . '/'), 'logoutUrl' => Admin::url('users/logout'),
             'codeUrl' => Admin::url(TwoFactor::PATH), 'backupUrl' => Admin::url(TwoFactor::PATH . '/backup'),
             'error' => '', 'email' => '', 'flash' => self::flash(),
             'errorIcon' => '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>',

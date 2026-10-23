@@ -107,7 +107,8 @@ final class PanelView
             'mailingsIcon' => Icons::svg('mail'),
             'profileUrl' => $urls['profile'],
             'logoutUrl' => Admin::url('users/logout'),
-            'siteUrl' => $siteBase !== '' ? $siteBase . '/' : '/',
+            // null hides View site (0.39.3: 'site_link' => false)
+            'siteUrl' => Admin::config()->siteLink($siteBase !== '' ? $siteBase . '/' : '/'),
             'dashboardIcon' => Icons::svg('dashboard'),
             'usersIcon' => Icons::svg('users'),
             'logoutIcon' => Icons::svg('logout'),

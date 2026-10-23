@@ -131,7 +131,7 @@ final class PasswordController extends Controller
             'brand' => Appearance::brand(), 'theme' => Appearance::theme(), 'logo' => Appearance::logo(),
             'brandInitial' => mb_strtoupper(mb_substr(trim(Appearance::brand()), 0, 1)),
             'assets' => Assets::loginTags(), 'csrf' => Csrf::field(), 'languages' => $languages,
-            'siteUrl' => $base . '/' . rawurlencode($lang) . '/', 'loginUrl' => Admin::url('users/login'),
+            'siteUrl' => Admin::config()->siteLink($base . '/' . rawurlencode($lang) . '/'), 'loginUrl' => Admin::url('users/login'),
             'forgotUrl' => Admin::url('password/forgot'), 'action' => Admin::url('password/forgot'),
             'description' => '', 'email' => '', 'emailError' => '', 'passwordError' => '', 'confirmError' => '',
             'min' => UsersResource::MIN_PASSWORD, 'minutes' => Admin::config()->passwordReset()['expires'],

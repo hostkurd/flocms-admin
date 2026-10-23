@@ -76,7 +76,7 @@
             </form>
             @endif
             <span class="fa-topbar-spacer"></span>
-            <a class="fa-topbar-action" href="{{ $siteUrl }}" target="_blank" rel="noopener" title="{{ $t('nav.view_site') }}">{!! $externalIcon !!}<span class="fa-topbar-action-label">{{ $t('nav.view_site') }}</span></a>
+            @if($siteUrl !== null)<a class="fa-topbar-action" href="{{ $siteUrl }}" target="_blank" rel="noopener" title="{{ $t('nav.view_site') }}">{!! $externalIcon !!}<span class="fa-topbar-action-label">{{ $t('nav.view_site') }}</span></a>@endif
             @if(count($languages) > 0)
             <details class="fa-topbar-menu" id="fa-language-menu" data-admin-popover>
                 <summary class="fa-topbar-action" aria-label="{{ $t('nav.language') }}" title="{{ $t('nav.language') }}">{!! $globeIcon !!}<span>{{ strtoupper($lang) }}</span></summary>
@@ -90,7 +90,7 @@
                 <summary class="fa-topbar-action" aria-label="{{ $t('nav.account') }}">{!! $userAvatar !!}<span class="fa-user-name">{{ $user }}</span>{!! $chevronIcon !!}</summary>
                 <div class="fa-menu-panel fa-topbar-panel">
                     @if($profileUrl !== null)<a class="fa-menu-item fa-topbar-user" href="{{ $profileUrl }}">{!! $profileIcon !!}<span>{{ $t('nav.profile') }}</span></a>@endif
-                    <a class="fa-menu-item" href="{{ $siteUrl }}" target="_blank" rel="noopener">{!! $externalIcon !!}<span>{{ $t('nav.view_site') }}</span></a>
+                    @if($siteUrl !== null)<a class="fa-menu-item" href="{{ $siteUrl }}" target="_blank" rel="noopener">{!! $externalIcon !!}<span>{{ $t('nav.view_site') }}</span></a>@endif
                     <hr class="fa-menu-divider">
                     <a class="fa-menu-item" href="{{ $logoutUrl }}">{!! $logoutIcon !!}<span>{{ $t('nav.logout') }}</span></a>
                 </div>
