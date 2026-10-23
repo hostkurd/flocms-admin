@@ -21,6 +21,9 @@ abstract class Layout
         foreach ($children as $child) {
             if (!$child instanceof Field && !$child instanceof Layout) { throw new \InvalidArgumentException('Layouts accept fields and layouts.'); }
             if ($this instanceof Tabs && !$child instanceof Tab) { throw new \InvalidArgumentException('Tabs accepts Tab layouts only.'); }
+            if ($this instanceof Wizard && !$child instanceof Step) { throw new \InvalidArgumentException('Wizard accepts Step layouts only.'); }
+            if (!$this instanceof Wizard && $child instanceof Step) { throw new \InvalidArgumentException('A Step belongs directly inside a Wizard.'); }
+            if ($child instanceof Wizard) { throw new \InvalidArgumentException('A Wizard is the whole form: it cannot sit inside another layout.'); }
         }
         $this->children = $children; return $this;
     }

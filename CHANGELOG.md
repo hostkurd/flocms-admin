@@ -2,6 +2,24 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.0 - 2026-10-23
+
+**Wizard forms.** Nothing to migrate. See [Wizard forms](docs/wizards.md).
+
+- **`Wizard` and `Step` layouts** (`FloCMS\Admin\Form\Layout`): a long form shown as steps, one at a time, with Back and Next and a final Create or Save.
+  - `Wizard::make()->summary()` (a last Review step listing the answers, each group with an Edit button), `->startOn()`, `->submitLabel()`.
+  - `Step::make()->label()`, `->description()`, `->icon()`, `->columns()`, `->visibleWhen()` (a step shown only for some answers; skipped, not checked and not saved otherwise) and `->afterValidation()` (extra checks after the step's rules).
+- **Next checks only the shown step** on the server, with the form's own rules; Back and the step buttons never check or save; nothing is saved before the final submit, which checks every shown step and opens the first one with an error ("Please check: Price (Pricing)").
+- On a new record, steps go in order (back to any step reached); **the edit page** opens any step from the header and has Save on every step. Enter means Next on a new record and Save when editing.
+- **Everywhere forms go**: create and edit pages, create and edit dialogs and slide-overs (and so relation managers), action forms on their own page or in a dialog, bulk action forms, custom page forms and their header actions. The view page shows each step as a card.
+- **Without JavaScript** every move is a form submit (`_wizard` = `next`, `back`, `go:<step>`, with `_wizard_step` and `_wizard_reached`); with it the panel and dialogs move without a reload and focus goes to the new step's heading. Files chosen on an early step are kept as pending uploads; translatable fields work with badges and with the page-level language switch.
+- **Phones**: "Step 2 of 5 · Location" with a progress bar and the step list in a menu; Back and Next fixed at the bottom.
+- Rules checked when the form is built: a wizard is the whole form (`aside()` fields may sit beside it), steps only in a wizard, wizards never nested, passwords only on the last step, a step's `visibleWhen()` names a field of an earlier step; settings pages and custom pages' filters can't be wizards.
+- `Form::wizard()`, `stepOf()`, `stepFields()`; `Form::errorSummary()` names a field's step (`$steps = false` leaves it out); the record page, the action page, the bulk page and dialogs hide their final button until a wizard's last step.
+- The bulk action page has a hidden default button, so Enter submits the action rather than the first button in the form, and a repeater's Add/Remove button there changes the list instead of running the action.
+- A custom page form's live fields refresh the form instead of saving it.
+- New words in `en`, `ar` and `ku`: `wizard.*`.
+
 ## 0.38.0 - 2026-10-23
 
 **Editable cells, totals and grouped lists.** Nothing to migrate. See [Editable cells, totals and grouped lists](docs/tables.md).

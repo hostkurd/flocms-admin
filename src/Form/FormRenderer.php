@@ -135,6 +135,21 @@ final class FormRenderer
 
     private ?Form $resolvedForm = null;
 
+    private ?WizardState $wizardState = null;
+    private string $wizardActions = '';
+    /** @var (\Closure(): string)|null the review step's list of answers */
+    private ?\Closure $wizardSummary = null;
+
+    /**
+     * Shows the form's wizard (0.39) on this step. $actions are the final buttons
+     * (Create, Save…), printed in the wizard's footer when the step allows them.
+     */
+    public function wizard(WizardState $state, string $actions = '', ?\Closure $summary = null): self
+    {
+        $this->wizardState = $state; $this->wizardActions = $actions; $this->wizardSummary = $summary;
+        return $this;
+    }
+
     public function render(Form $form): string
     {
         $resolved = $form->evaluate($this->state);
@@ -179,6 +194,7 @@ final class FormRenderer
             }
             $id = $this->prefix . $path . '-' . $index . '-' . $node->getName();
             $label = Str::e($node->getLabel());
+            if ($node instanceof \FloCMS\Admin\Form\Layout\Wizard) { $html .= $this->wizardHtml($node, $form, $live, $id); continue; }
             if ($node instanceof \FloCMS\Admin\Form\Layout\Tabs) {
                 $buttons = ''; $panels = ''; $names = [];
                 foreach ($node->children() as $tabIndex => $tab) {
@@ -218,6 +234,94 @@ final class FormRenderer
             }
         }
         return '<div class="fa-form-grid fa-grid-' . $columns . '">' . $html . '</div>';
+    }
+
+    /**
+     * A wizard (0.39): the steps header, one panel per shown step (only the current
+     * one visible; the others stay in the form so every value is sent) and the
+     * footer with Back, the step count and Next. Every button is a submit button,
+     * so moving works without JavaScript.
+     */
+    private function wizardHtml(\FloCMS\Admin\Form\Layout\Wizard $wizard, Form $form, array $live, string $id): string
+    {
+        $state = $this->wizardState ?? WizardFlow::for($this->resolvedForm ?? $form, $this->isEdit)?->initial($this->state);
+        if ($state === null) { return ''; }
+        $steps = [];
+        foreach ($wizard->steps() as $step) { $steps[$step->getName()] = $step; }
+        $current = $state->index();
+        $count = $state->count();
+        $items = ''; $panels = ''; $bars = '';
+        foreach ($state->visible as $i => $name) {
+            $step = $steps[$name] ?? null;
+            $title = $step?->getLabel() ?? AdminLang::get('wizard.review');
+            $description = $step?->getDescription() ?? ($step === null ? AdminLang::get('wizard.review_short') : null);
+            $errors = $step === null ? 0 : $this->errorCount($step);
+            $isCurrent = $i === $current;
+            // Done: passed with Next on a new record (before the current step, or before the furthest one reached).
+            $done = !$state->isEdit && !$isCurrent && ($i < $current || $i < $state->reached);
+            $reachable = !$isCurrent && ($state->isEdit || $i <= $state->reached);
+            $classes = ['fa-wizard-item', $isCurrent ? 'is-current' : ($done ? 'is-done' : 'is-upcoming')];
+            if ($errors > 0) { $classes[] = 'has-error'; }
+            // The step's icon (if any) stands for its number until the step is done.
+            $mark = $errors > 0 ? '!' : ($done ? Icons::svg('check', 'fa-icon') : ($step?->getIcon() !== null ? Icons::svg($step->getIcon(), 'fa-icon') : (string) ($i + 1)));
+            $note = $errors > 0 ? AdminLang::get($errors === 1 ? 'wizard.problem' : 'wizard.problems', ['count' => (string) $errors]) : ($description ?? '');
+            $inner = '<span class="fa-wizard-mark" aria-hidden="true">' . $mark . '</span><span class="fa-wizard-text"><span class="fa-wizard-label">' . Str::e($title) . '</span>'
+                . ($note !== '' ? '<span class="fa-wizard-note">' . Str::e($note) . '</span>' : '') . '</span>'
+                . '<span class="fa-sr">' . Str::e(AdminLang::get($isCurrent ? 'wizard.state_current' : ($done ? 'wizard.state_done' : 'wizard.state_upcoming'))) . '</span>';
+            $items .= '<li class="' . implode(' ', $classes) . '"' . ($isCurrent ? ' aria-current="step"' : '') . '>'
+                . ($reachable ? '<button type="submit" class="fa-wizard-step" name="_wizard" value="' . Str::e('go:' . $name) . '" formnovalidate>' . $inner . '</button>' : '<span class="fa-wizard-step">' . $inner . '</span>')
+                . '</li>';
+            $bars .= '<span class="' . ($isCurrent ? 'is-current' : ($done || ($state->isEdit && $i < $current) ? 'is-done' : '')) . '"></span>';
+            $panelId = $id . '-' . $name;
+            $body = $step === null ? '<div class="fa-wizard-review">' . ($this->wizardSummary !== null ? ($this->wizardSummary)() : '') . '</div>'
+                : $this->nodes($step->children(), $form, $step->getColumns(), $live, $panelId);
+            $panels .= '<section class="fa-wizard-panel" id="' . Str::e($panelId) . '" data-wizard-step="' . Str::e($name) . '" aria-labelledby="' . Str::e($panelId . '-title') . '"' . ($isCurrent ? '' : ' hidden') . '>'
+                . '<h2 class="fa-wizard-title" id="' . Str::e($panelId . '-title') . '" tabindex="-1">' . Str::e($title) . '</h2>'
+                . ($description !== null && $description !== '' ? '<p class="fa-wizard-lead">' . Str::e($step === null ? AdminLang::get('wizard.review_help') : $description) . '</p>' : '')
+                . $body . '</section>';
+        }
+        $currentName = $state->visible[$current];
+        $currentTitle = isset($steps[$currentName]) ? $steps[$currentName]->getLabel() : AdminLang::get('wizard.review');
+        $position = AdminLang::get('wizard.step_of', ['number' => (string) ($current + 1), 'count' => (string) $count]);
+        $next = $state->next();
+        $nextTitle = $next === null ? null : (isset($steps[$next]) ? $steps[$next]->getLabel() : AdminLang::get('wizard.review'));
+        $head = '<div class="fa-wizard-head">'
+            . '<div class="fa-wizard-bars" aria-hidden="true">' . $bars . '</div>'
+            . '<details class="fa-wizard-menu" open data-wizard-menu>'
+            . '<summary class="fa-wizard-summary"><span class="fa-wizard-where"><b>' . Str::e($position . ' · ' . $currentTitle) . '</b>'
+            . ($nextTitle !== null ? '<small>' . Str::e(AdminLang::get('wizard.next_to', ['step' => $nextTitle])) . '</small>' : '') . '</span>'
+            . '<span class="fa-wizard-toggle">' . Str::e(AdminLang::get('wizard.all_steps')) . Icons::svg('chevron-down', 'fa-icon') . '</span></summary>'
+            . '<ol class="fa-wizard-list" aria-label="' . Str::e(AdminLang::get('wizard.steps')) . '">' . $items . '</ol>'
+            . '</details></div>';
+        $nav = '<div class="fa-wizard-nav">'
+            . (!$state->isFirst() ? '<button type="submit" class="fa-btn" name="_wizard" value="back" formnovalidate data-wizard-back>' . Icons::svg('chevron-left', 'fa-icon fa-flip-rtl') . '<span>' . Str::e(AdminLang::get('wizard.back')) . '</span></button>' : '')
+            . '<span class="fa-wizard-count">' . Str::e($position) . '</span><span class="fa-wizard-space"></span>'
+            . ($next !== null ? '<button type="submit" class="fa-btn' . ($state->isEdit ? '' : ' fa-btn-primary') . '" name="_wizard" value="next" formnovalidate data-wizard-next><span>'
+                . Str::e($state->isEdit ? AdminLang::get('wizard.next') : AdminLang::get('wizard.next_to', ['step' => (string) $nextTitle])) . '</span>' . Icons::svg('chevron-right', 'fa-icon fa-flip-rtl') . '</button>' : '')
+            . ($state->isFinal() ? $this->wizardActions : '')
+            . '</div>';
+        return '<div class="fa-wizard fa-span-full' . ($count > 4 ? ' is-crowded' : '') . '" id="' . Str::e($id) . '" data-admin-wizard data-wizard-mode="' . ($state->isEdit ? 'edit' : 'create') . '"' . ($state->moved ? ' data-wizard-moved' : '') . '>'
+            . '<input type="hidden" name="_wizard_step" value="' . Str::e($currentName) . '">'
+            . '<input type="hidden" name="_wizard_reached" value="' . Str::e($state->visible[min($state->reached, $count - 1)]) . '">'
+            . $head . $panels . $nav . '</div>';
+    }
+
+    /** How many errors the fields of a layout have. */
+    private function errorCount(\FloCMS\Admin\Form\Layout\Layout $layout): int
+    {
+        $names = [];
+        $walk = function (array $nodes) use (&$walk, &$names): void {
+            foreach ($nodes as $node) {
+                if ($node instanceof \FloCMS\Admin\Form\Layout\Layout) { $walk($node->children()); }
+                elseif ($node instanceof Field) { $names[$node->getName()] = true; }
+            }
+        };
+        $walk($layout->children());
+        $count = 0;
+        foreach (array_keys($this->errors) as $key) {
+            if (isset($names[explode('.', (string) $key, 2)[0]])) { $count++; }
+        }
+        return $count;
     }
 
     private function hasErrors(\FloCMS\Admin\Form\Layout\Layout $layout): bool

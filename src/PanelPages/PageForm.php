@@ -23,6 +23,7 @@ final class PageForm
     public function __construct(private readonly AdminPage $page)
     {
         $this->form = $page->form(new Form());
+        if ($this->form->wizard()?->hasSummary()) { throw new \LogicException('Wizard::summary() is not available on custom pages: the review step lists a resource\'s values.'); }
         foreach ($this->form->fields() as $field) {
             if ($field instanceof \FloCMS\Admin\Form\Fields\FileUpload) {
                 throw new \LogicException('Field "' . $field->getName() . '": upload fields are not supported on panel pages yet; use a MediaPicker or a settings page.');
@@ -57,6 +58,20 @@ final class PageForm
     }
 
     /**
+     * A live field changed (0.39): dependent fields updated, nothing saved.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, string|array<string, string>>
+     */
+    public function refresh(array $input): array
+    {
+        $record = $this->record();
+        $state = $this->stateFromInput($input, $record);
+        $this->form->refreshState($state, $record);
+        return $state;
+    }
+
+    /**
      * A repeater button sent without JavaScript: the list changed, nothing saved.
      *
      * @param array<string, mixed> $input
@@ -78,18 +93,10 @@ final class PageForm
      */
     public function submit(array $input): array
     {
-        $record = $this->record();
         $before = $this->initialState();
-        $state = $this->stateFromInput($input, $record);
-        $resolved = $this->form->evaluate($state, $record);
-        foreach ($resolved->fields() as $field) { $state = $field->prepare($state, Languages::default()); }
-        $resolved = $this->form->evaluate($state, $record);
-
-        $skip = [];
-        foreach ($resolved->writableFields() as $name => $field) {
-            if ($field->skipsWrite($state[$name] ?? '', true)) { $skip[] = $name; }
-        }
+        [$state, $record, $resolved, $skip] = $this->prepared($input);
         $errors = (new FormValidator(Languages::all(), Languages::default(), null, true))->validate($resolved, $state, $skip);
+        if (($flow = \FloCMS\Admin\Form\WizardFlow::for($this->form, false)) !== null) { $errors = $flow->finalErrors($errors, $state, $record)[0]; }
         if ($errors !== []) {
             return ['state' => $state, 'errors' => $errors, 'saved' => false, 'message' => null];
         }
@@ -109,6 +116,51 @@ final class PageForm
         $this->log($before, $state, $skip);
 
         return ['state' => $state, 'errors' => [], 'saved' => true, 'message' => is_string($result) && trim($result) !== '' ? $result : null];
+    }
+
+    /**
+     * A wizard's Back, Next or step button (0.39), or the final submit: what the
+     * page shows next. Null when the form has no wizard. "save" with no errors
+     * means the final submit passed and submit() runs.
+     *
+     * @param array<string, mixed> $input
+     * @return array{state: \FloCMS\Admin\Form\WizardState, save: bool, errors: array<string, string>, values: array<string, mixed>}|null
+     */
+    public function wizard(array $input): ?array
+    {
+        $flow = \FloCMS\Admin\Form\WizardFlow::for($this->form, false);
+        if ($flow === null) { return null; }
+        [$state, $record, $resolved, $skip] = $this->prepared($input);
+        $validate = static fn (): array => (new FormValidator(Languages::all(), Languages::default(), null, true))->validate($resolved, $state, $skip);
+        return $flow->handle($input, $state, $record, $validate) + ['values' => $state];
+    }
+
+    /** Where a wizard stands on a form shown again (a repeater button) or for the first time. */
+    public function wizardState(?array $input, array $state): ?\FloCMS\Admin\Form\WizardState
+    {
+        $flow = \FloCMS\Admin\Form\WizardFlow::for($this->form, false);
+        if ($flow === null) { return null; }
+        return $input !== null ? $flow->restore($input, $state, $this->record()) : $flow->initial($state, $this->record());
+    }
+
+    /**
+     * The submitted values prepared as for saving, the record fill() gives, the resolved form and the fields not written.
+     *
+     * @param array<string, mixed> $input
+     * @return array{0: array<string, mixed>, 1: object, 2: Form, 3: list<string>}
+     */
+    private function prepared(array $input): array
+    {
+        $record = $this->record();
+        $state = $this->stateFromInput($input, $record);
+        $resolved = $this->form->evaluate($state, $record);
+        foreach ($resolved->fields() as $field) { $state = $field->prepare($state, Languages::default()); }
+        $resolved = $this->form->evaluate($state, $record);
+        $skip = [];
+        foreach ($resolved->writableFields() as $name => $field) {
+            if ($field->skipsWrite($state[$name] ?? '', true)) { $skip[] = $name; }
+        }
+        return [$state, $record, $resolved, $skip];
     }
 
     /**

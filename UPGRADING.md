@@ -1,3 +1,14 @@
+# Upgrading to Admin 0.39.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and nothing changes until a form uses `Wizard`. See [Wizard forms](docs/wizards.md).
+
+- **Wizards are the whole form**: put every field of `schema()` in a `Step`. Fields that should stay beside every step (status, featured) go in `aside()`.
+- **Passwords** in a wizard go on its last step (or in `aside()`): the form refuses one on an earlier step, because a typed password is never shown again and would be lost on Next.
+- **Pending uploads** last 30 minutes, as before: a wizard left open longer asks for its files again.
+- **Translations**: the new Arabic and Kurdish words (`wizard.*`) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.38.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.38.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and nothing changes until you use the new columns, `summarize()` or `groups()`. See [Editable cells, totals and grouped lists](docs/tables.md).

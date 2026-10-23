@@ -100,6 +100,8 @@ final class RecordView
             $loose = [];
         };
         foreach ($nodes as $index => $node) {
+            // A wizard (0.39): each step is a card of its own.
+            if ($node instanceof \FloCMS\Admin\Form\Layout\Wizard) { $flush(); $html .= $this->cards($node->children(), $columns, $path . '-' . $index); continue; }
             if ($node instanceof Layout && !$node instanceof Grid) {
                 $flush();
                 $id = 'fa-view-' . $path . '-' . $index;

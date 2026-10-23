@@ -104,10 +104,11 @@ final class CustomPageController extends PanelController
         if (!$action->allowedOnPage($this->page)) { throw new HttpException(403); }
         $filters = $this->filters();
         $form = $action->getPageForm();
+        if ($form->wizard()?->hasSummary()) { throw new \LogicException('Wizard::summary() is not available on custom pages: the review step lists a resource\'s values.'); }
         $slug = $this->page::getSlug();
         $back = Admin::url($slug, ['filter' => $filters->active() ?: null]);
         $operationSlug = 'page:' . $slug;
-        $errors = [];
+        $errors = []; $flow = null; $wizard = null;
 
         if ($this->isPost() && $action->runsAtOnce()) {
             // No form and no confirmation: the header's button posts with CSRF only (no operation token).
@@ -123,12 +124,18 @@ final class CustomPageController extends PanelController
                 $this->redirect($back);
             }
             $state = ActionForm::state($action, $form, $this->request->all(), null);
+            $flow = \FloCMS\Admin\Form\WizardFlow::for($form, false);
             if ($this->request->input('_refresh') !== null || $this->request->input('_repeater') !== null) {
                 if ($this->request->input('_repeater') !== null) { $form->evaluate($state)->applyRepeaterOperation($state, $this->request->input('_repeater')); }
                 $form->refreshState($state, null);
+                $wizard = $flow?->restore($this->request->all(), $state);
+            } elseif ($flow !== null && !($moved = $flow->handle($this->request->all(), $state, null, fn (): array => ActionForm::errors($action, $form, $state, null)))['save']) {
+                // A wizard's Back, Next or step button (0.39).
+                $wizard = $moved['state']; $errors = $moved['errors'];
             } else {
                 try {
                     $errors = ActionForm::errors($action, $form, $state, null);
+                    if ($flow !== null) { [$errors, $failed] = $flow->finalErrors($errors, $state, null); $wizard = $failed !== null ? $flow->restore(['_wizard_step' => $failed] + $this->request->all(), $state) : null; }
                     if ($errors !== []) { throw new ValidationException($errors); }
                     $result = \FloCMS\Admin\Notifications\Notifications::capture(fn (): mixed => $action->invokeOnPage(ActionForm::dehydrate($form, $state), $this->page));
                     OperationStore::consume($token);
@@ -144,6 +151,9 @@ final class CustomPageController extends PanelController
         }
 
         $renderer = new FormRenderer(ActionForm::safe($form, $state) + $state, $errors, Languages::all(), Languages::default());
+        $flow ??= \FloCMS\Admin\Form\WizardFlow::for($form, false);
+        $wizard ??= $flow === null ? null : ($this->isPost() ? $flow->restore($this->request->all(), $state) : $flow->initial($state));
+        if ($wizard !== null) { $renderer->wizard($wizard); }
         $title = $action->getPageTitle();
         // Sent by the browser itself (data-admin-local): the action may answer with a download.
         return $this->panel($title, (string) preg_replace('/<form method="post"/', '<form method="post" data-admin-local', TemplateEngine::renderFile(PageView::viewPath('action'), [
@@ -151,7 +161,7 @@ final class CustomPageController extends PanelController
             'fields' => $renderer->render($form), 'translation' => null,
             'errors' => $errors, 'operation' => $token, 'csrf' => \FloCMS\Core\Csrf::field(),
             'actionUrl' => Admin::url($slug . '/action/' . $name, ['filter' => $filters->active() ?: null]),
-            'submitLabel' => $action->getPageLabel(), 'submitColor' => $action->getColor(),
+            'submitLabel' => $action->getPageLabel(), 'submitColor' => $action->getColor(), 'wizardFinal' => $wizard?->isFinal() ?? true,
         ]), 1), $slug);
     }
 
@@ -199,7 +209,7 @@ final class CustomPageController extends PanelController
 
     /* ---------------------------------------------------------------- */
 
-    private function render(PageFilters $filters, ?PageTable $table, bool $tableFailed = false, ?array $formState = null, array $formErrors = []): string|\FloCMS\Core\Http\Response
+    private function render(PageFilters $filters, ?PageTable $table, bool $tableFailed = false, ?array $formState = null, array $formErrors = [], ?\FloCMS\Admin\Form\WizardState $wizard = null): string|\FloCMS\Core\Http\Response
     {
         $page = $this->page;
         $slug = $page::getSlug();
@@ -225,12 +235,15 @@ final class CustomPageController extends PanelController
         if ($this->failed) {
             $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save'), 'broken' => true];
         } elseif ($hasForm === true) {
-            $form = $this->guard(function () use ($formState, $formErrors): array {
+            $form = $this->guard(function () use ($formState, $formErrors, $wizard): array {
                 $pageForm = new PageForm($this->page);
                 $state = $formState ?? $pageForm->initialState();
                 $renderer = new FormRenderer($state, $formErrors, Languages::all(), Languages::default(), true);
+                // A wizard (0.39): the step it moved to, the one posted (a repeater button) or the first.
+                $wizard ??= $pageForm->wizardState($formState !== null ? $this->request->all() : null, $state);
+                if ($wizard !== null) { $renderer->wizard($wizard, '', null); }
                 return ['fields' => $renderer->render($pageForm->form()), 'errors' => $formErrors, 'dirty' => $formState !== null,
-                    'submit' => $this->page::getSubmitLabel(), 'broken' => false];
+                    'submit' => $this->page::getSubmitLabel(), 'broken' => false, 'final' => $wizard?->isFinal() ?? true];
             }, 'form');
             if ($form === null) { $form = ['fields' => $this->unavailable(), 'errors' => [], 'dirty' => false, 'submit' => AdminLang::get('actions.save'), 'broken' => true]; }
         }
@@ -272,6 +285,16 @@ final class CustomPageController extends PanelController
         $input = $this->request->all();
         if ($this->request->input('_repeater') !== null) {
             return $this->render($filters, $table, $tableFailed, $pageForm->operate($input, $this->request->input('_repeater')));
+        }
+        if ($this->request->input('_refresh') !== null) {
+            // A live field changed: the form again with dependent fields updated (and a wizard on its step); nothing saved.
+            $state = $pageForm->refresh($input);
+            return $this->render($filters, $table, $tableFailed, $state, [], $pageForm->wizardState($input, $state));
+        }
+        $moved = $pageForm->wizard($input);
+        if ($moved !== null && !($moved['save'] && $moved['errors'] === [])) {
+            if ($moved['errors'] !== []) { Session::setFlash($moved['save'] ? AdminLang::get('flash.fix_errors_in', ['fields' => $pageForm->form()->errorSummary($moved['errors'], $moved['values'])]) : AdminLang::get('wizard.fix_step', ['fields' => $pageForm->form()->errorSummary($moved['errors'], $moved['values'], false)]), 'danger'); }
+            return $this->render($filters, $table, $tableFailed, $moved['values'], $moved['errors'], $moved['state']);
         }
         $result = \FloCMS\Admin\Notifications\Notifications::capture(fn (): array => $pageForm->submit($input));
         if ($result['saved']) {

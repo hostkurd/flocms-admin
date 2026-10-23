@@ -3059,3 +3059,110 @@ a.fa-filedrop-name:hover{text-decoration:underline}
   .fa-table-list tfoot.fa-totals .fa-total,.fa-table-list tbody tr.fa-group-row .fa-total{display:flex;justify-content:space-between;gap:12px;white-space:normal;margin:0}
   .fa-table-list tbody tr.fa-group-row td.has-totals{padding-inline-start:30px;inline-size:100%;box-sizing:border-box}
 }
+
+/* ---- Wizards (0.39) -----------------------------------------------------------
+ * One form shown as steps. Every step's fields stay in the form (the ones not
+ * shown are hidden), Back/Next and the step buttons are submit buttons. */
+.fa-wizard{display:flex;flex-direction:column;min-width:0}
+.fa-record .fa-wizard{background:var(--fa-surface);border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);box-shadow:var(--fa-shadow)}
+.fa-wizard-head{padding:16px 20px;border-block-end:1px solid var(--fa-border)}
+.fa-wizard-bars{display:none;gap:4px;margin-block-end:10px}
+.fa-wizard-bars span{flex:1;height:4px;border-radius:2px;background:var(--fa-border)}
+.fa-wizard-bars .is-done{background:var(--fa-primary)}
+.fa-wizard-bars .is-current{background:var(--fa-primary-border)}
+.fa-wizard-summary{display:none}
+.fa-wizard-list{list-style:none;margin:0;padding:2px;display:flex;overflow-x:auto;scrollbar-width:thin}
+.fa-wizard-item{flex:1 0 auto;position:relative;display:flex}
+.fa-wizard-item:last-child{flex:0 0 auto}
+.fa-wizard.is-crowded .fa-wizard-note{display:none}
+.fa-wizard-item:not(:last-child)::after{content:"";position:absolute;inset-block-start:15px;inset-inline-start:var(--fa-wizard-line-start,44px);inset-inline-end:8px;height:2px;border-radius:2px;background:var(--fa-border)}
+.fa-wizard-item.is-done:not(:last-child)::after{background:var(--fa-primary)}
+.fa-wizard-step{position:relative;z-index:1;display:flex;align-items:flex-start;gap:10px;max-width:100%;min-width:0;margin:0;padding:0;padding-inline-end:10px;border:0;border-radius:var(--fa-radius);background:var(--fa-surface);font:inherit;color:inherit;text-align:start}
+button.fa-wizard-step{cursor:pointer}
+button.fa-wizard-step:hover .fa-wizard-label{text-decoration:underline;text-underline-offset:3px}
+button.fa-wizard-step:focus-visible{outline:2px solid var(--fa-focus);outline-offset:3px}
+.fa-wizard-mark{width:32px;height:32px;flex:none;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--fa-border-strong);border-radius:999px;background:var(--fa-surface);color:var(--fa-muted);font-size:13px;font-weight:600}
+.fa-wizard-mark .fa-icon{width:16px;height:16px}
+.is-done .fa-wizard-mark{background:var(--fa-primary);border-color:var(--fa-primary);color:var(--fa-on-primary)}
+.is-current .fa-wizard-mark{border-color:var(--fa-primary);color:var(--fa-primary-text);box-shadow:0 0 0 4px var(--fa-primary-soft)}
+.has-error .fa-wizard-mark{background:var(--fa-danger-solid);border-color:var(--fa-danger-solid);color:#fff}
+.is-current.has-error .fa-wizard-mark{box-shadow:0 0 0 4px var(--fa-danger-soft)}
+.fa-wizard-text{display:flex;flex-direction:column;min-width:0;padding-block-start:5px}
+.fa-wizard-label{overflow:hidden;font-size:13.5px;font-weight:600;color:var(--fa-text-2);text-overflow:ellipsis;white-space:nowrap}
+.is-current .fa-wizard-label{color:var(--fa-primary-text)}
+.is-upcoming .fa-wizard-label{color:var(--fa-muted);font-weight:500}
+.fa-wizard-note{overflow:hidden;font-size:12px;color:var(--fa-muted);text-overflow:ellipsis;white-space:nowrap}
+.has-error .fa-wizard-label,.has-error .fa-wizard-note{color:var(--fa-danger)}
+.has-error .fa-wizard-note{font-weight:500}
+/* Editing: every step can be opened, so the steps read as buttons rather than a line of progress. */
+[data-wizard-mode="edit"] .fa-wizard-list{gap:6px}
+[data-wizard-mode="edit"] .fa-wizard-item::after{display:none}
+[data-wizard-mode="edit"] .fa-wizard-step{width:100%;align-items:center;padding-block:8px;padding-inline:10px 14px;border:1px solid transparent;border-radius:10px;background:transparent}
+[data-wizard-mode="edit"] button.fa-wizard-step:hover{background:var(--fa-surface-2);border-color:var(--fa-border)}
+[data-wizard-mode="edit"] button.fa-wizard-step:hover .fa-wizard-label{text-decoration:none}
+[data-wizard-mode="edit"] .is-current .fa-wizard-step{background:var(--fa-primary-soft);border-color:var(--fa-primary-border)}
+[data-wizard-mode="edit"] .fa-wizard-mark{width:28px;height:28px;border:0;background:var(--fa-surface-3);color:var(--fa-text-2);font-size:12.5px}
+[data-wizard-mode="edit"] .is-current .fa-wizard-mark{background:var(--fa-primary);color:var(--fa-on-primary);box-shadow:none}
+[data-wizard-mode="edit"] .has-error .fa-wizard-mark{background:var(--fa-danger-solid);color:#fff}
+[data-wizard-mode="edit"] .is-upcoming .fa-wizard-label{color:var(--fa-text-2);font-weight:600}
+[data-wizard-mode="edit"] .fa-wizard-text{padding-block-start:0}
+.fa-wizard-panel{min-width:0;padding:24px 24px 8px}
+.fa-wizard-panel[hidden]{display:none}
+.fa-wizard-title{margin:0;font-size:17px;font-weight:600;color:var(--fa-text)}
+.fa-wizard-title:focus{outline:none}
+.fa-wizard-title:focus-visible{outline:2px solid var(--fa-focus);outline-offset:4px;border-radius:2px}
+.fa-wizard-lead{margin:2px 0 0;font-size:13.5px;color:var(--fa-muted)}
+.fa-wizard-panel > .fa-form-grid{margin-block-start:20px}
+.fa-wizard-nav{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-block-start:16px;padding:14px 24px;border-block-start:1px solid var(--fa-border);background:var(--fa-surface-2);border-end-start-radius:var(--fa-radius-lg);border-end-end-radius:var(--fa-radius-lg)}
+.fa-wizard-count{font-size:13px;color:var(--fa-muted)}
+.fa-wizard-space{flex:1}
+/* Dialogs and action pages: no card around the wizard. */
+.fa-form:not(.fa-record) .fa-wizard-head,.fa-dialog .fa-wizard-head{padding:0 0 14px}
+.fa-form:not(.fa-record) .fa-wizard-panel,.fa-dialog .fa-wizard-panel{padding:18px 0 4px}
+.fa-form:not(.fa-record) .fa-wizard-nav,.fa-dialog .fa-wizard-nav{padding:14px 0 0;background:none;border-radius:0}
+.fa-dialog .fa-wizard-mark{width:28px;height:28px;font-size:12px}
+.fa-dialog .fa-wizard-item:not(:last-child)::after{inset-block-start:13px;inset-inline-start:40px}
+.fa-dialog .fa-wizard-note{display:none}
+/* The review step. */
+.fa-wizard-review{display:flex;flex-direction:column;gap:14px;margin-block-start:18px}
+.fa-wizard-group{overflow:hidden;border:1px solid var(--fa-border);border-radius:10px}
+.fa-wizard-group-head{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-block-end:1px solid var(--fa-border);background:var(--fa-surface-2)}
+.fa-wizard-group-head h3{flex:1;margin:0;font-size:14px;font-weight:600}
+.fa-wizard-group-number{width:22px;height:22px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--fa-primary-soft);color:var(--fa-primary-text);font-size:12px;font-weight:600}
+.fa-wizard-answers{display:grid;grid-template-columns:minmax(120px,200px) minmax(0,1fr);margin:0}
+.fa-wizard-answers dt,.fa-wizard-answers dd{margin:0;padding:9px 14px;border-block-end:1px solid var(--fa-border);font-size:13.5px;overflow-wrap:anywhere}
+.fa-wizard-answers dt{color:var(--fa-muted)}
+.fa-wizard-answers > :nth-last-child(-n+2){border-block-end:0}
+.fa-wizard-none{margin:0;padding:10px 14px;color:var(--fa-muted)}
+@media (max-width:640px){
+  /* Phones: "Step 2 of 4 · Location" with the steps in a menu, Back and Next fixed at the bottom. */
+  .fa-wizard-head{padding:12px 14px}
+  .fa-wizard-bars{display:flex}
+  .fa-wizard-summary{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;list-style:none}
+  .fa-wizard-summary::-webkit-details-marker{display:none}
+  .fa-wizard-summary:focus-visible{outline:2px solid var(--fa-focus);outline-offset:2px;border-radius:var(--fa-radius-sm)}
+  .fa-wizard-where{display:flex;flex-direction:column;min-width:0}
+  .fa-wizard-where b{font-size:15px;font-weight:600}
+  .fa-wizard-where small{font-size:12.5px;color:var(--fa-muted)}
+  .fa-wizard-toggle{display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto;font-size:13px;font-weight:500;color:var(--fa-primary-text);white-space:nowrap}
+  .fa-wizard-toggle .fa-icon{width:14px;height:14px;transition:transform .15s}
+  .fa-wizard-menu[open] .fa-wizard-toggle .fa-icon{transform:rotate(180deg)}
+  .fa-wizard-list,[data-wizard-mode="edit"] .fa-wizard-list{flex-direction:column;gap:2px;margin-block-start:8px;padding:6px;border:1px solid var(--fa-border);border-radius:10px;background:var(--fa-surface-2)}
+  .fa-wizard-item::after{display:none}
+  .fa-wizard-step,[data-wizard-mode="edit"] .fa-wizard-step{width:100%;align-items:center;min-height:44px;padding:0 8px;border:0;border-radius:8px;background:transparent}
+  .is-current .fa-wizard-step,[data-wizard-mode="edit"] .is-current .fa-wizard-step{background:var(--fa-primary-soft)}
+  .fa-wizard-mark,[data-wizard-mode="edit"] .fa-wizard-mark{width:26px;height:26px;font-size:12px}
+  .fa-wizard-text{padding:0}
+  .fa-wizard-item:not(.has-error) .fa-wizard-note{display:none}
+  .fa-wizard-panel{padding:16px 14px 6px}
+  .fa-wizard-answers{grid-template-columns:minmax(0,1fr)}
+  .fa-wizard-answers dt{padding-block-end:0;border:0}
+  .fa-record .fa-wizard-nav{position:fixed;inset-inline:0;inset-block-end:0;z-index:21;margin:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));flex-wrap:nowrap;border-radius:0;background:var(--fa-surface);box-shadow:0 -4px 16px rgba(16,24,40,.08)}
+  .fa-record .fa-wizard-nav .fa-btn{min-height:44px}
+  .fa-record [data-wizard-mode="edit"] .fa-wizard-nav{flex-wrap:wrap}
+  .fa-record .fa-wizard-nav [data-wizard-next],.fa-record .fa-wizard-nav [data-wizard-finish]{flex:1;justify-content:center}
+  .fa-record .fa-wizard-count,.fa-record [data-wizard-mode="edit"] .fa-wizard-nav [name="_close"]:not([data-wizard-finish]){display:none}
+  .fa-record:has(.fa-wizard) .fa-record-actions{position:static;flex-wrap:wrap;padding:0;border:0;background:none;box-shadow:none}
+  .fa-record:has(.fa-wizard) .fa-record-actions .fa-btn{flex:none}
+}
+@media print{.fa-wizard-panel[hidden]{display:block}.fa-wizard-nav,.fa-wizard-head{display:none}}

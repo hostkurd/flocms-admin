@@ -25,6 +25,7 @@
             <button type="submit" form="fa-record-delete" class="fa-btn fa-btn-danger-ghost">{!! $trashIcon !!}<span>{{ $t('actions.delete') }}</span></button>
             @endif
             <a class="fa-btn fa-btn-ghost" href="{{ $backUrl }}" data-admin-cancel>{{ $t('actions.cancel') }}</a>
+            @if(!$wizard)
             @if($canAnother)
             <button type="submit" name="_another" value="1" class="fa-btn">{{ $t('actions.save_another') }}</button>
             @endif
@@ -32,6 +33,7 @@
             <button type="submit" name="_continue" value="1" class="fa-btn" data-admin-save title="{{ $t('form.save_shortcut') }}">{{ $t('actions.save') }}</button>
             @endif
             <button type="submit" name="_close" value="1" class="fa-btn fa-btn-primary">{{ $canContinue ? $t('actions.save_close') : $t('actions.save') }}</button>
+            @endif
         </div>
     </div>
     <div class="fa-record-body">

@@ -31,7 +31,7 @@
         {!! $form['fields'] !!}
         @if(!$form['broken'])
         <div class="fa-form-actions">
-            <button type="submit" name="_save" value="1" class="fa-btn fa-btn-primary" data-admin-save title="{{ $t('form.save_shortcut') }}">{{ $form['submit'] }}</button>
+            @if($form['final'] ?? true)<button type="submit" name="_save" value="1" class="fa-btn fa-btn-primary" data-admin-save title="{{ $t('form.save_shortcut') }}">{{ $form['submit'] }}</button>@endif
             <span class="fa-record-state" data-admin-record-state data-unsaved="{{ $t('form.unsaved_state') }}" aria-live="polite">{{ $form['dirty'] ? $t('form.unsaved_state') : '' }}</span>
         </div>
         @endif

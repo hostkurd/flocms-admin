@@ -159,12 +159,47 @@ final class ResourceComponent extends Component
             ? (new \FloCMS\Admin\Form\FormSubmission($resource, $this->repository()))->state($form, $input, $record)
             : ActionForm::state($action, $form, $input, $record);
         $form->refreshState($state, $record);
-        $this->draft = json_encode((object) ActionForm::safe($form, $state), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $this->draft = json_encode((object) (ActionForm::safe($form, $state) + \FloCMS\Admin\Form\WizardFlow::posted($input)), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         if (strlen($this->draft) > 64000) { $this->draft = '{}'; throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
+    }
+    /** A wizard's Back, Next or step button (0.39): shows the dialog on another step; never saves. */
+    #[Action] public function wizard(): void
+    {
+        if (!in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true)) { throw new HttpException(400); }
+        if (!$this->moveWizard()) { throw new HttpException(400); }
+    }
+    /**
+     * Handles the wizard of the open dialog's form, if it has one: a move (or the
+     * final submit failing its checks) shows the dialog again and returns true;
+     * false means there is nothing to do here (no wizard, or the final submit
+     * passed and the action runs).
+     */
+    private function moveWizard(): bool
+    {
+        if ($this->mode === 'delete' || $this->mode === '') { return false; }
+        $action = $this->active();
+        if ($action->getForm($this->resource())->wizard() === null) { return false; }
+        $input = json_decode($this->draft, true);
+        if (!is_array($input) || !json_decode($this->draft) instanceof \stdClass) { throw new HttpException(400); }
+        $result = $this->mode === 'bulk' && $action instanceof \FloCMS\Admin\Actions\BulkAction
+            ? $this->bulkExecutor()->wizard($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation, $input)
+            : $this->executor()->wizard($action, $this->activePlacement, $this->editingId, $this->operation, $input);
+        if ($result === null) { return false; }
+        if ($result['save'] && $result['errors'] === []) { return false; }
+        $state = $result['state'];
+        $this->draft = json_encode((object) ($result['values'] + ['_wizard_step' => $state->step, '_wizard_reached' => $state->visible[min($state->reached, count($state->visible) - 1)], '_wizard_moved' => '1']), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        if (strlen($this->draft) > 64000) { $this->draft = '{}'; throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
+        if ($result['errors'] !== []) {
+            if ($this->switches($this->active())) { $this->editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($result['errors'], $this->editingLanguage()); }
+            throw new ValidationException($result['errors']);
+        }
+        return true;
     }
     #[Action] public function execute(): void
     {
         if ($this->mode === '') { throw new HttpException(400); }
+        // A wizard (0.39): before its last step the submit (Enter) moves on; a final submit with errors opens their step.
+        if ($this->moveWizard()) { return; }
         $action = $this->active();
         $decoded = json_decode($this->draft);
         if (!$decoded instanceof \stdClass) { throw new HttpException(400); }
@@ -178,7 +213,14 @@ final class ResourceComponent extends Component
                     json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 64000);
             }
         } catch (ValidationException $error) {
-            $this->draft = json_encode((object) $accepted, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            $posted = (array) json_decode($this->draft, true);
+            $keys = \FloCMS\Admin\Form\WizardFlow::posted($posted);
+            // A wizard's final submit failed: the dialog opens on the first step with an error.
+            if (($flow = \FloCMS\Admin\Form\WizardFlow::for($action->getForm($this->resource()), $this->mode === 'edit')) !== null && in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true)) {
+                $shown = $flow->forErrors($posted, $error->getErrors(), $accepted, $this->editingId !== '' ? $this->repository()->find($this->editingId) : null);
+                $keys = ['_wizard_step' => $shown->step, '_wizard_reached' => $shown->visible[min($shown->reached, count($shown->visible) - 1)], '_wizard_moved' => '1'];
+            }
+            $this->draft = json_encode((object) ($accepted + $keys), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
             // The dialog opens on the language of the first error.
             if ($this->switches($action)) { $this->editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($error->getErrors(), $this->editingLanguage()); }
             throw $error;
@@ -310,6 +352,14 @@ final class ResourceComponent extends Component
             recordId: $this->editingId !== '' ? $this->editingId : null, ownTable: $resource::getTable(),
             languageSwitch: $switch, editing: $editing, switchActive: $switch,
             sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name(Languages::default())]) : null);
+        // A wizard (0.39): the step posted with the draft, or the first one when the dialog opens.
+        $flow = $action !== null && in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true) ? \FloCMS\Admin\Form\WizardFlow::for($form, $this->mode === 'edit') : null;
+        $wizardState = null;
+        if ($flow !== null) {
+            $posted = is_array($input) ? $input : [];
+            $wizardState = isset($posted['_wizard_step']) ? $flow->restore($posted, $state, $record) : $flow->initial($state, $record);
+            $formRenderer->wizard($wizardState, '', \FloCMS\Admin\View\WizardSummary::closure($resource, $form, $state, $record, $wizardState, $editing));
+        }
         $formFields = $form->components() === [] && $form->asideComponents() === [] ? '' : $formRenderer->render($form);
         $renderer = new ActionRenderer($resource, $registry);
         $listUrl = $this->listUrl($resource::getSlug());
@@ -352,6 +402,8 @@ final class ResourceComponent extends Component
                 // Deleting a parent says how many related records it has (0.22).
                 . ($this->mode === 'delete' && $this->editingId !== '' ? ' ' . (\FloCMS\Admin\Relations\ManagersView::deleteCount($resource, $this->editingId) ?? '') : '')),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
+            // A wizard's final button waits for its last step on a new record (0.39).
+            'wizardFinal' => $wizardState?->isFinal() ?? true,
             'uploadUrl' => Admin::url($resource::getSlug() . '/upload', ['parent' => $scope?->token()]), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
             'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
             'formShowsFields' => array_filter($form->fields(), static fn ($field): bool => $field->isVisible() && !$field instanceof \FloCMS\Admin\Form\Fields\Hidden) !== [],

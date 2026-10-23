@@ -76,7 +76,8 @@ final class SettingsPage
     public function schema(array $components): self
     {
         $this->components = $components;
-        (new Form())->schema($components); // fail early on duplicate names or wrong items
+        // fail early on duplicate names or wrong items; a settings page is never a wizard (0.39)
+        if ((new Form())->schema($components)->wizard() !== null) { throw new \InvalidArgumentException('Settings pages cannot be wizards: they are edit-only pages with their own side list. Use sections or tabs.'); }
         return $this;
     }
 

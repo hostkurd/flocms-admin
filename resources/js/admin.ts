@@ -5,6 +5,7 @@ import { initializeTranslations } from './translations';
 import { initializeSelection } from './selection';
 import { initializeLogin } from './login';
 import { initializeForms } from './forms';
+import { initializeWizards } from './wizard';
 import { initializeEditors } from './editors';
 import { initializeView } from './view';
 import { initializeUsers } from './users';
@@ -64,6 +65,7 @@ function initialize(): void {
   const root = panel();
   if (!root) return;
   initializeForms(root);
+  initializeWizards(root);
   initializeTranslations(root);
   initializeRepeaters(root);
   initializeBuilders(root);
@@ -219,6 +221,15 @@ document.addEventListener('submit', event => {
       });
       node[path[path.length - 1]] = value;
     }
+    // A wizard's Back, Next or step button (0.39) names the move; the dialog asks the server for that step.
+    const mover = event.submitter as HTMLButtonElement | null;
+    if (mover?.name === '_wizard' && !form.dataset.adminRefreshing) {
+      values._wizard = mover.value;
+      const original = form.dataset.rxSubmit;
+      form.dataset.rxSubmit = 'wizard';
+      // A click is dispatched by the browser, which runs microtasks between listeners: restore after Reactive read it.
+      setTimeout(() => { form.dataset.rxSubmit = original; }, 0);
+    }
     const input = form.querySelector<HTMLInputElement>('[data-rx-bind="draft"]')!;
     input.value = JSON.stringify(values);
     if (form.dataset.adminRefreshing === 'true') {
@@ -349,7 +360,7 @@ document.addEventListener('flo-admin:url-replaced', () => { displayedUrl = locat
 document.addEventListener('flo-reactive:updated', () => {
   displayedUrl = location.href;
   const root = panel();
-  if (root) { initializeForms(root); initializeTranslations(root); initializeRepeaters(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
+  if (root) { initializeForms(root); initializeWizards(root); initializeTranslations(root); initializeRepeaters(root); initializeSelection(root); initializeEditors(root); initializeRelations(root); initializeMedia(root); initializeFileDrops(root); }
 });
 
 // Ordinary modal controls have no scalar binding. Keep them inert during the

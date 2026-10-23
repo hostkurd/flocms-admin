@@ -120,6 +120,22 @@ final class BulkExecutor
         if ($records === [] && $skipped !== []) { throw new ValidationException(['_form' => AdminLang::get('bulk.nothing_to_do', ['reasons' => implode(AdminLang::get('form.list_separator'), array_keys($skipped))])]); }
         return $records;
     }
+    /**
+     * A wizard's Back, Next or step button in a bulk action's form (0.39); never runs the action.
+     * "save" with no errors means the final submit passed: the caller runs execute().
+     *
+     * @return array{state: \FloCMS\Admin\Form\WizardState, save: bool, errors: array<string, string>, values: array<string, mixed>}|null
+     */
+    public function wizard(BulkAction $action, array $ids, string $token, array $input): ?array
+    {
+        $this->preview($action, $ids, $token);
+        $form = $action->getForm($this->resource);
+        $flow = \FloCMS\Admin\Form\WizardFlow::for($form, false);
+        if ($flow === null) { return null; }
+        $state = ActionForm::state($action, $form, $input, null);
+        return $flow->handle($input, $state, null, static fn (): array => ActionForm::errors($action, $form, $state, null)) + ['values' => ActionForm::safe($form, $state)];
+    }
+
     public function execute(BulkAction $action, array $ids, string $token, array $input, array &$accepted, ?int $maxBytes = null): void
     {
         $ids = self::ids($ids);
@@ -142,6 +158,7 @@ final class BulkExecutor
                 $accepted = ActionForm::safe($form, $state);
                 if ($maxBytes !== null && strlen(json_encode((object) $accepted, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)) > $maxBytes) { $accepted = []; throw new ValidationException(['_form' => AdminLang::get('reactive.large_form')]); }
                 $errors = ActionForm::errors($action, $form, $state, null);
+                if (($flow = \FloCMS\Admin\Form\WizardFlow::for($form, false)) !== null) { $errors = $flow->finalErrors($errors, $state, null)[0]; }
                 if ($errors !== []) { throw new ValidationException($errors); }
                 $action->invokeBulk(new BulkActionContext($this->resource, $this->repository, $records, $batch), ActionForm::dehydrate($form, $state));
                 if ($action->isDeleting()) {
