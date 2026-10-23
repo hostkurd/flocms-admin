@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.38.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.38.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and nothing changes until you use the new columns, `summarize()` or `groups()`. See [Editable cells, totals and grouped lists](docs/tables.md).
+
+- **`beforeSave()` and list cells**: a cell saved from the list runs your resource's `beforeSave($data, $record)` with `$data` holding only that column. If your `beforeSave()` reads other fields (`$data['title']` to make a slug, say), check `array_key_exists()` first. The same goes for `normalizeState()` and `validate()`.
+- **Custom pages**: an editable column in a custom page's table is refused with a message; use `TextColumn`, `BadgeColumn` or `BooleanColumn` there.
+- **Translations**: the new Arabic and Kurdish words (`cells.*`, `totals.*`, `groups.*`) need a read by a native speaker.
+
+---
+
 # Upgrading to Admin 0.37.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.37.0" -W`, run `php flo view:clear` and reload open Admin pages. Nothing to migrate, and nothing changes until you use the new fields.

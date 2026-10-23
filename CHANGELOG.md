@@ -2,6 +2,28 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.38.0 - 2026-10-23
+
+**Editable cells, totals and grouped lists.** Nothing to migrate. See [Editable cells, totals and grouped lists](docs/tables.md).
+
+- **Editable cells**: `ToggleColumn` (a switch that saves at once; `->values('published', 'draft')` for other stored values), `SelectColumn` (saves on change, badge colours with `->colors()`) and `TextInputColumn` (click or Enter opens an input; Enter or leaving saves, Escape cancels, Tab moves on; `->numeric()`, `->prefix()`, `->suffix()`, `->limit()`).
+  - The value goes through the form field of the same name (its rules, options and stored shape), or the column's own `->rules()` / `->options()`.
+  - The same checks as the edit page: the `update` permission and `canEdit()` (`Resource::mayEdit()`), only the list's own editable columns, `beforeSave()` / `afterSave()`, `updated_at`, one "updated" activity entry, and fields with `requiredWhen()` / `visibleWhen()` on the column checked with the record's values.
+  - A change somebody made to the same column since the list was drawn is never overwritten: the cell shows the current value and a message.
+  - `->requiresConfirmation()` (a dialog, or a confirm page without JavaScript), `->beforeUpdate()` to write other columns too, `->afterUpdate()`.
+  - Viewers, rows people may not edit and read-only relation managers show the value only. Translatable columns can't be edited in the list. Custom pages' tables stay read-only (an editable column there is refused).
+  - Without JavaScript every cell is a small form with a Save button. New endpoint `POST /admin/<slug>/cell/<id>`.
+- **Totals**: `->summarize([Sum::make(), Average::make(), Count::make(), Min::make(), Max::make()])` on a column, each with `->label()`, `->decimals()`, `->prefix()`, `->suffix()`, `->formatUsing()`; `Count::make()->where(1)`.
+  - "This page" (from the rows shown) and "All rows" (one query over the list's rows: `query()`, a relation manager's parent, tabs, filters and search), the same on MySQL, MariaDB and SQLite. `Table::summaries('all'|'page')`.
+  - In the standard and Reactive lists, relation managers and custom pages' tables; a card on phones; updated after a cell is saved. CSV exports have no total row.
+- **Grouping**: `$table->groups([Group::make('city_id'), Group::make('status'), Group::make('created_at')->date('month')])`, `->defaultGroup()`, `->groupingRequired()`; `Group` takes `->label()`, `->titleUsing()`, `->date('day'|'month'|'year')`, `->direction()`, `->collapsible(false)`.
+  - A **Group by** menu (remembered per person, and in the address as `?group=`); the group sorts first, then the clicked column.
+  - Headings with the group's row count and subtotals over all its rows, "continued" when a group goes on from the previous page, collapse / expand (and all), a checkbox that selects the group's rows on the page. Titles from the related record, the Select's labels and colours, or month names in the panel language.
+  - Reorder is off while grouped; CSV export ignores grouping.
+- `FormSubmission::save()` takes `$extra` columns (used by `beforeUpdate()`); `RecordRepository::filteredQuery()`; `BadgeColumn::getColors()` / `getLabels()`.
+- The panel's confirmation dialog takes `data-confirm-tone="primary"` for a blue button.
+- New words in `en`, `ar` and `ku`: `numbers.*`, `cells.*`, `totals.*`, `groups.*`.
+
 ## 0.37.0 - 2026-10-23
 
 **Checkbox lists, tags and times.** Nothing to migrate. See [Checkbox lists, tags and times](docs/choice-fields.md).

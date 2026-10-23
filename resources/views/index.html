@@ -15,7 +15,7 @@
         </span>
     </form>
     @endif
-    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || $export !== null)
+    @if($hasSearch || $filterFields !== '' || $tableActions !== '' || count($columnChoices) > 0 || $reorderUrl !== null || $trash !== null || $export !== null || $groupMenu !== null)
     <div class="fa-list-toolbar">
         @if($hasSearch)
         <form class="fa-search" method="get" action="{{ $listUrl }}" role="search">
@@ -36,7 +36,24 @@
         <span class="fa-toolbar-spacer"></span>
         @if($tableActions !== '')<div class="fa-action-group">{!! $tableActions !!}</div>@endif
         @if($trash !== null)<a class="fa-btn fa-trash-link" href="{{ $trash['url'] }}">{!! $trashIcon !!}<span>{{ $t('trash.button') }}</span><span class="fa-btn-count fa-ltr">{{ $trash['count'] }}</span></a>@endif
-        @if($reorderUrl !== null)<a class="fa-btn" href="{{ $reorderUrl }}" data-admin-reorder-link>{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span></a>@endif
+        @if($reorderUrl !== null && $grouped)<span class="fa-btn is-disabled fa-reorder-off" aria-disabled="true" title="{{ $t('groups.no_reorder') }}">{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span><span class="fa-sr"> {{ $t('groups.no_reorder') }}</span></span>@elseif($reorderUrl !== null)<a class="fa-btn" href="{{ $reorderUrl }}" data-admin-reorder-link>{!! $reorderIcon !!}<span>{{ $t('reorder.button') }}</span></a>@endif
+        @if($groupMenu !== null)
+        <details class="fa-popover fa-group-menu" id="fa-list-group-menu" data-admin-popover>
+            <summary class="fa-btn{{ $groupMenu['current'] !== null ? ' is-active' : '' }}">{!! $groupIcon !!}<span>{{ $groupMenu['label'] }}</span></summary>
+            <div class="fa-popover-panel fa-group-panel" role="group" aria-label="{{ $t('groups.title') }}">
+                <p class="fa-group-panel-title">{{ $t('groups.title') }}</p>
+                <ul class="fa-group-choices">
+                    @foreach($groupMenu['choices'] as $choice)<li><a class="fa-group-choice{{ $choice['active'] ? ' is-active' : '' }}" href="{{ $choice['url'] }}"@if($choice['active']) aria-current="true"@endif><span class="fa-group-radio" aria-hidden="true"></span>{{ $choice['label'] }}</a></li>@endforeach
+                </ul>
+                @if(count($groupMenu['directions']) > 0)
+                <div class="fa-group-directions" role="group" aria-label="{{ $t('groups.order') }}">@foreach($groupMenu['directions'] as $choice)<a class="fa-btn fa-btn-sm{{ $choice['active'] ? ' is-active' : '' }}" href="{{ $choice['url'] }}"@if($choice['active']) aria-current="true"@endif>{{ $choice['label'] }}</a>@endforeach</div>
+                @endif
+                @if($groupMenu['collapsible'])
+                <div class="fa-group-all" data-admin-groups-all hidden><button type="button" class="fa-btn fa-btn-ghost fa-btn-sm" data-admin-groups-collapse>{{ $t('groups.collapse_all') }}</button><button type="button" class="fa-btn fa-btn-ghost fa-btn-sm" data-admin-groups-expand>{{ $t('groups.expand_all') }}</button></div>
+                @endif
+            </div>
+        </details>
+        @endif
         @if(count($columnChoices) > 0)
         <details class="fa-popover" id="fa-list-columns-menu" data-admin-popover>
             <summary class="fa-btn">{!! $columnsIcon !!}<span>{{ $t('columns.title') }}</span>@if($columnsChanged)<span class="fa-dot fa-columns-dot" aria-hidden="true"></span>@endif</summary>
@@ -90,7 +107,7 @@
     </div>
     @endif
     @if(count($rows) > 0)
-    <div class="fa-table-wrap">
+    <div class="fa-table-wrap" id="fa-list-table"@if($refreshCells) data-admin-cells-refresh @endif>
         <table class="fa-table fa-table-list">
             <thead>
                 <tr>
@@ -111,7 +128,8 @@
             </thead>
             <tbody>
                 @foreach($rows as $row)
-                <tr>
+                {!! $row['head'] !!}
+                <tr@if($row['group'] !== null) data-admin-group-member="{{ $row['group'] }}"@endif>
                     @if(count($bulkActions) > 0)<td class="fa-selection-col"><input type="checkbox" form="fa-list-bulk" name="ids[]" value="{{ $row['id'] }}" aria-label="{{ $t('bulk.select_record', ['id' => $row['id']]) }}"></td>@endif
                     @foreach($row['cells'] as $cell)
                     <td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>
@@ -122,6 +140,17 @@
                 </tr>
                 @endforeach
             </tbody>
+            @if(count($totals) > 0)
+            <tfoot class="fa-totals">
+                @foreach($totals as $line)
+                <tr class="fa-totals-row is-{{ $line['kind'] }}">
+                    @if(count($bulkActions) > 0)<td class="fa-selection-col"></td>@endif
+                    @foreach($line['cells'] as $cell)<td class="{{ $cell['class'] }}" data-label="{{ $cell['label'] }}">{!! $cell['html'] !!}</td>@endforeach
+                    @if($hasActions)<td class="fa-actions"></td>@endif
+                </tr>
+                @endforeach
+            </tfoot>
+            @endif
         </table>
     </div>
     <div class="fa-table-foot">

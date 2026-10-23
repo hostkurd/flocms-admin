@@ -51,7 +51,7 @@ final class SalesReport extends AdminPage
             ->query(static fn (Database $db, array $filters): Database => isset($filters['status']) ? $db->table('posts')->where('status', '=', $filters['status']) : $db->table('posts'))
             ->columns([
                 TextColumn::make('slug')->searchable()->sortable(),
-                TextColumn::make('status')->sortable()->toggleable(),
+                TextColumn::make('status')->sortable()->toggleable()->summarize([\FloCMS\Admin\Table\Summaries\Count::make()->label('Rows')]),
                 TextColumn::make('title')->translatable(),
             ])
             ->url(static fn (object $row): string => '/en/admin/posts/edit/' . $row->id)

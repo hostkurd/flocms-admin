@@ -100,6 +100,32 @@ final class CountColumn extends Column
         return '<span class="fa-count-cell' . ($count === 0 ? ' is-zero' : '') . '">' . Str::e((string) $count) . '</span>';
     }
 
+    /**
+     * Totals of a count (0.38): a subquery counting each row's related records
+     * through the related resource's query(), as the cells count them.
+     */
+    public function aggregateSql(): ?array
+    {
+        $db = App::db();
+        if ($db === null || $this->child === null) { return null; }
+        $child = $this->child;
+        [$sql, $bindings] = (new $child())->query($db->table($child::getTable()))
+            ->selectRaw('COUNT(*)')
+            ->whereRaw('`' . $this->foreignKey . '` = flo_t.`' . $this->ownerKey . '`', [])
+            ->toSql();
+        return ['(' . $sql . ')', $bindings];
+    }
+
+    public function checkSummaries(): void
+    {
+        if ($this->child === null && $this->summaries !== []) { throw new \LogicException('CountColumn "' . $this->name . '" needs relation() for totals.'); }
+    }
+
+    public function summaryValue(object $record): mixed
+    {
+        return (int) $this->value($record);
+    }
+
     public function cellClass(): string
     {
         return 'fa-cell-number';

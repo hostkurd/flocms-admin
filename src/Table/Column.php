@@ -189,4 +189,81 @@ abstract class Column
     {
         return '';
     }
+
+    /* ---------------------------------------------------------------
+     * Editable cells, totals and groups (0.38)
+     * ------------------------------------------------------------- */
+
+    /** @var list<Summaries\Summary> */
+    protected array $summaries = [];
+
+    /**
+     * Totals under the column (0.38): this page and all the filtered rows.
+     *
+     *     TextColumn::make('price')->summarize([Sum::make()->prefix('€ '), Average::make()])
+     *
+     * @param list<Summaries\Summary> $summaries
+     */
+    public function summarize(array $summaries): static
+    {
+        if (count($summaries) > 6) { throw new InvalidArgumentException('A column has at most 6 summaries.'); }
+        foreach ($summaries as $summary) {
+            if (!$summary instanceof Summaries\Summary) { throw new InvalidArgumentException('summarize() expects Sum, Average, Count, Min or Max objects.'); }
+        }
+        $this->summaries = array_values($summaries);
+        return $this;
+    }
+
+    /** @return list<Summaries\Summary> */
+    public function getSummaries(): array
+    {
+        return $this->summaries;
+    }
+
+    /**
+     * The SQL the totals read for this column, over the list's rows (a derived
+     * table named flo_t), with its bindings; null when it has none (a
+     * translatable value, a related list). Column names only come from code.
+     *
+     * @return array{0: string, 1: list<mixed>}|null
+     */
+    public function aggregateSql(): ?array
+    {
+        return $this->isDatabaseColumn() && !$this->isTranslatable() ? ['flo_t.`' . $this->name . '`', []] : null;
+    }
+
+    /** The value of a row that this page's totals add up. */
+    public function summaryValue(object $record): mixed
+    {
+        return property_exists($record, $this->name) ? $record->{$this->name} : null;
+    }
+
+    /**
+     * Refuse summaries the database cannot compute (called by Table::prepare()
+     * once translatable columns are known).
+     *
+     * @internal
+     */
+    public function checkSummaries(): void
+    {
+        if ($this->summaries === []) { return; }
+        if ($this->aggregateSql() === null) {
+            throw new \LogicException('Column "' . $this->name . '" cannot have totals: only plain database columns can (not translatable, JSON or related values).');
+        }
+    }
+
+    /** Whether people may change the value in the list (ToggleColumn, SelectColumn, TextInputColumn). */
+    public function isEditable(): bool
+    {
+        return false;
+    }
+
+    /**
+     * The cell in the list: an editable column gives its small form when the
+     * context allows editing this record; every other column its usual HTML.
+     */
+    public function renderCell(object $record, ?Cells\CellContext $context = null): string
+    {
+        return $this->render($record);
+    }
 }

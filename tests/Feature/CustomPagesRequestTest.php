@@ -68,6 +68,9 @@ final class CustomPagesRequestTest extends RequestTestCase
         self::assertStringContainsString('filter:draft', $response['body']);
         self::assertStringContainsString('mountain-cabin', $response['body']);
         self::assertStringNotContainsString('sea-view-villa', $response['body']);
+        // Totals (0.38) over the page's own query with its filter
+        self::assertMatchesRegularExpression('~<tr class="fa-totals-row is-all">.*?The only row.*?Rows</span> <span class="fa-total-value" dir="ltr">1</span>~s', $response['body']);
+        self::assertMatchesRegularExpression('~Rows</span> <span class="fa-total-value" dir="ltr">2</span>~', self::get('/en/admin/sales-report')['body']);
         // Sort links keep the filter; Reset is offered.
         self::assertMatchesRegularExpression('~href="[^"]*sales-report\?[^"]*filter%5Bstatus%5D=draft[^"]*sort=slug~', $response['body']);
         self::assertStringContainsString('>Reset</a>', $response['body']);

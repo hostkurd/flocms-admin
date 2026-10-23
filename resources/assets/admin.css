@@ -2911,3 +2911,151 @@ a.fa-filedrop-name:hover{text-decoration:underline}
   .fa-panel .fa-input.fa-time{max-inline-size:none}
 }
 .fa-panel .fa-tags-input,.fa-panel .fa-tags-input:focus,.fa-panel .fa-tags-input:focus-visible,.fa-panel .fa-checks-filter:focus,.fa-panel .fa-checks-filter:focus-visible{outline:none;border:0;box-shadow:none}
+/* ---- 0.38 Editable cells ------------------------------------------------- */
+.fa-table th.fa-cell-end,.fa-table td.fa-cell-end{text-align:end}
+.fa-cell{position:relative;display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;max-inline-size:100%}
+.fa-cell-end .fa-cell{justify-content:flex-end}
+.fa-cell-end .fa-cell-display{white-space:nowrap}
+.fa-cell-status{flex-basis:100%;font-size:12px;line-height:1.4;color:var(--fa-muted)}
+.fa-cell-status:empty{display:none}
+/* Without JavaScript every control has its Save button; with it, saves happen on their own. */
+.fa-js-cells .fa-cell-save{display:none}
+.fa-js-cells .fa-cell-toggle .fa-cell-status,.fa-js-cells .fa-cell-select .fa-cell-status{flex-basis:auto}
+.fa-js-cells .fa-cell-toggle .fa-cell-status:not(:empty),.fa-js-cells .fa-cell-select .fa-cell-status:not(:empty){flex-basis:auto}
+/* Switch: a submit button with role="switch"; it sends the other value. */
+.fa-cell-switch{position:relative;flex:none;inline-size:38px;block-size:22px;margin:0;padding:0;border:0;border-radius:999px;background:var(--fa-border-strong);cursor:pointer;transition:background-color .15s}
+.fa-cell-switch[aria-checked="true"]{background:var(--fa-primary)}
+.fa-cell-switch-knob{position:absolute;inset-block-start:3px;inset-inline-start:3px;inline-size:16px;block-size:16px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.25);transition:inset-inline-start .15s}
+.fa-cell-switch[aria-checked="true"] .fa-cell-switch-knob{inset-inline-start:19px}
+.fa-cell-switch:focus-visible{outline:2px solid var(--fa-focus);outline-offset:2px}
+.fa-cell[aria-busy="true"] .fa-cell-switch{opacity:.55;cursor:progress}
+/* Select: a native select shaped like the column's badge */
+.fa-cell-select-wrap{position:relative;display:inline-flex;align-items:center;padding:0;border-radius:999px;background:var(--fa-neutral-soft);color:var(--fa-neutral)}
+.fa-cell-select-wrap.fa-badge-green{background:var(--fa-success-soft);color:var(--fa-success)}
+.fa-cell-select-wrap.fa-badge-blue{background:var(--fa-info-soft);color:var(--fa-info)}
+.fa-cell-select-wrap.fa-badge-yellow{background:var(--fa-warning-soft);color:var(--fa-warning)}
+.fa-cell-select-wrap.fa-badge-red{background:var(--fa-danger-soft);color:var(--fa-danger)}
+.fa-cell-select-wrap.fa-badge-purple{background:var(--fa-purple-soft);color:var(--fa-purple)}
+.fa-cell-select{appearance:none;-webkit-appearance:none;margin:0;border:1px solid transparent;border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:12.5px;font-weight:500;line-height:1.6;padding-block:2px;padding-inline:10px 26px;cursor:pointer;max-inline-size:16rem}
+.fa-cell-select:hover{border-color:currentColor}
+.fa-cell-select:focus-visible{outline:2px solid var(--fa-focus);outline-offset:2px}
+.fa-cell-select option{color:var(--fa-text);background:var(--fa-surface)}
+.fa-cell-select-caret{position:absolute;inset-inline-end:8px;inline-size:12px;block-size:12px;pointer-events:none}
+.fa-cell[aria-busy="true"] .fa-cell-select-wrap{opacity:.6}
+/* Text and number: the value as text; a click or Enter opens the input in the cell */
+.fa-cell-display{display:none;align-items:center;gap:6px;max-inline-size:100%;margin-block:-4px;margin-inline:-8px;padding:3px 7px;border:1px solid transparent;border-radius:var(--fa-radius-sm);background:transparent;color:inherit;font:inherit;text-align:start;cursor:text;overflow-wrap:break-word}
+.fa-js-cells .fa-cell-display{display:inline-flex}
+.fa-cell-display:hover,.fa-cell-display:focus-visible{border-color:var(--fa-border-strong);background:var(--fa-surface)}
+.fa-cell-display:focus-visible{outline:2px solid var(--fa-focus);outline-offset:1px}
+.fa-cell-pen{inline-size:14px;block-size:14px;color:var(--fa-muted);opacity:0}
+.fa-cell-display:hover .fa-cell-pen,.fa-cell-display:focus-visible .fa-cell-pen{opacity:1}
+.fa-cell-editor{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fa-js-cells .fa-cell-editor{display:none}
+.fa-js-cells .fa-cell.is-editing .fa-cell-editor{display:flex;flex-direction:column;align-items:stretch;inline-size:100%}
+.fa-js-cells .fa-cell.is-editing .fa-cell-display{display:none}
+.fa-panel .fa-cell-input{min-height:32px;inline-size:12rem;max-inline-size:100%;padding:4px 8px;font-variant-numeric:tabular-nums}
+.fa-cell-end .fa-cell-input[inputmode="decimal"]{text-align:end;inline-size:10rem}
+[dir="rtl"] .fa-cell-input[dir="ltr"]{text-align:right}
+.fa-js-cells .fa-cell.is-editing .fa-cell-input{inline-size:100%;min-inline-size:8rem;border-color:var(--fa-primary);box-shadow:0 0 0 3px var(--fa-primary-soft)}
+.fa-cell-input[aria-invalid="true"]{border-color:var(--fa-danger)!important;box-shadow:0 0 0 3px var(--fa-danger-soft)!important}
+.fa-cell-hint{display:none;font-size:11.5px;color:var(--fa-muted)}
+.fa-js-cells .fa-cell.is-editing:not(.is-error) .fa-cell-hint{display:block}
+.fa-cell-actions{display:inline-flex;gap:6px}
+.fa-js-cells .fa-cell-actions{display:none}
+.fa-table tr.is-cell-editing{background:var(--fa-row-selected)}
+/* States */
+.fa-cell.is-saving .fa-cell-status{display:inline-flex;align-items:center;gap:6px}
+.fa-cell.is-saving .fa-cell-status::before{content:"";inline-size:12px;block-size:12px;border-radius:999px;border:2px solid var(--fa-primary-border);border-block-start-color:var(--fa-primary);box-sizing:border-box;animation:fa-cell-spin .8s linear infinite}
+.fa-cell.is-saved .fa-cell-status{display:inline-flex;align-items:center;gap:4px;color:var(--fa-success);font-weight:500}
+.fa-cell.is-saved .fa-cell-status::before{content:"✓";font-weight:700}
+.fa-cell.is-error .fa-cell-status{color:var(--fa-danger);font-weight:500;flex-basis:100%}
+.fa-cell.is-conflict .fa-cell-status{color:var(--fa-warning)}
+.fa-table td:has(> .fa-cell.is-conflict){background:var(--fa-warning-soft)}
+@keyframes fa-cell-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.fa-cell.is-saving .fa-cell-status::before{animation:none}.fa-cell-switch,.fa-cell-switch-knob{transition:none}}
+/* The confirm page used without JavaScript */
+.fa-cell-confirm-page{padding:24px;max-inline-size:560px}
+.fa-cell-confirm-page p{margin:0}
+.fa-cell-confirm-actions{display:flex;gap:8px;margin-block-start:20px}
+/* Phones: no Enter or Escape keys, so an open text cell shows Cancel and Save. */
+@media (max-width:767px),(pointer:coarse){
+  .fa-js-cells .fa-cell.is-editing .fa-cell-actions{display:flex;justify-content:flex-end}
+  .fa-js-cells .fa-cell.is-editing .fa-cell-actions .fa-cell-save{display:inline-flex}
+  .fa-js-cells .fa-cell.is-editing .fa-cell-hint{display:none}
+  .fa-cell-switch{inline-size:44px;block-size:26px}
+  .fa-cell-switch-knob{inline-size:20px;block-size:20px}
+  .fa-cell-switch[aria-checked="true"] .fa-cell-switch-knob{inset-inline-start:21px}
+  .fa-cell-select{min-height:36px;font-size:13px}
+  .fa-cell-display{min-height:36px;border-style:dashed;border-color:var(--fa-border-strong)}
+  .fa-panel .fa-cell-input{font-size:16px;min-height:40px}
+}
+/* ---- 0.38 Column totals ---------------------------------------------------- */
+.fa-table tfoot.fa-totals td{background:var(--fa-surface-2);font-size:13px;color:var(--fa-text-2);vertical-align:top;border-block-start:1px solid var(--fa-border);border-block-end:0}
+.fa-table tfoot.fa-totals tr + tr td{border-block-start:1px solid var(--fa-border)}
+.fa-totals-label{display:block;font-weight:600;color:var(--fa-text);white-space:nowrap}
+.fa-totals-label small{display:block;font-weight:400;font-size:12px;color:var(--fa-muted);white-space:normal}
+.fa-total{display:flex;justify-content:flex-start;gap:6px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fa-cell-end .fa-total{justify-content:flex-end}
+.fa-total + .fa-total{margin-block-start:2px}
+.fa-total-label{color:var(--fa-muted);font-size:11.5px;align-self:center}
+.fa-total-value{font-weight:600;color:var(--fa-text)}
+.fa-totals-row.is-page .fa-total-value{font-weight:500}
+[dir="rtl"] .fa-total-value[dir="ltr"]{unicode-bidi:isolate}
+.fa-total-column{display:none}
+@media (max-width:640px){
+  .fa-total-column{display:inline}
+  .fa-table-list tfoot.fa-totals{display:block;margin:12px;border:1px solid var(--fa-border);border-radius:var(--fa-radius-lg);overflow:hidden;background:var(--fa-surface-2)}
+  .fa-table-list tfoot.fa-totals tr{display:flex;flex-direction:column;gap:4px;padding:10px 12px}
+  .fa-table-list tfoot.fa-totals tr + tr{border-block-start:1px solid var(--fa-border)}
+  .fa-table-list tfoot.fa-totals td{display:block;padding:0;border:0;background:transparent}
+  .fa-table-list tfoot.fa-totals td.fa-selection-col,.fa-table-list tfoot.fa-totals td.fa-actions,.fa-table-list tfoot.fa-totals td.fa-totals-cell:not(.has-totals):not(:has(.fa-totals-label)){display:none}
+  .fa-table-list tfoot.fa-totals td.has-totals .fa-total{justify-content:space-between}
+}
+/* ---- 0.38 Grouped lists ------------------------------------------------------ */
+.fa-table tr.fa-group-row td{background:var(--fa-surface-3);padding-block:8px;font-size:13px;color:var(--fa-text-2);vertical-align:middle}
+.fa-table tbody tr.fa-group-row:hover{background:var(--fa-surface-3)}
+.fa-group-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-inline-size:0}
+.fa-group-toggle{display:inline-flex;align-items:center;justify-content:center;inline-size:26px;block-size:26px;margin-inline-start:-4px;padding:0;border:0;border-radius:var(--fa-radius-sm);background:transparent;color:var(--fa-text-2);cursor:pointer}
+.fa-group-toggle:hover{background:var(--fa-surface)}
+.fa-group-toggle .fa-icon{inline-size:16px;block-size:16px;transition:transform .15s}
+.fa-group-toggle[aria-expanded="false"] .fa-icon{transform:rotate(-90deg)}
+[dir="rtl"] .fa-group-toggle[aria-expanded="false"] .fa-icon{transform:rotate(90deg)}
+.fa-group-title{font-weight:600;font-size:14px;color:var(--fa-text)}
+.fa-group-title.fa-badge{font-size:12.5px}
+.fa-group-count,.fa-group-hidden{font-size:12.5px;color:var(--fa-muted)}
+.fa-group-continued{padding:0 8px;border:1px solid var(--fa-border-strong);border-radius:999px;background:var(--fa-surface);font-size:11.5px;font-weight:600;color:var(--fa-muted)}
+.fa-group-row .fa-total{justify-content:flex-start}
+.fa-group-row .fa-cell-end .fa-total,.fa-group-row td.fa-cell-end .fa-total{justify-content:flex-end}
+.fa-group-row .fa-total-value{font-weight:500}
+.fa-group-row.is-collapsed td{color:var(--fa-muted)}
+/* Group by menu */
+.fa-group-menu > summary.is-active{background:var(--fa-primary-soft);border-color:var(--fa-primary-border);color:var(--fa-primary-text)}
+.fa-group-panel{min-inline-size:236px;padding:6px}
+.fa-group-panel-title{margin:0;padding:6px 10px 4px;font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--fa-muted)}
+.fa-group-choices{list-style:none;margin:0;padding:0}
+.fa-panel .fa-group-choice{display:flex;align-items:center;gap:10px;inline-size:100%;padding:7px 10px;border:0;border-radius:var(--fa-radius-sm);background:transparent;color:var(--fa-text-2);font:inherit;font-size:13.5px;text-align:start;text-decoration:none;cursor:pointer}
+.fa-panel .fa-group-choice:hover{background:var(--fa-surface-2);color:var(--fa-text)}
+.fa-panel .fa-group-choice.is-active{background:var(--fa-primary-soft);color:var(--fa-primary-text);font-weight:600}
+.fa-group-radio{flex:none;inline-size:14px;block-size:14px;border:1.5px solid var(--fa-border-strong);border-radius:999px;box-sizing:border-box}
+.fa-group-choice.is-active .fa-group-radio{border:4px solid var(--fa-primary)}
+.fa-group-directions{display:flex;gap:4px;margin:6px 4px 2px;padding-block-start:6px;border-block-start:1px solid var(--fa-border)}
+.fa-group-directions .fa-btn{flex:1}
+.fa-group-directions .fa-btn.is-active{background:var(--fa-primary-soft);border-color:var(--fa-primary-border);color:var(--fa-primary-text)}
+.fa-group-all{display:flex;flex-direction:column;align-items:stretch;margin:6px 4px 0;padding-block-start:6px;border-block-start:1px solid var(--fa-border)}
+.fa-group-all .fa-btn{justify-content:flex-start}
+.fa-reorder-off{opacity:.5;cursor:not-allowed}
+@media (max-width:640px){
+  .fa-table-list tbody tr.fa-group-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 12px;background:var(--fa-surface-3);border-block-end:1px solid var(--fa-border)}
+  .fa-table-list tbody tr.fa-group-row td{display:block;padding:0;border:0;background:transparent}
+  .fa-table-list tbody tr.fa-group-row td.fa-actions,.fa-table-list tbody tr.fa-group-row td.fa-group-cell:not(.has-totals):not(:has(.fa-group-head)){display:none}
+  .fa-table-list tbody tr.fa-group-row td.fa-group-cell:has(.fa-group-head){flex:1 1 60%}
+  .fa-table-list tbody tr.fa-group-row td.has-totals{flex-basis:100%;padding-inline-start:30px}
+  .fa-table-list tbody tr.fa-group-row td[data-label]::before{content:none}
+  .fa-group-toggle{inline-size:36px;block-size:36px}
+}
+@media (max-width:640px){
+  .fa-table-list tfoot.fa-totals td::before,.fa-table-list tbody tr.fa-group-row td::before{content:none!important;display:none}
+  .fa-table-list tfoot.fa-totals td.has-totals,.fa-table-list tbody tr.fa-group-row td.has-totals{display:flex;flex-direction:column;gap:2px}
+  .fa-table-list tfoot.fa-totals .fa-total,.fa-table-list tbody tr.fa-group-row .fa-total{display:flex;justify-content:space-between;gap:12px;white-space:normal;margin:0}
+  .fa-table-list tbody tr.fa-group-row td.has-totals{padding-inline-start:30px;inline-size:100%;box-sizing:border-box}
+}

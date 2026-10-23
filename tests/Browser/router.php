@@ -43,7 +43,7 @@ Config::set('default_action', 'index');
 Config::set('languages', ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
 Config::set('reactive.key', hash('sha256', __FILE__));
-Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']]);
+Config::set('permissions', [0 => [], 1 => ['content.posts.view', 'content.offers.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']]);
 Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin', 4 => 'Writer']);
 Config::set('auth.user_loader', static fn (int $id) => Session::get('security_demo') && App::$db !== null
     // Login security (0.35): the real row, so the sign-in steps see the account.
@@ -56,7 +56,7 @@ if (!Session::get('fixture')) {
 }
 $widgetDemo = (bool) Session::get('widget_demo');
 $widgets = $widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\ContentOverview::class, \FloCMS\Admin\Tests\Fixtures\Widgets\RecentPosts::class, \FloCMS\Admin\Tests\Fixtures\Widgets\PublicationChart::class, \FloCMS\Admin\Tests\Fixtures\Widgets\ActivityChart::class] : [];
-Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EstateResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\UnitResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\VillaResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Choices\HouseResource::class, \FloCMS\Admin\Tests\Fixtures\Choices\HouseDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Builder\LandingResource::class, \FloCMS\Admin\Tests\Fixtures\ImportExport\ProductResource::class]), 'pages' => (bool) Session::get('pages_demo'), 'admin_pages' => Session::get('custom_pages_demo') ? [\FloCMS\Admin\Tests\Fixtures\PanelPages\SalesReport::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\ExchangeRates::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\GettingStarted::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\MissingTable::class] : [], 'two_factor' => (bool) Session::get('security_demo'), 'email_verification' => (bool) Session::get('security_demo'), 'block_styles' => ['heading' => ['underlined' => 'Underlined', 'eyebrow' => ['en' => 'With eyebrow', 'ar' => 'مع عنوان صغير']], 'cards' => ['shadow' => 'With shadow']], 'brand' => 'FloCMS Studio', 'login_theme' => true, 'password_reset' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
+Admin::useConfig(['widgets' => $widgets, 'reactive' => !Session::get('widget_static') && !Session::get('tables_static'), 'resources' => array_merge($widgetDemo ? [\FloCMS\Admin\Tests\Fixtures\Widgets\WidgetPostResource::class] : [], [PostActionResource::class, TagResource::class, PropertyResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\AssetResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ArticleResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\ProjectResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\HomeDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CityResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\CountryResource::class, \FloCMS\Admin\Tests\Fixtures\Relations\FeatureResource::class, \FloCMS\Admin\Tests\Fixtures\Reorder\FaqResource::class, \FloCMS\Admin\Tests\Fixtures\Media\ListingResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EstateResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\UnitResource::class, \FloCMS\Admin\Tests\Fixtures\Managers\EnquiryResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\VillaResource::class, \FloCMS\Admin\Tests\Fixtures\Translations\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentResource::class, \FloCMS\Admin\Tests\Fixtures\Repeaters\ApartmentDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Choices\HouseResource::class, \FloCMS\Admin\Tests\Fixtures\Choices\HouseDialogResource::class, \FloCMS\Admin\Tests\Fixtures\Builder\LandingResource::class, \FloCMS\Admin\Tests\Fixtures\ImportExport\ProductResource::class, \FloCMS\Admin\Tests\Fixtures\Tables\OfferResource::class, \FloCMS\Admin\Tests\Fixtures\Tables\BuildingResource::class, \FloCMS\Admin\Tests\Fixtures\Tables\RoomResource::class, \FloCMS\Admin\Tests\Fixtures\Tables\RoomOverviewResource::class]), 'pages' => (bool) Session::get('pages_demo'), 'admin_pages' => Session::get('custom_pages_demo') ? [\FloCMS\Admin\Tests\Fixtures\PanelPages\SalesReport::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\ExchangeRates::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\GettingStarted::class, \FloCMS\Admin\Tests\Fixtures\PanelPages\MissingTable::class] : [], 'two_factor' => (bool) Session::get('security_demo'), 'email_verification' => (bool) Session::get('security_demo'), 'block_styles' => ['heading' => ['underlined' => 'Underlined', 'eyebrow' => ['en' => 'With eyebrow', 'ar' => 'مع عنوان صغير']], 'cards' => ['shadow' => 'With shadow']], 'brand' => 'FloCMS Studio', 'login_theme' => true, 'password_reset' => true, 'theme' => getenv('FLO_ADMIN_THEME') ?: 'light', 'primary_color' => getenv('FLO_ADMIN_PRIMARY') ?: null, 'sidebar' => getenv('FLO_ADMIN_SIDEBAR') ?: 'light', 'content_width' => getenv('FLO_ADMIN_WIDTH') ?: 'full', 'media' => ['root' => ROOT . '/public/uploads/editor', 'url' => '/uploads/editor'], 'settings_path' => $package . '/tests/Fixtures/Settings/settings.php', 'settings_uploads' => ['root' => ROOT . '/public/uploads/settings', 'url' => '/uploads/settings']], true, ROOT);
 // One database per browser session, kept when the session id changes (a held sign-in's release gives a new id, 0.35).
 if (!is_string($_SESSION['_test_db'] ?? null)) { $_SESSION['_test_db'] = hash('sha256', session_id()); }
 $pdo = new PDO('sqlite:' . ROOT . '/' . $_SESSION['_test_db'] . '.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
@@ -193,6 +193,29 @@ $seedHouses = static function (PDO $pdo): void {
     $insert->execute(['Alpine lodge', '["fireplace","sauna"]', '["lodge"]', '15:00:00', null]);
 };
 if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='houses'")->fetchColumn()) { $seedHouses($pdo); }
+// Editable cells, totals and groups (0.38): offers in the cities above, a building with suites
+$seedTables = static function (PDO $pdo): void {
+    foreach (['offers', 'suites', 'buildings'] as $table) { $pdo->exec('DROP TABLE IF EXISTS ' . $table); }
+    $pdo->exec('CREATE TABLE offers (id INTEGER PRIMARY KEY AUTOINCREMENT, title VARCHAR(190) NOT NULL DEFAULT "", city_id INTEGER NULL, status VARCHAR(20) NOT NULL DEFAULT "draft", price DECIMAL(12,2) NULL, stock INTEGER NULL, featured INTEGER NOT NULL DEFAULT 0, published VARCHAR(20) NOT NULL DEFAULT "draft", published_at DATETIME NULL, note VARCHAR(190) NULL, created_at DATETIME NULL, updated_at DATETIME NULL)');
+    $insert = $pdo->prepare('INSERT INTO offers (title, city_id, status, price, stock, featured, published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    foreach ([
+        ['Villa in Kifisia', 3, 'published', 1250000, 1, 1, 'published', '2026-09-03 10:00:00'],
+        ['Seaside flat, Glyfada', 3, 'draft', 385000, 3, 0, 'draft', '2026-09-20 10:00:00'],
+        ['Penthouse, Kolonaki', 3, 'sold', 2100000, 0, 1, 'published', '2026-09-22 10:00:00'],
+        ['Townhouse, Pangrati', 3, 'published', 395000, 2, 0, 'published', '2026-10-01 10:00:00'],
+        ['Loft near Ladadika', 4, 'published', 210000, 2, 1, 'published', '2026-10-05 10:00:00'],
+        ['Family home, Kalamaria', 4, 'published', 340000, 1, 0, 'published', '2026-10-07 10:00:00'],
+        ['Garden flat, Erbil', 1, 'draft', 150000, 4, 0, 'draft', '2026-10-09 10:00:00'],
+        ['Plot with permit', null, 'draft', 240000, 1, 0, 'draft', '2026-10-11 10:00:00'],
+    ] as $row) { $insert->execute([...$row, '2026-10-12 09:00:00']); }
+    $pdo->exec('CREATE TABLE buildings (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "")');
+    $pdo->exec('CREATE TABLE suites (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL DEFAULT "", rent INTEGER NULL, available INTEGER NOT NULL DEFAULT 0, building_id INTEGER NULL)');
+    $pdo->exec("INSERT INTO buildings (name) VALUES ('Seaside apartments, Glyfada')");
+    $pdo->exec("INSERT INTO suites (name, rent, available, building_id) VALUES ('A1', 1150, 1, 1), ('A2', 1100, 0, 1), ('B1', 1300, 0, 1), ('B2', 1250, 1, 1), ('C1', 1400, 0, 1)");
+    $pdo->exec("DELETE FROM admin_user_preferences WHERE `key` LIKE 'groups.%' OR `key` LIKE 'columns.%'");
+};
+if (!(int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE name='offers'")->fetchColumn()) { $seedTables($pdo); }
+if ((int) Session::get('offers_per_page') > 0) { putenv('FLO_OFFERS_PER_PAGE=' . (int) Session::get('offers_per_page')); }
 // Pages (0.30): on after /__test/pages
 $seedPages = static function (PDO $pdo): void {
     $pdo->exec('DROP TABLE IF EXISTS admin_pages');
@@ -381,6 +404,14 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
         case '/__test/managers': $seedManagers($pdo); break;
         case '/__test/apartments': $seedApartments($pdo); break;
         case '/__test/houses': $seedHouses($pdo); break;
+        case '/__test/tables':
+            $seedTables($pdo);
+            Session::set('tables_static', ($_POST['static'] ?? '') === '1');
+            Session::set('offers_per_page', (int) ($_POST['per_page'] ?? 0));
+            Session::set('read_only', ($_POST['viewer'] ?? '') === '1');
+            break;
+        case '/__test/tables-state': header('Content-Type: application/json'); echo json_encode(['offers' => App::$db->table('offers')->orderBy('id')->get(), 'suites' => App::$db->table('suites')->orderBy('id')->get()]); exit;
+        case '/__test/offer-change': App::$db->table('offers')->where('id', '=', (int) ($_POST['id'] ?? 1))->update([(string) ($_POST['column'] ?? 'status') => (string) ($_POST['value'] ?? 'sold')]); break;
         case '/__test/houses-state': header('Content-Type: application/json'); echo json_encode(App::$db->table('houses')->orderBy('id')->get()); exit;
         case '/__test/pages': Session::set('pages_demo', true); $seedPages($pdo); break;
         case '/__test/pages-off': Session::set('pages_demo', false); break;

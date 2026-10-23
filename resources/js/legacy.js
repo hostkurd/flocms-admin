@@ -60,6 +60,11 @@ export function initializeLegacy() {
     word(confirmDialog.querySelector('.fa-dialog-title'), source, 'data-confirm-title');
     word(confirmDialog.querySelector('.fa-confirm-text'), source, 'data-confirm-text');
     word(confirmDialog.querySelector('[data-confirm-yes]'), source, 'data-confirm-button');
+    // data-confirm-tone="primary": a change that is not a deletion gets a blue button (0.38).
+    var yes = confirmDialog.querySelector('[data-confirm-yes]');
+    var primary = source.getAttribute('data-confirm-tone') === 'primary';
+    yes.classList.toggle('fa-btn-primary', primary);
+    yes.classList.toggle('fa-btn-danger', !primary);
     confirmDialog.showModal();
   });
 

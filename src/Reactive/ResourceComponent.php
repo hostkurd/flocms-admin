@@ -19,6 +19,8 @@ final class ResourceComponent extends Component
     #[State(rules: 'max:100', query: 'sort')] public string $sort = '';
     #[State(rules: 'in:asc,desc', query: 'dir')] public string $direction = 'asc';
     #[State(rules: 'max:2000', query: 'filters')] public string $filters = '{}';
+    /** Group by (0.38): '' = the person's last choice or the list's default, "none", or "city_id[:desc]". */
+    #[State(rules: 'max:100', query: 'group')] public string $group = '';
     #[State(rules: 'max:3500')] public string $selectedIds = '[]';
     #[State(rules: 'max:2000')] public string $columns = '[]';
     #[State(rules: 'max:64')] public string $selectedBulk = '';
@@ -50,7 +52,7 @@ final class ResourceComponent extends Component
     }
     public function updated(string $property): void
     {
-        if (in_array($property, ['search', 'sort', 'direction', 'filters'], true)) { $this->page = 1; $this->selectedIds = '[]'; }
+        if (in_array($property, ['search', 'sort', 'direction', 'filters', 'group'], true)) { $this->page = 1; $this->selectedIds = '[]'; }
         if ($property === 'selectedIds') { $this->selectedIds = json_encode(\FloCMS\Admin\Actions\BulkExecutor::ids($this->selectedIds, true), JSON_THROW_ON_ERROR); }
     }
     #[Action] public function paginate(): void {}
@@ -70,6 +72,18 @@ final class ResourceComponent extends Component
         if (!is_array($chosen) || !array_is_list($chosen)) { throw new HttpException(400); }
         $this->visibility()->save(array_values(array_filter($chosen, 'is_string')));
         $this->columns = '[]';
+    }
+    /** The Group by menu (0.38): $group holds the choice. */
+    #[Action] public function groupBy(): void
+    {
+        if (preg_match('/^(none|[A-Za-z_][A-Za-z0-9_]{0,63}(:(asc|desc))?)$/D', $this->group) !== 1) { throw new HttpException(400); }
+        $this->page = 1; $this->selectedIds = '[]';
+    }
+    private function grouping(): \FloCMS\Admin\Table\Grouping
+    {
+        $grouping = new \FloCMS\Admin\Table\Grouping($this->table(), $this->columnsKey());
+        $grouping->resolve(preg_match('/^(none|[A-Za-z_][A-Za-z0-9_]{0,63}(:(asc|desc))?)$/D', $this->group) === 1 ? $this->group : '');
+        return $grouping;
     }
     #[Action] public function resetColumns(): void { $this->visibility()->reset(); $this->columns = '[]'; }
     private function visibility(): \FloCMS\Admin\Table\ColumnVisibility
@@ -256,11 +270,20 @@ final class ResourceComponent extends Component
         $visibility = new \FloCMS\Admin\Table\ColumnVisibility($table, $this->columnsKey());
         // Sorting by a column the user hid falls back to the default sort.
         if ($this->sort !== '' && $visibility->isHidden($this->sort)) { $this->sort = ''; $this->direction = 'asc'; }
+        $grouping = $this->grouping();
         $result = $this->repository()->paginate($table, $this->search, $this->sort ?: null, $this->direction, $this->page,
-            $table->getPerPage() ?? Admin::config()->perPage(), AdminLang::language(), $filters);
+            $table->getPerPage() ?? Admin::config()->perPage(), AdminLang::language(), $filters, $grouping->active(), $grouping->direction());
         $last = max(1, (int) $result['pagination']['last_page']);
         if ($this->page > $last) { $this->page = $last; return $this->render(); }
         foreach ($visibility->visibleColumns() as $column) { $column->prepareRecords($result['data']); }
+        // Totals of this page and of every matching row, group headings (0.38)
+        $rowsQuery = fn (): \FloCMS\Core\Database => $this->repository()->filteredQuery($table, $this->search, $filters);
+        $totals = \FloCMS\Admin\Http\PageView::totals($visibility->visibleColumns(), $result, $rowsQuery, $this->search !== '' || $filters->active() !== [], $table->getSummaryMode());
+        $registryForGroups = new ActionRegistry($resource, $resource->table(new Table()));
+        $groups = $grouping->active() !== null
+            ? $grouping->headings($result['data'], $visibility->visibleColumns(), $rowsQuery, ($result['previous'] ?? null) !== null, $result['previous']['key'] ?? null,
+                array_filter($registryForGroups->all('bulk'), fn ($action): bool => $action->available($resource)) !== [], true, 'fa-' . $this->instanceKey)
+            : ['heads' => [], 'keys' => []];
         $registry = new ActionRegistry($resource, $resource->table(new Table()));
         $selected = \FloCMS\Admin\Actions\BulkExecutor::ids($this->selectedIds, true);
         $bulkActions = array_filter($registry->all('bulk'), fn ($action): bool => $action->available($resource));
@@ -278,6 +301,7 @@ final class ResourceComponent extends Component
             if (strlen($this->draft) > 64000) { $this->draft = '{}'; $this->errors['_form'] = AdminLang::get('reactive.large_form'); }
         }
         $prefix = 'fa-' . $this->instanceKey;
+        $cells = new \FloCMS\Admin\Table\Cells\CellContext($resource, $scope !== null ? $scope->parentUrl() : $this->listUrl($resource::getSlug()), $prefix . '-cell');
         $switch = $this->switches($action);
         $editing = $this->editingLanguage();
         $formRenderer = new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record),
@@ -317,6 +341,11 @@ final class ResourceComponent extends Component
             // A bulk action that opens a page (0.28): the panel's bulk URL, the chosen ids added by selection.js
             'bulkPageUrl' => static fn (\FloCMS\Admin\Actions\BulkAction $bulk): string => Admin::url($resource::getSlug() . '/bulk/' . $bulk->getName(), ['parent' => $scope?->token()]),
             'rowLink' => static fn (object $row, string $html): string => \FloCMS\Admin\Http\PageView::rowLink($resource, $row, $html, ['parent' => $scope?->token()]),
+            // Editable cells (0.38): back to this list (or the parent's page) after a save without JavaScript.
+            'totals' => $totals, 'refreshCells' => $totals !== [] || $grouping->active() !== null,
+            'groupHeads' => $groups['heads'], 'groupKeys' => $groups['keys'], 'grouped' => $grouping->active() !== null, 'groupIcon' => \FloCMS\Admin\Support\Icons::svg('layers'),
+            'groupMenu' => \FloCMS\Admin\Http\PageView::groupMenu($grouping, static fn (string $value): string => $value),
+            'cell' => static fn (\FloCMS\Admin\Table\Column $column, object $row): string => $column->renderCell($row, $cells),
             'dialogMinHeight' => $action?->getModalMinHeight(),
             'dialogStyle' => $action !== null && $action->getMode($resource) === 'slide-over' ? 'slide-over' : 'modal',
             'actionTitle' => $action?->getTitle($resource, $record) ?? '', 'actionDescription' => $this->mode === 'bulk' && $action instanceof \FloCMS\Admin\Actions\BulkAction ? $this->bulkExecutor()->describe($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds)) : trim(($action?->getDescription($resource, $record) ?? '')

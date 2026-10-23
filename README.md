@@ -9,6 +9,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Right-to-left** admin from the start (Arabic, Kurdish, …), with the right `dir` on every language input.
 - Uses FloCMS's own login, CSRF protection, permissions and validation rules.
 - **Forms**: sections, keyboard/RTL tabs, responsive grids and server-validated dependencies. [Forms guide](docs/forms.md).
+- **Editable cells, totals and grouping** (0.38): switches, selects and text cells that save from the list with the edit page's checks, sums and averages for this page and all rows, rows grouped under headings with subtotals. [Guide](docs/tables.md).
 - **Table filters and bulk Actions**: selects, toggles, date ranges and explicit, atomic multi-record workflows. [API guide](docs/tables-and-login.md).
 - **Optional Admin login design** with existing FloCMS authentication; see [upgrade instructions](UPGRADING.md).
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
@@ -236,8 +237,11 @@ The rules are FloCMS's own: `required`, `string`, `integer`, `numeric`, `min`, `
 | `MediaColumn` | thumbnails of media items | `->limit(3)`; loads the page's items in one query ([guide](docs/media.md)) |
 | `TranslationsColumn` | how far each record is translated: EN 4/4 · AR 3/4 · KU 0/4 | `->fields([...])` (default: every translatable form field), `->withoutFilter()`; adds a **Missing in: language** filter (0.23) |
 | `CountColumn` | how many related records | `->relation(UnitResource::class, 'property_id')`; one grouped query per page ([guide](docs/relation-managers.md#counts-in-the-parents-list)) |
+| `ToggleColumn` | a switch that saves at once | `->values('published', 'draft')`, `->requiresConfirmation()`, `->beforeUpdate()` (0.38, [guide](docs/tables.md#editable-cells)) |
+| `SelectColumn` | a select that saves on change | `->colors([...])`, `->options([...])` without a form Select (0.38) |
+| `TextInputColumn` | text or a number edited in the cell | `->numeric(2)`, `->prefix('€ ')`, `->suffix()`, `->limit()`, `->rules()` (0.38) |
 
-Every column: `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
+Every column: `->summarize([Sum::make(), Average::make()])` for totals ([guide](docs/tables.md#totals)), `->label()`, `->sortable()`, `->searchable()`, `->format(fn ($value, $record) => ...)` (the result is escaped), `->translatable()`, `->toggleable(hiddenByDefault: false)`. Search and sort only use columns marked `searchable()` / `sortable()`. Toggleable columns get a **Columns** button where each user shows or hides them; the title column can never be hidden ([guide](docs/settings.md#the-columns-button)).
 
 ### Drag-and-drop ordering
 
@@ -508,6 +512,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.35: login security (two-factor sign-in with backup codes, remembered devices, roles that require it and admin reset; email verification with invitations and confirmed address changes; flocms-core 2.7)
 - 0.36: custom pages (`AdminPage`: filters, widgets, views, read-only tables, forms, header actions and routes; sidebar groups and badges; Panel pages on the Roles page; `make:admin-page`)
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
+- 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development

@@ -1,0 +1,16 @@
+<div class="fa-page-head"><div><p class="fa-page-description">{{ $listLabel }} / <bdi>{{ $record }}</bdi></p><h1 class="fa-page-title">{{ $words['title'] }}</h1></div></div>
+<div class="fa-card fa-cell-confirm-page">
+    <form method="post" action="{{ $actionUrl }}">
+        {!! $csrf !!}
+        <input type="hidden" name="column" value="{{ $column }}">
+        <input type="hidden" name="value" value="{{ $value }}">
+        <input type="hidden" name="was" value="{{ $was }}">
+        <input type="hidden" name="_back" value="{{ $back }}">
+        <input type="hidden" name="confirmed" value="1">
+        <p>{{ $words['text'] }}</p>
+        <div class="fa-cell-confirm-actions">
+            <a class="fa-btn" href="{{ $back }}">{{ $t('actions.cancel') }}</a>
+            <button type="submit" class="fa-btn {{ $danger ? 'fa-btn-danger' : 'fa-btn-primary' }}">{{ $words['button'] }}</button>
+        </div>
+    </form>
+</div>

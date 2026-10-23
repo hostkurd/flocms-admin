@@ -80,14 +80,21 @@ final class FormSubmission
         return $this->resource->beforeSave($data, $record);
     }
 
-    public function save(Form $form, array $state, ?object $record, bool $guarded = false, ?\FloCMS\Admin\Uploads\UploadBatch $batch = null): string
+    /**
+     * @param array<string, mixed> $extra other columns to write with the form's values
+     *        (a list cell's beforeUpdate(), 0.38); the form's own values win
+     */
+    public function save(Form $form, array $state, ?object $record, bool $guarded = false, ?\FloCMS\Admin\Uploads\UploadBatch $batch = null, array $extra = []): string
     {
+        foreach (array_keys($extra) as $column) {
+            if (!is_string($column) || preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $column) !== 1) { throw new \InvalidArgumentException('Extra values must be keyed by column names.'); }
+        }
         $form = $form->evaluate($state, $record);
         $owns = $batch === null;
         if ($owns && $this->repository->inTransaction()) { throw new \LogicException('Supply the outer transaction upload batch.'); }
         $batch ??= new \FloCMS\Admin\Uploads\UploadBatch();
         try {
-        $id = $this->repository->transaction(function () use ($form, $state, $record, $guarded, $batch): string {
+        $id = $this->repository->transaction(function () use ($form, $state, $record, $guarded, $batch, $extra): string {
             // The activity log compares the record before and after the save (fresh forms: no cached values).
             $logging = \FloCMS\Admin\Activity\Activity::enabled($this->repository->connection());
             $before = $logging && $record !== null ? \FloCMS\Admin\Activity\ActivityChanges::state($this->resource->form(new Form()), $record) : [];
@@ -105,6 +112,7 @@ final class FormSubmission
                 }
                 $data[$name] = $field->dehydrate($value);
             }
+            $data = array_replace($extra, $data);
             $pk = $class::getPrimaryKey();
             if ($record !== null) { unset($data[$pk]); }
             unset($data['created_at'], $data['updated_at']);
