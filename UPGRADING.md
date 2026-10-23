@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.39.2
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.2" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do.
+
+---
+
 # Upgrading to Admin 0.39.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.1" -W` and reload open Admin pages. Nothing else to do: only the look of editable list cells changed.

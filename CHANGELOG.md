@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.2 - 2026-10-23
+
+- A text cell's hover border now wraps its text: before, the box was 8px too narrow, so a number such as "€ 400.00" ran over its end edge.
+
 ## 0.39.1 - 2026-10-23
 
 **Quieter editable cells.** Nothing to migrate.
