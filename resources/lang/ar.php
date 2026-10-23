@@ -2202,6 +2202,7 @@ return [
     'cells.conflict' => 'لم يُحفظ: غيّر شخص آخر :label في هذه الأثناء. تعرض القائمة الآن قيمته.',
     'cells.conflict_short' => 'غيّر شخص آخر هذه القيمة في هذه الأثناء.',
     'cells.gone' => 'لم يُحفظ: حُذف هذا السجل أو لم يعد في هذه القائمة.',
+    'cells.not_editable' => 'لم يُحفظ: لا يمكن تغيير :label لهذا السجل.',
     'cells.confirm_title' => 'تغيير :label لـ «:title»؟',
     'cells.confirm_text' => 'يُحفظ التغيير فورًا.',
     'cells.confirm_button' => 'تغيير',

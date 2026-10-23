@@ -181,7 +181,13 @@ final class PageView
         if (!$totals->has()) { return []; }
         $last = (int) ($result['pagination']['last_page'] ?? 1);
         $db = \FloCMS\Core\App::db();
-        return $totals->lines($result['data'], $db, $last > 1 && $rowsQuery !== null ? $rowsQuery() : null, (int) $result['pagination']['items_count'], $last, $filtered, $mode);
+        try {
+            return $totals->lines($result['data'], $db, $last > 1 && $rowsQuery !== null ? $rowsQuery() : null, (int) $result['pagination']['items_count'], $last, $filtered, $mode);
+        } catch (\PDOException $error) {
+            // A query() the totals cannot wrap (a join with clashing column names): no totals rather than a broken list.
+            \FloCMS\Admin\Support\Log::error('List totals skipped: ' . $error->getMessage());
+            return [];
+        }
     }
 
     /**

@@ -134,7 +134,11 @@ final class TablesRequestTest extends RequestTestCase
         self::assertStringNotContainsString('fa-group-row', self::list('', ['session' => $none]));
         self::assertMatchesRegularExpression('#<a class="fa-group-choice is-active" href="[^"]*group=none" aria-current="true">#', self::list('', ['session' => $none]));
 
-        // A name that is not a group of the list is ignored
+        // A name that is not a group of the list is ignored, and not remembered
+        self::assertStringContainsString('Group by: Status', self::list('group=title', ['session' => self::request('GET', '/en/admin/offers?group=status', self::options())['session']]));
+        // A page far past the end: the last page, no error
+        self::assertTrue(self::request('GET', '/en/admin/offers?group=status&page=999999999999999999', self::options())['redirected'], 'sent to the last page');
+        self::pdo()->exec('DELETE FROM admin_user_preferences');
         self::assertStringNotContainsString('fa-group-row', self::list('group=title'));
         self::assertStringNotContainsString('fa-group-row', self::list('group=%3Cscript%3E'));
     }

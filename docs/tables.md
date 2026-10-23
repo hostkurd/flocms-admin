@@ -45,8 +45,8 @@ Each save follows the rules of the edit page:
 - **Only the list's own editable columns** can be saved; the column name the browser sends is checked against the list.
 - **Nobody else's change is overwritten**: the save is refused when that column changed since the list was drawn (a change to another column of the row doesn't count). The cell then shows the current value with a message.
 - **Hooks**: `beforeSave()` and `afterSave()` run, `updated_at` moves, and the activity log gets an "updated" entry with the one field. `$data` in `beforeSave()` holds only the cell's column (and a relation manager's parent key): check with `array_key_exists()` before reading other fields.
-- **Fields that depend on the column** (`requiredWhen()`, `visibleWhen()`) are checked with the record's values: switching Status to Sold is refused when the form requires a Note for sold records and the record has none.
-- Translatable columns can't be edited in the list.
+- **Fields that depend on the column** (`requiredWhen()`, `visibleWhen()`, and fields that depend on those) are checked with the record's values: switching Status to Sold is refused when the form requires a Note for sold records and the record has none.
+- Translatable columns can't be edited in the list, nor can fields a relation manager hides (`hideFields()`), disabled fields, or a field that `visibleWhen()` hides for that record: those cells show the value.
 
 ### Options
 
@@ -93,6 +93,7 @@ Each takes `->label()`, `->decimals()`, `->prefix()`, `->suffix()` and `->format
 - No rows: no totals. CSV exports have no total row.
 - Totals work on plain database columns and on `CountColumn` (the related records counted through the related resource's `query()`). A translatable or JSON column is refused with a message when the list is built.
 - On custom pages, totals add up the rows of the page's own `query()` with its filters and search.
+- Totals and group subtotals read the list's query as a sub-select. A `query()` that joins tables with clashing column names (two `id` columns) can't be read that way: the list then shows no totals and headings count this page only, and the panel's log says why. Select the joined columns under other names to keep totals.
 
 ## Grouping
 

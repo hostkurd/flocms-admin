@@ -2233,6 +2233,7 @@ return [
     'cells.conflict' => 'Not saved: somebody changed :label meanwhile. The list now shows their value.',
     'cells.conflict_short' => 'Somebody changed this value meanwhile.',
     'cells.gone' => 'Not saved: this record was deleted or is no longer in this list.',
+    'cells.not_editable' => 'Not saved: :label cannot be changed for this record.',
     'cells.confirm_title' => 'Change :label of “:title”?',
     'cells.confirm_text' => 'The change is saved at once.',
     'cells.confirm_button' => 'Change',

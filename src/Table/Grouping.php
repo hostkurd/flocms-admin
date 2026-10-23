@@ -42,6 +42,9 @@ final class Grouping
         $this->resolved = true;
         $this->active = null;
         if (!$this->has()) { return null; }
+        // Only a group of this list (or "none") is remembered: a stale or made-up link changes nothing.
+        $known = $requested === 'none' || isset($this->table->getGroups()[explode(':', $requested, 2)[0]]);
+        if ($requested !== '' && !$known) { $requested = ''; }
         $choice = $requested !== '' ? $requested : $this->stored();
         if ($requested !== '' && $requested !== $this->stored()) { $this->remember($requested); }
         if ($choice === null) {
@@ -136,7 +139,13 @@ final class Grouping
         $keys = array_map(static fn (object $row): ?string => $group->keyOf($row), $rows);
         $group->prepareTitles(array_values(array_filter($keys, static fn (?string $k): bool => $k !== null)));
         $totals = new Totals($visible);
-        $sub = $rowsQuery !== null ? $this->subtotals($rowsQuery(), $group, $keys, $totals) : [];
+        try {
+            $sub = $rowsQuery !== null ? $this->subtotals($rowsQuery(), $group, $keys, $totals) : [];
+        } catch (\PDOException $error) {
+            // A query() the subtotals cannot wrap (a join with clashing columns): headings count this page only.
+            \FloCMS\Admin\Support\Log::error('Group subtotals skipped: ' . $error->getMessage());
+            $sub = [];
+        }
         $heads = [];
         $ids = [];
         $last = "\1";

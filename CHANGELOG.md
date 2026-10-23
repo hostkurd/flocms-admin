@@ -11,7 +11,7 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
   - The same checks as the edit page: the `update` permission and `canEdit()` (`Resource::mayEdit()`), only the list's own editable columns, `beforeSave()` / `afterSave()`, `updated_at`, one "updated" activity entry, and fields with `requiredWhen()` / `visibleWhen()` on the column checked with the record's values.
   - A change somebody made to the same column since the list was drawn is never overwritten: the cell shows the current value and a message.
   - `->requiresConfirmation()` (a dialog, or a confirm page without JavaScript), `->beforeUpdate()` to write other columns too, `->afterUpdate()`.
-  - Viewers, rows people may not edit and read-only relation managers show the value only. Translatable columns can't be edited in the list. Custom pages' tables stay read-only (an editable column there is refused).
+  - Viewers, rows people may not edit, read-only relation managers, fields a manager hides, disabled fields and fields `visibleWhen()` hides for the record show the value only. Translatable columns can't be edited in the list. Custom pages' tables stay read-only (an editable column there is refused).
   - Without JavaScript every cell is a small form with a Save button. New endpoint `POST /admin/<slug>/cell/<id>`.
 - **Totals**: `->summarize([Sum::make(), Average::make(), Count::make(), Min::make(), Max::make()])` on a column, each with `->label()`, `->decimals()`, `->prefix()`, `->suffix()`, `->formatUsing()`; `Count::make()->where(1)`.
   - "This page" (from the rows shown) and "All rows" (one query over the list's rows: `query()`, a relation manager's parent, tabs, filters and search), the same on MySQL, MariaDB and SQLite. `Table::summaries('all'|'page')`.

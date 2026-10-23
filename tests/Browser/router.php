@@ -43,13 +43,13 @@ Config::set('default_action', 'index');
 Config::set('languages', ['en', 'ar', 'ku']);
 Config::set('default_language', 'en');
 Config::set('reactive.key', hash('sha256', __FILE__));
-Config::set('permissions', [0 => [], 1 => ['content.posts.view', 'content.offers.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']]);
-Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin', 4 => 'Writer']);
+Config::set('permissions', [0 => [], 1 => ['content.posts.view'], 3 => ['*'], 4 => ['content.listings.*', 'content.media.view']] + (Session::get('offers_viewer') ? [5 => ['content.offers.view']] : []));
+Config::set('roles', [0 => 'User', 1 => 'Editor', 2 => 'Admin', 3 => 'Super Admin', 4 => 'Writer'] + (Session::get('offers_viewer') ? [5 => 'Viewer'] : []));
 Config::set('auth.user_loader', static fn (int $id) => Session::get('security_demo') && App::$db !== null
     // Login security (0.35): the real row, so the sign-in steps see the account.
     ? App::$db->table('users')->where('id', '=', $id)->first()
-    : ['role' => Session::get('read_only') ? 1 : (Session::get('writer') ? 4 : 3), 'status' => Session::get('expired') ? 3 : 1]);
-Config::set('admin_access_roles', [1, 3, 4]);
+    : ['role' => Session::get('read_only') ? 1 : (Session::get('offers_viewer') ? 5 : (Session::get('writer') ? 4 : 3)), 'status' => Session::get('expired') ? 3 : 1]);
+Config::set('admin_access_roles', [1, 3, 4, 5]);
 if (!Session::get('fixture')) {
     Session::set('fixture', true); Session::set('isloggedin', true); Session::set('admin_access', true);
     Session::set('user_id', 1); Session::set('role', 3); Session::set('fullname', 'Sara'); Session::set('email', 'sara@example.test');
@@ -408,7 +408,7 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             $seedTables($pdo);
             Session::set('tables_static', ($_POST['static'] ?? '') === '1');
             Session::set('offers_per_page', (int) ($_POST['per_page'] ?? 0));
-            Session::set('read_only', ($_POST['viewer'] ?? '') === '1');
+            Session::set('offers_viewer', ($_POST['viewer'] ?? '') === '1');
             break;
         case '/__test/tables-state': header('Content-Type: application/json'); echo json_encode(['offers' => App::$db->table('offers')->orderBy('id')->get(), 'suites' => App::$db->table('suites')->orderBy('id')->get()]); exit;
         case '/__test/offer-change': App::$db->table('offers')->where('id', '=', (int) ($_POST['id'] ?? 1))->update([(string) ($_POST['column'] ?? 'status') => (string) ($_POST['value'] ?? 'sold')]); break;

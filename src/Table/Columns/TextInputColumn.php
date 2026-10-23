@@ -103,9 +103,9 @@ final class TextInputColumn extends EditableColumn
             . \FloCMS\Admin\Support\Icons::svg('pencil', 'fa-icon fa-cell-pen') . '</button>'
             . '<span class="fa-cell-editor" data-admin-cell-editor>'
             . '<label class="fa-sr" for="' . Str::e($id) . '">' . Str::e($label) . '</label>'
-            . '<input class="fa-input fa-cell-input" type="text" id="' . Str::e($id) . '" name="value" value="' . Str::e($state) . '" data-admin-cell-input'
+            . '<input class="fa-input fa-cell-input" type="text" id="' . Str::e($id) . '" name="value" value="' . Str::e($state) . '" data-admin-cell-input aria-describedby="' . Str::e($id) . '-hint ' . Str::e($id) . '-status"'
             . ($this->numeric ? ' inputmode="decimal" dir="ltr"' : ' dir="auto"') . ($max !== null ? ' maxlength="' . $max . '"' : '') . ' autocomplete="off">'
-            . '<span class="fa-cell-hint" aria-hidden="true">' . Str::e(AdminLang::get('cells.hint')) . '</span>'
+            . '<span class="fa-cell-hint" id="' . Str::e($id) . '-hint">' . Str::e(AdminLang::get('cells.hint')) . '</span>'
             . '<span class="fa-cell-actions"><button type="button" class="fa-btn fa-btn-sm" data-admin-cell-cancel>' . Str::e(AdminLang::get('actions.cancel')) . '</button>'
             . $this->saveButton($label) . '</span>'
             . '</span>';

@@ -36,6 +36,9 @@ abstract class EditableColumn extends Column
     protected ?Closure $beforeUpdate = null;
     protected ?Closure $afterUpdate = null;
     protected bool $prepared = false;
+    /** The form field is left out (a relation manager's hideFields()) or disabled: shown, never edited. */
+    protected bool $locked = false;
+    protected ?\FloCMS\Admin\Form\Form $form = null;
 
     /** Rules when the form has no field of this name, e.g. 'required|max:120'. */
     public function rules(string|array $rules): static
@@ -83,7 +86,29 @@ abstract class EditableColumn extends Column
 
     public function isEditable(): bool
     {
-        return true;
+        return !$this->locked;
+    }
+
+    /**
+     * Whether this record's cell can be edited: the column is editable and the
+     * form field would be written for this record (a visibleWhen() that hides
+     * it, or a disabled field, leaves the value as it is).
+     *
+     * @internal
+     */
+    public function writableFor(object $record): bool
+    {
+        if ($this->locked) { return false; }
+        $field = $this->field();
+        if ($field->isDisabled()) { return false; }
+        $dependencies = $field->dependencies();
+        if ($dependencies === [] || $this->form === null) { return true; }
+        $state = [];
+        foreach ($dependencies as $name) {
+            $other = $this->form->field($name);
+            $state[$name] = $other !== null ? $other->stateFromRecord($record, Languages::default()) : (property_exists($record, $name) && is_scalar($record->{$name}) ? (string) $record->{$name} : '');
+        }
+        return $field->resolve($state)->isWritable();
     }
 
     /**
@@ -92,9 +117,11 @@ abstract class EditableColumn extends Column
      *
      * @internal
      */
-    public function useFormField(?Field $field): void
+    public function useFormField(?Field $field, ?\FloCMS\Admin\Form\Form $form = null): void
     {
         $this->prepared = true;
+        $this->form = $form;
+        $this->locked = false;
         if ($field === null) { $this->formField = null; $this->defaultField(); return; }
         if ($field->isTranslatable() || $this->isTranslatable()) {
             throw new LogicException('Column "' . $this->name . '" cannot be edited in the list: its field is translatable.');
@@ -103,8 +130,9 @@ abstract class EditableColumn extends Column
             throw new LogicException('Column "' . $this->name . '" cannot be edited in the list with a ' . (new \ReflectionClass($field))->getShortName() . ' field: '
                 . static::class . ' works with ' . $this->acceptedFields() . '.');
         }
-        if ($field->isOmitted()) { $this->formField = null; return; }
         $this->formField = $field;
+        // Left out of this form (a relation manager's hideFields()) or disabled: the value is shown, not edited.
+        if ($field->isOmitted() || $field->isDisabled()) { $this->locked = true; }
     }
 
     public function detectTranslatable(bool $translatable): void
@@ -203,7 +231,7 @@ abstract class EditableColumn extends Column
 
     public function renderCell(object $record, ?CellContext $context = null): string
     {
-        if ($context === null || !$context->mayEdit($record)) {
+        if ($context === null || !$context->mayEdit($record) || !$this->writableFor($record)) {
             return $this->render($record);
         }
         $pk = $context->resource()::getPrimaryKey();
@@ -222,7 +250,7 @@ abstract class EditableColumn extends Column
             . '<input type="hidden" name="was" value="' . Str::e(self::token($raw)) . '" data-admin-cell-was>'
             . '<input type="hidden" name="_back" value="' . Str::e($context->back()) . '">'
             . $this->control($record, $this->stateOf($record), $context, $controlId, $label)
-            . '<span class="fa-cell-status" data-admin-cell-status role="status"></span>'
+            . '<span class="fa-cell-status" id="' . Str::e($controlId) . '-status" data-admin-cell-status role="status"></span>'
             . '</form>';
     }
 

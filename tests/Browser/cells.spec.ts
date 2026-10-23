@@ -67,6 +67,22 @@ test('Tab saves and moves to the next editable cell', async ({ page }) => {
   // The next editable control of the row: the stock cell's text
   await expect(page.locator(':focus')).toHaveAttribute('data-admin-cell-display', '');
   await expect.poll(async () => Number((await offer(page, 5)).price)).toBe(215000);
+  // The save's answer does not pull the focus back
+  await expect(row(page, 'Loft near Ladadika').locator('.fa-cell.is-saved')).toBeVisible();
+  await expect(page.locator(':focus')).toHaveAttribute('data-admin-cell-display', '');
+  await expect(page.locator(':focus').locator('xpath=ancestor::form[1]').locator('input[name="column"]')).toHaveValue('stock');
+});
+
+test('a select stepped with the keyboard saves once, on Enter', async ({ page }) => {
+  await page.goto('/en/admin/offers');
+  const status = page.getByLabel('Status: Garden flat, Erbil');
+  await status.focus();
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(300);
+  expect((await offer(page, 7)).status).toBe('draft');
+  await page.keyboard.press('Enter');
+  await expect(row(page, 'Garden flat, Erbil').locator('.fa-cell.is-saved')).toBeVisible();
+  expect((await offer(page, 7)).status).not.toBe('draft');
 });
 
 test('a select saves on change; somebody else\'s change is a conflict', async ({ page }) => {

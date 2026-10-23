@@ -152,4 +152,28 @@ final class TableExtrasTest extends TestCase
         $this->expectExceptionMessage('read-only');
         \FloCMS\Admin\PanelPages\PageTable::of($page);
     }
+
+    public function testAFieldLeftOutDisabledOrHiddenForTheRecordIsNotEditable(): void
+    {
+        $omitted = TextInputColumn::make('status');
+        $omitted->useFormField(TextInput::make('status')->omit(), new Form());
+        self::assertFalse($omitted->isEditable(), 'a relation manager\'s hideFields()');
+        $disabled = TextInputColumn::make('code');
+        $disabled->useFormField(TextInput::make('code')->disabled(), new Form());
+        self::assertFalse($disabled->isEditable());
+
+        $form = (new Form())->schema([Select::make('type')->options(['sale' => 'Sale', 'rent' => 'Rent']), TextInput::make('lease')->visibleWhen('type', 'rent')]);
+        $lease = TextInputColumn::make('lease');
+        $lease->useFormField($form->field('lease'), $form);
+        self::assertTrue($lease->isEditable());
+        self::assertTrue($lease->writableFor((object) ['type' => 'rent', 'lease' => '12']));
+        self::assertFalse($lease->writableFor((object) ['type' => 'sale', 'lease' => '']), 'the edit page would not write it');
+        $context = new \FloCMS\Admin\Table\Cells\CellContext(new class extends \FloCMS\Admin\Resource {
+            protected static string $table = 'x';
+            public function form(Form $form): Form { return $form; }
+            public function table(Table $table): Table { return $table; }
+            public function mayEdit(object $record): bool { return true; }
+        }, '/back');
+        self::assertStringNotContainsString('<form', $lease->renderCell((object) ['id' => 1, 'type' => 'sale', 'lease' => ''], $context));
+    }
 }

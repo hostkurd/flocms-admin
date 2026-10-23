@@ -95,7 +95,7 @@ final class CellsRequestTest extends RequestTestCase
         self::assertStringContainsString('<select class="fa-cell-select" id="fa-list-cell-2-status" name="value" data-admin-cell-select>', $body);
         self::assertStringContainsString('<option value="draft" data-color="yellow" selected>Draft</option>', $body);
         self::assertStringContainsString('€ 1,250,000.00', $body, 'a number with its prefix and separators');
-        self::assertMatchesRegularExpression('#name="value" value="1250000(\.00?)?" data-admin-cell-input inputmode="decimal" dir="ltr"#', $body);
+        self::assertMatchesRegularExpression('#name="value" value="1250000(\.00?)?" data-admin-cell-input aria-describedby="fa-list-cell-1-price-hint fa-list-cell-1-price-status" inputmode="decimal" dir="ltr"#', $body);
         self::assertStringContainsString('maxlength="120"', $body, 'the title input takes its length from the form field');
         // canEdit() refuses "Locked flat": its cells are plain values
         self::assertStringNotContainsString('action="https://example.test/en/admin/offers/cell/5"', $body);

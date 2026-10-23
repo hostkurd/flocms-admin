@@ -39,7 +39,7 @@ final class CellUpdater
     public function column(string $name): EditableColumn
     {
         $column = preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $name) === 1 ? $this->table->column($name) : null;
-        if (!$column instanceof EditableColumn) { throw new HttpException(404); }
+        if (!$column instanceof EditableColumn || !$column->isEditable()) { throw new HttpException(404); }
         return $column;
     }
 
@@ -72,6 +72,11 @@ final class CellUpdater
                 $record = $this->repository->find($id) ?? throw new CellConflict(null);
                 $this->checkUnchanged($record, $name, $was);
 
+                // A field this record would not write (visibleWhen() hides it, disabled) is not saved either.
+                if (!$column->writableFor($record)) {
+                    if (!class_exists(ValidationException::class)) { class_exists(\FloCMS\Core\Validator::class); }
+                    throw new ValidationException([$name => \FloCMS\Admin\Support\AdminLang::get('cells.not_editable', ['label' => $column->getLabel()])]);
+                }
                 $form = $this->cellForm($column);
                 // Fields whose rules depend on this one (requiredWhen, visibleWhen) are checked
                 // too, with the record's values, as the edit page would; they are not written.
@@ -118,10 +123,17 @@ final class CellUpdater
     {
         $name = $column->getName();
         $fields = $this->cellForm($column)->fields();
-        foreach ($this->form->fields() as $other => $field) {
-            if ($other === $name || isset($fields[$other]) || !in_array($name, $field->dependencies(), true) || !$field->storesInColumn()) { continue; }
-            $fields[$other] = clone $field;
-            $input[$other] = $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default());
+        // Fields that depend on the column, and on those (B visibleWhen A, C requiredWhen B), until no new one is found.
+        $changed = [$name];
+        while ($changed !== []) {
+            $next = [];
+            foreach ($this->form->fields() as $other => $field) {
+                if ($other === $name || isset($input[$other]) || !$field->storesInColumn() || array_intersect($changed, $field->dependencies()) === []) { continue; }
+                $fields[$other] = clone $field;
+                $input[$other] = $field->stateFromRecord($record, \FloCMS\Admin\Translation\Languages::default());
+                $next[] = $other;
+            }
+            $changed = $next;
         }
         return [(new Form())->schema(array_values($fields)), $input];
     }

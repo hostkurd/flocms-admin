@@ -12,6 +12,9 @@ document.documentElement.classList.add('fa-js-cells');
 type Answer = { ok: boolean; html?: string | null; message?: string; conflict?: boolean; confirm?: boolean };
 
 const SAVED_FOR = 1500;
+/** Saves started; a list reload begun before the latest save is dropped (it may show older values). */
+let saves = 0;
+let reload: AbortController | null = null;
 let lastSaved: { id: string; until: number } | null = null;
 
 const panel = () => document.querySelector<HTMLElement>('.fa-panel');
@@ -89,7 +92,7 @@ async function send(form: HTMLFormElement, submitter: HTMLElement | null): Promi
   data.set('_prefix', form.dataset.prefix || 'fa-cell');
   const select = form.querySelector<HTMLSelectElement>('[data-admin-cell-select]');
   const previous = select?.dataset.current;
-  const hadFocus = form.contains(document.activeElement);
+  saves++;
   // The switch moves at once; it moves back if the save fails.
   if (toggle) toggle.setAttribute('aria-checked', toggle.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
   busy(form, true);
@@ -105,7 +108,7 @@ async function send(form: HTMLFormElement, submitter: HTMLElement | null): Promi
     return;
   }
   if (response.ok && answer.ok && answer.html) {
-    const next = replace(form, answer.html, hadFocus);
+    const next = replace(form, answer.html);
     if (next) saved(next);
     refreshList(next ?? form);
     return;
@@ -118,8 +121,13 @@ async function send(form: HTMLFormElement, submitter: HTMLElement | null): Promi
   }
   if (answer.conflict) {
     const message = answer.message || text('adminCellConflict', 'Somebody changed this value meanwhile.');
-    const next = answer.html ? replace(form, answer.html, hadFocus) : null;
+    const next = answer.html ? replace(form, answer.html) : null;
     const target = next ?? form;
+    if (!next) {
+      // The record is gone: the control goes back to what was saved.
+      if (toggle) toggle.setAttribute('aria-checked', toggle.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+      if (select && previous !== undefined) { select.value = previous; colour(select); }
+    }
     busy(target, false);
     target.classList.add('is-conflict');
     status(target, message, 'error');
@@ -149,7 +157,9 @@ function fail(form: HTMLFormElement, toggle: HTMLButtonElement | null, previous:
 }
 
 /** Swap in the server's new cell, keeping focus on its control. */
-function replace(form: HTMLFormElement, html: string, focused: boolean): HTMLFormElement | null {
+function replace(form: HTMLFormElement, html: string): HTMLFormElement | null {
+  // Focus returns to the cell only if it is still there (Tab may have moved on meanwhile).
+  const focused = form.contains(document.activeElement);
   const template = document.createElement('template');
   template.innerHTML = html.trim();
   const next = template.content.firstElementChild;
@@ -183,11 +193,19 @@ function refreshList(form: HTMLFormElement): void {
 }
 
 async function reloadTable(wrap: HTMLElement): Promise<void> {
+  reload?.abort();
+  const controller = new AbortController();
+  reload = controller;
+  const started = saves;
   try {
-    const response = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Flo-Admin': 'navigate' } });
+    const response = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Flo-Admin': 'navigate' }, signal: controller.signal });
     if (!response.ok) return;
-    const next = new DOMParser().parseFromString(await response.text(), 'text/html').querySelector<HTMLElement>(`#${CSS.escape(wrap.id)}`);
-    if (!next || !wrap.isConnected) return;
+    const text = await response.text();
+    if (started !== saves) return;
+    const live = document.getElementById(wrap.id) ?? wrap;
+    const next = new DOMParser().parseFromString(text, 'text/html').querySelector<HTMLElement>(`#${CSS.escape(wrap.id)}`);
+    if (!next || !live.isConnected) return;
+    wrap = live;
     // Never take over a cell that is being edited or saved.
     if (wrap.querySelector('form[data-admin-cell].is-editing, form[data-admin-cell][aria-busy="true"]')) return;
     const focusedId = (document.activeElement as HTMLElement | null)?.id || '';
@@ -250,12 +268,34 @@ document.addEventListener('click', event => {
 });
 
 let asking: HTMLSelectElement | null = null;
+/** Selects changed with the arrow keys: saved on Enter or when leaving them, not on every step. */
+const stepping = new WeakSet<HTMLSelectElement>();
+
+document.addEventListener('keydown', event => {
+  const select = event.target;
+  if (!(select instanceof HTMLSelectElement) || !select.hasAttribute('data-admin-cell-select')) return;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) stepping.add(select);
+  else if (event.key === 'Enter' && stepping.has(select)) {
+    event.preventDefault();
+    stepping.delete(select);
+    if (select.value !== select.dataset.current) select.dispatchEvent(new Event('change', { bubbles: true }));
+  } else if (event.key.length === 1) stepping.add(select);
+});
+
+document.addEventListener('focusout', event => {
+  const select = event.target;
+  if (!(select instanceof HTMLSelectElement) || !stepping.has(select)) return;
+  stepping.delete(select);
+  if (select.value !== select.dataset.current) select.dispatchEvent(new Event('change', { bubbles: true }));
+});
 
 document.addEventListener('change', event => {
   const select = event.target;
   if (!(select instanceof HTMLSelectElement) || !select.hasAttribute('data-admin-cell-select')) return;
   const form = cellOf(select);
   if (!form) return;
+  // Stepping with the keyboard: only the colour follows until Enter or leaving the select.
+  if (stepping.has(select)) { colour(select); return; }
   if (form.getAttribute('aria-busy') === 'true') { select.value = select.dataset.current ?? select.value; return; }
   colour(select);
   // With a confirmation the dialog runs on submit; cancelling it restores the old choice.

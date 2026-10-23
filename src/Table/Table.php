@@ -241,7 +241,7 @@ final class Table
         foreach ($this->columns as $name => $column) {
             $column->detectTranslatable(in_array($name, $translatable, true));
             // Editable cells read, check and write through the form's field of the same name (0.38).
-            if ($column instanceof Columns\EditableColumn) { $column->useFormField($form->field($name)); }
+            if ($column instanceof Columns\EditableColumn) { $column->useFormField($form->field($name), $form); }
             $column->checkSummaries();
             if ($column instanceof Columns\TranslationsColumn) {
                 $column->useFormFields($translatable, $rich);

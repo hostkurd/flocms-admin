@@ -84,12 +84,13 @@ final class RecordRepository
 
         // A grouped page after the first: the group of the row just before it ("continued", 0.38).
         $previous = null;
-        if ($group !== null && $page > 1) {
-            [$sql, $params] = $query->toSql();
-            $row = \FloCMS\Admin\Table\SqlRows::select($this->db, $sql . ' LIMIT 1 OFFSET ' . (($page - 1) * $perPage - 1), $params)[0] ?? null;
+        $ordered = $group !== null && $page > 1 ? $query->toSql() : null;
+        $result = $query->paginate(max(1, $page), $perPage);
+        if ($ordered !== null && $page <= (int) ($result['pagination']['last_page'] ?? 0)) {
+            [$sql, $params] = $ordered;
+            $row = \FloCMS\Admin\Table\SqlRows::select($this->db, $sql . ' LIMIT 1 OFFSET ' . (int) (($page - 1) * $perPage - 1), $params)[0] ?? null;
             $previous = $row !== null ? ['key' => $group->keyOf($row)] : null;
         }
-        $result = $query->paginate(max(1, $page), $perPage);
 
         return [
             'data' => $result['data'],
