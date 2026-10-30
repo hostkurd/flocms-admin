@@ -252,6 +252,79 @@ final class EmailVerificationRequestTest extends RequestTestCase
         self::assertArrayNotHasKey('auth_held', $opened['session']);
     }
 
+    /**
+     * The panel starts before the site reads .env, so the sign-in steps are
+     * registered from config/admin.php's code (0.39.4): a switch written in the
+     * file, or taken from .env, holds the sign-in; .env decides per request.
+     */
+    public function testSwitchesInConfigFileHoldTheSignInIncludingFromEnv(): void
+    {
+        $session = self::unverifiedAli();
+        $written = self::withConfigFile("['required' => true]", static fn (): array => self::request('GET', '/en/admin/dashboard', ['session' => $session] + self::fromFile()));
+        self::assertSame('verify', $written['session']['auth_held']['path'] ?? null, 'a switch written in the file');
+
+        $fromEnv = "['required' => true, 'enabled' => \\FloCMS\\Core\\Env::get('TEST_VERIFY', false)]";
+        $on = self::withConfigFile($fromEnv, static fn (): array => self::request('GET', '/en/admin/dashboard', ['session' => $session] + self::fromFile(['TEST_VERIFY' => 'true'])));
+        self::assertSame('verify', $on['session']['auth_held']['path'] ?? null, 'a switch from .env');
+
+        $off = self::withConfigFile($fromEnv, static fn (): array => self::request('GET', '/en/admin/dashboard', ['session' => $session] + self::fromFile()));
+        self::assertArrayNotHasKey('auth_held', $off['session'], 'off in .env');
+        self::assertSame(200, $off['status']);
+        self::assertStringNotContainsString('Confirm your email address.', $off['body']);
+    }
+
+    /**
+     * A switch in another file works when written there; from .env in another
+     * file the panel can't see it when it starts, so it keeps it off and logs why.
+     */
+    public function testASwitchHiddenFromTheConfigFilesCodeStaysOffAndIsLogged(): void
+    {
+        $session = self::unverifiedAli();
+        $log = self::$root . '/storage/logs/app.log';
+        @unlink($log);
+        $base = self::$root . '/config/admin-base.php';
+        $merged = "array_merge(require __DIR__ . '/admin-base.php', ['reactive' => false, 'password_reset' => true])";
+        try {
+            // Written in the other file: running it at boot sees it, as before 0.39.4.
+            file_put_contents($base, "<?php\nreturn ['email_verification' => ['required' => true]];\n");
+            $literal = self::withConfigFile(null, static fn (): array => self::request('GET', '/en/admin/dashboard', ['session' => $session] + self::fromFile()), $merged);
+            // From .env in the other file: seen neither way, so it stays off.
+            file_put_contents($base, "<?php\nreturn ['email_verification' => ['required' => true, 'enabled' => \\FloCMS\\Core\\Env::get('TEST_VERIFY', false)]];\n");
+            $page = self::withConfigFile(null, static fn (): array => self::request('GET', '/en/admin/dashboard', ['session' => $session] + self::fromFile(['TEST_VERIFY' => 'true'])), $merged);
+            $written = is_file($log) ? (string) file_get_contents($log) : '';
+        } finally {
+            @unlink($base);
+            @unlink($log);
+        }
+        self::assertSame('verify', $literal['session']['auth_held']['path'] ?? null, 'a switch written in another file');
+        self::assertArrayNotHasKey('auth_held', $page['session']);
+        self::assertStringNotContainsString('Confirm your email address.', $page['body'], 'the panel shows what is enforced');
+        self::assertStringContainsString("'email_verification' in config/admin.php is on, but the panel could not see it when it started", $written);
+    }
+
+    /** Request options for a site whose panel reads config/admin.php itself. */
+    private static function fromFile(array $env = []): array
+    {
+        return ['config_file' => true, 'env' => self::ENV + $env, 'user_loader' => true, 'config' => ['admin_access_roles' => ['1', '2', '3']]];
+    }
+
+    /**
+     * Runs $run with config/admin.php set to email verification $verification
+     * (PHP code), or to $whole, then puts the test site's file back.
+     */
+    private static function withConfigFile(?string $verification, callable $run, ?string $whole = null): array
+    {
+        $file = self::$root . '/config/admin.php';
+        $original = (string) file_get_contents($file);
+        $code = $whole ?? "['reactive' => false, 'password_reset' => true, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Resources\\PostResource::class], 'email_verification' => " . $verification . "]";
+        file_put_contents($file, "<?php\nreturn " . $code . ";\n");
+        try {
+            return $run();
+        } finally {
+            file_put_contents($file, $original);
+        }
+    }
+
     public function testAPasswordResetConfirmsTheAddress(): void
     {
         self::pdo()->exec('UPDATE users SET is_verified = 0 WHERE id = 1');

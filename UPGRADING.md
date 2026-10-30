@@ -2,8 +2,8 @@
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.4" -W`. Nothing else to do: `.env` values used in `config/admin.php` (such as `'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')`) reach the panel again. If you replaced such a line with a fixed value as a workaround, you can put it back.
 
-- `config/admin.php` is now read twice per request (once early, for the login security switches). Keep it a plain `return [...]`: a function or class declared in it would be declared twice.
-- If `'two_factor'` or `'email_verification'` takes its value from `.env`, run `php flo admin:doctor`: write `true` or `false` there instead.
+- `config/admin.php` is read twice per request (once early, for the login security switches, as since 0.35.0). Keep it a plain `return [...]`: a function or class declared in it would be declared twice.
+- Write `'two_factor'` and `'email_verification'` in `config/admin.php` itself, as `true`, an array, or a value from `.env`. If they come from another file merged into it, run `php flo admin:doctor`.
 
 ---
 

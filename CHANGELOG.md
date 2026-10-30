@@ -5,7 +5,7 @@ All notable changes to `hostkurd/flocms-admin` are documented here.
 ## 0.39.4 - 2026-10-30
 
 - **Fixed: `Env::get()` in `config/admin.php` returned its default** since 0.35.0. The panel read the file during Composer's autoload (to know whether to register the sign-in steps of two-factor sign-in and email verification), before the site reads `.env`, and kept that early read. So `'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')`, which `admin:install` writes, showed "Admin", and every other `.env` value in the file was ignored. The early read is no longer kept: the panel reads `config/admin.php` again on first use, after `.env`. Nothing to change in existing files.
-- The switches `'two_factor'` and `'email_verification'` are still decided when the panel starts, because the sign-in steps must be registered before the request is checked. A switch taken from `.env` is therefore seen too late: the panel logs a warning when that happens, and `admin:doctor` reports it. Write `true` or `false` there (as the docs do), or set a real server environment variable.
+- `'two_factor'` and `'email_verification'` can now take their value from `.env` too (`'two_factor' => Env::get('TWO_FACTOR', false)`). The sign-in steps are registered when the panel starts, so the panel also reads these two switches from the file's code (`FloCMS\Admin\Support\ConfigSwitches`); each step then checks the real value per request. A switch that is on but can't be seen when the panel starts (from `.env` in another file merged into `config/admin.php`) stays off everywhere, so the panel never shows a step that sign-in doesn't ask; a warning is logged and `admin:doctor` notes it.
 
 ## 0.39.3 - 2026-10-23
 

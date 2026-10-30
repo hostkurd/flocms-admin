@@ -311,6 +311,27 @@ final class CommandsTest extends TestCase
     }
 
     /**
+     * A login security switch that isn't in config/admin.php's own code is
+     * noted: from .env in another file, the website would keep it off (0.39.4).
+     *
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    #[\PHPUnit\Framework\Attributes\PreserveGlobalState(false)]
+    public function testDoctorNotesALoginSecuritySwitchFromAnotherFile(): void
+    {
+        file_put_contents($this->root . '/.env', "DB_TYPE=sqlite\nDB_NAME=storage/db.sqlite\n");
+        mkdir($this->root . '/storage');
+        file_put_contents($this->root . '/config/admin-base.php', "<?php return ['email_verification' => true];");
+        file_put_contents($this->root . '/config/admin.php', "<?php return array_merge(require __DIR__ . '/admin-base.php', ['resources' => []]);");
+        self::assertStringContainsString("'email_verification' is on, but not in config/admin.php's own code", $this->runCommand(new DoctorCommand())->getDisplay());
+
+        file_put_contents($this->root . '/config/admin.php', "<?php return ['resources' => [], 'email_verification' => \\FloCMS\\Core\\Env::get('VERIFY', true)];");
+        self::assertStringNotContainsString("is on, but not in config/admin.php's own code", $this->runCommand(new DoctorCommand())->getDisplay());
+    }
+
+    /**
      * @runInSeparateProcess
      * @preserveGlobalState disabled
      */
