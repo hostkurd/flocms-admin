@@ -128,4 +128,26 @@ final class LoginSecurityUnitTest extends TestCase
         self::assertSame('Firefox on Linux', TrustedDevices::describe('Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0'));
         self::assertSame('Unknown device', TrustedDevices::describe(''));
     }
+
+    /** admin:doctor spots login security switches that come from the environment (0.39.4). */
+    public function testDoctorFindsSwitchesFromTheEnvironment(): void
+    {
+        $file = sys_get_temp_dir() . '/flo-admin-switches-' . bin2hex(random_bytes(4)) . '.php';
+        $cases = [
+            "'two_factor' => \\FloCMS\\Core\\Env::get('TWO_FACTOR', false)," => ['two_factor'],
+            "'email_verification' => ['enabled' => getenv('VERIFY') === '1', 'required' => true]," => ['email_verification'],
+            "'two_factor' => (bool) \$_ENV['TWO_FACTOR'], 'email_verification' => Env::get('VERIFY')," => ['two_factor', 'email_verification'],
+            "'two_factor' => true, 'brand' => \\FloCMS\\Core\\Env::get('SITE_NAME_ADMIN', 'Admin')," => [],
+            "'email_verification' => ['required' => true], 'brand' => Env::get('SITE_NAME_ADMIN')," => [],
+        ];
+        try {
+            foreach ($cases as $code => $expected) {
+                file_put_contents($file, "<?php\nreturn [" . $code . "];\n");
+                self::assertSame($expected, \FloCMS\Admin\Console\DoctorCommand::switchesFromEnv($file), $code);
+            }
+        } finally {
+            @unlink($file);
+        }
+        self::assertSame([], \FloCMS\Admin\Console\DoctorCommand::switchesFromEnv($file));
+    }
 }

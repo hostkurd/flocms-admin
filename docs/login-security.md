@@ -17,6 +17,8 @@ Both are off until you turn them on, and both need **flocms-core 2.7** (held sig
    'email_verification' => true,
    ```
 
+   Write these two switches as `true` or `false`, not from `.env`: the panel decides whether to ask the sign-in steps when it starts, before the site reads `.env` (a real server environment variable works). `admin:doctor` warns otherwise.
+
 3. Create the tables: `php flo admin:install`, then `php flo migrate`.
 4. Check: `php flo admin:doctor` (section **Login security**).
 

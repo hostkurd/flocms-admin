@@ -778,11 +778,31 @@ final class DoctorCommand extends Command
 
     /** The Roles page (0.21): flocms-core 2.4, the config maps it builds on, its table and the stored roles. */
     /** Two-factor sign-in and email verification (0.35). */
+    /**
+     * The login security switches whose value comes from the environment
+     * (Env::get(), getenv(), $_ENV, $_SERVER) in config/admin.php (0.39.4).
+     *
+     * @return list<string>
+     */
+    public static function switchesFromEnv(string $file): array
+    {
+        $code = is_file($file) ? (string) file_get_contents($file) : '';
+        $found = [];
+        foreach (['two_factor', 'email_verification'] as $key) {
+            $pattern = '/[\'"]' . $key . '[\'"]\s*=>\s*(?:\[[^\]]*?[\'"]enabled[\'"]\s*=>\s*)?(?:\(\w+\)\s*)?\\\\?(?:FloCMS\\\\Core\\\\)?(?:Env::get|getenv|\$_ENV|\$_SERVER|env\s*\()/';
+            if (preg_match($pattern, $code) === 1) { $found[] = $key; }
+        }
+        return $found;
+    }
+
     private function checkLoginSecurity(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
     {
         $twoFactor = $config->twoFactor();
         $verification = $config->emailVerification();
         $this->section('Login security  (/admin/profile/security)');
+        foreach (self::switchesFromEnv($config->root() . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'admin.php') as $key) {
+            $this->bad("'" . $key . "' in config/admin.php takes its value from the environment. The panel decides whether to ask the sign-in step when it starts, before the site reads .env, so a value in .env is not seen in time: write true or false in config/admin.php, or set a real server environment variable.");
+        }
         if (!$twoFactor['enabled'] && !$verification['enabled']) {
             $this->line("  Off: add 'two_factor' => true and/or 'email_verification' => true to config/admin.php.");
             return;

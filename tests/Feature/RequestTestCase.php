@@ -103,7 +103,8 @@ abstract class RequestTestCase extends TestCase
     /** @return array{status: int, body: string, redirected: bool, session: array<string, mixed>, error: ?string} */
     protected static function request(string $method, string $uri, array $options = []): array
     {
-        if (isset($options['admin_config']) || is_file(self::$root . '/config/admin.php')) { $options['admin_config'] = ($options['admin_config'] ?? []) + ['reactive' => false, 'brand' => 'Test Panel', 'resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\TagResource::class]]; }
+        // 'config_file' => true: the panel reads the site's config/admin.php itself, as on a site.
+        if (!($options['config_file'] ?? false) && (isset($options['admin_config']) || is_file(self::$root . '/config/admin.php'))) { $options['admin_config'] = ($options['admin_config'] ?? []) + ['reactive' => false, 'brand' => 'Test Panel', 'resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\TagResource::class]]; }
         $options += ['session' => self::EDITOR, 'permissions' => self::PERMISSIONS, 'post' => [], 'method' => $method];
         $command = [PHP_BINARY, self::$root . '/request.php', dirname(__DIR__, 2), $uri, json_encode($options)];
         exec(implode(' ', array_map('escapeshellarg', $command)) . ' 2>&1', $output, $code);

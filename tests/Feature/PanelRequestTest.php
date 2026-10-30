@@ -44,6 +44,53 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringNotContainsString('<style>', $body);
     }
 
+    /**
+     * config/admin.php is read during Composer's autoload (for the login security
+     * switches), before the site reads .env. Values from .env must still reach
+     * the panel: the early read is not kept (0.39.4).
+     */
+    public function testSettingsFromEnvReachThePanel(): void
+    {
+        $file = self::$root . '/config/admin.php';
+        $original = (string) file_get_contents($file);
+        file_put_contents($file, "<?php\nreturn ['reactive' => false, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Resources\\PostResource::class], 'brand' => \\FloCMS\\Core\\Env::get('TEST_PANEL_NAME', 'Admin')];\n");
+        try {
+            $body = self::request('GET', '/en/admin/posts', ['config_file' => true, 'env' => ['TEST_PANEL_NAME' => 'Sunrise Homes']])['body'];
+        } finally {
+            file_put_contents($file, $original);
+        }
+
+        self::assertStringContainsString('Sunrise Homes', $body);
+        self::assertStringContainsString('Sea view villa', $body);
+    }
+
+    /**
+     * A login security switch that only comes on through .env is seen too late
+     * for the start of the request: the panel logs a warning.
+     */
+    public function testALoginSecuritySwitchFromEnvIsLogged(): void
+    {
+        $file = self::$root . '/config/admin.php';
+        $log = self::$root . '/storage/logs/app.log';
+        $original = (string) file_get_contents($file);
+        @mkdir(dirname($log), 0777, true);
+        @unlink($log);
+        file_put_contents($file, "<?php\nreturn ['reactive' => false, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Resources\\PostResource::class], 'email_verification' => \\FloCMS\\Core\\Env::get('TEST_VERIFY', false)];\n");
+        try {
+            self::request('GET', '/en/admin/posts', ['config_file' => true, 'env' => ['TEST_VERIFY' => 'true']]);
+            $written = is_file($log) ? (string) file_get_contents($log) : '';
+            @unlink($log);
+            self::request('GET', '/en/admin/posts', ['config_file' => true]);
+            $quiet = is_file($log) ? (string) file_get_contents($log) : '';
+        } finally {
+            file_put_contents($file, $original);
+            @unlink($log);
+        }
+
+        self::assertStringContainsString("'email_verification' in config/admin.php was off when the panel started", $written);
+        self::assertStringNotContainsString('was off when the panel started', $quiet);
+    }
+
     public function testPanelCarriesTheConfiguredColourTheme(): void
     {
         self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/posts')['body']);

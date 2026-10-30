@@ -2,6 +2,11 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.4 - 2026-10-30
+
+- **Fixed: `Env::get()` in `config/admin.php` returned its default** since 0.35.0. The panel read the file during Composer's autoload (to know whether to register the sign-in steps of two-factor sign-in and email verification), before the site reads `.env`, and kept that early read. So `'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')`, which `admin:install` writes, showed "Admin", and every other `.env` value in the file was ignored. The early read is no longer kept: the panel reads `config/admin.php` again on first use, after `.env`. Nothing to change in existing files.
+- The switches `'two_factor'` and `'email_verification'` are still decided when the panel starts, because the sign-in steps must be registered before the request is checked. A switch taken from `.env` is therefore seen too late: the panel logs a warning when that happens, and `admin:doctor` reports it. Write `true` or `false` there (as the docs do), or set a real server environment variable.
+
 ## 0.39.3 - 2026-10-23
 
 - New setting `'site_link'` in `config/admin.php` for the View site link in the top bar, the user menu and the login pages: `true` (this site, as before), `false` (no link: an admin panel without a website, or with an API only; the login page keeps the brand without a link and drops "Back to website"), or an `https://` address (a website hosted elsewhere, such as a panel on `admin.example.com`). `admin:doctor` reports an invalid value, and warns when Pages are on while `site_link` is `false`.
