@@ -783,7 +783,6 @@ final class DoctorCommand extends Command
         $twoFactor = $config->twoFactor();
         $verification = $config->emailVerification();
         $this->section('Login security  (/admin/profile/security)');
-        // The sign-in steps are registered from the file's code, before .env is read (0.39.4).
         // The sign-in steps are registered before the site reads .env (0.39.4): a switch from .env in another file stays off.
         $seen = \FloCMS\Admin\Support\ConfigSwitches::scan($config->root() . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'admin.php');
         foreach (['two_factor' => $twoFactor['enabled'], 'email_verification' => $verification['enabled']] as $key => $enabled) {
@@ -792,6 +791,10 @@ final class DoctorCommand extends Command
             }
         }
         if (!$twoFactor['enabled'] && !$verification['enabled']) {
+            if (($seen['two_factor'] || $seen['email_verification']) && !is_callable(\FloCMS\Core\Config::get('auth.user_loader'))) {
+                // A switch from .env registers its step even while it is off.
+                $this->bad("Config 'auth.user_loader' is not set (the skeleton sets it in config/config.php), and a login security switch in config/admin.php comes from .env: every sign-in would end. Set the loader, or write the switch as false.");
+            }
             $this->line("  Off: add 'two_factor' => true and/or 'email_verification' => true to config/admin.php.");
             return;
         }

@@ -4,6 +4,7 @@ Update with `composer require "hostkurd/flocms-admin:^0.39.4" -W`. Nothing else 
 
 - `config/admin.php` is read twice per request (once early, for the login security switches, as since 0.35.0). Keep it a plain `return [...]`: a function or class declared in it would be declared twice.
 - Write `'two_factor'` and `'email_verification'` in `config/admin.php` itself, as `true`, an array, or a value from `.env`. If they come from another file merged into it, run `php flo admin:doctor`.
+- A switch taken from `.env` registers its sign-in step even while it is off (the step then checks the real value). That needs Config `'auth.user_loader'`, which the skeleton sets in `config/config.php`; `admin:doctor` reports it when it is missing.
 
 ---
 

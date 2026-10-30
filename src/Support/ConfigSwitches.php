@@ -51,14 +51,20 @@ final class ConfigSwitches
         }
         if (self::opensArray($value)) {
             // An array means on, unless its own 'enabled' entry says otherwise.
+            // Only its own entries count (depth 0), and the last 'enabled' wins, as in PHP.
             $inner = self::arrayItems($value);
             $count = count($inner);
+            $depth = 0;
+            $enabled = null;
             for ($i = 0; $i + 1 < $count; $i++) {
-                if (self::stringValue($inner[$i]) === 'enabled' && self::is($inner[$i + 1], T_DOUBLE_ARROW)) {
-                    return self::mayBeOn(self::valueAt($inner, $i + 2));
+                $token = $inner[$i];
+                if (in_array($token, ['[', '(', '{'], true)) { $depth++; continue; }
+                if (in_array($token, [']', ')', '}'], true)) { $depth--; continue; }
+                if ($depth === 0 && self::stringValue($token) === 'enabled' && self::is($inner[$i + 1], T_DOUBLE_ARROW)) {
+                    $enabled = self::valueAt($inner, $i + 2);
                 }
             }
-            return true;
+            return $enabled === null || self::mayBeOn($enabled);
         }
         $text = strtolower(self::joined($value));
         if ($text === 'false' || $text === 'null' || $text === '0' || $text === "''" || $text === '""') {

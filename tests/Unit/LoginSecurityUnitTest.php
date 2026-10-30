@@ -149,6 +149,8 @@ final class LoginSecurityUnitTest extends TestCase
             "'two_factor' => array('enabled' => false, 'issuer' => Env::get('APP_NAME'))," => [false, false],
             "// 'two_factor' => Env::get('TWO_FACTOR'),\n'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')," => [false, false],
             "/* 'email_verification' => true, */ 'two_factor' => false," => [false, false],
+            "'two_factor' => ['required_roles' => ['enabled' => false]]," => [true, false],
+            "'two_factor' => ['enabled' => false, 'enabled' => true]," => [true, false],
         ];
         try {
             foreach ($cases as $code => [$twoFactor, $verification]) {

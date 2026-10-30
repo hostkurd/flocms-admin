@@ -102,6 +102,9 @@ final class Admin
                 self::registerLoginSecurity(self::$bootSwitches['two_factor'], self::$bootSwitches['email_verification']);
                 return;
             } else {
+                // A web request whose front controller defines ROOT after the autoloader:
+                // nothing can be registered in time, so config() keeps both switches off.
+                if (PHP_SAPI !== 'cli') { self::$bootSwitches = ['two_factor' => false, 'email_verification' => false]; }
                 return;
             }
         }
@@ -145,7 +148,7 @@ final class Admin
             try {
                 App::logger()->log('warning', '[flocms-admin] ' . implode(' and ', array_map(static fn (string $key): string => "'" . $key . "'", $late))
                     . ' in config/admin.php is on, but the panel could not see it when it started, so it stays off.'
-                    . ' Write it in config/admin.php itself (true, an array, or a value such as Env::get()). php flo admin:doctor reports it too.');
+                    . ' Write it in config/admin.php itself (true, an array, or a value such as Env::get()), and define ROOT before loading vendor/autoload.php. php flo admin:doctor reports it too.');
             } catch (Throwable) {
                 // Logging must never break a page
             }
