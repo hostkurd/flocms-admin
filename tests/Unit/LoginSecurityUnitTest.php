@@ -128,4 +128,38 @@ final class LoginSecurityUnitTest extends TestCase
         self::assertSame('Firefox on Linux', TrustedDevices::describe('Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0'));
         self::assertSame('Unknown device', TrustedDevices::describe(''));
     }
+
+    /**
+     * The sign-in steps are registered from config/admin.php's code, before the
+     * site reads .env (0.39.4): which switches may be on.
+     */
+    public function testConfigSwitchesAreReadFromTheFilesCode(): void
+    {
+        $file = sys_get_temp_dir() . '/flo-admin-switches-' . bin2hex(random_bytes(4)) . '.php';
+        $cases = [
+            "'two_factor' => true," => [true, false],
+            "'two_factor' => false, 'email_verification' => null," => [false, false],
+            "'brand' => 'x'," => [false, false],
+            "'two_factor' => \\FloCMS\\Core\\Env::get('TWO_FACTOR', false)," => [true, false],
+            "'two_factor' => E::get('TWO_FACTOR')," => [true, false],
+            "'two_factor' => (bool) \$_ENV['TWO_FACTOR'] ?? false, 'email_verification' => \$verify," => [true, true],
+            "'email_verification' => ['required' => true]," => [false, true],
+            "'email_verification' => ['required_roles' => [2], 'enabled' => false]," => [false, false],
+            "'email_verification' => ['required_roles' => [2], 'enabled' => getenv('VERIFY') === '1']," => [false, true],
+            "'two_factor' => array('enabled' => false, 'issuer' => Env::get('APP_NAME'))," => [false, false],
+            "// 'two_factor' => Env::get('TWO_FACTOR'),\n'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')," => [false, false],
+            "/* 'email_verification' => true, */ 'two_factor' => false," => [false, false],
+            "'two_factor' => ['required_roles' => ['enabled' => false]]," => [true, false],
+            "'two_factor' => ['enabled' => false, 'enabled' => true]," => [true, false],
+        ];
+        try {
+            foreach ($cases as $code => [$twoFactor, $verification]) {
+                file_put_contents($file, "<?php\nreturn [" . $code . "];\n");
+                self::assertSame(['two_factor' => $twoFactor, 'email_verification' => $verification], \FloCMS\Admin\Support\ConfigSwitches::scan($file), $code);
+            }
+        } finally {
+            @unlink($file);
+        }
+        self::assertSame(['two_factor' => false, 'email_verification' => false], \FloCMS\Admin\Support\ConfigSwitches::scan($file));
+    }
 }

@@ -1,3 +1,13 @@
+# Upgrading to Admin 0.39.4
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.4" -W`. Nothing else to do: `.env` values used in `config/admin.php` (such as `'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')`) reach the panel again. If you replaced such a line with a fixed value as a workaround, you can put it back.
+
+- `config/admin.php` is read twice per request (once early, for the login security switches, as since 0.35.0). Keep it a plain `return [...]`: a function or class declared in it would be declared twice.
+- Write `'two_factor'` and `'email_verification'` in `config/admin.php` itself, as `true`, an array, or a value from `.env`. If they come from another file merged into it, run `php flo admin:doctor`.
+- A switch taken from `.env` registers its sign-in step even while it is off (the step then checks the real value). That needs Config `'auth.user_loader'`, which the skeleton sets in `config/config.php`; `admin:doctor` reports it when it is missing.
+
+---
+
 # Upgrading to Admin 0.39.3
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.3" -W` and reload open Admin pages. Nothing changes unless you add `'site_link' => false` (or an address) to `config/admin.php`.

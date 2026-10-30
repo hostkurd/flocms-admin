@@ -44,6 +44,26 @@ final class PanelRequestTest extends RequestTestCase
         self::assertStringNotContainsString('<style>', $body);
     }
 
+    /**
+     * config/admin.php is read during Composer's autoload (for the login security
+     * switches), before the site reads .env. Values from .env must still reach
+     * the panel: the early read is not kept (0.39.4).
+     */
+    public function testSettingsFromEnvReachThePanel(): void
+    {
+        $file = self::$root . '/config/admin.php';
+        $original = (string) file_get_contents($file);
+        file_put_contents($file, "<?php\nreturn ['reactive' => false, 'resources' => [\\FloCMS\\Admin\\Tests\\Fixtures\\Resources\\PostResource::class], 'brand' => \\FloCMS\\Core\\Env::get('TEST_PANEL_NAME', 'Admin')];\n");
+        try {
+            $body = self::request('GET', '/en/admin/posts', ['config_file' => true, 'env' => ['TEST_PANEL_NAME' => 'Sunrise Homes']])['body'];
+        } finally {
+            file_put_contents($file, $original);
+        }
+
+        self::assertStringContainsString('Sunrise Homes', $body);
+        self::assertStringContainsString('Sea view villa', $body);
+    }
+
     public function testPanelCarriesTheConfiguredColourTheme(): void
     {
         self::assertStringContainsString('data-theme="light"', self::request('GET', '/en/admin/posts')['body']);

@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.39.3';
+    public const VERSION = '0.39.4';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -63,29 +63,98 @@ final class Admin
 
     private static bool $twoFactorBooted = false;
     private static bool $verificationBooted = false;
+    /** @var array{two_factor: bool, email_verification: bool}|null the switches registered when the panel started from config/admin.php */
+    private static ?array $bootSwitches = null;
+    private static bool $lateSwitchWarned = false;
 
     /**
      * Two-factor sign-in and email verification hold fresh sign-ins (flocms-core
-     * 2.7). Registered only when config/admin.php turns them on, so a site that
-     * doesn't use them is never asked for a sign-in step. Reads the config at
-     * boot when the site's ROOT is known; useConfig() asks again.
+     * 2.7). Registered only when config/admin.php may turn them on, so a site
+     * that doesn't use them is never asked for a sign-in step.
+     *
+     * At boot (Composer's autoload) the site hasn't read .env yet, so running the
+     * file gives Env::get() its default. A switch is registered when running the
+     * file turns it on, or when ConfigSwitches sees in its code that it may be
+     * on (a value from .env) (0.39.4). That early read is not kept: config()
+     * reads the file again after .env, and each hold checks the real settings
+     * when the request is checked. useConfig() registers the switches of the
+     * settings it gets (commands, tests).
      */
-    private static function bootLoginSecurity(): void
+    private static function bootLoginSecurity(?AdminConfig $config = null): void
     {
-        if (!self::$booted || (self::$root === null && self::$config === null && !defined('ROOT'))) { return; }
-        try {
-            $config = self::config();
-        } catch (Throwable) {
-            return;
+        if (!self::$booted) { return; }
+        if ($config === null) {
+            if (self::$config !== null) {
+                $config = self::$config;
+            } elseif (self::$root !== null || defined('ROOT')) {
+                // From the file's code (a switch from .env), and from running it (a switch built
+                // in another file); the result of running it is not kept: .env isn't read yet.
+                $switches = \FloCMS\Admin\Support\ConfigSwitches::scan(self::configFile());
+                try {
+                    [$values, $installed, $root] = self::readConfigFile();
+                    $early = new AdminConfig($values, $root, $installed);
+                    $switches['two_factor'] = $switches['two_factor'] || $early->twoFactor()['enabled'];
+                    $switches['email_verification'] = $switches['email_verification'] || $early->emailVerification()['enabled'];
+                } catch (Throwable) {
+                    // The file needs something the site sets up later: the code alone decides.
+                }
+                self::$bootSwitches = $switches;
+                self::registerLoginSecurity(self::$bootSwitches['two_factor'], self::$bootSwitches['email_verification']);
+                return;
+            } else {
+                // A web request whose front controller defines ROOT after the autoloader:
+                // nothing can be registered in time, so config() keeps both switches off.
+                if (PHP_SAPI !== 'cli') { self::$bootSwitches = ['two_factor' => false, 'email_verification' => false]; }
+                return;
+            }
         }
-        if (!self::$twoFactorBooted && $config->twoFactor()['enabled']) {
+        self::registerLoginSecurity($config->twoFactor()['enabled'], $config->emailVerification()['enabled']);
+    }
+
+    private static function registerLoginSecurity(bool $twoFactor, bool $verification): void
+    {
+        if (!self::$twoFactorBooted && $twoFactor) {
             self::$twoFactorBooted = true;
             \FloCMS\Admin\Auth\TwoFactor::boot();
         }
-        if (!self::$verificationBooted && $config->emailVerification()['enabled']) {
+        if (!self::$verificationBooted && $verification) {
             self::$verificationBooted = true;
             \FloCMS\Admin\Auth\EmailVerification::boot();
         }
+    }
+
+    /**
+     * A switch that is on but wasn't registered when the panel started (off
+     * when the file ran early, and built in a way ConfigSwitches can't follow,
+     * such as a value from .env in another file) can't be asked at sign-in: it is turned off for this
+     * request, so the panel shows what is enforced, and a warning is logged.
+     *
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>
+     */
+    private static function withoutLateSwitches(array $values, string $root, bool $installed): array
+    {
+        if (self::$bootSwitches === null) { return $values; }
+        $config = new AdminConfig($values, $root, $installed);
+        $late = [];
+        foreach (['two_factor' => $config->twoFactor()['enabled'], 'email_verification' => $config->emailVerification()['enabled']] as $key => $enabled) {
+            if ($enabled && !self::$bootSwitches[$key]) {
+                $late[] = $key;
+                if (is_array($values[$key] ?? null)) { $values[$key]['enabled'] = false; } else { $values[$key] = false; }
+            }
+        }
+        if ($late !== [] && !self::$lateSwitchWarned) {
+            self::$lateSwitchWarned = true;
+            try {
+                App::logger()->log('warning', '[flocms-admin] ' . implode(' and ', array_map(static fn (string $key): string => "'" . $key . "'", $late))
+                    . ' in config/admin.php is on, but the panel could not see it when it started, so it stays off.'
+                    . ' Write it in config/admin.php itself (true, an array, or a value such as Env::get()), and define ROOT before loading vendor/autoload.php. php flo admin:doctor reports it too.');
+            } catch (Throwable) {
+                // Logging must never break a page
+            }
+        }
+
+        return $values;
     }
 
     /**
@@ -228,8 +297,22 @@ final class Admin
             return self::$config;
         }
 
+        [$values, $installed, $root] = self::readConfigFile();
+
+        return self::useConfig(self::withoutLateSwitches($values, $root, $installed), $installed, $root);
+    }
+
+    /** The site's config/admin.php. */
+    public static function configFile(): string
+    {
+        return self::root() . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'admin.php';
+    }
+
+    /** @return array{0: array<string, mixed>, 1: bool, 2: string} the values, whether the file exists, the root */
+    private static function readConfigFile(): array
+    {
         $root = self::root();
-        $file = $root . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'admin.php';
+        $file = self::configFile();
         $values = [];
         $installed = is_file($file);
 
@@ -238,7 +321,7 @@ final class Admin
             $values = is_array($loaded) ? $loaded : [];
         }
 
-        return self::useConfig($values, $installed, $root);
+        return [$values, $installed, $root];
     }
 
     /**
@@ -261,7 +344,7 @@ final class Admin
         Languages::setRtl(self::$config->rtlLanguages());
         \FloCMS\Admin\Auth\TwoFactor::reset();
         \FloCMS\Admin\Auth\EmailVerification::reset();
-        self::bootLoginSecurity();
+        self::bootLoginSecurity(self::$config);
 
         return self::$config;
     }
@@ -299,6 +382,8 @@ final class Admin
         \FloCMS\Admin\Roles\Roles::reset();
         \FloCMS\Admin\Relations\RelationManager::reset();
         self::$problemsLogged = false;
+        self::$bootSwitches = null;
+        self::$lateSwitchWarned = false;
         Languages::reset();
     }
 
