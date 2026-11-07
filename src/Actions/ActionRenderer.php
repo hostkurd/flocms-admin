@@ -26,12 +26,15 @@ final class ActionRenderer
     private function renderRow(?object $record, bool $reactive, string $prefix, ?string $backUrl): string
     {
         $primary = '';
-        $items = ''; $danger = ''; $group = null;
+        $items = ''; $danger = ''; $group = null; $copies = '';
         foreach ($this->allowed('row', $record) as $action) {
             if ($action->getName() === 'edit' && $primary === '') {
                 $primary = $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'icon');
             } elseif ($action->getColor() === 'danger') {
                 $danger .= $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'menu');
+            } elseif ($action->getKind() === 'duplicate') {
+                // Duplicate (0.40) sits in its own group, just before the destructive actions.
+                $copies .= $this->item($action, 'row', $record, $reactive, $prefix, $backUrl, 'menu');
             } else {
                 // A divider between groups (0.28)
                 if ($items !== '' && $action->getGroup() !== $group) { $items .= '<hr class="fa-menu-divider">'; }
@@ -43,6 +46,7 @@ final class ActionRenderer
         if ($record !== null && $primary !== '' && $this->resource::rowOpens() === 'edit' && ($viewUrl = $this->resource->viewUrl($record)) !== null) {
             $items = '<a class="fa-menu-item" data-admin-action="view" href="' . Str::e($viewUrl) . '">' . Icons::svg('eye') . '<span>' . Str::e(AdminLang::get('view.view')) . '</span></a>' . ($items !== '' && $this->firstGroup('row', $record) !== null ? '<hr class="fa-menu-divider">' : '') . $items;
         }
+        $items .= ($items !== '' && $copies !== '' ? '<hr class="fa-menu-divider">' : '') . $copies;
         // Destructive actions come last, after a divider.
         $menu = $items . ($items !== '' && $danger !== '' ? '<hr class="fa-menu-divider">' : '') . $danger;
         if ($primary === '' && $menu === '') { return ''; }
@@ -67,15 +71,17 @@ final class ActionRenderer
     /** @return array{items: string, danger: string} */
     public function menu(object $record, ?string $backUrl = null): array
     {
-        $items = ''; $danger = ''; $group = null;
+        $items = ''; $danger = ''; $group = null; $copies = '';
         foreach ($this->allowed('row', $record) as $action) {
             if ($action->getName() === 'edit') { continue; }
             $item = $this->item($action, 'row', $record, false, 'fa-view', $backUrl, 'menu');
             if ($action->getColor() === 'danger') { $danger .= $item; continue; }
+            if ($action->getKind() === 'duplicate') { $copies .= $item; continue; }
             if ($items !== '' && $action->getGroup() !== $group) { $items .= '<hr class="fa-menu-divider">'; }
             $group = $action->getGroup();
             $items .= $item;
         }
+        $items .= ($items !== '' && $copies !== '' ? '<hr class="fa-menu-divider">' : '') . $copies;
         return ['items' => $items, 'danger' => $danger];
     }
 
@@ -100,7 +106,7 @@ final class ActionRenderer
     private function firstGroup(string $placement, ?object $record): ?string
     {
         foreach ($this->allowed($placement, $record) as $action) {
-            if ($action->getName() !== 'edit' && $action->getColor() !== 'danger') { return $action->getGroup(); }
+            if ($action->getName() !== 'edit' && $action->getColor() !== 'danger' && $action->getKind() !== 'duplicate') { return $action->getGroup(); }
         }
         return null;
     }
@@ -139,7 +145,7 @@ final class ActionRenderer
             return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e($url) . '">' . $label . '</a>';
         }
         // A page-mode Create or Edit is an ordinary link (the panel loads it without a reload).
-        $page = $action->getMode($this->resource) === 'page' && in_array($action->getKind(), ['create', 'edit'], true);
+        $page = $action->getMode($this->resource) === 'page' && in_array($action->getKind(), ['create', 'edit', 'duplicate'], true);
         if ($reactive && !$page) {
             return '<button type="button" id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" class="' . $class . '"' . $attributes . ' data-admin-action="' . Str::e($name) . '" data-admin-placement="' . $placement . '" data-admin-record="' . Str::e($id) . '" data-rx-set="selection" data-rx-value="' . Str::e($placement . ':' . $name . ':' . $id) . '" data-rx-action="openAction" data-rx-dialog-trigger="editor">' . $label . '</button>';
         }
@@ -151,6 +157,10 @@ final class ActionRenderer
         if ($name === 'edit' && $kind === 'edit') { $path = $this->resource::getSlug() . '/edit/' . $id; }
         // Inside a parent (a relation manager without JavaScript) every link keeps it (0.22).
         $parent = $this->resource->parentScope()?->token();
+        // Duplicate (0.40): the New page, filled from the record; back to where it was opened.
+        if ($kind === 'duplicate') {
+            return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . '-' . $id) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e(Admin::url($this->resource::getSlug() . '/create', ['duplicate' => $id, 'parent' => $parent, 'back' => $backUrl !== null && $backUrl !== Admin::url($this->resource::getSlug()) ? $backUrl : null])) . '">' . $label . '</a>';
+        }
         if ($backUrl !== null && (($name === 'create' && $kind === 'create' && $placement === 'page') || ($name === 'edit' && $kind === 'edit'))) {
             return '<a class="' . $class . '"' . $attributes . ' id="' . Str::e($prefix . '-' . $name . ($id !== '' ? '-' . $id : '-' . $placement)) . '" data-admin-action="' . Str::e($name) . '" href="' . Str::e(Admin::url($path, ['parent' => $parent, 'back' => $backUrl])) . '">' . $label . '</a>';
         }

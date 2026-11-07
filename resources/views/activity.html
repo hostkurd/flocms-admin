@@ -61,6 +61,7 @@
                         <span class="fa-activity-verb">{{ $row['verb'] }}</span>
                         @if($row['target'] !== '')@if($row['url'] !== null)<a class="fa-activity-target" href="{{ $row['url'] }}">{{ $row['target'] }}</a>@else<span class="fa-activity-target">{{ $row['target'] }}</span>@endif @endif
                         @if($row['fields'] !== '')<span class="fa-cell-sub">{{ $row['fields'] }}</span>@endif
+                        @if($row['from'] !== '')<span class="fa-cell-sub">{!! $row['from'] !!}</span>@endif
                     </td>
                     <td class="fa-actions">@if($row['showUrl'] !== null)<a class="fa-btn fa-btn-sm" href="{{ $row['showUrl'] }}" data-admin-dialog-url>{{ $t('activity.show_changes') }}</a>@endif</td>
                 </tr>

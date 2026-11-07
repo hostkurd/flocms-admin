@@ -18,7 +18,7 @@ final class ActionRegistry
             // A read-only relation manager has no actions; canCreate(false) has no Create (0.22).
             if ($manager !== null) {
                 $this->actions[$placement] = array_filter($this->actions[$placement], static fn (Action $action): bool =>
-                    !$manager->isReadOnly() && ($action->getKind() !== 'create' || $manager->allowsCreate()));
+                    !$manager->isReadOnly() && (!in_array($action->getKind(), ['create', 'duplicate'], true) || $manager->allowsCreate()));
             }
         }
     }
@@ -31,7 +31,7 @@ final class ActionRegistry
             $name = $action->getName();
             if (isset($result[$name])) { throw new \InvalidArgumentException('Duplicate action: ' . $placement . '/' . $name); }
             if (($action->getKind() === 'create' && $placement === 'row')
-                || (in_array($action->getKind(), ['edit', 'delete'], true) && $placement !== 'row')) {
+                || (in_array($action->getKind(), ['edit', 'delete', 'duplicate'], true) && $placement !== 'row')) {
                 throw new \InvalidArgumentException('Invalid placement for CRUD action ' . $name); }
             $result[$name] = $action;
         }

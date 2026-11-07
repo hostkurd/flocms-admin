@@ -2,6 +2,24 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.40.0 - 2026-11-08
+
+**Duplicate for any resource.** Nothing to migrate: existing resources don't change until you add the action. See [Duplicate](docs/actions-and-notifications.md#duplicate).
+
+- **`DuplicateAction::make()`** (`FloCMS\Admin\Actions`): add it to `Table::actions()` next to Edit and Delete. It opens the resource's New form filled from the record; nothing is saved until the editor presses Create, and the save is an ordinary create (`normalizeState()`, validation and `unique()` checks, `beforeSave()` / `afterSave()`, pivots, media usage, activity). The record that was copied is never written, locked or used for uploads.
+  - In the row's More actions menu (copy icon, its own group just before Delete) and in the view page's More menu. It opens the way the resource's Create does: dialog, slide-over or page.
+  - The heading says `Duplicate “A1”`; a note above the fields says it is a copy, that nothing is saved yet, and that records linked to the original are not copied.
+  - Every field the form shows is copied as Edit reads it (translations, relations, repeaters, blocks, MediaPicker ids, rich text). Passwords never; Slug fields get `-copy` (`-copy-2`, `-copy-3`… when taken); other `unique()` fields start empty; fields hidden or disabled on a new record start at their default. The primary key is never copied. Columns unique only in the database (not `unique()`) belong in `->except()`.
+  - `->except([...])`, `->only([...])` (not both: `LogicException`) and `->fill(fn (array $state, object $source): array => ...)`, applied last.
+  - **Uploads**: a `FileUpload` / `ImageUpload` file is copied into the pending uploads as a new pending upload of the session (`Uploads::stageCopy()`), so the copy gets its own stored file. A missing file, or one larger than the field's `maxSize()`, is left out with a note. Reopening the same copy reuses its pending file; a dialog closed without saving releases its copies; a full pending area ("too many files are waiting to be saved") is told apart from a missing or too large file, and the note stays after a failed save.
+  - **Permissions**: it follows the resource's own Create action (none, or one whose permission, `visible()`, `authorize()` or `disabled()` refuses, means no Duplicate) and uses its permission unless Duplicate has its own `->permission()`; plus `canCreate()`, the `view` permission, `query()` and `canView()` for the copied record. Checked when the form opens and again on save; if the record went away meanwhile, saving the page shows the form again with the input and a message.
+  - **Create and duplicate again**: a second button that saves and opens a fresh copy of the same record (on the page and in the dialog).
+  - **Without JavaScript**: `/admin/<resource>/create?duplicate=<id>`; the form keeps `duplicate=<id>` when it posts and saves a new record. Unknown records answer 404, forbidden ones 403. A resource without `DuplicateAction` answers 404 to `create?duplicate=`.
+  - **Activity**: the new record's "created" entry has `duplicated_from` (id and title); History, the Activity page and the entry's details show "Duplicated from <title>", linked while the original exists. The link checks the resource's `query()` and `canView()` (the originals of a page of entries are read together); otherwise the title is plain text.
+- `FormSubmission::save()` takes an optional `meta:` array, added to the save's activity entry.
+- New words in `en`, `ar` and `ku`: `actions.duplicate`, `duplicate.*`, `activity.duplicated_from`, `activity.duplicated_from_label`.
+- Pages keep their own instant Duplicate, unchanged.
+
 ## 0.39.6 - 2026-11-08
 
 - **Larger list thumbnails: `MediaColumn::size()`.** `MediaColumn::make('cover_id')->size('lg')` shows the picture at 80×60, `->size('md')` at 64×48 (both landscape 4:3, which suits property and article covers); without it the column keeps its 40×40 square. The size is a class on the cell (`.fa-media-cell.is-md` / `.is-lg`), so it needs no inline style and works under a strict Content-Security-Policy. Another value throws an `InvalidArgumentException`. Nothing to change in existing sites.

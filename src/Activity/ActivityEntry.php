@@ -166,6 +166,65 @@ final class ActivityEntry
         return is_array($parents) ? array_values(array_filter($parents, 'is_string')) : [];
     }
 
+    /**
+     * The record a copy was made from (Duplicate, 0.40): its title, and a link
+     * while it still exists, is in the resource's query() and the person may
+     * view it (canView()) and open it. Call preloadSources() for a list first.
+     *
+     * @return array{title: string, url: ?string}|null
+     */
+    public function duplicatedFrom(): ?array
+    {
+        $from = $this->meta['duplicated_from'] ?? null;
+        if (!is_array($from) || !is_scalar($from['id'] ?? null) || (string) $from['id'] === '') { return null; }
+        $id = (string) $from['id'];
+        $title = is_string($from['title'] ?? null) ? trim(Translations::get($from['title'], AdminLang::language())) : '';
+        $title = trim((string) preg_replace('/\s+/u', ' ', strip_tags($title)));
+        $class = $this->resourceClass();
+        $url = null;
+        if ($class !== null) {
+            if (!array_key_exists($class . '#' . $id, self::$sources)) { self::preloadSources([$this]); }
+            $url = self::$sources[$class . '#' . $id] ?? null;
+        }
+        return ['title' => $title !== '' ? mb_strimwidth($title, 0, 120, '…') : '#' . $id, 'url' => $url];
+    }
+
+    /** @var array<string, ?string> "class#id" => the original's URL, or null when it can't be opened */
+    private static array $sources = [];
+
+    /**
+     * Look up the originals of every copy in $entries at once (one query per
+     * resource), through the resource's own query() and canView().
+     *
+     * @param list<self> $entries
+     */
+    public static function preloadSources(array $entries): void
+    {
+        $wanted = [];
+        foreach ($entries as $entry) {
+            $from = $entry->meta['duplicated_from'] ?? null;
+            $class = is_array($from) && is_scalar($from['id'] ?? null) && (string) $from['id'] !== '' ? $entry->resourceClass() : null;
+            if ($class !== null && !array_key_exists($class . '#' . $from['id'], self::$sources)) { $wanted[$class][] = (string) $from['id']; }
+        }
+        $db = \FloCMS\Core\App::db();
+        foreach ($wanted as $class => $ids) {
+            $ids = array_values(array_unique($ids));
+            foreach ($ids as $id) { self::$sources[$class . '#' . $id] = null; }
+            if ($db === null) { continue; }
+            try {
+                $resource = new $class();
+                $repository = new \FloCMS\Admin\Data\RecordRepository($resource, $db, Translations::store());
+                foreach ($repository->newQuery()->whereIn($class::getPrimaryKey(), $ids)->get() as $record) {
+                    $record = (object) $record;
+                    $key = $class . '#' . (string) $record->{$class::getPrimaryKey()};
+                    self::$sources[$key] = \FloCMS\Core\Auth::can($class::permission('view')) && $resource->canView($record) ? $resource->recordUrl($record) : null;
+                }
+            } catch (\Throwable) {
+                // A resource that can't be read here: its titles stay plain text.
+            }
+        }
+    }
+
     /** Whether the entry has a before → after table to show. */
     public function hasChanges(): bool
     {
@@ -184,6 +243,7 @@ final class ActivityEntry
         foreach ($this->meta as $key => $value) {
             if ($key === 'trash' && $value) { $details[AdminLang::get('trash.title')] = AdminLang::get('activity.moved_to_trash'); continue; }
             if ($key === 'expired' && $value) { $details[AdminLang::get('trash.title')] = AdminLang::get('activity.purged_expired'); continue; }
+            if ($key === 'duplicated_from' && ($from = $this->duplicatedFrom()) !== null) { $details[AdminLang::get('activity.duplicated_from_label')] = $from['title']; continue; }
             if (in_array($key, ['count', 'action', 'titles', 'expired', 'folder', 'file', 'trash', 'parents', 'import', 'status', 'selected'], true)) { continue; }
             if (is_scalar($value) && (string) $value !== '') {
                 $details[Str::headline((string) $key)] = mb_strimwidth((string) $value, 0, 300, '…');
@@ -304,10 +364,16 @@ final class ActivityEntry
         }
         $class = $this->resourceClass();
         if ($class === null || in_array($this->action, ['deleted', 'purged'], true)) { return null; }
+        return $this->urlFor($class, $this->recordId);
+    }
+
+    /** @param class-string<Resource> $class */
+    private function urlFor(string $class, string $id): ?string
+    {
         $mayEdit = (new $class())->mayEditSome();
         $mayView = $class::hasViewPage() && \FloCMS\Core\Auth::can($class::permission('view'));
-        if ($mayEdit && !($mayView && $class::rowOpens() === 'view')) { return Admin::url($class::getSlug() . '/edit/' . rawurlencode($this->recordId)); }
-        return $mayView ? Admin::url($class::getSlug() . '/view/' . rawurlencode($this->recordId)) : null;
+        if ($mayEdit && !($mayView && $class::rowOpens() === 'view')) { return Admin::url($class::getSlug() . '/edit/' . rawurlencode($id)); }
+        return $mayView ? Admin::url($class::getSlug() . '/view/' . rawurlencode($id)) : null;
     }
 
     private function listUrl(): ?string

@@ -35,6 +35,10 @@ final class ResourceComponent extends Component
     #[State(writable: false)] public string $mode = '';
     #[State(writable: false)] public string $operation = '';
     #[State(maxBytes: 65536)] public string $draft = '';
+    /** Duplicate (0.40): the upload fields whose file could not be copied, with why (JSON object). */
+    #[State(writable: false)] public string $duplicateSkipped = '[]';
+    /** Duplicate (0.40): the pending copies of the record's files, released when the dialog closes unsaved. */
+    #[State(writable: false)] public string $duplicateTokens = '[]';
     /** Page-level translation (0.23): the language the dialog's switch shows. */
     #[State(rules: 'max:16')] public string $editing = '';
     /** A relation manager (0.22): the parent's slug and id and the manager's name, signed. */
@@ -137,6 +141,8 @@ final class ResourceComponent extends Component
         $this->editingId = $id; $this->operation = $opened['operation'];
         $this->fingerprint = $opened['record'] !== null ? RecordRepository::fingerprint($opened['record']) : '';
         $this->mode = $action->getKind();
+        $this->duplicateSkipped = json_encode((object) ($opened['skipped'] ?? []), JSON_THROW_ON_ERROR);
+        $this->duplicateTokens = json_encode($opened['tokens'] ?? [], JSON_THROW_ON_ERROR);
         // An existing record opens in the language last saved in; a new one in the default language.
         $this->editing = \FloCMS\Admin\Translation\EditingLanguage::resolve(null, $opened['record'] !== null);
         $this->draft = json_encode((object) ActionForm::safe($action->getForm($resource), $opened['state']), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -155,7 +161,9 @@ final class ResourceComponent extends Component
         if ($this->mode === 'bulk') { $this->bulkExecutor()->preview($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation); }
         $record = $this->editingId !== '' ? $this->repository()->find($this->editingId) : null;
         if ($this->activePlacement === 'row' && $record === null) { throw new ValidationException(['_form' => AdminLang::get('reactive.missing')]); }
-        $state = in_array($action->getKind(), ['create', 'edit'], true)
+        // Duplicate (0.40): the form is a new record's; the copied one is not its record.
+        if ($this->mode === 'duplicate') { $record = null; }
+        $state = in_array($action->getKind(), ['create', 'edit', 'duplicate'], true)
             ? (new \FloCMS\Admin\Form\FormSubmission($resource, $this->repository()))->state($form, $input, $record)
             : ActionForm::state($action, $form, $input, $record);
         $form->refreshState($state, $record);
@@ -165,7 +173,7 @@ final class ResourceComponent extends Component
     /** A wizard's Back, Next or step button (0.39): shows the dialog on another step; never saves. */
     #[Action] public function wizard(): void
     {
-        if (!in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true)) { throw new HttpException(400); }
+        if (!in_array($this->mode, ['create', 'edit', 'duplicate', 'custom', 'bulk'], true)) { throw new HttpException(400); }
         if (!$this->moveWizard()) { throw new HttpException(400); }
     }
     /**
@@ -204,6 +212,8 @@ final class ResourceComponent extends Component
         $decoded = json_decode($this->draft);
         if (!$decoded instanceof \stdClass) { throw new HttpException(400); }
         $accepted = ActionForm::safe($action->getForm($this->resource()), json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR));
+        // Create and duplicate again (0.40): the same record opens again once this copy is saved.
+        $again = $this->mode === 'duplicate' && (($decoded->_duplicate_again ?? null) === '1') ? [$this->activePlacement, $this->activeAction, $this->editingId] : null;
         try {
             if ($this->mode === 'bulk') {
                 $this->bulkExecutor()->execute($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds), $this->operation, json_decode($this->draft, true, 512, JSON_THROW_ON_ERROR), $accepted, 64000);
@@ -216,8 +226,8 @@ final class ResourceComponent extends Component
             $posted = (array) json_decode($this->draft, true);
             $keys = \FloCMS\Admin\Form\WizardFlow::posted($posted);
             // A wizard's final submit failed: the dialog opens on the first step with an error.
-            if (($flow = \FloCMS\Admin\Form\WizardFlow::for($action->getForm($this->resource()), $this->mode === 'edit')) !== null && in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true)) {
-                $shown = $flow->forErrors($posted, $error->getErrors(), $accepted, $this->editingId !== '' ? $this->repository()->find($this->editingId) : null);
+            if (($flow = \FloCMS\Admin\Form\WizardFlow::for($action->getForm($this->resource()), $this->mode === 'edit')) !== null && in_array($this->mode, ['create', 'edit', 'duplicate', 'custom', 'bulk'], true)) {
+                $shown = $flow->forErrors($posted, $error->getErrors(), $accepted, $this->editingId !== '' && $this->mode !== 'duplicate' ? $this->repository()->find($this->editingId) : null);
                 $keys = ['_wizard_step' => $shown->step, '_wizard_reached' => $shown->visible[min($shown->reached, count($shown->visible) - 1)], '_wizard_moved' => '1'];
             }
             $this->draft = json_encode((object) ($accepted + $keys), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -225,12 +235,16 @@ final class ResourceComponent extends Component
             if ($this->switches($action)) { $this->editing = \FloCMS\Admin\Translation\EditingLanguage::forErrors($error->getErrors(), $this->editingLanguage()); }
             throw $error;
         }
-        if ($this->switches($action) && in_array($this->mode, ['create', 'edit'], true)) { \FloCMS\Admin\Translation\EditingLanguage::remember($this->editingLanguage()); }
+        if ($this->switches($action) && in_array($this->mode, ['create', 'edit', 'duplicate'], true)) { \FloCMS\Admin\Translation\EditingLanguage::remember($this->editingLanguage()); }
         $this->discard();
+        if ($again !== null) {
+            // The copy is saved; if the record can no longer be copied the dialog just closes.
+            try { $this->open(...$again); } catch (ValidationException|HttpException) { $this->discard(); }
+        }
     }
     #[Action] public function save(): void
     {
-        if (!in_array($this->mode, ['create', 'edit'], true)) { throw new HttpException(400); }
+        if (!in_array($this->mode, ['create', 'edit', 'duplicate'], true)) { throw new HttpException(400); }
         $this->execute();
     }
     #[Action] public function delete(): void
@@ -242,8 +256,13 @@ final class ResourceComponent extends Component
     private function discard(): void
     {
         OperationStore::consume($this->operation);
+        // A Duplicate dialog's copied files that were not saved (a saved one is gone already).
+        $tokens = json_decode($this->duplicateTokens, true);
+        if (is_array($tokens) && $tokens !== []) { \FloCMS\Admin\Uploads\Uploads::release($tokens); }
+        $this->duplicateTokens = '[]';
         $this->bulkIds = '[]';
         $this->mode = $this->activeAction = $this->activePlacement = $this->editingId = $this->fingerprint = $this->draft = $this->operation = $this->editing = '';
+        $this->duplicateSkipped = '[]';
     }
     /** Whether the open dialog shows the language switch: a page-mode resource and a form with translatable fields (not bulk forms). */
     private function switches(?Definition $action): bool
@@ -332,6 +351,10 @@ final class ResourceComponent extends Component
         $action = $this->mode !== '' ? $registry->find($this->activePlacement, $this->activeAction) : null;
         $form = $action !== null ? $action->getForm($resource) : new Form();
         $record = $this->editingId !== '' ? $this->repository()->find($this->editingId) : null;
+        // Duplicate (0.40): the copied record names the dialog; the form is a new record's.
+        $source = null;
+        if ($this->mode === 'duplicate') { $source = $record; $record = null; }
+        $forms = in_array($this->mode, ['create', 'edit', 'duplicate'], true);
         $input = json_decode($this->draft, true);
         $safe = ActionForm::safe($form, is_array($input) ? $input : []);
         $state = $safe;
@@ -347,13 +370,13 @@ final class ResourceComponent extends Component
         $switch = $this->switches($action);
         $editing = $this->editingLanguage();
         $formRenderer = new FormRenderer($state, $this->errors, Languages::all(), Languages::default(), $this->mode === 'edit', false, $prefix . '-', true, \FloCMS\Admin\Uploads\Uploads::url($resource, $record),
-            in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/media') : null, $this->operation,
-            lookupUrl: in_array($this->mode, ['create', 'edit'], true) ? Admin::url($resource::getSlug() . '/lookup') : null,
-            recordId: $this->editingId !== '' ? $this->editingId : null, ownTable: $resource::getTable(),
+            $forms ? Admin::url($resource::getSlug() . '/media') : null, $this->operation,
+            lookupUrl: $forms ? Admin::url($resource::getSlug() . '/lookup') : null,
+            recordId: $record !== null ? $this->editingId : null, ownTable: $resource::getTable(),
             languageSwitch: $switch, editing: $editing, switchActive: $switch,
             sameNote: $switch ? AdminLang::get('translations.same_note', ['language' => Languages::name(Languages::default())]) : null);
         // A wizard (0.39): the step posted with the draft, or the first one when the dialog opens.
-        $flow = $action !== null && in_array($this->mode, ['create', 'edit', 'custom', 'bulk'], true) ? \FloCMS\Admin\Form\WizardFlow::for($form, $this->mode === 'edit') : null;
+        $flow = $action !== null && in_array($this->mode, ['create', 'edit', 'duplicate', 'custom', 'bulk'], true) ? \FloCMS\Admin\Form\WizardFlow::for($form, $this->mode === 'edit') : null;
         $wizardState = null;
         if ($flow !== null) {
             $posted = is_array($input) ? $input : [];
@@ -361,6 +384,10 @@ final class ResourceComponent extends Component
             $formRenderer->wizard($wizardState, '', \FloCMS\Admin\View\WizardSummary::closure($resource, $form, $state, $record, $wizardState, $editing));
         }
         $formFields = $form->components() === [] && $form->asideComponents() === [] ? '' : $formRenderer->render($form);
+        if ($source !== null && $formFields !== '') {
+            $skipped = json_decode($this->duplicateSkipped, true);
+            $formFields = \FloCMS\Admin\Actions\DuplicateAction::note($resource, $form, $source, \FloCMS\Admin\Actions\DuplicateAction::stillSkipped($form, $skipped, $state)) . $formFields;
+        }
         $renderer = new ActionRenderer($resource, $registry);
         $listUrl = $this->listUrl($resource::getSlug());
         return $this->view(dirname(__DIR__, 2) . '/resources/views/reactive-resource.html', [
@@ -398,14 +425,15 @@ final class ResourceComponent extends Component
             'cell' => static fn (\FloCMS\Admin\Table\Column $column, object $row): string => $column->renderCell($row, $cells),
             'dialogMinHeight' => $action?->getModalMinHeight(),
             'dialogStyle' => $action !== null && $action->getMode($resource) === 'slide-over' ? 'slide-over' : 'modal',
-            'actionTitle' => $action?->getTitle($resource, $record) ?? '', 'actionDescription' => $this->mode === 'bulk' && $action instanceof \FloCMS\Admin\Actions\BulkAction ? $this->bulkExecutor()->describe($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds)) : trim(($action?->getDescription($resource, $record) ?? '')
+            'actionTitle' => $action?->getTitle($resource, $source ?? $record) ?? '', 'actionDescription' => $this->mode === 'bulk' && $action instanceof \FloCMS\Admin\Actions\BulkAction ? $this->bulkExecutor()->describe($action, \FloCMS\Admin\Actions\BulkExecutor::ids($this->bulkIds)) : trim(($action?->getDescription($resource, $record) ?? '')
                 // Deleting a parent says how many related records it has (0.22).
                 . ($this->mode === 'delete' && $this->editingId !== '' ? ' ' . (\FloCMS\Admin\Relations\ManagersView::deleteCount($resource, $this->editingId) ?? '') : '')),
             'submitLabel' => $action?->getSubmitLabel($resource) ?? '', 'submitColor' => $action?->getColor() ?? 'default',
             // A wizard's final button waits for its last step on a new record (0.39).
             'wizardFinal' => $wizardState?->isFinal() ?? true,
             'uploadUrl' => Admin::url($resource::getSlug() . '/upload', ['parent' => $scope?->token()]), 'uploadOperation' => $this->operation, 'uploadPlacement' => $this->activePlacement, 'uploadAction' => $this->activeAction, 'uploadId' => $this->editingId, 'uploadCsrf' => \FloCMS\Core\Csrf::token(),
-            'submitAction' => match ($this->mode) { 'create', 'edit' => 'save', 'delete' => 'delete', default => 'execute' },
+            'submitAction' => match ($this->mode) { 'create', 'edit', 'duplicate' => 'save', 'delete' => 'delete', default => 'execute' },
+            'duplicateAgain' => $source !== null,
             'formShowsFields' => array_filter($form->fields(), static fn ($field): bool => $field->isVisible() && !$field instanceof \FloCMS\Admin\Form\Fields\Hidden) !== [],
             // No body for a confirmation without fields (it only padded the dialog).
             'formFields' => $formFields,

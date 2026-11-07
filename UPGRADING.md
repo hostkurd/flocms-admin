@@ -1,3 +1,23 @@
+# Upgrading to Admin 0.40.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.40.0" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do: no resource changes until you add the new action.
+
+To let editors copy records, add `DuplicateAction::make()` to a resource's row actions, between Edit and Delete:
+
+```php
+use FloCMS\Admin\Actions\{DeleteAction, DuplicateAction, EditAction};
+
+->actions([EditAction::make(), DuplicateAction::make(), DeleteAction::make()])
+```
+
+It suits resources whose records are often alike (properties, units, offers, FAQ entries). Fields such as a reference code marked `unique()` start empty in the copy; use `->except([...])` for other fields that should not be copied (a publish date, a status). Editors need the resource's `create` and `view` permissions. A site language file that overrides Admin words can add `admin.duplicate.*` and `admin.actions.duplicate`.
+
+- Duplicate follows the resource's Create action: a resource without Create (or whose Create is refused to someone) has no Duplicate for them, and Duplicate uses the Create action's `->permission()` if it has one.
+- Columns that are unique only in the database (a unique or composite index without `unique()` on the field) are copied; list them in `->except()`.
+- `/admin/<resource>/create?duplicate=<id>` answers 404 on resources without `DuplicateAction`; plain `/create` is unchanged.
+
+---
+
 # Upgrading to Admin 0.39.6
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.6" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do. To show larger thumbnails in a list, add `->size('md')` (64×48) or `->size('lg')` (80×60) to its `MediaColumn`.

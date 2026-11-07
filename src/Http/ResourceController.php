@@ -153,12 +153,49 @@ final class ResourceController extends PanelController
     public function admin_create(): string|\FloCMS\Core\Http\Response
     {
         $this->enterParent();
+        // ?duplicate=<id> (0.40): the New form filled from that record, saved as a new one.
+        $duplicate = $this->request->queryValue('duplicate', null);
+        if ($duplicate !== null) {
+            $action = $this->duplicateAction();
+            try { $source = $this->duplicateSource($action, $duplicate); }
+            catch (HttpException $error) {
+                // Gone (deleted, or out of reach) while the form was being filled: the form again with the input
+                // and an error, posting as a plain new record when Create allows it. Opening the copy stays 404/403.
+                $create = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->all('page')['create'] ?? null;
+                if (!$this->isPost() || preg_match('/^[A-Za-z0-9_-]{1,64}$/D', (string) $duplicate) !== 1
+                    || $create === null || $create->getKind() !== 'create' || !$create->allowed($this->resource, null)) { throw $error; }
+                return $this->handleForm(null, sourceGone: true);
+            }
+            return $this->handleForm(null, $action, $source);
+        }
         $this->builtin('page', 'create', 'create')->authorizeRequest($this->resource, null);
         if (!$this->resource->canCreate()) {
             throw new HttpException(403);
         }
 
         return $this->handleForm(null);
+    }
+
+    /** The list's Duplicate action (0.40); 404 when the resource has none. */
+    private function duplicateAction(): \FloCMS\Admin\Actions\DuplicateAction
+    {
+        foreach ((new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->all('row') as $candidate) {
+            if ($candidate instanceof \FloCMS\Admin\Actions\DuplicateAction) { return $candidate; }
+        }
+        throw new HttpException(404);
+    }
+
+    /**
+     * The record a copy is made from, checked like the action itself: the
+     * resource's Create action and canCreate(), and view of the record (the
+     * permission, the resource's query and canView()). 404 for an unknown record.
+     */
+    private function duplicateSource(\FloCMS\Admin\Actions\DuplicateAction $action, mixed $id): object
+    {
+        if (!is_string($id) || preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $id) !== 1) { throw new HttpException(404); }
+        $source = $this->repository()->find($id) ?? throw new HttpException(404);
+        $action->authorizeRequest($this->resource, $source);
+        return $source;
     }
 
     public function admin_edit(): string|\FloCMS\Core\Http\Response
@@ -548,6 +585,11 @@ final class ResourceController extends PanelController
         $this->enterParent();
         \FloCMS\Admin\Actions\ActionExecutor::validContext($placement, $id);
         $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find($placement, $name);
+        // Duplicate (0.40) is the New page filled from the record.
+        if ($action instanceof \FloCMS\Admin\Actions\DuplicateAction) {
+            $back = is_string($back = $this->request->queryValue('back', '')) ? $this->safeBackUrl($back) : null;
+            $this->redirect(Admin::url($this->resource::getSlug() . '/create', ['duplicate' => $id, 'parent' => $this->scope?->token(), 'back' => $back]));
+        }
         $executor = new \FloCMS\Admin\Actions\ActionExecutor($this->resource, $this->repository());
         $form = $action->getForm($this->resource);
         $errors = []; $state = []; $record = null; $wizardState = null;
@@ -765,9 +807,11 @@ final class ResourceController extends PanelController
         \FloCMS\Admin\Actions\ActionExecutor::validContext($placement, $id);
         $entry = \FloCMS\Admin\Actions\OperationStore::get($operation, $this->resource::getSlug(), $placement, $name, $id);
         $action = (new \FloCMS\Admin\Actions\ActionRegistry($this->resource))->find($placement, $name);
-        if (!in_array($action->getKind(), ['create', 'edit'], true)) { throw new HttpException(400); }
+        if (!in_array($action->getKind(), ['create', 'edit', 'duplicate'], true)) { throw new HttpException(400); }
         $record = (new \FloCMS\Admin\Actions\ActionExecutor($this->resource, $this->repository()))->record($placement, $id);
         $action->authorizeRequest($this->resource, $record);
+        // Duplicate (0.40): a file for the new record, never the copied one's.
+        if ($action->getKind() === 'duplicate') { $record = null; }
         if ($record !== null && !hash_equals($entry['fingerprint'], RecordRepository::fingerprint($record))) { throw new HttpException(409); }
         try { $input = json_decode($draft, true, 64, JSON_THROW_ON_ERROR); }
         catch (\JsonException) { throw new HttpException(400); }
@@ -881,9 +925,16 @@ final class ResourceController extends PanelController
      * Create and edit
      * ------------------------------------------------------------- */
 
-    private function handleForm(?object $record): string|\FloCMS\Core\Http\Response
+    /**
+     * The create and edit page. With $source (Duplicate, 0.40) it is the create
+     * page filled from that record: the record only gives the first values and
+     * is never used for the save, its checks or its uploads.
+     */
+    private function handleForm(?object $record, ?\FloCMS\Admin\Actions\DuplicateAction $duplicate = null, ?object $source = null, bool $sourceGone = false): string|\FloCMS\Core\Http\Response
     {
         $class = $this->resourceClass;
+        $sourceId = $source !== null ? (string) $source->{$class::getPrimaryKey()} : null;
+        $skipped = [];
         $form = $this->form();
         $languages = Languages::all();
         $default = Languages::default();
@@ -905,6 +956,10 @@ final class ResourceController extends PanelController
             if ($operation !== null) { $form->evaluate($state, $record)->applyRepeaterOperation($state, $operation); }
             $refreshing = $this->request->input('_refresh') !== null || $operation !== null;
             if ($refreshing) { $form->refreshState($state, $record); }
+            // Duplicate (0.40): the files that could not be copied, still empty (sent back by the form).
+            if ($source !== null) { $skipped = \FloCMS\Admin\Actions\DuplicateAction::stillSkipped($form, $this->request->input('_duplicate_skipped'), $state); }
+            // The copied record went away: never saved from here; the form shows again with the input.
+            if ($sourceGone) { $refreshing = true; Session::setFlash(AdminLang::get('duplicate.source_gone'), 'danger'); }
             $checked = false;
             // A wizard (0.39): Back, Next and the step buttons show the form again on another step, never save.
             if ($flow !== null) {
@@ -920,7 +975,7 @@ final class ResourceController extends PanelController
 
             if (!$refreshing && $errors === []) {
                 try {
-                    $id = $submission->save($form, $state, $record);
+                    $id = $submission->save($form, $state, $record, meta: $source !== null ? \FloCMS\Admin\Actions\ActionExecutor::duplicatedFrom($this->resource, $source) : []);
                 } catch (\FloCMS\Core\ValidationException $error) {
                     // Refused inside the save (a chosen media item was deleted meanwhile): nothing was written.
                     foreach ($error->getErrors() as $field => $messages) { $errors[(string) $field] = implode(' ', (array) $messages); }
@@ -936,6 +991,10 @@ final class ResourceController extends PanelController
                 $back = $this->backUrl();
                 $returnTo = $back !== Admin::url($class::getSlug()) ? $back : null;
                 $parent = $this->scope?->token();
+                // Create and duplicate again (0.40): a fresh copy of the same record.
+                if ($sourceId !== null && $this->request->input('_duplicate_again') !== null) {
+                    $this->redirect(Admin::url($class::getSlug() . '/create', ['duplicate' => $sourceId, 'parent' => $parent, 'back' => $returnTo]));
+                }
                 if ($this->request->input('_another') !== null && $this->can('create') && $this->resource->canCreate()) {
                     $this->redirect(Admin::url($class::getSlug() . '/create', ['parent' => $parent, 'back' => $returnTo]));
                 }
@@ -949,6 +1008,9 @@ final class ResourceController extends PanelController
                 $where = $form->errorSummary($errors, $state);
                 Session::setFlash($where === '' ? AdminLang::get('flash.fix_errors') : AdminLang::get('flash.fix_errors_in', ['fields' => $where]), 'danger');
             }
+        } elseif ($duplicate !== null && $source !== null) {
+            ['state' => $state, 'skipped' => $skipped] = $duplicate->prefill($this->resource, $this->repository(), $form, $source);
+            $wizardState = $flow?->initial($state, null);
         } else {
             $state = [];
             foreach ($form->fields() as $name => $field) {
@@ -974,7 +1036,12 @@ final class ResourceController extends PanelController
         $view = new PageView($class);
         $title = $isEdit
             ? AdminLang::get('form.edit_title', ['label' => $class::getLabel()])
-            : AdminLang::get('form.create_title', ['label' => $class::getLabel()]);
+            : ($duplicate !== null ? $duplicate->getTitle($this->resource, $source) : AdminLang::get('form.create_title', ['label' => $class::getLabel()]));
+        if ($source !== null) {
+            $kept = '';
+            foreach ($skipped as $name => $reason) { $kept .= '<input type="hidden" name="_duplicate_skipped[' . \FloCMS\Admin\Support\Str::e($name) . ']" value="' . \FloCMS\Admin\Support\Str::e($reason) . '">'; }
+            $fieldsHtml = \FloCMS\Admin\Actions\DuplicateAction::note($this->resource, $form, $source, $skipped) . $kept . $fieldsHtml;
+        }
 
         $deleteUrl = $isEdit && $this->can('delete') && $this->resource->canDelete($record)
             ? Admin::url($class::getSlug() . '/delete/' . $this->recordId(), ['parent' => $this->scope?->token()])
@@ -982,7 +1049,7 @@ final class ResourceController extends PanelController
 
         $back = $this->backUrl();
         $returnTo = $back !== $this->defaultBackUrl() ? $back : null;
-        $action = Admin::url($class::getSlug() . ($isEdit ? '/edit/' . $this->recordId() : '/create'), ['parent' => $this->scope?->token(), 'back' => $returnTo]);
+        $action = Admin::url($class::getSlug() . ($isEdit ? '/edit/' . $this->recordId() : '/create'), ['duplicate' => $sourceId, 'parent' => $this->scope?->token(), 'back' => $returnTo]);
         $history = null;
         if ($isEdit && \FloCMS\Admin\Activity\Activity::enabled()) {
             $label = \FloCMS\Admin\Actions\ActionExecutor::label($this->resource, $record);
@@ -996,9 +1063,9 @@ final class ResourceController extends PanelController
         $managers = $this->scope !== null ? '' : ($isEdit ? \FloCMS\Admin\Relations\ManagersView::render($this->resource, $this->recordId()) : \FloCMS\Admin\Relations\ManagersView::pending($this->resource));
         $deleteText = $deleteUrl !== null ? \FloCMS\Admin\Relations\ManagersView::deleteCount($this->resource, $this->recordId()) : null;
         $html = $view->form($title, $action, $fieldsHtml, $deleteUrl, $isEdit, $this->can('update'), $errors !== [], $back,
-            !$isEdit && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== [], $history, $managers, $deleteText,
+            !$isEdit && $source === null && $this->can('create') && $this->resource->canCreate(), $this->isPost(), $form->asideComponents() !== [], $history, $managers, $deleteText,
             $this->scope !== null ? ['url' => $this->scope->parentUrl(), 'title' => $this->scope->parentTitle()]
-                : ($isEdit && !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null), $translation, $wizardState !== null);
+                : ($isEdit && !$class::showsInNavigation() ? \FloCMS\Admin\Relations\ManagersView::parentOf($this->resource, $record) : null), $translation, $wizardState !== null, $source !== null);
 
         return $this->panel($title, $html, $this->activeSlug());
     }

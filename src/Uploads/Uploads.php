@@ -53,6 +53,52 @@ final class Uploads
         Session::set(self::KEY, $entries);
         return '@upload:' . $token;
     }
+    /**
+     * A copy of a record's stored file as a new pending upload of a new record
+     * (Duplicate, 0.40): the same session entry as stage(), scoped to the
+     * resource without a record, so the copy gets its own file when saved.
+     * Opening the same copy again (a reload) reuses its pending file instead of
+     * making another. Null, with $reason "file" (missing, not this field's
+     * managed file, larger than the field allows) or "limit" (the session holds
+     * too many pending files), when it can't be copied.
+     */
+    public static function stageCopy(FileUpload $field, Resource $resource, string $path, ?string &$reason = null): ?string
+    {
+        $reason = 'file';
+        if (!self::managed($path, $resource, $field)) { return null; }
+        $source = self::storageFor($field)->path($path);
+        if (!is_string($source) || !is_file($source) || is_link($source) || ($size = filesize($source)) === false || $size > $field->getMaxBytes()) { return null; }
+        try { $metadata = $field->validateFile(['name' => basename($path), 'tmp_name' => $source, 'error' => UPLOAD_ERR_OK]); }
+        catch (\FloCMS\Uploader\Exceptions\UploadException) { return null; }
+        $scope = self::scope($resource, null, $field->getName());
+        $actor = (string) Session::get('user_id', ''); $csrf = hash('sha256', Csrf::token());
+        $entries = array_filter(self::entries(), static fn ($e): bool => is_array($e) && $e['issued'] > time() - 1800);
+        foreach ($entries as $token => $entry) {
+            if (($entry['copy'] ?? null) === $path && $entry['scope'] === $scope && $entry['actor'] === $actor && hash_equals($entry['csrf'], $csrf) && is_file(self::root() . '/' . $entry['path'])) {
+                $entries[$token]['issued'] = time(); Session::set(self::KEY, $entries);
+                $reason = null;
+                return '@upload:' . $token;
+            }
+        }
+        if (count($entries) >= 32 || array_sum(array_column($entries, 'size')) + $size > 67108864) { $reason = 'limit'; return null; }
+        if (!is_dir(self::root() . '/pending') && !mkdir(self::root() . '/pending', 0700, true) && !is_dir(self::root() . '/pending')) { return null; }
+        self::prune();
+        $relative = 'pending/' . bin2hex(random_bytes(20)) . '.' . $metadata['extension'];
+        if (!copy($source, self::root() . '/' . $relative)) { return null; }
+        chmod(self::root() . '/' . $relative, 0600);
+        $token = bin2hex(random_bytes(32));
+        $entries[$token] = ['path' => $relative, 'name' => basename($path), 'size' => $size, 'issued' => time(), 'scope' => $scope, 'actor' => $actor, 'csrf' => $csrf, 'copy' => $path];
+        Session::set(self::KEY, $entries);
+        $reason = null;
+        return '@upload:' . $token;
+    }
+    /** Release pending uploads nobody will save (a closed Duplicate dialog's copies); unknown tokens are ignored. */
+    public static function release(array $values): void
+    {
+        foreach ($values as $value) {
+            if (is_string($value) && preg_match('/^@upload:[a-f0-9]{64}$/D', $value) === 1 && isset(self::entries()[substr($value, 8)])) { self::forget($value); }
+        }
+    }
     /** Accept only the original record's path, removal, or a matching pending token. */
     public static function trusted(FileUpload $field, mixed $value, Resource $resource, ?object $record): string
     {

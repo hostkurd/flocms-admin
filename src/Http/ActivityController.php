@@ -46,6 +46,7 @@ final class ActivityController extends PanelController
 
         $groups = [];
         \FloCMS\Admin\Support\Avatar::preload(array_map(static fn ($entry): int => (int) $entry->userId, $result['items']));
+        ActivityEntry::preloadSources(array_values($result['items']));
         foreach ($result['items'] as $entry) {
             $key = date('Y-m-d', $entry->time());
             if (!isset($groups[$key])) { $groups[$key] = ['label' => Dates::day($entry->time()), 'rows' => []]; }
@@ -55,7 +56,7 @@ final class ActivityController extends PanelController
                 'who' => $entry->who(), 'initial' => $entry->initial(), 'avatar' => ActivityView::avatarClass($entry->userId), 'face' => ActivityView::face($entry->userId, $entry->who(), 'fa-avatar-sm'),
                 'badge' => $entry->badge(), 'badgeColor' => $entry->badgeColor(),
                 'verb' => $describe['verb'], 'target' => $describe['target'], 'url' => $describe['url'],
-                'fields' => $entry->fieldNames(),
+                'fields' => $entry->fieldNames(), 'from' => ActivityView::duplicatedFrom($entry),
                 'showUrl' => $entry->hasChanges() ? Admin::url('activity/show/' . $entry->id) : null,
             ];
         }
