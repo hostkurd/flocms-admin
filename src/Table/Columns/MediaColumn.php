@@ -14,18 +14,35 @@ use FloCMS\Admin\Table\Column;
  *
  *     MediaColumn::make('cover_id')->label('Cover')
  *     MediaColumn::make('gallery')->limit(3)          several, then "+n"
+ *     MediaColumn::make('cover_id')->size('lg')       larger, landscape 4:3
  *
  * Items are loaded once per page, not once per row.
  */
 class MediaColumn extends Column
 {
+    /** Thumbnail sizes: sm 40×40 (square, the default), md 64×48, lg 80×60 (both 4:3). */
+    public const SIZES = ['sm', 'md', 'lg'];
+
     private int $limit = 3;
+
+    private string $size = 'sm';
 
     public function limit(int $limit): static
     {
         $this->limit = max(1, min(10, $limit));
         return $this;
     }
+
+    public function size(string $size): static
+    {
+        if (!in_array($size, self::SIZES, true)) {
+            throw new \InvalidArgumentException('MediaColumn size must be one of: ' . implode(', ', self::SIZES) . '.');
+        }
+        $this->size = $size;
+        return $this;
+    }
+
+    public function getSize(): string { return $this->size; }
 
     public function isSortable(): bool { return false; }
     public function isSearchable(): bool { return false; }
@@ -44,7 +61,7 @@ class MediaColumn extends Column
         $ids = MediaPicker::ids($record->{$this->name} ?? null);
         $store = MediaLibrary::storeOrNull();
         if ($ids === [] || $store === null) { return '<span class="fa-muted">&ndash;</span>'; }
-        $html = '<span class="fa-media-cell">';
+        $html = '<span class="fa-media-cell' . ($this->size !== 'sm' ? ' is-' . $this->size : '') . '">';
         foreach (array_slice($ids, 0, $this->limit) as $id) {
             $item = $store->find($id);
             if ($item === null) {

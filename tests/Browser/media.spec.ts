@@ -333,6 +333,12 @@ test('media fields: choose a cover, add and reorder a gallery, save; usage is re
   expect([saved.row.cover_id, saved.row.gallery, saved.row.video_id].map(String)).toEqual(['1', '["3","2"]', '4']);
   expect(usage(saved)).toEqual(['1:cover_id', '2:gallery', '3:gallery', '4:video_id']);
   await expect(page.locator('tbody tr').first().locator('img.fa-media-thumb')).toHaveCount(3);
+  // size('lg') on the cover column: 80×60; the gallery keeps the 40×40 default.
+  const sizes = await page.locator('tbody tr').first().locator('img.fa-media-thumb').evaluateAll((images) => images.map((image) => {
+    const box = image.getBoundingClientRect();
+    return `${Math.round(box.width)}x${Math.round(box.height)}`;
+  }));
+  expect(sizes).toEqual(['80x60', '40x40', '40x40']);
 
   await page.goto('/en/admin/media/edit/1');
   await expect(page.getByRole('link', { name: 'Listings · Villa · Cover' })).toBeVisible();
