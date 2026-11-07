@@ -1743,6 +1743,8 @@ a.fa-mb-stat.is-warning:hover,button.fa-mb-stat.is-warning:hover{text-decoration
 .fa-mf.is-over{border-color:var(--fa-primary);box-shadow:0 0 0 3px var(--fa-primary-soft)}
 .fa-mf-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin:10px;padding:22px 16px;border:1.5px dashed var(--fa-border-strong);border-radius:var(--fa-radius);background:var(--fa-surface);text-align:center}
 .fa-mf.is-over .fa-mf-empty{border-color:var(--fa-primary);background:var(--fa-primary-soft)}
+.fa-mf.is-empty{overflow:visible;border-width:0;border-color:transparent;border-radius:var(--fa-radius);background:none;box-shadow:none}
+.fa-mf.is-empty .fa-mf-empty{margin:0}
 .fa-mf-circle{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--fa-primary-soft);color:var(--fa-primary-text)}
 .fa-mf-empty-title{font-size:13.5px;font-weight:600;color:var(--fa-text)}
 .fa-mf-empty-sub{font-size:12.5px;color:var(--fa-muted);unicode-bidi:plaintext}

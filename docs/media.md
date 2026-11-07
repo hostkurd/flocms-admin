@@ -100,9 +100,9 @@ MediaPicker::make('attachment_id')->any(),                        // an image or
 | single | `INT NULL` | the id, or `NULL` |
 | `->multiple()` | `TEXT NULL` | a JSON list of ids in the chosen order: `["12","7","31"]`, or `NULL` |
 
-The field is a framed card of its own:
+The field is a framed card of its own once it holds files:
 
-- **Empty**: a drop area with **Choose from the library** and **Upload**.
+- **Empty**: a dashed drop area with **Choose from the library** and **Upload**, without the frame around it (0.39.5).
 - **One item**: a large preview with **Change**, **Edit details** and **Remove** (on hover, always on touch screens), the name, size and dimensions, and a **No alt text** badge that opens the details.
 - **Several** (`multiple()`): numbered tiles. Drag a tile by its grip (mouse, finger or pen) to change the order, or focus it and use Alt + arrow keys; the ⋯ on each tile has **Edit details**, **Set focal point**, **Replace from the library**, **Move earlier/later** and **Remove**. An **Add media** tile ends the list until `max()` is reached.
 - **Dropping files** on the field uploads them into the library and uses them. A file already in the library is not added twice: the existing item is used.

@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.5 - 2026-11-07
+
+- **An empty media field shows only its dashed drop zone.** Before, the gallery, video and single image pickers (MediaPicker) drew a second box around it: a border and a grey background. That outer frame is gone while the field is empty; once it holds files it comes back around the gallery or the preview as before. Dropping files still highlights the zone in the panel colour. Nothing to change in existing sites.
+
 ## 0.39.4 - 2026-10-30
 
 - **Fixed: `Env::get()` in `config/admin.php` returned its default** since 0.35.0. The panel read the file during Composer's autoload (to know whether to register the sign-in steps of two-factor sign-in and email verification), before the site reads `.env`, and kept that early read. So `'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')`, which `admin:install` writes, showed "Admin", and every other `.env` value in the file was ignored. The early read is no longer kept: the panel reads `config/admin.php` again on first use, after `.env`. Nothing to change in existing files.
