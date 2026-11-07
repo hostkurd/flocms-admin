@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.39.6 - 2026-11-08
+
+- **Larger list thumbnails: `MediaColumn::size()`.** `MediaColumn::make('cover_id')->size('lg')` shows the picture at 80×60, `->size('md')` at 64×48 (both landscape 4:3, which suits property and article covers); without it the column keeps its 40×40 square. The size is a class on the cell (`.fa-media-cell.is-md` / `.is-lg`), so it needs no inline style and works under a strict Content-Security-Policy. Another value throws an `InvalidArgumentException`. Nothing to change in existing sites.
+
 ## 0.39.5 - 2026-11-07
 
 - **An empty media field shows only its dashed drop zone.** Before, the gallery, video and single image pickers (MediaPicker) drew a second box around it: a border and a grey background. That outer frame is gone while the field is empty; once it holds files it comes back around the gallery or the preview as before. Dropping files still highlights the zone in the panel colour. Nothing to change in existing sites.

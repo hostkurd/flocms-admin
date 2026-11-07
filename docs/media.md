@@ -128,9 +128,12 @@ use FloCMS\Admin\Table\Columns\MediaColumn;
 
 MediaColumn::make('cover_id')->label('Cover'),
 MediaColumn::make('gallery')->limit(3),   // the first three, then "+n"
+MediaColumn::make('cover_id')->size('lg'), // 80×60 (0.39.6)
 ```
 
 The column loads every item of the page in one query and shows its thumbnail (a video icon for videos). It can't be sorted or searched.
+
+`->size()` (0.39.6) sets the thumbnail size: `'sm'` 40×40 square (the default), `'md'` 64×48 or `'lg'` 80×60, both landscape 4:3 and cropped to fill. Use `'lg'` for a cover photo that helps people recognise the record; keep the default for galleries that show several pictures per row.
 
 ## In the rich text editor
 

@@ -37,7 +37,7 @@ final class ListingResource extends Resource
     {
         return $table->columns([
             TextColumn::make('title')->searchable(),
-            MediaColumn::make('cover_id')->label('Cover'),
+            MediaColumn::make('cover_id')->label('Cover')->size('lg'),
             MediaColumn::make('gallery')->label('Gallery')->limit(2),
         ])->defaultSort('id', 'asc');
     }

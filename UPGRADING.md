@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.39.6
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.6" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do. To show larger thumbnails in a list, add `->size('md')` (64×48) or `->size('lg')` (80×60) to its `MediaColumn`.
+
+---
+
 # Upgrading to Admin 0.39.5
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.5" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do. A site stylesheet that styled `.fa-mf` (the media field's frame) while empty can target `.fa-mf.is-empty` now.

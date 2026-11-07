@@ -183,6 +183,17 @@ final class MediaRequestTest extends RequestTestCase
         self::assertStringContainsString('<img class="fa-media-thumb" src="/uploads/editor/library/2026/10/thumb/sea.jpg" alt="Sea at sunset" loading="lazy" width="400" height="267">', $body);
         self::assertStringContainsString('src="/uploads/editor/library/2026/10/web/hall.webp"', $body, 'no thumb: the web version');
         self::assertStringContainsString('+1', $body);
+        self::assertStringContainsString('<span class="fa-media-cell is-lg"><img class="fa-media-thumb"', $body, 'size(lg) on the cover column');
+        self::assertStringContainsString('<span class="fa-media-cell"><img class="fa-media-thumb"', $body, 'the gallery keeps the default size');
+    }
+
+    public function testListColumnSizeAcceptsOnlyThePresets(): void
+    {
+        $column = \FloCMS\Admin\Table\Columns\MediaColumn::make('cover_id');
+        self::assertSame('sm', $column->getSize());
+        self::assertSame('md', $column->size('md')->getSize());
+        $this->expectException(\InvalidArgumentException::class);
+        $column->size('72x54');
     }
 
     public function testSwitchedOffTheLibraryHasNoPageAndTheFieldSaysSo(): void
