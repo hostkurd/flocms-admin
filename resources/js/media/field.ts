@@ -95,6 +95,8 @@ export class MediaField {
   /* ------------------------------------------------------------------ drawing */
 
   private render(): void {
+    // 0.39.5: an empty field shows only the dashed drop zone, without the frame around it.
+    this.frame.classList.toggle('is-empty', this.items.length === 0);
     if (this.items.length === 0) { this.frame.replaceChildren(this.empty()); return; }
     if (!this.multiple) { this.frame.replaceChildren(this.single(this.items[0])); return; }
     this.frame.replaceChildren(this.head(), this.gallery(), this.foot());

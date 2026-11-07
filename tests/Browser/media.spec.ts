@@ -251,6 +251,28 @@ test('the details page saves the title and the alt text per language', async ({ 
   expect(JSON.parse(item.alt!)).toEqual({ en: 'Green garden', ar: 'حديقة خضراء' });
 });
 
+test('an empty media field shows only its dashed drop zone; the frame comes back with a file (0.39.5)', async ({ page }) => {
+  await page.goto('/en/admin/listings/edit/1');
+  const frame = field(page, 'cover_id').locator('.fa-mf');
+  await expect(frame).toHaveClass(/\bis-empty\b/);
+  await expect(frame).toHaveCSS('border-top-width', '0px');
+  await expect(frame).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(frame.locator('.fa-mf-empty')).toHaveCSS('border-top-style', 'dashed');
+  await expect(frame.locator('.fa-mf-empty')).toHaveCSS('margin-top', '0px');
+  await field(page, 'cover_id').getByRole('button', { name: 'Choose from the library' }).click();
+  await tile(picker(page), 'Sea view').click();
+  await picker(page).getByRole('button', { name: 'Choose', exact: true }).click();
+  await expect(frame).not.toHaveClass(/\bis-empty\b/);
+  await expect(frame).toHaveCSS('border-top-width', '1px');
+  // Removing the file empties the field again.
+  await field(page, 'cover_id').locator('.fa-mf-preview').hover();
+  await field(page, 'cover_id').getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(frame).toHaveClass(/\bis-empty\b/);
+  await expect(frame).toHaveCSS('border-top-width', '0px');
+  // A multiple field (gallery) is empty the same way.
+  await expect(field(page, 'gallery').locator('.fa-mf')).toHaveCSS('border-top-width', '0px');
+});
+
 test('media fields: choose a cover, add and reorder a gallery, save; usage is recorded', async ({ page }) => {
   await page.goto('/en/admin/listings/edit/1');
   await field(page, 'cover_id').getByRole('button', { name: 'Choose from the library' }).click();

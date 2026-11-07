@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.39.5
+
+Update with `composer require "hostkurd/flocms-admin:^0.39.5" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do. A site stylesheet that styled `.fa-mf` (the media field's frame) while empty can target `.fa-mf.is-empty` now.
+
+---
+
 # Upgrading to Admin 0.39.4
 
 Update with `composer require "hostkurd/flocms-admin:^0.39.4" -W`. Nothing else to do: `.env` values used in `config/admin.php` (such as `'brand' => Env::get('SITE_NAME_ADMIN', 'Admin')`) reach the panel again. If you replaced such a line with a fixed value as a workaround, you can put it back.
