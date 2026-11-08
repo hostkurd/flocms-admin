@@ -25,9 +25,7 @@ final class Theme
     {
         $name = self::fileName();
         if ($name === null) { return null; }
-        $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
-        $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
-        return $base . '/' . $lang . 'flo-admin/asset/' . $name;
+        return \FloCMS\Admin\Assets::panelUrl($name);
     }
 
     public static function tag(): string

@@ -151,7 +151,7 @@ final class SettingsRequestTest extends RequestTestCase
         self::assertSame('#00aa55', self::value('panel.primary_color'));
 
         $after = self::request('GET', '/en/admin/dashboard', self::CONFIG + ['session' => self::ADMIN])['body'];
-        foreach (['data-theme="dark"', 'data-sidebar="dark"', 'data-width="boxed"', 'data-density="compact"', 'Acme Admin', '/flo-admin/asset/theme-'] as $expected) {
+        foreach (['data-theme="dark"', 'data-sidebar="dark"', 'data-width="boxed"', 'data-density="compact"', 'Acme Admin', '/admin/flo-assets/asset/theme-'] as $expected) {
             self::assertStringContainsString($expected, $after);
         }
         self::assertStringContainsString('ئەکمی', self::request('GET', '/ku/admin/dashboard', self::CONFIG + ['session' => self::ADMIN])['body']);

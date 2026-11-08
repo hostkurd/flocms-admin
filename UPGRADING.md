@@ -1,3 +1,9 @@
+# Upgrading to Admin 0.40.1
+
+Update with `composer require "hostkurd/flocms-admin:^0.40.1" -W` and reload the Admin login page (Ctrl+F5). Nothing else to do. The login page now keeps its styles while the website is in offline mode: the panel's own stylesheet, script, brand colour and fonts load from `/<lang>/admin/flo-assets/asset/…` instead of `/flo-admin/asset/…`. A server rule or Content-Security-Policy that lists asset paths by hand should allow the new path too (same origin, so `'self'` already covers it).
+
+---
+
 # Upgrading to Admin 0.40.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.40.0" -W` and reload open Admin pages (Ctrl+F5). Nothing else to do: no resource changes until you add the new action.

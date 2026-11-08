@@ -111,7 +111,7 @@ final class PanelRequestTest extends RequestTestCase
         self::assertMatchesRegularExpression('~<li><a href="https://example.test/en/admin/posts">Posts</a></li>\s*<li><span aria-current="page">New Post</span></li>~', $form);
         $config = ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class], 'brand' => 'Test Panel', 'primary_color' => '#4f46e5', 'sidebar' => 'dark', 'logo' => '/logo.svg'];
         $branded = self::request('GET', '/en/admin/posts', ['admin_config' => $config])['body'];
-        self::assertMatchesRegularExpression('~<link rel="stylesheet" href="https://example.test/en/flo-admin/asset/theme-[0-9a-f]{12}\.css">~', $branded);
+        self::assertMatchesRegularExpression('~<link rel="stylesheet" href="https://example.test/en/admin/flo-assets/asset/theme-[0-9a-f]{12}\.css">~', $branded);
         self::assertStringContainsString('data-sidebar="dark"', $branded);
         self::assertStringContainsString('<img class="fa-brand-logo" src="/logo.svg" alt="">', $branded);
     }

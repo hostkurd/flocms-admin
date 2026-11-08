@@ -185,7 +185,7 @@ test('text pasted from Word arrives clean, keeping its alignment', async ({ page
 
 test('the website stylesheet for rich text is served with the package', async ({ page }) => {
   await page.goto('/en/admin/articles');
-  const href = await page.locator('link[href*="/flo-admin/asset/admin-v"]').first().getAttribute('href');
+  const href = await page.locator('link[href*="/admin/flo-assets/asset/admin-v"]').first().getAttribute('href');
   const version = /admin-v([\d.]+)\.css/.exec(href!)![1];
   const response = await page.request.get(`/en/flo-admin/asset/rich-text-v${version}.css`);
   expect(response.status()).toBe(200);

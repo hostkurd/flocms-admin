@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.40.0';
+    public const VERSION = '0.40.1';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -44,6 +44,8 @@ final class Admin
             App::allowGuestAdminActions('password', ['admin_forgot', 'admin_reset'], \FloCMS\Admin\Http\PasswordController::class);
             // A mailing's unsubscribe link (0.28) opens without signing in.
             App::allowGuestAdminActions('mailings', ['admin_unsubscribe'], \FloCMS\Admin\Http\MailingsController::class);
+            // The panel's own files (0.40.1): the login page keeps its styles while the website is offline.
+            App::allowGuestAdminActions('flo-assets', ['admin_asset'], \FloCMS\Admin\Http\AssetController::class);
         }
         \FloCMS\Admin\Auth\PasswordStamp::boot();
         // Login security (0.35, flocms-core 2.7+): the sign-in steps, when turned on in config/admin.php.
@@ -194,6 +196,7 @@ final class Admin
     public static function resolve(string $controller, string $route): ?string
     {
         if ($route === 'default' && $controller === 'flo-admin') { return \FloCMS\Admin\Http\AssetController::class; }
+        if ($route === 'admin' && $controller === 'flo-assets') { return \FloCMS\Admin\Http\AssetController::class; }
         if ($route !== 'admin') {
             return null;
         }
