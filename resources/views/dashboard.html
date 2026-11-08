@@ -1,15 +1,10 @@
-<div class="fa-page-head">
-    <div>
-        <h1 class="fa-page-title">{{ $t('nav.dashboard') }}</h1>
-        <p class="fa-muted fa-subtitle">{{ $greeting }}</p>
-    </div>
-</div>
+{!! $head !!}
 @if($widgetHtml !== null)
 {!! $widgetHtml !!}
 @elseif(count($cards) > 0)
 <div class="fa-cards">
     @foreach($cards as $card)
-    <a class="fa-card fa-stat" href="{{ $card['url'] }}">
+    <a class="fa-card fa-stat fa-dash-card" href="{{ $card['url'] }}">
         <span class="fa-stat-icon">{!! $card['icon'] !!}</span>
         <span class="fa-stat-body">
             <span class="fa-stat-label">{{ $card['label'] }}</span>

@@ -36,12 +36,12 @@ final class WidgetRegistry
                 if (!is_string($class)) { throw new \InvalidArgumentException('list widget classes as Name::class strings'); }
                 $class = ltrim($class, '\\');
                 if (!class_exists($class)) { throw new \InvalidArgumentException(self::missing($class, $namespace, $path, $config->root())); }
-                if (!is_subclass_of($class, Widget::class)) { throw new \InvalidArgumentException('does not extend StatsWidget, RecordsWidget or ChartWidget'); }
+                if (!is_subclass_of($class, Widget::class)) { throw new \InvalidArgumentException('does not extend a widget type (StatsWidget, RecordsWidget, ChartWidget, BarListWidget, ProgressWidget, ListWidget or ActivityWidget)'); }
                 if (!(new \ReflectionClass($class))->isInstantiable()) { throw new \InvalidArgumentException('is abstract; register a concrete widget class'); }
                 $class = (new \ReflectionClass($class))->getName();
                 if (isset($seen[$class])) { throw new \InvalidArgumentException('duplicate widget class'); } $seen[$class] = true;
                 $widget = new $class();
-                if (!$widget instanceof StatsWidget && !$widget instanceof RecordsWidget && !$widget instanceof ChartWidget) { throw new \InvalidArgumentException('extend StatsWidget, RecordsWidget or ChartWidget'); }
+                if (!self::supported($widget)) { throw new \InvalidArgumentException('extend StatsWidget, RecordsWidget, ChartWidget, BarListWidget, ProgressWidget, ListWidget or ActivityWidget'); }
                 $errors = $widget->configurationErrors(); if ($errors !== []) { throw new \InvalidArgumentException(implode('; ', $errors)); }
                 $result->widgets[] = $widget;
             } catch (\Throwable $error) { $result->problems[] = (is_string($class) ? $class : get_debug_type($class)) . ': ' . $error->getMessage(); }
@@ -49,6 +49,15 @@ final class WidgetRegistry
         usort($result->widgets, static fn (Widget $a, Widget $b): int => $a->sort() <=> $b->sort());
         return $result;
     }
+    /** One of the widget types the panel draws (0.42 added the list widgets and ActivityWidget). */
+    public static function supported(Widget $widget): bool
+    {
+        foreach ([StatsWidget::class, RecordsWidget::class, ChartWidget::class, BarListWidget::class, ProgressWidget::class, ListWidget::class, ActivityWidget::class] as $type) {
+            if ($widget instanceof $type) { return true; }
+        }
+        return false;
+    }
+
     /** Why a listed class was not found, and where it was looked for. */
     private static function missing(string $class, string $namespace, string $path, string $root): string
     {

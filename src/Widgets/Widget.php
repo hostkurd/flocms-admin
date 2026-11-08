@@ -9,6 +9,8 @@ use FloCMS\Core\Auth;
 abstract class Widget
 {
     protected string $title = '';
+    /** A short line beside the title (0.42): plain text or a lang key. */
+    protected string $headerSubtitle = '';
     protected ?string $permission = null;
     protected array $resources = [];
     protected int $sort = 0;
@@ -25,12 +27,30 @@ abstract class Widget
     final public function pageFilters(): array { return $this->pageFilters; }
     /** @internal */
     final public function usePageFilters(array $filters): static { $this->pageFilters = $filters; return $this; }
-    final public function title(): string { return AdminLang::label($this->title !== '' ? $this->title : Str::headline(preg_replace('/Widget$/', '', (new \ReflectionClass($this))->getShortName()) ?? '')); }
+    final public function title(): string
+    {
+        $title = $this->title !== '' ? $this->title : Str::headline(preg_replace('/Widget$/', '', (new \ReflectionClass($this))->getShortName()) ?? '');
+        $label = AdminLang::label($title);
+        // The panel's own widgets (ActivityWidget) use the panel's words
+        return $label === $title && str_starts_with($title, 'widgets.') ? AdminLang::get($title) : $label;
+    }
     final public function sort(): int { return $this->sort; }
     /** The widget's own permission, or null (0.21: listed on the Roles page). */
     final public function permission(): ?string { return $this->permission; }
     final public function columnSpan(): int|string { return $this->columnSpan; }
     final public function resources(): array { return $this instanceof RecordsWidget ? array_merge($this->resources, [$this->resourceClass()]) : $this->resources; }
+    /**
+     * The line beside the title (0.42): $headerSubtitle by default. Override it to
+     * show the period, e.g. return $context->period()->label();
+     */
+    public function headerSubtitle(WidgetContext $context): string { return $this->headerSubtitle === '' ? '' : AdminLang::label($this->headerSubtitle); }
+    /**
+     * A link at the end of the widget's header (0.42), e.g. "See all":
+     * ['label' => 'See all', 'url' => $context->url('inquiries')], or null.
+     *
+     * @return array{label: string, url: string}|null
+     */
+    public function headerLink(WidgetContext $context): ?array { return null; }
     /** Narrow visibility after the permission and registered-resource checks. */
     public function canView(): bool { return true; }
     final public function authorized(): bool
@@ -48,6 +68,6 @@ abstract class Widget
         foreach ($this->resources() as $class) { if (!is_string($class) || !WidgetContext::registered($class)) { $errors[] = 'resource must be registered in Admin: ' . (is_string($class) ? $class : get_debug_type($class)); } }
         return $errors;
     }
-    /** @internal HTML renderers are supplied by the three supported widget types. */
+    /** @internal HTML renderers are supplied by the supported widget types (StatsWidget, RecordsWidget, ChartWidget, BarListWidget, ProgressWidget, ListWidget, ActivityWidget). */
     abstract public function render(WidgetContext $context, string $id): string;
 }

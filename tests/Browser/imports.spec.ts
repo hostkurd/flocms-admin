@@ -23,8 +23,12 @@ async function upload(page: Page, buffer = FILE, name = 'products.csv') {
 
 /** Without JavaScript each click on Continue runs one batch. */
 async function continueUntil(page: Page, selector: string) {
-  for (let i = 0; i < 5 && !(await page.locator(selector).count()); i++) {
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  const more = page.getByRole('button', { name: 'Continue', exact: true });
+  for (let i = 0; i < 5; i++) {
+    // Wait for the next page: either the goal or another Continue
+    await expect(page.locator(selector).or(more).first()).toBeVisible();
+    if (await page.locator(selector).count()) { return; }
+    await more.click();
   }
 }
 

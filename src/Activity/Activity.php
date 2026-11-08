@@ -211,6 +211,21 @@ final class Activity
         return ['items' => array_map(static fn (object $row): ActivityEntry => ActivityEntry::fromRow($row), $rows), 'total' => $total];
     }
 
+    /**
+     * The newest entries with one of these actions, without a total (0.42, the dashboard's ActivityWidget).
+     *
+     * @param list<string> $actions
+     * @return list<ActivityEntry>
+     */
+    public static function latest(array $actions, int $limit, ?Database $db = null): array
+    {
+        if ($actions === []) { return []; }
+        $db ??= self::connection();
+        $rows = $db->table(self::table())->whereIn('action', array_values($actions))->orderBy('created_at', 'desc')->orderBy('id', 'desc')
+            ->limit(max(1, min(100, $limit)))->get();
+        return array_map(static fn (object $row): ActivityEntry => ActivityEntry::fromRow($row), $rows);
+    }
+
     /** Actions of each group of the Action switch. */
     public const GROUP_ACTIONS = [
         'created' => ['created', 'media_uploaded', 'role_created'],

@@ -485,7 +485,7 @@ Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, lin
 
 ## Dashboard widgets
 
-Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. Start one with `php flo make:admin-widget PostStats --resource=Post`. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
+Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. Since 0.42 the dashboard has a greeting, period buttons (`$context->period()`) and quick buttons (`'dashboard_actions'`); headline numbers take icons, trends and sparklines; charts show the previous period or a donut; and `BarListWidget`, `ProgressWidget`, `ListWidget` and the ready-made `ActivityWidget` complete it. Start one with `php flo make:admin-widget PostStats --resource=Post`. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
 
 ## Roadmap
 
@@ -520,6 +520,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.39: wizard forms (`Wizard` and `Step` layouts: Back and Next checked step by step, steps shown for some answers, `afterValidation()`, a review step; create and edit pages, dialogs, action, bulk and custom page forms; 0.39.6: `MediaColumn::size()` for larger list thumbnails)
+- 0.42: a professional dashboard (greeting, period buttons, quick buttons, headline numbers with trends and sparklines, previous-period and donut charts, bar, progress, list and activity widgets)
 - 0.41: the notification bell (`Notification::sendTo()`, `Recipients`, the top-bar bell with its unread count and menu, `/admin/notifications`, live count, `Resource::navigationBadge()`)
 - 0.40: Duplicate for any resource (`DuplicateAction`: the New form filled from a record, `except()`, `only()`, `fill()`, copied uploads, "Create and duplicate again", "Duplicated from" in the activity log); 0.40.1: the login page keeps its styles while the website is offline
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)

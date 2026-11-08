@@ -11,7 +11,6 @@ use FloCMS\Admin\Support\Icons;
 use FloCMS\Admin\Translation\Translations;
 use FloCMS\Core\App;
 use FloCMS\Core\Auth;
-use FloCMS\Core\Session;
 use FloCMS\Core\TemplateEngine;
 use Throwable;
 
@@ -35,9 +34,11 @@ final class DashboardController extends PanelController
         $widgetRegistry = \FloCMS\Admin\Widgets\WidgetRegistry::fromConfig(Admin::config());
         $widgetHtml = null;
         if ($widgetRegistry->configured()) {
+            // The period buttons (0.42): ?period=7 when it is one of the configured ones.
+            $period = \FloCMS\Admin\Widgets\Period::fromRequest($_GET['period'] ?? null);
             $widgetHtml = Admin::config()->reactiveEnabled()
-                ? \FloCMS\Reactive\Reactive::mount('flo-admin-dashboard', 'admin-dashboard')
-                : \FloCMS\Admin\Widgets\Dashboard::render();
+                ? \FloCMS\Reactive\Reactive::mount('flo-admin-dashboard', 'admin-dashboard', ['period' => $period->days()])
+                : \FloCMS\Admin\Widgets\Dashboard::render(false, $period);
         }
         $db = App::db();
         $cards = [];
@@ -65,10 +66,10 @@ final class DashboardController extends PanelController
             ];
         }
 
-        $name = (string) (Session::get('fullname') ?: Session::get('email') ?: '');
         $html = TemplateEngine::renderFile(PageView::viewPath('dashboard'), [
             't' => PageView::translator(),
-            'greeting' => $name === '' ? AdminLang::get('dashboard.greeting_anonymous') : AdminLang::get('dashboard.greeting', ['name' => $name]),
+            // Widgets draw their own header (with the period buttons); the cards get the greeting and quick buttons (0.42).
+            'head' => $widgetHtml === null ? \FloCMS\Admin\Widgets\Dashboard::head(null) : '',
             'cards' => $cards, 'widgetHtml' => $widgetHtml,
         ]);
 
