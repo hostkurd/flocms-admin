@@ -2,6 +2,14 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.42.1 - 2026-11-08
+
+- **Top bar**: the notification bell now sits next to the account menu (View site · language · bell · account), so the two personal items are together. In Arabic it mirrors as before.
+- **Dashboard**: a chart's legend no longer covers the widget's header link (`headerLink()`); it moves below the header when there is one.
+- **Dashboard on phones**: a records widget table keeps each cell on one line and scrolls sideways, instead of squeezing its columns into narrow strips.
+
+No migration and no code changes needed.
+
 ## 0.42.0 - 2026-11-08
 
 **A professional dashboard.** A header with a greeting, the period buttons and quick buttons; headline numbers with trends and sparklines; charts with the previous period and donuts; new widget types for bars, progress, lists and recent activity. No new tables. See [Dashboard widgets](docs/widgets.md#the-dashboard-042).
