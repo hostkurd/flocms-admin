@@ -9,7 +9,7 @@ final class Headline extends StatsWidget
     protected string $title = 'At a glance';
     protected array $resources = [WidgetPostResource::class];
     protected int|string $columnSpan = 'full';
-    protected bool $separate = true;
+    protected bool $separateCards = true;
     protected int $sort = -20;
     protected function stats(WidgetContext $context): array
     {

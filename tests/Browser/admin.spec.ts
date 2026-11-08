@@ -37,7 +37,7 @@ test('navigation, live search, sorting, pagination and back/forward keep the doc
   await page.getByRole('button', { name: 'Title', exact: true }).click();
   await expect(page.locator('th[aria-sort=ascending]')).toHaveText('Title');
   await page.locator('.fa-nav a[href="/en/admin/dashboard"]').click();
-  await expect(page.locator('h1')).toContainText('Dashboard');
+  await expect(page.locator('h1')).toHaveText(/^Good (morning|afternoon|evening)/);
   await page.goBack();
   await expect(page.locator('h1')).toHaveText('Posts');
   await stable(page);

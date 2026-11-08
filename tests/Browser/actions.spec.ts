@@ -45,7 +45,7 @@ test('publish action validates, preserves list state and delivers once across na
   await expect(notices(page)).toHaveCount(1);
   const id = await notices(page).getAttribute('data-admin-notification');
   await page.locator('.fa-nav a[href="/en/admin/dashboard"]').click();
-  await expect(page.locator('h1')).toHaveText('Dashboard');
+  await expect(page.locator('h1')).toHaveText(/^Good (morning|afternoon|evening)/);
   await expect(notices(page)).toHaveAttribute('data-admin-notification', id!);
   await page.goBack();
   await expect(page.locator('h1')).toHaveText('Posts');

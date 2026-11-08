@@ -97,7 +97,7 @@ test('leaving with unsaved changes asks first, also with the Back button', async
 
   await page.locator('.fa-nav a[href="/en/admin/dashboard"]').click();
   await leave.getByRole('button', { name: 'Leave' }).click();
-  await expect(page.locator('h1')).toContainText('Dashboard');
+  await expect(page.locator('h1')).toHaveText(/^Good (morning|afternoon|evening)/);
   await kept(page);
 });
 

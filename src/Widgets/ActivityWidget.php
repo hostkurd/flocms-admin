@@ -21,12 +21,11 @@ class ActivityWidget extends Widget
     private const CONTENT = ['created', 'updated', 'deleted', 'purged', 'restored', 'action', 'bulk_action', 'reordered', 'settings_saved', 'page_saved',
         'media_uploaded', 'media_updated', 'media_replaced', 'media_deleted', 'media_moved', 'role_created', 'role_updated', 'role_deleted', 'role_reset'];
     public function canView(): bool { return Activity::canView(); }
-    public function link(WidgetContext $context): ?array { return ['label' => AdminLang::get('widgets.see_all'), 'url' => Admin::url('activity')]; }
+    public function headerLink(WidgetContext $context): ?array { return ['label' => AdminLang::get('widgets.see_all'), 'url' => Admin::url('activity')]; }
     final public function render(WidgetContext $context, string $id): string
     {
         $limit = max(1, min(20, $this->limit));
-        $entries = array_values(array_filter(Activity::entries([], 1, 40)['items'], static fn (ActivityEntry $entry): bool => in_array($entry->action, self::CONTENT, true)));
-        $entries = array_slice($entries, 0, $limit);
+        $entries = Activity::latest(self::CONTENT, $limit);
         if ($entries === []) { return '<p class="fa-muted">' . Str::e(AdminLang::get('widgets.no_activity')) . '</p>'; }
         Avatar::preload(array_map(static fn (ActivityEntry $entry): int => (int) $entry->userId, $entries));
         ActivityEntry::preloadSources($entries);

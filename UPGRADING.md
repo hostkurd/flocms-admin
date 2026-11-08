@@ -5,11 +5,12 @@ Update with `composer require "hostkurd/flocms-admin:^0.42.0" -W` and reload ope
 What changes by itself:
 - The dashboard's title is now a greeting ("Good afternoon, Sara") with today's date; with widgets, the period buttons (7 days, 30 days, 90 days, 12 months) and Refresh sit beside it. `'dashboard_periods' => []` hides the buttons.
 - `RecordsWidget` shows **See all** in its header instead of "View all records" under the table.
-- Widgets get a header row; a line beside the title comes from `$description` or `subtitle()`.
+- Widgets get a header row (title, an optional line and link).
+- Line charts draw a smooth `<path>` with a light fill and a dot on the last point (before: a `<polyline>` with a dot on every point); a statistic's number and label sit in new wrappers (`.fa-stat-line`). Site CSS or browser tests aimed at the old markup need a look.
 
-To use the new pieces, see [Dashboard widgets](docs/widgets.md#the-dashboard-042): `'widget_columns' => 3`, `'dashboard_actions'`, `StatsWidget::$separate`, `Stat::icon()/trend()/sparkline()`, `'previous'` and `'donut'` charts, `BarListWidget`, `ProgressWidget`, `ListWidget` and `ActivityWidget`, and `$context->period()` with `countByDay()`.
+To use the new pieces, see [Dashboard widgets](docs/widgets.md#the-dashboard-042): `'widget_columns' => 3`, `'dashboard_actions'`, `StatsWidget::$separateCards`, `Stat::icon()/trend()/sparkline()`, `'previous'` and `'donut'` charts, `BarListWidget`, `ProgressWidget`, `ListWidget` and `ActivityWidget`, and `$context->period()` with `countByDay()`.
 
-A widget class that already has its own public `subtitle()` or `link()` method now shows it in the header: rename it if that is not meant.
+New names on the widget classes: `Widget::$headerSubtitle`, `Widget::headerSubtitle()`, `Widget::headerLink()`, `StatsWidget::$separateCards` and `StatsWidget::separateCards()`. PHP stops with an error if a widget of yours already declares one of them in another way, so search your widgets for these names before updating.
 
 ---
 

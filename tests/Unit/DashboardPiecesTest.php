@@ -48,6 +48,44 @@ final class DashboardPiecesTest extends TestCase
         self::assertLessThanOrEqual(13, count($months['values']));
     }
 
+    public function testThePreviousPeriodLinesUpWithTheCurrentOneOnEveryDay(): void
+    {
+        Admin::useConfig([]);
+        foreach ([7, 30, 31, 90, 200, 365, 730, 1780, 3650] as $days) {
+            for ($end = strtotime('2026-01-01 12:00:00'), $stop = strtotime('2028-12-31'); $end < $stop; $end += 86400 * 3) {
+                $period = Period::last($days, $end);
+                $now = $period->series([]);
+                $before = $period->previous()->series([], like: $period);
+                self::assertCount(count($now['values']), $before['values'], $days . ' days ending ' . date('Y-m-d', $end));
+                self::assertLessThanOrEqual(60, count($now['values']));
+            }
+        }
+        $end = strtotime('2026-11-08 15:00:00');
+        $period = Period::last(365, $end);
+        $before = $period->previous()->series(['2025-11-09' => 50, '2025-11-08' => 7, '2024-11-09' => 2, '2024-11-08' => 40], like: $period);
+        self::assertSame(9, array_sum($before['values']), 'exactly the previous 365 days');
+        self::assertSame('year', Period::last(3650, $end)->unit());
+        $years = Period::last(3650, $end)->series(['2026-11-08' => 3]);
+        self::assertSame('2026', end($years['labels']), 'the newest data is kept');
+        self::assertSame(3, end($years['values']));
+        $this->expectException(\InvalidArgumentException::class);
+        Period::last(30, $end)->series([], like: Period::last(7, $end));
+    }
+
+    public function testNumberKeysFromCountByWorkAsLabels(): void
+    {
+        $items = \FloCMS\Admin\Widgets\Items::check(array_map(static fn (int|string $key, int $count): array => ['label' => $key, 'value' => $count], array_keys([3 => 5, 2 => 1]), [5, 1]), 12, ['label', 'value'], []);
+        self::assertSame('3', $items[0]['label']);
+    }
+
+    public function testDashboardLinksStayOnTheSite(): void
+    {
+        self::assertTrue(Dashboard::safeUrl('/en/admin/inquiries?status=new'));
+        foreach (["/\t/evil.com", "/\n/evil.com", "/ /evil.com", '//evil.com', '/\\evil.com', 'https://evil.com', 'javascript:alert(1)'] as $url) {
+            self::assertFalse(Dashboard::safeUrl($url), json_encode($url));
+        }
+    }
+
     public function testHeadlineNumbersShowTrendsChangesAndSparklines(): void
     {
         Admin::useConfig([]);
@@ -69,7 +107,7 @@ final class DashboardPiecesTest extends TestCase
         self::assertStringNotContainsString('fa-trend', Stat::make('x', 1)->trend(5, 0)->render($context), 'nothing to compare with');
         self::assertStringContainsString('No change', Stat::make('x', 1)->trend(5, 5)->render($context));
         self::assertStringContainsString('href="/en/admin/posts?status=draft"', Stat::make('x', 1)->url('/en/admin/posts?status=draft')->render($context));
-        foreach ([fn () => Stat::make('x', 1)->icon('nope'), fn () => Stat::make('x', 1)->sparkline(range(1, 31)), fn () => Stat::make('x', 1)->trend(INF, 1),
+        foreach ([fn () => Stat::make('x', 1)->icon('nope'), fn () => Stat::make('x', 1)->sparkline(range(1, 61)), fn () => Stat::make('x', 1)->trend(INF, 1),
                   fn () => Stat::make('x', 1)->url('https://evil.example/'), fn () => Stat::make('x', 1)->url('//evil.example/'), fn () => Stat::make('x', 1)->descriptionColor('pink')] as $bad) {
             try { $bad(); self::fail('accepted a bad value'); } catch (\InvalidArgumentException) { self::assertTrue(true); }
         }

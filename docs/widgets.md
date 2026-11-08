@@ -42,11 +42,11 @@ With widgets registered, the dashboard opens with a header: a greeting with the 
 
 - **Period.** The buttons are links (`/admin/dashboard?period=7`), so the period stays in the address and works without JavaScript; Refresh keeps it. Every widget reads it from `$context->period()`: `from()` and `to()` ("Y-m-d H:i:s"), `previous()` (the same number of days just before), `label()` ("Last 30 days"), `days()`. A period of 7 days is today and the six days before. On panel pages widgets get the default period.
 - **Quick buttons** show only for people who may use them: a resource's needs its create permission and `canCreate()`, a panel page its permission and `canAccess()`.
-- **Widget headers.** Each widget may show a line beside its title, `$description` or your own `subtitle()`, and a link at the end, `link()`. `RecordsWidget` links to its resource ("See all"); `ActivityWidget` to the Activity page.
+- **Widget headers.** Each widget may show a line beside its title, `protected string $headerSubtitle` or your own `headerSubtitle()`, and a link at the end, `headerLink()`. `RecordsWidget` links to its resource ("See all"); `ActivityWidget` to the Activity page.
 
 ```php
-public function subtitle(WidgetContext $context): string { return $context->period()->label(); }
-public function link(WidgetContext $context): ?array { return ['label' => 'See all', 'url' => $context->url('inquiries', ['status' => 'new'])]; }
+public function headerSubtitle(WidgetContext $context): string { return $context->period()->label(); }
+public function headerLink(WidgetContext $context): ?array { return ['label' => 'See all', 'url' => $context->url('inquiries', ['status' => 'new'])]; }
 ```
 
 Links in widgets (stats, list items, headers) must stay on the site: a path from the root or an address of this site. `$context->url($path, $query)` gives a panel address in the current language.
@@ -62,10 +62,10 @@ $now = $inquiries->where('created_at', '>=', $period->from())->count();
 $before = $inquiries->where('created_at', '>=', $period->previous()->from())->where('created_at', '<', $period->from())->count();
 $bySource = $inquiries->where('created_at', '>=', $period->from())->countBy('type');   // ['listing' => 20, 'contact' => 5], most first
 $perDay = $inquiries->countByDay('created_at', $period->from(), $period->to());       // ['2026-11-08' => 3, ...]
-$points = $period->series($perDay);   // labels + values: per day up to 31 days, per week up to 180, else per month
+$points = $period->series($perDay);   // labels + values: per day up to 31 days, per week up to 180, per month up to 1,780, else per year (at most 60 points)
 ```
 
-`countBy($column, $limit = 20)` returns up to 100 values. `countByDay()` covers at most 3,660 days. `where()` also takes `NOT LIKE`, and there is `whereNotNull()`. Each read counts towards the widget's budget of 64.
+`countBy($column, $limit = 20)` returns up to 100 values. PHP turns number-like keys into integers (`countBy('bedrooms')` gives `[3 => 5]`); item labels accept them. `countByDay()` groups by the database's `DATE()`, so the database and PHP should use the same time zone; it covers at most 3,660 days. `where()` also takes `NOT LIKE`, and there is `whereNotNull()`. Each read counts towards the widget's budget of 64.
 
 ## Statistics
 
@@ -96,14 +96,14 @@ final class ContentOverview extends StatsWidget
 }
 ```
 
-Headline numbers (0.42): set `protected bool $separate = true;` and the statistics become cards of their own, without the widget's frame or visible title, four in a row (two on a phone). A `Stat` can also have:
+Headline numbers (0.42): set `protected bool $separateCards = true;` and the statistics become cards of their own, without the widget's frame or visible title, four in a row (two on a phone). A `Stat` can also have:
 
 ```php
 Stat::make('Inquiries', $now)
     ->icon('mail')                          // a panel icon in the stat's colour
     ->trend($now, $before)                  // ▲ 23% green, ▼ red; nothing when $before is 0
     ->description('vs ' . $before . ' in the previous 30 days')
-    ->sparkline($points['values'])          // a small line, up to 30 values
+    ->sparkline($points['values'])          // a small line, up to 60 values
     ->url($context->url('inquiries', ['status' => 'new']));
 Stat::make('Published', 28)->change(4);    // ▲ 4
 Stat::make('Waiting', 3)->trend(3, 5)->invertTrend();   // going down is good: ▼ shows green
@@ -172,7 +172,7 @@ final class PublicationChart extends ChartWidget
 
 Charts accept one series with matching `labels` and `values` lists, at most 60 points. Since 0.42:
 
-- A `line` or `bar` chart may also show the previous period as a dashed line: `'previous' => [...]` with as many values, and `'label'` / `'previousLabel'` for the legend. A line chart is smooth, with a light fill under it.
+- A `line` or `bar` chart may also show the previous period as a dashed line: `'previous' => [...]` with as many values (`$period->previous()->series($perDay, like: $period)` gives that), and `'label'` / `'previousLabel'` for the legend. A line chart is smooth, with a light fill under it.
 - `protected string $type = 'donut';` draws a ring with a legend (value and share) and the total in the middle: up to 8 parts, none below 0; `'total' => 'inquiries'` is the word under the total.
 
 ```php
@@ -182,7 +182,7 @@ protected function data(WidgetContext $context): array
     $query = $context->query(InquiryResource::class);
     $period = $context->period(); $previous = $period->previous();
     $now = $period->series($query->countByDay('created_at', $period->from(), $period->to()));
-    $before = $previous->series($query->countByDay('created_at', $previous->from(), $previous->to()));
+    $before = $previous->series($query->countByDay('created_at', $previous->from(), $previous->to()), like: $period);   // same points as $now
     return $now + ['previous' => $before['values'], 'label' => 'This period', 'previousLabel' => 'Previous period'];
 }
 ```

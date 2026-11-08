@@ -10,13 +10,13 @@ final class PostsPerDay extends ChartWidget
     protected array $resources = [WidgetPostResource::class];
     protected string $type = 'line';
     protected int|string $columnSpan = 2;
-    public function subtitle(WidgetContext $context): string { return $context->period()->label(); }
+    public function headerSubtitle(WidgetContext $context): string { return $context->period()->label(); }
     protected function data(WidgetContext $context): array
     {
         $posts = $context->query(WidgetPostResource::class);
         $period = $context->period(); $previous = $period->previous();
         $now = $period->series($posts->countByDay('created_at', $period->from(), $period->to()));
-        $before = $previous->series($posts->countByDay('created_at', $previous->from(), $previous->to()));
-        return $now + ['previous' => array_slice(array_pad($before['values'], count($now['values']), 0), 0, count($now['values'])), 'label' => 'This period', 'previousLabel' => 'Previous period'];
+        $before = $previous->series($posts->countByDay('created_at', $previous->from(), $previous->to()), like: $period);
+        return $now + ['previous' => $before['values'], 'label' => 'This period', 'previousLabel' => 'Previous period'];
     }
 }

@@ -25,8 +25,8 @@ final class Dashboard
             $subtitle = ''; $link = null;
             try {
                 $content = $widget->render($context, $id);
-                $subtitle = $widget->subtitle($context);
-                $link = $widget->link($context);
+                $subtitle = $widget->headerSubtitle($context);
+                $link = $widget->headerLink($context);
             } catch (\Throwable $error) {
                 self::log('Admin widget ' . $widget::class . ' failed: ' . $error->getMessage());
                 $content = '<p class="fa-muted" role="status">' . Str::e(AdminLang::get('widgets.unavailable')) . '</p>';
@@ -34,7 +34,7 @@ final class Dashboard
             $span = $widget->columnSpan() === 'full' ? $columns : min($columns, $widget->columnSpan());
             $kind = self::kind($widget);
             // Statistics shown as separate cards (0.42): no frame or visible title of their own.
-            if ($widget instanceof StatsWidget && $widget->separate() && !str_starts_with($content, '<p')) {
+            if ($widget instanceof StatsWidget && $widget->separateCards() && !str_starts_with($content, '<p')) {
                 $items .= '<section class="fa-widget-cards fa-widget-span-' . $span . '" aria-labelledby="' . $id . '-title" data-admin-widget><h2 class="fa-sr" id="' . $id . '-title">' . Str::e($widget->title()) . '</h2>' . $content . '</section>';
                 continue;
             }
@@ -61,7 +61,9 @@ final class Dashboard
     /** Links in widgets stay on this site: a path from the root or this site's address (0.42). */
     public static function safeUrl(string $url): bool
     {
-        if (str_starts_with($url, '/') && !str_starts_with($url, '//') && !str_contains($url, '\\')) { return true; }
+        // Browsers drop tabs and line breaks from addresses, so "/\t/evil.com" would become "//evil.com"
+        if (preg_match('/[\x00-\x20\x7F]/', $url)) { return false; }
+        if (str_starts_with($url, '/') &&!str_starts_with($url, '//') && !str_contains($url, '\\')) { return true; }
         $base = defined('SITE_URI') ? rtrim((string) constant('SITE_URI'), '/') : '';
         return $base !== '' && ($url === $base || str_starts_with($url, $base . '/') || str_starts_with($url, $base . '?'));
     }
@@ -87,7 +89,7 @@ final class Dashboard
      */
     public static function head(?Period $period, bool $reactive = false): string
     {
-        $full = trim((string) (\FloCMS\Core\Session::get('fullname') ?: ''));
+        $full = trim((string) (\FloCMS\Core\Session::get('fullname') ?: \FloCMS\Core\Session::get('email') ?: ''));
         $first = $full === '' ? '' : (preg_split('/\s+/u', $full)[0] ?? $full);
         $hour = (int) date('G');
         $part = $hour < 5 ? 'evening' : ($hour < 12 ? 'morning' : ($hour < 18 ? 'afternoon' : 'evening'));

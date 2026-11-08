@@ -15,7 +15,7 @@ final class Items
     public static function check(mixed $items, int $max, array $required, array $optional): array
     {
         if (!is_array($items) || !array_is_list($items) || count($items) > $max) { throw new \InvalidArgumentException('Use a list of at most ' . $max . ' items.'); }
-        foreach ($items as $item) {
+        foreach ($items as $index => $item) {
             if (!is_array($item)) { throw new \InvalidArgumentException('Each item is an array.'); }
             foreach ($required as $key) { if (!array_key_exists($key, $item)) { throw new \InvalidArgumentException('Each item needs ' . $key . '.'); } }
             foreach ($item as $key => $value) {
@@ -27,6 +27,9 @@ final class Items
                     if (!in_array($value, self::COLORS, true)) { throw new \InvalidArgumentException('Unknown color: ' . (is_string($value) ? $value : get_debug_type($value))); }
                 } elseif ($key === 'url') {
                     if (!is_string($value) || !Dashboard::safeUrl($value)) { throw new \InvalidArgumentException('Item links go to pages of this site.'); }
+                } elseif (is_int($value) && $key !== 'icon') {
+                    // A number as a label, e.g. a key of countBy('bedrooms'): PHP makes "3" an integer key
+                    $items[$index][$key] = (string) $value;
                 } elseif (!is_string($value) || strlen($value) > 500) {
                     throw new \InvalidArgumentException($key . ' must be a short text.');
                 }

@@ -59,7 +59,7 @@ final class Stat
      */
     public function sparkline(array $values): self
     {
-        if (!array_is_list($values) || count($values) > 30) { throw new \InvalidArgumentException('A sparkline takes a list of at most 30 values.'); }
+        if (!array_is_list($values) || count($values) > 60) { throw new \InvalidArgumentException('A sparkline takes a list of at most 60 values.'); }
         foreach ($values as $value) { if ((!is_int($value) && !is_float($value)) || !is_finite((float) $value)) { throw new \InvalidArgumentException('Use finite sparkline values.'); } }
         $this->sparkline = $values; return $this;
     }

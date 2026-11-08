@@ -34,7 +34,7 @@ abstract class RecordsWidget extends Widget
         return $html === '' ? '<p class="fa-muted">' . Str::e(AdminLang::get('widgets.empty')) . '</p>' : '<div class="fa-table-wrap fa-widget-table" role="region" tabindex="0" aria-labelledby="' . Str::e($id . '-title') . '"><table class="fa-table"><caption class="fa-sr">' . Str::e($this->title()) . '</caption><thead><tr>' . $headers . '</tr></thead><tbody>' . $html . '</tbody></table></div>';
     }
     /** "See all" in the header opens the resource's list (0.42; before, "View all records" under the table). */
-    public function link(WidgetContext $context): ?array
+    public function headerLink(WidgetContext $context): ?array
     {
         return ['label' => AdminLang::get('widgets.see_all'), 'url' => $context->resourceUrl($this->resource)];
     }

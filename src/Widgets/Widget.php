@@ -10,7 +10,7 @@ abstract class Widget
 {
     protected string $title = '';
     /** A short line beside the title (0.42): plain text or a lang key. */
-    protected string $description = '';
+    protected string $headerSubtitle = '';
     protected ?string $permission = null;
     protected array $resources = [];
     protected int $sort = 0;
@@ -40,17 +40,17 @@ abstract class Widget
     final public function columnSpan(): int|string { return $this->columnSpan; }
     final public function resources(): array { return $this instanceof RecordsWidget ? array_merge($this->resources, [$this->resourceClass()]) : $this->resources; }
     /**
-     * The line beside the title (0.42): $description by default. Override it to
+     * The line beside the title (0.42): $headerSubtitle by default. Override it to
      * show the period, e.g. return $context->period()->label();
      */
-    public function subtitle(WidgetContext $context): string { return $this->description === '' ? '' : AdminLang::label($this->description); }
+    public function headerSubtitle(WidgetContext $context): string { return $this->headerSubtitle === '' ? '' : AdminLang::label($this->headerSubtitle); }
     /**
      * A link at the end of the widget's header (0.42), e.g. "See all":
      * ['label' => 'See all', 'url' => $context->url('inquiries')], or null.
      *
      * @return array{label: string, url: string}|null
      */
-    public function link(WidgetContext $context): ?array { return null; }
+    public function headerLink(WidgetContext $context): ?array { return null; }
     /** Narrow visibility after the permission and registered-resource checks. */
     public function canView(): bool { return true; }
     final public function authorized(): bool
