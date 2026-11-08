@@ -69,6 +69,58 @@ For row actions, execution reloads the record through `Resource::query()`, check
 
 Action dispatch owns its request transaction so that delivery and token consumption happen after commit. Dispatching inside an already-open database transaction is rejected before the callback runs. Within a callback, Core nested transactions use savepoints, and database work on the same transactional connection rolls back together. DDL, nontransactional tables, other connections, filesystem writes and external deliveries cannot be rolled back. Use an outbox for external delivery.
 
+## Duplicate
+
+Since 0.40 any resource can offer **Duplicate**: it opens the resource's New form filled from a record. Nothing is saved until the editor saves it, and the save is an ordinary create: the resource's `normalizeState()`, validation (including `unique()`), `beforeSave()` / `afterSave()`, BelongsToMany pivots, media usage and the activity log all run as they do for a new record. The record that was copied is only read to fill the form; it is never written, locked or used for uploads.
+
+It is off until you add `DuplicateAction` to the row actions, usually between Edit and Delete:
+
+```php
+use FloCMS\Admin\Actions\{DeleteAction, DuplicateAction, EditAction};
+
+public function table(Table $table): Table
+{
+    return $table->columns([/* your columns */])->actions([
+        EditAction::make(),
+        DuplicateAction::make(),
+        DeleteAction::make(),
+    ]);
+}
+```
+
+It shows in the row's **More actions** menu (with the copy icon, in its own group just before Delete) and in the More menu of the record's view page. It opens the way the resource's Create does: a dialog, a slide-over or a full page (`$formMode`, or the Create action's own `modal()` / `slideOver()` / `page()`); `DuplicateAction::make()->page()` and the other mode methods choose for it. A form with a Builder field always opens as a page. The heading says `Duplicate “A1”` (the record's title as the list shows it), and a note above the fields says the form is a copy, that nothing is saved yet, and (when the resource has relation managers) that records linked to the original are not copied.
+
+**What is copied.** Every field the form shows, read as the Edit form reads it: translations, selects, toggles, numbers, dates, BelongsTo and BelongsToMany, repeaters, blocks, MediaPicker items (by id: the library item is shared, never copied) and rich text. Fields hidden or disabled on a new record start at their default, as on Create. Automatically:
+
+- **Password fields** and the **primary key** (when the form shows it) are never copied.
+- **Slug fields** get `-copy` at the end (`villa-a1-copy`), or `-copy-2`, `-copy-3`… when that one is taken. A copy of a copy is `villa-a1-copy-2`, not `villa-a1-copy-copy`. The package's `Slug` can't be `translatable()`; a site's own Slug subclass that allows it gets `-copy` per language, checked against that language.
+- **Other `unique()` fields** (a reference code) start at their default, so the editor gives the copy its own value.
+- **Related records** in relation managers are not copied.
+
+Only fields marked `unique()` are cleared. A column that is unique only in the database (a unique index, or a composite one such as `(site_id, code)`, not declared with `unique()`) is copied like any other field and the save then fails on the database: list such fields in `->except()`.
+
+**Options**, all optional:
+
+```php
+DuplicateAction::make()->except(['code', 'published_on']);   // these start at their default
+DuplicateAction::make()->only(['title', 'type', 'features']); // copy only these; the rest start at their default
+DuplicateAction::make()->fill(fn (array $state, object $source): array => ['status' => 'draft'] + $state);
+```
+
+`except()` and `only()` together throw a `LogicException`. `fill()` runs last, with the form's values and the copied record, and returns the values (only the form's own fields are kept).
+
+**Uploads.** A `FileUpload` or `ImageUpload` field's file is copied into the panel's pending uploads as a new pending upload of the person's session (as if they had just chosen the file), so the copy gets its own stored file when it is saved: deleting either record never removes the other's file. A file that is missing, or larger than the field's `maxSize()`, is left out: the field starts empty and a note above the form names it. Pending copies that are never saved are removed with the other pending uploads after 30 minutes. Opening the same copy again in the same session (a reload of the page) reuses its pending file instead of making another, and a dialog that closes without saving (Cancel, Escape, another dialog) releases its copies at once. When the session already holds too many pending files (32, or 64 MB), the note says so instead ("too many files are waiting to be saved"). The note stays after a save that fails its checks.
+
+**Permissions.** Duplicate creates a record, so it follows the resource's own **Create** action: without a `CreateAction` in `headerActions()`, or when that action's permission, `visible()`, `authorize()` or `disabled()` refuses, there is no Duplicate either. Duplicate uses the Create action's permission (its `->permission()` if it has one, else the resource's `create` permission) unless you give Duplicate its own `->permission()`. It also needs `canCreate()` and the right to view the copied record: the `view` permission, the resource's `query()` and `canView()`. All of this is checked again when the form opens and when it is saved (in the dialog and on the page). `visible()`, `authorize()` and `disabled()` on Duplicate itself work as on other actions. Inside a relation manager it follows the manager's `canCreate(false)` and `readOnly()`. If the copied record is deleted, or the person may no longer view it, while the page form is being filled, saving shows the form again with their input and a message, and the form then saves as a plain new record; opening `create?duplicate=<id>` for such a record answers 404 or 403.
+
+**Create and duplicate again.** The copy's form has a second button that saves and opens a fresh copy of the same record (the slug moves on to `-copy-2`).
+
+**Without JavaScript** the action is a link to `/admin/<resource>/create?duplicate=<id>` (with `parent` and `back` when there are). The form posts to the same URL, so the panel knows the record for the note, the activity entry and "Create and duplicate again", and saves a new record. An id that is not a record's (or not in `query()`) answers 404, a record the person may not view or a missing create permission 403, and a resource without `DuplicateAction` 404.
+
+**Activity.** The new record's "created" entry keeps where it came from (`duplicated_from`: the id and title of the original). Its History, the Activity page and the entry's details say "Duplicated from Villa A1", the title linked to the original while it exists, is in the resource's `query()`, and the person may view it (`canView()`) and open it; otherwise the title is plain text. The originals of a page of entries are looked up together. Your own code can add facts to a save's activity entry the same way: `FormSubmission::save(..., meta: ['key' => 'value'])`.
+
+Pages keep their own instant Duplicate (a draft copy made at once), unchanged.
+
 ## Notifications
 
 ```php

@@ -83,8 +83,10 @@ final class FormSubmission
     /**
      * @param array<string, mixed> $extra other columns to write with the form's values
      *        (a list cell's beforeUpdate(), 0.38); the form's own values win
+     * @param array<string, mixed> $meta more facts for the activity entry of the save
+     *        (0.40: Duplicate's "duplicated_from")
      */
-    public function save(Form $form, array $state, ?object $record, bool $guarded = false, ?\FloCMS\Admin\Uploads\UploadBatch $batch = null, array $extra = []): string
+    public function save(Form $form, array $state, ?object $record, bool $guarded = false, ?\FloCMS\Admin\Uploads\UploadBatch $batch = null, array $extra = [], array $meta = []): string
     {
         foreach (array_keys($extra) as $column) {
             if (!is_string($column) || preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $column) !== 1) { throw new \InvalidArgumentException('Extra values must be keyed by column names.'); }
@@ -94,7 +96,7 @@ final class FormSubmission
         if ($owns && $this->repository->inTransaction()) { throw new \LogicException('Supply the outer transaction upload batch.'); }
         $batch ??= new \FloCMS\Admin\Uploads\UploadBatch();
         try {
-        $id = $this->repository->transaction(function () use ($form, $state, $record, $guarded, $batch, $extra): string {
+        $id = $this->repository->transaction(function () use ($form, $state, $record, $guarded, $batch, $extra, $meta): string {
             // The activity log compares the record before and after the save (fresh forms: no cached values).
             $logging = \FloCMS\Admin\Activity\Activity::enabled($this->repository->connection());
             $before = $logging && $record !== null ? \FloCMS\Admin\Activity\ActivityChanges::state($this->resource->form(new Form()), $record) : [];
@@ -154,7 +156,7 @@ final class FormSubmission
             // Where library items are used (pickers and rich text), in the same transaction
             if ($saved !== null) { \FloCMS\Admin\Media\MediaUsage::record($class, $form, $saved); }
             if ($saved !== null) { $class->afterSave($saved); }
-            if ($logging && $saved !== null) { $this->log($record, $saved, $before); }
+            if ($logging && $saved !== null) { $this->log($record, $saved, $before, $meta); }
             return $id;
         });
         } catch (\Throwable $error) { if ($owns) { $batch->rollback(); } throw $error; }
@@ -163,21 +165,21 @@ final class FormSubmission
     }
 
     /** "created", or "updated" with the changed fields (nothing when no field changed). */
-    private function log(?object $record, object $saved, array $before): void
+    private function log(?object $record, object $saved, array $before, array $meta = []): void
     {
         $class = $this->resource;
         $id = (string) ($saved->{$class::getPrimaryKey()} ?? '');
         $title = \FloCMS\Admin\Trash\Trash::titleOf($class, $saved);
         $db = $this->repository->connection();
         if ($record === null) {
-            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, meta: \FloCMS\Admin\Activity\Activity::parents($class, $saved), db: $db);
+            \FloCMS\Admin\Activity\Activity::record('created', $class::getSlug(), $id, $title, meta: \FloCMS\Admin\Activity\Activity::parents($class, $saved) + $meta, db: $db);
             return;
         }
         $form = $class->form(new Form());
         $changes = \FloCMS\Admin\Activity\ActivityChanges::diff($form, $before, \FloCMS\Admin\Activity\ActivityChanges::state($form, $saved), $class::activityExcept(), $db);
         // Both the old and the new parent hear of a record that moved.
         $parents = array_values(array_unique([...(\FloCMS\Admin\Activity\Activity::parents($class, $record)['parents'] ?? []), ...(\FloCMS\Admin\Activity\Activity::parents($class, $saved)['parents'] ?? [])]));
-        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, $parents === [] ? [] : ['parents' => $parents], $db); }
+        if ($changes !== []) { \FloCMS\Admin\Activity\Activity::record('updated', $class::getSlug(), $id, $title, $changes, ($parents === [] ? [] : ['parents' => $parents]) + $meta, $db); }
     }
 
     private function skip(Form $form, array $state, ?object $record): array

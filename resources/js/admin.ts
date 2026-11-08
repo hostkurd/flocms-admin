@@ -223,6 +223,8 @@ document.addEventListener('submit', event => {
     }
     // A wizard's Back, Next or step button (0.39) names the move; the dialog asks the server for that step.
     const mover = event.submitter as HTMLButtonElement | null;
+    // Create and duplicate again (0.40): the dialog opens a fresh copy after the save.
+    if (mover?.name === '_duplicate_again') values._duplicate_again = '1';
     if (mover?.name === '_wizard' && !form.dataset.adminRefreshing) {
       values._wizard = mover.value;
       const original = form.dataset.rxSubmit;

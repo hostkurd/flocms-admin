@@ -281,7 +281,7 @@ final class PageView
 
     public function form(string $title, string $action, string $fields, ?string $deleteUrl, bool $isEdit, bool $canContinue, bool $hasErrors,
         ?string $backUrl = null, bool $canAnother = false, bool $dirty = false, bool $hasAside = false, ?array $history = null,
-        string $managers = '', ?string $relatedText = null, ?array $parent = null, ?array $translation = null, bool $wizard = false): string
+        string $managers = '', ?string $relatedText = null, ?array $parent = null, ?array $translation = null, bool $wizard = false, bool $duplicate = false): string
     {
         $class = $this->resource;
         $trashed = $deleteUrl !== null && \FloCMS\Admin\Trash\Trash::enabledFor($class);
@@ -317,6 +317,8 @@ final class PageView
             'translation' => $translation,
             // A wizard (0.39) prints its own final buttons in its footer.
             'wizard' => $wizard,
+            // Duplicate (0.40): "Create and duplicate again" instead of "Save and create another".
+            'duplicate' => $duplicate,
         ]);
     }
 

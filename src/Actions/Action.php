@@ -113,21 +113,30 @@ class Action
     public function modal(): static { $this->mode = 'modal'; return $this; }
     /** Open in a panel that slides in from the side of the window. */
     public function slideOver(): static { $this->mode = 'slide-over'; return $this; }
-    /** Open as a full page (Create and Edit only; other actions are short confirmations). */
+    /** Open as a full page (Create, Edit and Duplicate only; other actions are short confirmations). */
     public function page(): static
     {
-        if (!in_array($this->kind, ['create', 'edit'], true)) { throw new \LogicException('Only Create and Edit actions open as a page.'); }
+        if (!in_array($this->kind, ['create', 'edit', 'duplicate'], true)) { throw new \LogicException('Only Create, Edit and Duplicate actions open as a page.'); }
         $this->mode = 'page'; return $this;
     }
-    /** 'page', 'modal' or 'slide-over'. Create and Edit follow the resource's $formMode unless set here. */
+    /**
+     * 'page', 'modal' or 'slide-over'. Create and Edit follow the resource's
+     * $formMode unless set here; Duplicate (0.40) opens the way Create does.
+     */
     public function getMode(Resource $resource): string
     {
+        if ($this->kind === 'duplicate' && $this->mode === null) {
+            foreach ($resource->headerActions() as $action) {
+                if ($action instanceof self && $action->getKind() === 'create') { return $action->getMode($resource); }
+            }
+        }
+        $form = in_array($this->kind, ['create', 'edit', 'duplicate'], true);
         // Inside a relation manager Create and Edit open over the parent's page (0.22).
-        if ($resource->parentScope() !== null && in_array($this->kind, ['create', 'edit'], true)) { return $this->mode === 'slide-over' || ($this->mode === null && $resource::getFormMode() === 'slide-over') ? 'slide-over' : 'modal'; }
+        if ($resource->parentScope() !== null && $form) { return $this->mode === 'slide-over' || ($this->mode === null && $resource::getFormMode() === 'slide-over') ? 'slide-over' : 'modal'; }
         // A form with blocks needs the whole page (0.29).
-        if (in_array($this->kind, ['create', 'edit'], true) && $resource->hasBuilder()) { return 'page'; }
+        if ($form && $resource->hasBuilder()) { return 'page'; }
         if ($this->mode !== null) { return $this->mode; }
-        return in_array($this->kind, ['create', 'edit'], true) ? $resource::getFormMode() : 'modal';
+        return $form ? $resource::getFormMode() : 'modal';
     }
 
     public function getName(): string { return $this->name; }
@@ -142,6 +151,7 @@ class Action
         return match ($this->kind) {
             'create' => AdminLang::get('actions.create_label', ['label' => $resource::getLabel()]),
             'edit' => AdminLang::get('actions.edit'), 'delete' => AdminLang::get('actions.delete'),
+            'duplicate' => AdminLang::get('actions.duplicate'),
             default => Str::headline($this->name),
         };
     }
@@ -151,6 +161,7 @@ class Action
         return match ($this->kind) {
             'create' => AdminLang::get('form.create_title', ['label' => $resource::getLabel()]),
             'edit' => AdminLang::get('form.edit_title', ['label' => $resource::getLabel()]),
+            'duplicate' => AdminLang::get('duplicate.title', ['title' => ActionExecutor::label($resource, $record)]),
             'delete' => AdminLang::get('delete.title'), default => $this->getLabel($resource),
         };
     }
@@ -165,7 +176,7 @@ class Action
     public function getSubmitLabel(Resource $resource): string
     {
         return match ($this->kind) {
-            'create' => AdminLang::get('actions.create'), 'edit' => AdminLang::get('actions.save_changes'),
+            'create', 'duplicate' => AdminLang::get('actions.create'), 'edit' => AdminLang::get('actions.save_changes'),
             default => $this->getLabel($resource),
         };
     }
@@ -175,7 +186,7 @@ class Action
     }
     public function getForm(Resource $resource): Form
     {
-        if (in_array($this->kind, ['create', 'edit'], true)) {
+        if (in_array($this->kind, ['create', 'edit', 'duplicate'], true)) {
             $form = $resource->form(new Form());
             return ($scope = $resource->parentScope()) !== null ? $scope->adjustForm($form) : $form;
         }
@@ -204,11 +215,13 @@ class Action
     /** Permission, record policy, visible() and authorize(): whether the person may see the action. */
     public function permits(Resource $resource, ?object $record): bool
     {
-        $ability = match ($this->kind) { 'edit' => 'update', 'custom' => $this->name, default => $this->kind };
-        if (!Auth::can($this->permission ?? $resource::permission($ability))) { return false; }
+        if (!Auth::can($this->permissionName($resource))) { return false; }
         $policy = match ($this->kind) {
             'create' => $resource->canCreate(), 'edit' => $record !== null && $resource->canEdit($record),
-            'delete' => $record !== null && $resource->canDelete($record), default => true,
+            'delete' => $record !== null && $resource->canDelete($record),
+            // Duplicate (0.40): creating, and reading the record it copies.
+            'duplicate' => $record !== null && $resource->canCreate() && Auth::can($resource::permission('view')) && $resource->canView($record),
+            default => true,
         };
         return $policy && ($this->visibility === null || (bool) ($this->visibility)($record))
             && ($this->authorization === null || (bool) ($this->authorization)($record));
@@ -220,7 +233,7 @@ class Action
     /** The permission this action needs: its own, else the resource's for its kind. */
     public function permissionName(Resource $resource): string
     {
-        $ability = match ($this->kind) { 'edit' => 'update', 'custom' => $this->name, default => $this->kind };
+        $ability = match ($this->kind) { 'edit' => 'update', 'duplicate' => 'create', 'custom' => $this->name, default => $this->kind };
         return $this->permission ?? $resource::permission($ability);
     }
     public function authorizeRequest(Resource $resource, ?object $record): void

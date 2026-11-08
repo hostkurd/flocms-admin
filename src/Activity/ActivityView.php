@@ -46,6 +46,7 @@ final class ActivityView
         $days = [];
         $arrow = self::arrow();
         \FloCMS\Admin\Support\Avatar::preload(array_map(static fn ($entry): int => (int) $entry->userId, $entries));
+        ActivityEntry::preloadSources(array_values($entries));
         foreach ($entries as $entry) {
             $key = date('Y-m-d', $entry->time());
             if (!isset($days[$key])) { $days[$key] = ['label' => Dates::day($entry->time()), 'items' => []]; }
@@ -62,6 +63,7 @@ final class ActivityView
                     ? AdminLang::get('activity.history.related', ['type' => ($class = $entry->resourceClass()) !== null ? $class::getPluralLabel() : $entry->typeLabel(), 'phrase' => $entry->phrase(), 'title' => $entry->label()])
                     : $entry->phrase(), 'time' => Dates::time($entry->time()),
                 'badge' => in_array($entry->action, ['created', 'deleted', 'restored', 'purged'], true) ? $entry->badge() : '',
+                'from' => self::duplicatedFrom($entry),
                 'badgeColor' => $entry->badgeColor(),
                 'changes' => $inline, 'hasChanges' => $inline !== [] || $entry->details() !== [],
                 'showUrl' => $entry->hasChanges() ? Admin::url('activity/show/' . $entry->id) : null,
@@ -145,6 +147,19 @@ final class ActivityView
             'beforeEmpty' => $before === '', 'afterEmpty' => $after === '',
             'lang' => $lang ?? '', 'dir' => $lang !== null && $lang !== '' ? Languages::direction($lang) : '',
         ];
+    }
+
+    /**
+     * "Duplicated from Villa A1" (0.40), the title linked while the record exists
+     * and the person may open it; '' for other entries. Escaped HTML.
+     */
+    public static function duplicatedFrom(ActivityEntry $entry): string
+    {
+        $from = $entry->duplicatedFrom();
+        if ($from === null) { return ''; }
+        $title = $from['url'] !== null ? '<a href="' . \FloCMS\Admin\Support\Str::e($from['url']) . '">' . \FloCMS\Admin\Support\Str::e($from['title']) . '</a>' : \FloCMS\Admin\Support\Str::e($from['title']);
+        $parts = explode(':title', AdminLang::get('activity.duplicated_from'), 2);
+        return \FloCMS\Admin\Support\Str::e($parts[0]) . $title . \FloCMS\Admin\Support\Str::e($parts[1] ?? '');
     }
 
     /** "Listing #42" */

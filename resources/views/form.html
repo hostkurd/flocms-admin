@@ -29,6 +29,9 @@
             @if($canAnother)
             <button type="submit" name="_another" value="1" class="fa-btn">{{ $t('actions.save_another') }}</button>
             @endif
+            @if($duplicate)
+            <button type="submit" name="_duplicate_again" value="1" class="fa-btn">{{ $t('duplicate.again') }}</button>
+            @endif
             @if($canContinue)
             <button type="submit" name="_continue" value="1" class="fa-btn" data-admin-save title="{{ $t('form.save_shortcut') }}">{{ $t('actions.save') }}</button>
             @endif

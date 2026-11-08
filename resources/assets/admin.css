@@ -1378,6 +1378,10 @@ details.fa-form-section:not([open]) .fa-section-chevron{transform:rotate(-90deg)
 .fa-lang-other,.fa-record-body > .fa-lang-other{margin:0 0 20px}
 .fa-lang-other[hidden]{display:none}
 .fa-dialog-body > .fa-lang-other{margin-block-end:14px}
+/* Duplicate (0.40): the note above a copy's form, and the History line of a copy */
+.fa-duplicate-note,.fa-record-body > .fa-duplicate-note{margin:0 0 20px}
+.fa-dialog-body > .fa-duplicate-note{margin:0}
+.fa-timeline-from{margin:2px 0 0!important;font-size:12.5px;color:var(--fa-muted)}
 .fa-editor .fa-dialog-head.has-switch{flex-wrap:wrap;row-gap:12px}
 .fa-editor .fa-dialog-head.has-switch .fa-dialog-title{flex:1}
 .fa-dialog-switch{flex-basis:100%;order:3}

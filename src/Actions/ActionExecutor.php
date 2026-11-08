@@ -22,6 +22,12 @@ final class ActionExecutor
         $action->authorizePermission($this->resource);
         $record = $this->record($placement, $id);
         $action->authorizeRequest($this->resource, $record);
+        // Duplicate (0.40): the record only fills a New form; the form itself has no record.
+        if ($action instanceof DuplicateAction && $record !== null) {
+            $copy = $action->prefill($this->resource, $this->repository, $action->getForm($this->resource), $record);
+            $token = OperationStore::issue($this->resource::getSlug(), $placement, $action->getName(), $id, '');
+            return ['operation' => $token, 'state' => $copy['state'], 'record' => null, 'source' => $record, 'skipped' => $copy['skipped'], 'tokens' => $copy['tokens']];
+        }
         $state = $action->initialState($action->getForm($this->resource), $record);
         $token = OperationStore::issue($this->resource::getSlug(), $placement, $action->getName(), $id,
             $record !== null ? RecordRepository::fingerprint($record) : '');
@@ -42,6 +48,8 @@ final class ActionExecutor
                 $action->authorizePermission($this->resource);
                 $record = $this->record($placement, $id);
                 $action->authorizeRequest($this->resource, $record);
+                // Duplicate (0.40): saved as a new record; the copied one is never written, locked or used for uploads.
+                [$source, $record] = $action->getKind() === 'duplicate' ? [$record, null] : [null, $record];
                 if ($record !== null) {
                     if (!hash_equals($entry['fingerprint'], RecordRepository::fingerprint($record))) {
                         throw new ValidationException(['_form' => AdminLang::get('reactive.conflict')]);
@@ -51,7 +59,7 @@ final class ActionExecutor
                 $form = $action->getForm($this->resource);
                 $kind = $action->getKind();
                 if ($kind === 'delete') { $batch->deleting($this->resource, $record); $this->repository->deleteUnchanged($id, $record); }
-                elseif (in_array($kind, ['create', 'edit'], true)) {
+                elseif (in_array($kind, ['create', 'edit', 'duplicate'], true)) {
                     $submission = new FormSubmission($this->resource, $this->repository);
                     $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $input, $_FILES['_uploads'] ?? [], $this->resource, $record);
                     $state = $submission->state($form, $input, $record);
@@ -60,7 +68,7 @@ final class ActionExecutor
                     $errors = $submission->errors($form, $state, $record);
                     if (($flow = \FloCMS\Admin\Form\WizardFlow::for($form, $kind === 'edit')) !== null) { $errors = $flow->finalErrors($errors, $state, $record)[0]; }
                     if ($errors !== []) { throw new ValidationException($errors); }
-                    $submission->save($form, $state, $record, true, $batch);
+                    $submission->save($form, $state, $record, true, $batch, meta: $source !== null ? self::duplicatedFrom($this->resource, $source) : []);
                 } else {
                     $state = ActionForm::state($action, $form, $input, $record);
                     $accepted = ActionForm::safe($form, $state);
@@ -78,7 +86,7 @@ final class ActionExecutor
                     \FloCMS\Admin\Trash\Trash::notifyDeleted($this->resource, 1, [self::label($this->resource, $record)]);
                 } elseif ($kind !== 'custom') {
                     Notification::make()->title(AdminLang::get(match ($kind) {
-                        'create' => 'flash.created', 'edit' => 'flash.updated',
+                        'create', 'duplicate' => 'flash.created', 'edit' => 'flash.updated',
                     }, ['label' => $this->resource::getLabel()]))->success()->send();
                 }
             });
@@ -106,14 +114,15 @@ final class ActionExecutor
         $action->authorizeRequest($this->resource, $record);
         $form = $action->getForm($this->resource);
         $kind = $action->getKind();
+        if ($kind === 'duplicate') { $record = null; }
         $flow = \FloCMS\Admin\Form\WizardFlow::for($form, $kind === 'edit');
         if ($flow === null || $kind === 'delete') { return null; }
         // A final submit is left to execute(), which receives the uploaded files once and runs every check.
         if (!$refreshing && ($input['_wizard'] ?? null) === null) {
-            $current = $flow->restore($input, in_array($kind, ['create', 'edit'], true) ? (new FormSubmission($this->resource, $this->repository))->state($form, $input, $record) : ActionForm::state($action, $form, $input, $record), $record);
+            $current = $flow->restore($input, in_array($kind, ['create', 'edit', 'duplicate'], true) ? (new FormSubmission($this->resource, $this->repository))->state($form, $input, $record) : ActionForm::state($action, $form, $input, $record), $record);
             if ($kind === 'edit' || $current->isLast()) { return ['state' => $current, 'save' => true, 'errors' => [], 'values' => []]; }
         }
-        if (in_array($kind, ['create', 'edit'], true)) {
+        if (in_array($kind, ['create', 'edit', 'duplicate'], true)) {
             $submission = new FormSubmission($this->resource, $this->repository);
             $input = \FloCMS\Admin\Uploads\Uploads::receive($form, $input, $_FILES['_uploads'] ?? [], $this->resource, $record);
             $state = $submission->state($form, $input, $record);
@@ -124,6 +133,17 @@ final class ActionExecutor
         }
         if ($refreshing) { $form->refreshState($state, $record); }
         return $flow->handle($input, $state, $record, $validate, $refreshing) + ['values' => ActionForm::safe($form, $state)];
+    }
+
+    /**
+     * The activity meta of a record made with Duplicate (0.40): the id and the
+     * stored title of the record it was copied from.
+     *
+     * @return array{duplicated_from: array{id: string, title: string}}
+     */
+    public static function duplicatedFrom(Resource $resource, object $source): array
+    {
+        return ['duplicated_from' => ['id' => (string) ($source->{$resource::getPrimaryKey()} ?? ''), 'title' => \FloCMS\Admin\Trash\Trash::titleOf($resource, $source)]];
     }
 
     /** A record's title as the list shows it, for notices. */

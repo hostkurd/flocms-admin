@@ -9,6 +9,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Right-to-left** admin from the start (Arabic, Kurdish, …), with the right `dir` on every language input.
 - Uses FloCMS's own login, CSRF protection, permissions and validation rules.
 - **Forms**: sections, keyboard/RTL tabs, responsive grids and server-validated dependencies. [Forms guide](docs/forms.md).
+- **Duplicate** (0.40): any resource can offer a Duplicate row action that opens its New form filled from a record (slugs get `-copy`, files get their own copy, nothing saved until Create), in the dialog or on the page, with or without JavaScript. [Guide](docs/actions-and-notifications.md#duplicate).
 - **Wizard forms** (0.39): a long form shown as steps with Back and Next, each step checked on the server before the next, one save at the end; on create and edit pages, dialogs, action and custom page forms, with or without JavaScript. [Guide](docs/wizards.md).
 - **Editable cells, totals and grouping** (0.38): switches, selects and text cells that save from the list with the edit page's checks, sums and averages for this page and all rows, rows grouped under headings with subtotals. [Guide](docs/tables.md).
 - **Table filters and bulk Actions**: selects, toggles, date ranges and explicit, atomic multi-record workflows. [API guide](docs/tables-and-login.md).
@@ -516,6 +517,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.39: wizard forms (`Wizard` and `Step` layouts: Back and Next checked step by step, steps shown for some answers, `afterValidation()`, a review step; create and edit pages, dialogs, action, bulk and custom page forms; 0.39.6: `MediaColumn::size()` for larger list thumbnails)
+- 0.40: Duplicate for any resource (`DuplicateAction`: the New form filled from a record, `except()`, `only()`, `fill()`, copied uploads, "Create and duplicate again", "Duplicated from" in the activity log)
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development
