@@ -1104,8 +1104,8 @@ final class DoctorCommand extends Command
         $this->checkCharset($db, $settings['table']);
         $this->line('  Notifications are kept ' . ($settings['days'] > 0 ? $settings['days'] . ' days' : 'forever') . '; php flo admin:notifications-purge deletes older ones (panel pages do it hourly). '
             . ($settings['poll'] > 0 ? 'An open panel checks the count every ' . $settings['poll'] . ' seconds.' : 'The count is read when a page opens (\'poll\' => 0).'));
-        if (Admin::registry()->find('notifications') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('notifications'))) {
-            $this->caution('The URL /admin/notifications belongs to your site, so the bell\'s links don\'t work. Rename that resource or controller to use the bell.');
+        if (!\FloCMS\Admin\Notifications\Bell::reachable()) {
+            $this->caution('The URL /admin/notifications belongs to your site (a resource, panel page or controller with that name), so the bell is hidden. Rename yours to use the bell.');
         }
     }
 

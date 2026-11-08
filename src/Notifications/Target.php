@@ -27,7 +27,7 @@ final class Target
     public static function normalize(string $url): ?string
     {
         $url = trim($url);
-        if ($url === '' || strlen($url) > 1000 || str_contains($url, '\\') || str_contains($url, '#')) { return null; }
+        if ($url === '' || strlen($url) > 1000 || str_contains($url, '\\') || str_contains($url, '#') || preg_match('/[\x00-\x1F\x7F]/', $url) === 1) { return null; }
         $base = defined('SITE_URI') ? rtrim((string) constant('SITE_URI'), '/') : '';
         $origin = preg_match('~^https?://[^/]+~i', $base, $m) === 1 ? strtolower($m[0]) : '';
         $basePath = (string) parse_url($base === '' ? '/' : $base, PHP_URL_PATH);
@@ -74,6 +74,11 @@ final class Target
     {
         $query = '';
         if (($at = strpos($value, '?')) !== false) { $query = substr($value, $at); $value = substr($value, 0, $at); }
+        // Letters of any language and spaces are kept, percent-encoded (a Greek slug, "?q=sea view").
+        $encode = static fn (array $m): string => rawurlencode($m[0]);
+        $value = (string) preg_replace_callback('#[^A-Za-z0-9/_\-.%~+,;=@!$\'()*]#', $encode, $value);
+        $query = (string) preg_replace_callback('~[\x80-\xFF "<>`{}|^]~', $encode, $query);
+        if (str_contains(rawurldecode($value), '..')) { return null; }
         if ($site) {
             if (!str_starts_with($value, '/') || str_starts_with($value, '//')) { return null; }
         } else {
@@ -83,6 +88,6 @@ final class Target
         if (str_contains($value, '..') || preg_match(self::SAFE, $value) !== 1) { return null; }
         if ($query === '?') { $query = ''; }
         if ($query !== '' && preg_match(self::SAFE_QUERY, $query) !== 1) { return null; }
-        return $value . $query;
+        return strlen($value . $query) > 1024 ? null : $value . $query;
     }
 }

@@ -19,7 +19,7 @@ function setTitle(badge: string): void {
   document.title = badge !== '' ? `(${badge}) ${base}` : base;
 }
 
-/** The "back" inputs of the menu's forms return to the page the person is on. */
+/** The "back" inputs of a menu that came from the poll (it has none) return to the page the person is on. */
 function fillBack(root: ParentNode): void {
   root.querySelectorAll<HTMLInputElement>('[data-admin-bell-back]').forEach(input => { input.value = location.href; });
 }
@@ -80,7 +80,7 @@ export function initializeBell(): void {
   if (!element) { setTitle(''); if (timer) clearTimeout(timer); timer = undefined; return; }
   stopped = false;
   pending = undefined;
-  fillBack(element);
+  // The server already wrote this page's address into the menu's forms.
   element.addEventListener('toggle', () => { if (!element.open && pending) apply(pending); });
   setTitle(element.querySelector<HTMLElement>('[data-admin-bell-badge]')?.textContent?.trim() || '');
   schedule();

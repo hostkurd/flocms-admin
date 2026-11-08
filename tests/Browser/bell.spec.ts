@@ -53,7 +53,10 @@ test('opening a notification marks it read and opens its page', async ({ page })
 });
 
 test('mark all as read from the menu keeps the person on their page', async ({ page }) => {
-  await page.goto('/en/admin/posts');
+  // Reached inside the panel (no page load): the menu still returns here
+  await page.goto('/en/admin/dashboard');
+  await page.locator('.fa-nav').getByRole('link', { name: 'Posts', exact: true }).click();
+  await expect(page).toHaveURL(/\/en\/admin\/posts$/);
   await bell(page).locator('summary').click();
   await menu(page).getByRole('button', { name: 'Mark all as read' }).click();
   await expect(page).toHaveURL(/\/en\/admin\/posts$/);

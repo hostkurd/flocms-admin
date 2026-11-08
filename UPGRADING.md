@@ -23,7 +23,7 @@ Notification::make()
 
 - Add `php flo admin:notifications-purge` to the site's daily cron if you have one (panel pages also do it hourly).
 - A resource can show a count in the sidebar: `public function navigationBadge(): int { ... }` (keep it to one `COUNT`).
-- A site that already has a resource or controller named `notifications` keeps `/admin/notifications`; the bell then stays hidden (`admin:doctor` says so).
+- A site that already has a resource, panel page or controller named `notifications` keeps `/admin/notifications`; the bell then stays hidden (`admin:doctor` says so).
 - A site language file that overrides Admin words can add `admin.notifications.*`.
 
 ---

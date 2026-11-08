@@ -29,6 +29,7 @@ return new class extends Migration
 
         foreach ([
             '{{ table }}_user_index' => '`{{ table }}` (`user_id`, `read_at`)',
+            '{{ table }}_latest_index' => '`{{ table }}` (`user_id`, `id`)',
             '{{ table }}_created_index' => '`{{ table }}` (`created_at`)',
         ] as $index => $on) {
             try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }

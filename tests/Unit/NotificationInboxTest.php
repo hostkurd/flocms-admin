@@ -66,8 +66,12 @@ final class NotificationInboxTest extends TestCase
         // Website pages keep their path
         self::assertSame('/en/properties/villa-a1', Target::normalize('/en/properties/villa-a1'));
         self::assertSame('/en/contact', Target::normalize('https://EXAMPLE.test/en/contact'));
+        // Letters of any language and spaces are kept, encoded
+        self::assertSame('/el/properties/%CE%B2%CE%AF%CE%BB%CE%B1-%CE%B11', Target::normalize('/el/properties/βίλα-α1'));
+        self::assertSame('properties?search=sea%20view', Target::normalize('properties?search=sea view'));
+        self::assertSame('https://example.test/ar/admin/properties?search=sea%20view', Target::resolve(Target::normalize('properties?search=sea view')));
         // Other sites and tricks are refused
-        foreach (['https://evil.example/en/admin/x', '//evil.example/x', 'javascript:alert(1)', 'data:text/html,x', '/en/../admin',
+        foreach (['https://evil.example/en/admin/x', '//evil.example/x', 'javascript:alert(1)', 'data:text/html,x', '/en/../admin', '/en/admin/%2e%2e/x', 'a/%2E%2E/b',
                   'inquiries/../../etc', "inquiries/\nedit", 'inquiries\\edit', '/en/a#b', 'http://example.test.evil.example/x', ''] as $bad) {
             self::assertNull(Target::normalize($bad), $bad);
         }

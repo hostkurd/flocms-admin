@@ -40,10 +40,11 @@ final class Bell
         }
     }
 
-    /** Whether /admin/notifications is the bell's (a site resource or controller with that name keeps it). */
+    /** Whether /admin/notifications is the bell's (a site resource, panel page or controller with that name keeps it). */
     public static function reachable(): bool
     {
         return Admin::registry()->find('notifications') === null
+            && Admin::panelPages()->find('notifications') === null
             && !class_exists(\FloCMS\Admin\Support\Str::appControllerClass('notifications'));
     }
 

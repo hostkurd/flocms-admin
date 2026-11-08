@@ -108,7 +108,10 @@ final class Inbox
      */
     public static function latest(int $userId, int $limit = self::MENU_SIZE, ?Database $db = null): array
     {
-        return self::page($userId, false, 1, $limit, $db)['items'];
+        $db ??= App::db();
+        if ($db === null || !self::enabled($db)) { return []; }
+        $rows = $db->query('SELECT * FROM `' . self::table() . '` WHERE `user_id` = ? ORDER BY `id` DESC LIMIT ' . max(1, min(100, $limit)), [$userId])->fetchAll(\PDO::FETCH_OBJ);
+        return array_map([self::class, 'present'], $rows);
     }
 
     /**
@@ -177,11 +180,15 @@ final class Inbox
     public static function markCurrentPageRead(): void
     {
         try {
-            if (($user = \FloCMS\Admin\Support\Actor::id()) === null || !self::enabled()) { return; }
-            $target = Target::normalize((string) ($_SERVER['REQUEST_URI'] ?? ''));
+            if (($user = \FloCMS\Admin\Support\Actor::id()) === null || ($db = App::db()) === null || !self::enabled($db)) { return; }
+            $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+            // /admin alone may be a panel page set as home, not the dashboard
+            if (preg_match('~/admin/?(\?|$)~', $uri) === 1) { return; }
+            $target = Target::normalize($uri);
             if ($target === null || str_starts_with($target, '/') || str_starts_with($target, 'notifications')) { return; }
-            self::markReadFor($target, $user);
-            if (($at = strpos($target, '?')) !== false) { self::markReadFor(substr($target, 0, $at), $user); }
+            $targets = array_values(array_unique([$target, explode('?', $target, 2)[0]]));
+            $db->query('UPDATE `' . self::table() . '` SET `read_at` = ? WHERE `user_id` = ? AND `read_at` IS NULL AND `url` IN (' . implode(', ', array_fill(0, count($targets), '?')) . ')',
+                array_merge([date('Y-m-d H:i:s'), $user], $targets));
         } catch (\Throwable $error) {
             \FloCMS\Admin\Support\Log::error('Notifications for this page could not be marked read: ' . $error->getMessage());
         }

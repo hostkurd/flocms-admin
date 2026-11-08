@@ -75,7 +75,7 @@ final class NotificationsController extends PanelController
         $user = $this->user();
         if (!$this->request->isMethod('GET', 'HEAD')) { header('Allow: GET'); throw new HttpException(405); }
         $row = Inbox::find($this->id(), $user) ?? throw new HttpException(404);
-        Inbox::markRead((int) $row->id, $user);
+        if ($this->request->method() === 'GET') { Inbox::markRead((int) $row->id, $user); }
         $this->redirect(Target::resolve(is_string($row->url) ? $row->url : null) ?? Admin::url('notifications'));
     }
 

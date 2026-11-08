@@ -230,6 +230,13 @@ final class NotificationsRequestTest extends RequestTestCase
         self::assertStringNotContainsString('id="fa-bell"', $off['body']);
     }
 
+    public function testAPanelPageNamedNotificationsKeepsItsAddressAndHidesTheBell(): void
+    {
+        self::sendInquiry();
+        $body = self::request('GET', '/en/admin/dashboard', ['admin_config' => ['admin_pages' => [\FloCMS\Admin\Tests\Fixtures\Notifications\NotificationsPage::class]]])['body'];
+        self::assertStringNotContainsString('id="fa-bell"', $body);
+    }
+
     public function testAResourceCanShowABadgeInTheSidebar(): void
     {
         $config = ['resources' => [\FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class, \FloCMS\Admin\Tests\Fixtures\Notifications\DraftResource::class]];
