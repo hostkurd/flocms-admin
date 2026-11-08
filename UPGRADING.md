@@ -1,3 +1,18 @@
+# Upgrading to Admin 0.42.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.42.0" -W` and reload open Admin pages (Ctrl+F5). No migration.
+
+What changes by itself:
+- The dashboard's title is now a greeting ("Good afternoon, Sara") with today's date; with widgets, the period buttons (7 days, 30 days, 90 days, 12 months) and Refresh sit beside it. `'dashboard_periods' => []` hides the buttons.
+- `RecordsWidget` shows **See all** in its header instead of "View all records" under the table.
+- Widgets get a header row; a line beside the title comes from `$description` or `subtitle()`.
+
+To use the new pieces, see [Dashboard widgets](docs/widgets.md#the-dashboard-042): `'widget_columns' => 3`, `'dashboard_actions'`, `StatsWidget::$separate`, `Stat::icon()/trend()/sparkline()`, `'previous'` and `'donut'` charts, `BarListWidget`, `ProgressWidget`, `ListWidget` and `ActivityWidget`, and `$context->period()` with `countByDay()`.
+
+A widget class that already has its own public `subtitle()` or `link()` method now shows it in the header: rename it if that is not meant.
+
+---
+
 # Upgrading to Admin 0.41.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.41.0" -W`, then create the notifications table and reload open Admin pages (Ctrl+F5):

@@ -24,6 +24,11 @@ return [
     'widgets_path' => 'admin/Widgets',
     'widgets_namespace' => 'App\\Admin\\Widgets',
     'widget_columns' => 2,
+    // The dashboard (0.42): period buttons in days ([] hides them), the one it opens with,
+    // and quick buttons (resources open their Create page; the first is the main button):
+    // 'dashboard_periods' => [7, 30, 90, 365],
+    // 'dashboard_period' => 30,
+    // 'dashboard_actions' => [App\Admin\Resources\PostResource::class],
 
     // Pages of your own in the panel (0.36): reports, tools, help pages.
     // php flo make:admin-page SalesReport --view --table adds one here.

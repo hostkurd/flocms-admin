@@ -9,7 +9,12 @@ use FloCMS\Core\{App, Auth, Database};
 final class WidgetContext
 {
     private int $queries = 0;
-    public function __construct(private readonly array $resources) {}
+    private Period $period;
+    public function __construct(private readonly array $resources, ?Period $period = null) { $this->period = $period ?? Period::last(Admin::config()->dashboardPeriod()); }
+    /** The dashboard's chosen period (0.42); on panel pages the default one. */
+    public function period(): Period { return $this->period; }
+    /** A panel URL for a link in a widget (0.42), e.g. url('inquiries', ['status' => 'new']). */
+    public function url(string $path, array $query = []): string { return Admin::url($path, $query); }
     public static function registered(string $class): bool
     {
         return is_subclass_of($class, Resource::class) && Admin::registry()->find($class::getSlug()) === $class;

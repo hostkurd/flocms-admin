@@ -340,7 +340,7 @@ final class CustomPageController extends PanelController
     {
         $widgets = [];
         foreach ($this->page->widgets() as $class) {
-            if (!is_string($class) || !is_subclass_of($class, \FloCMS\Admin\Widgets\Widget::class) || !(new \ReflectionClass($class))->isInstantiable()) {
+            if (!is_string($class) || !is_subclass_of($class, \FloCMS\Admin\Widgets\Widget::class) || !(new \ReflectionClass($class))->isInstantiable() || !\FloCMS\Admin\Widgets\WidgetRegistry::supported(new $class())) {
                 throw new \LogicException('widgets() of ' . $this->page::class . ' must list widget classes (got ' . (is_string($class) ? $class : get_debug_type($class)) . ').');
             }
             $widget = new $class();

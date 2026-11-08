@@ -74,6 +74,12 @@ final class Dates
         return self::format($time, 'LLLL y', 'F Y');
     }
 
+    /** "Oct 2026" (0.42, chart points by month). */
+    public static function monthShort(int $time): string
+    {
+        return self::format($time, 'LLL y', 'M Y');
+    }
+
     /** "2026" (0.38, year groups). */
     public static function year(int $time): string
     {

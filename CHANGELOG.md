@@ -2,6 +2,22 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.42.0 - 2026-11-08
+
+**A professional dashboard.** A header with a greeting, the period buttons and quick buttons; headline numbers with trends and sparklines; charts with the previous period and donuts; new widget types for bars, progress, lists and recent activity. No new tables. See [Dashboard widgets](docs/widgets.md#the-dashboard-042).
+
+- **Header**: "Good morning / afternoon / evening, Sara" (first name, the site's time zone), today's date and the site's address, **Refresh** as an icon button. The dashboard without widgets gets the greeting too (its cards get the new card style).
+- **Period buttons**: config `'dashboard_periods'` (default 7, 30, 90 and 365 days; `[]` hides them) and `'dashboard_period'` (default 30). Plain links (`?period=7`), so they work without JavaScript; Refresh keeps the period (the reactive component holds it read-only). Widgets read `$context->period()`: `from()`, `to()`, `previous()`, `label()`, `days()`, `unit()` and `series($perDay)` (chart points by day, week or month).
+- **Quick buttons**: config `'dashboard_actions'`: resources (their Create page, with the create permission and `canCreate()`) and panel pages (their permission and `canAccess()`), as classes or `[Class::class, 'label' => ..., 'icon' => ...]`. The first is the main button.
+- **Headline numbers**: `StatsWidget::$separate = true` shows each stat as a card of its own, four in a row (two on a phone). `Stat::icon()`, `trend($now, $before)` (▲/▼ %, green or red, read out as "Up 23%"), `change($delta)`, `invertTrend()`, `sparkline([...])` (up to 30 values), `descriptionColor()`, `url()` (a page of this site).
+- **Charts**: `'previous' => [...]` adds the previous period as a dashed line with a legend (`'label'`, `'previousLabel'`), also in the data table; lines are smooth (monotone, never overshooting) with a light fill; x labels at five places. New type `'donut'`: up to 8 parts, legend with value and share, total in the middle (`'total'`).
+- **New widget types**: `BarListWidget` (label, value, bar; `$percent`; `footer()`), `ProgressWidget` (label, %, meta, description), `ListWidget` (icon, title, line, number, link; zero items left out; "Nothing needs your attention"), and the ready-made `ActivityWidget` (latest content changes from the activity log, for `activity.view`).
+- **Widget headers**: `$description` / `subtitle($context)` beside the title and `link($context)` at the end. `RecordsWidget` shows **See all** in its header (before: "View all records" under the table) and its table runs edge to edge.
+- **`WidgetQuery`**: `countBy($column, $limit)`, `countByDay($column, $from, $to)`, `whereNotNull()`, and `NOT LIKE` in `where()`. `WidgetContext::url($path, $query)`.
+- Charts and bars use the brand colour (`primary_color`) and new tokens `--fa-chart-2` … `--fa-chart-6`, `--fa-chart-prev`, `--fa-track`, in light and dark mode. Everything is drawn without `style` attributes (a strict Content-Security-Policy keeps working).
+- New icons `hourglass` and `user-x`; `Dates::monthShort()`. New words in `en`, `ar` and `ku`: `dashboard.hello_*`, `dashboard.overview`, `widgets.period*`, `widgets.trend_*`, `widgets.see_all`, `widgets.activity`, `widgets.all_clear` and others.
+- `php flo admin:list` names the new widget types; panel pages may show them too.
+
 ## 0.41.0 - 2026-11-08
 
 **The notification bell.** A bell in the top bar with an unread count, a menu of the latest notifications and a Notifications page, and a PHP API that stores a notification for other people. Run `php flo admin:install` and `php flo migrate` for its table; until then nothing changes. See [Stored notifications and the bell](docs/actions-and-notifications.md#stored-notifications-and-the-bell).

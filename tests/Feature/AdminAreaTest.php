@@ -29,7 +29,7 @@ final class AdminAreaTest extends RequestTestCase
     {
         $body = self::request('GET', '/en/admin/dashboard')['body'];
 
-        self::assertStringContainsString('Welcome, Sara.', $body);
+        self::assertMatchesRegularExpression('#<h1 class="fa-page-title">Good (morning|afternoon|evening), Sara</h1>#', $body, 'the greeting (0.42)');
         self::assertMatchesRegularExpression('#href="https://example.test/en/admin/posts">.*?<span class="fa-stat-value">2</span>#s', $body);
         self::assertStringNotContainsString('/en/admin/post-tags', $body, 'editors lack taxonomy.tags.view');
         self::assertStringNotContainsString('/en/admin/accounts', $body, 'editors lack users.manage');

@@ -95,6 +95,10 @@ final class ListCommand extends Command
                 $type = match (true) {
                     $widget instanceof \FloCMS\Admin\Widgets\StatsWidget => 'stats',
                     $widget instanceof \FloCMS\Admin\Widgets\RecordsWidget => 'records',
+                    $widget instanceof \FloCMS\Admin\Widgets\BarListWidget => 'bars',
+                    $widget instanceof \FloCMS\Admin\Widgets\ProgressWidget => 'progress',
+                    $widget instanceof \FloCMS\Admin\Widgets\ListWidget => 'list',
+                    $widget instanceof \FloCMS\Admin\Widgets\ActivityWidget => 'activity',
                     default => 'chart',
                 };
                 $reads = array_map(fn (string $class): string => $this->short($class), $widget->resources());

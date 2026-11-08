@@ -30,7 +30,7 @@ test('manual refresh reads current data without reloading and permission revocat
 });
 
 test('View all links use ordinary resource navigation and back returns to widgets', async ({page})=>{
-  await open(page);await recent(page).getByRole('link',{name:'View all records'}).click();await expect(page).toHaveURL(/\/admin\/widget-posts$/);
+  await open(page);await recent(page).getByRole('link',{name:'See all'}).click();await expect(page).toHaveURL(/\/admin\/widget-posts$/);
   await page.goBack();await expect(page.locator('[data-admin-widget]')).toHaveCount(4);expect(await page.evaluate(()=>(window as any).widgetMarker)).toBe('persistent');
 });
 

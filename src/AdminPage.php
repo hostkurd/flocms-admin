@@ -92,7 +92,7 @@ abstract class AdminPage
 
     /**
      * Dashboard widgets shown on the page, as classes (StatsWidget, RecordsWidget,
-     * ChartWidget). A widget reads the page's filters with $this->pageFilters().
+     * ChartWidget, and since 0.42 BarListWidget, ProgressWidget, ListWidget, ActivityWidget). A widget reads the page's filters with $this->pageFilters().
      *
      * @return list<class-string<\FloCMS\Admin\Widgets\Widget>>
      */

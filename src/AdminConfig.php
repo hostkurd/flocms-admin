@@ -644,6 +644,54 @@ final class AdminConfig
         return $prefix === '' ? 'content' : $prefix;
     }
 
+    /**
+     * The dashboard's period buttons (0.42), in days: 'dashboard_periods'
+     * (default 7, 30, 90 and 365; [] hides the buttons) and 'dashboard_period',
+     * the one it opens with (default 30, or the first listed).
+     *
+     * @return list<int>
+     */
+    public function dashboardPeriods(): array
+    {
+        $periods = $this->values['dashboard_periods'] ?? [7, 30, 90, 365];
+        if (!is_array($periods)) { return [7, 30, 90, 365]; }
+        $periods = array_values(array_unique(array_filter($periods, static fn ($days): bool => is_int($days) && $days >= 1 && $days <= 3660)));
+        sort($periods);
+        return array_slice($periods, 0, 6);
+    }
+
+    public function dashboardPeriod(): int
+    {
+        $periods = $this->dashboardPeriods();
+        $default = $this->values['dashboard_period'] ?? 30;
+        if (is_int($default) && $default >= 1 && $default <= 3660 && ($periods === [] || in_array($default, $periods, true))) { return $default; }
+        return $periods[0] ?? 30;
+    }
+
+    /**
+     * The dashboard's quick buttons (0.42): resources (their Create page) and
+     * panel pages, as classes or [Class::class, 'label' => ..., 'icon' => ...].
+     * Each shows only for people who may use it; the first is the main button.
+     *
+     * @return list<array{class: string, label: ?string, icon: ?string}>
+     */
+    public function dashboardActions(): array
+    {
+        $actions = $this->values['dashboard_actions'] ?? [];
+        if (!is_array($actions)) { return []; }
+        $list = [];
+        foreach (array_slice(array_values($actions), 0, 8) as $action) {
+            $class = is_string($action) ? $action : (is_array($action) && is_string($action[0] ?? null) ? $action[0] : null);
+            if ($class === null) { continue; }
+            $list[] = [
+                'class' => ltrim($class, '\\'),
+                'label' => is_array($action) && is_string($action['label'] ?? null) ? $action['label'] : null,
+                'icon' => is_array($action) && is_string($action['icon'] ?? null) ? $action['icon'] : null,
+            ];
+        }
+        return $list;
+    }
+
     public function widgetColumns(): int
     {
         $columns = $this->values['widget_columns'] ?? 2;
