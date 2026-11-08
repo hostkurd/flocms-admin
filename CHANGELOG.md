@@ -2,6 +2,10 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.40.1 - 2026-11-08
+
+- **The login page keeps its styles while the website is offline.** With offline mode on, core answers every website address with the offline page (503). The login page itself is an admin address and opened, but its stylesheet, script and brand colour came from the website address `/flo-admin/asset/…`, so they were replaced by the offline page and the login page was unstyled (browsers that still had the files cached hid it). The panel's own files (`admin-v<version>.css` / `.js`, the rich text editor script, the brand colour stylesheet and the fonts) now come from `/<lang>/admin/flo-assets/asset/<name>`, an admin address that opens before signing in (`App::allowGuestAdminActions()`), so offline mode no longer reaches them. That address serves only those files: any other file name answers 404, and no other action opens there before signing in. The website's own files (rich text styles, block styles and scripts) stay on `/flo-admin/asset/`, and that address still serves every file as before. Nothing to change in existing sites; no core change.
+
 ## 0.40.0 - 2026-11-08
 
 **Duplicate for any resource.** Nothing to migrate: existing resources don't change until you add the action. See [Duplicate](docs/actions-and-notifications.md#duplicate).

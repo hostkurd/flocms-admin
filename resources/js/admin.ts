@@ -306,18 +306,18 @@ document.addEventListener('htmx:beforeSwap', ((event: CustomEvent) => {
  * use the stylesheet of the page just loaded, or none for the default colour.
  */
 function syncBrandColour(next: Document): void {
-  const selector = 'link[rel="stylesheet"][href*="/flo-admin/asset/theme-"]';
+  const selector = 'link[rel="stylesheet"][href*="/asset/theme-"]';
   const wanted = next.querySelector<HTMLLinkElement>(selector);
   const current = [...document.querySelectorAll<HTMLLinkElement>(selector)];
   if (wanted && current.some(link => link.getAttribute('href') === wanted.getAttribute('href'))) return;
   if (wanted) {
     const href = new URL(wanted.getAttribute('href') || '', location.href);
-    if (href.origin !== location.origin || !/\/flo-admin\/asset\/theme-[a-f0-9]{12}\.css$/.test(href.pathname)) return;
+    if (href.origin !== location.origin || !/\/admin\/flo-assets\/asset\/theme-[a-f0-9]{12}\.css$/.test(href.pathname)) return;
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = href.href;
     // After the panel's own stylesheet, so the brand colour overrides its defaults.
-    const main = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href*="/flo-admin/asset/admin-v"]');
+    const main = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href*="/asset/admin-v"]');
     if (main) main.after(link); else document.head.appendChild(link);
   }
   current.forEach(link => link.remove());

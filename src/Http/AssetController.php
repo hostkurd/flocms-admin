@@ -11,11 +11,29 @@ final class AssetController extends Controller
     /** Shipped fonts. A changed font gets a new file name (-v2), never new bytes under an old one. */
     public const FONTS = ['instrument-sans-latin-v1.woff2', 'instrument-sans-latin-ext-v1.woff2', 'noto-sans-arabic-v1.woff2'];
 
+    /** /flo-admin/asset/<name>: every file, the website's block and rich-text styles included. */
     public function asset(): Response
+    {
+        return $this->serve(false);
+    }
+
+    /**
+     * /admin/flo-assets/asset/<name> (0.40.1): the panel's own files (its stylesheet,
+     * scripts, theme colours and fonts) under the admin address, opened before
+     * signing in (a guest admin action), so the login page keeps its styles while
+     * the website is offline: core's offline page covers website addresses only.
+     */
+    public function admin_asset(): Response
+    {
+        return $this->serve(true);
+    }
+
+    private function serve(bool $panelOnly): Response
     {
         if (!$this->request->isMethod('GET', 'HEAD')) { return Response::text('Method not allowed.', 405)->header('Allow', 'GET, HEAD'); }
         $name = $this->params[0] ?? '';
         if (count($this->params) !== 1 || !is_string($name)) { throw new HttpException(404); }
+        if ($panelOnly && !self::panelFile($name)) { throw new HttpException(404); }
         $root = dirname(__DIR__, 2);
         if (in_array($name, ['admin-v' . Admin::VERSION . '.js', 'admin-v' . Admin::VERSION . '.css', 'admin-editor-v' . Admin::VERSION . '.js'], true)) {
             $file = $root . '/dist/' . $name;
@@ -48,5 +66,13 @@ final class AssetController extends Controller
         return Response::make((string) file_get_contents($file))
             ->header('Content-Type', $type)
             ->header('Cache-Control', 'public, max-age=31536000, immutable')->header('X-Content-Type-Options', 'nosniff');
+    }
+
+    /** The files the panel itself loads (served under the admin address too). */
+    public static function panelFile(string $name): bool
+    {
+        return in_array($name, ['admin-v' . Admin::VERSION . '.js', 'admin-v' . Admin::VERSION . '.css', 'admin-editor-v' . Admin::VERSION . '.js'], true)
+            || in_array($name, self::FONTS, true)
+            || (($theme = \FloCMS\Admin\Support\Theme::fileName()) !== null && $name === $theme);
     }
 }

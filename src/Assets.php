@@ -10,17 +10,13 @@ final class Assets
     /** The login page needs styling and a password toggle, without loading Reactive. */
     public static function loginTags(): string
     {
-        $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
-        $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
-        $url = $base . '/' . $lang . 'flo-admin/asset/admin-v' . Admin::VERSION;
+        $url = self::panelUrl('admin-v' . Admin::VERSION);
         return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '">' . \FloCMS\Admin\Support\Theme::tag() . '<script defer src="' . Str::e($url . '.js') . '"></script>';
     }
     /** The rich text editor script, loaded on demand by admin.js. */
     public static function editorUrl(): string
     {
-        $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
-        $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
-        return $base . '/' . $lang . 'flo-admin/asset/admin-editor-v' . Admin::VERSION . '.js';
+        return self::panelUrl('admin-editor-v' . Admin::VERSION . '.js');
     }
 
     /** A block's style or script from the package (0.30): /flo-admin/asset/blocks-<name>-v<version>.<css|js>. */
@@ -45,12 +41,20 @@ final class Assets
 
     public static function tags(): string
     {
-        $base = defined('SITE_URI') ? rtrim((string) SITE_URI, '/') : '';
-        $lang = defined('ACTIVE_LANG') ? rawurlencode((string) ACTIVE_LANG) . '/' : '';
-        $url = $base . '/' . $lang . 'flo-admin/asset/admin-v' . Admin::VERSION;
+        $url = self::panelUrl('admin-v' . Admin::VERSION);
         // Navigation owns popstate inside the panel and loads before Reactive.
         return '<link rel="stylesheet" href="' . Str::e($url . '.css') . '">' . \FloCMS\Admin\Support\Theme::tag()
             . '<script defer src="' . Str::e($url . '.js') . '"></script>'
             . (Admin::config()->reactiveEnabled() ? Reactive::assets() : '');
+    }
+
+    /**
+     * A file the panel itself loads (0.40.1): /<lang>/admin/flo-assets/asset/<name>.
+     * An admin address that opens before signing in, so core's offline page
+     * (website addresses only) never replaces the login page's styles.
+     */
+    public static function panelUrl(string $name): string
+    {
+        return Admin::url('flo-assets/asset/' . $name);
     }
 }

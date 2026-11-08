@@ -517,7 +517,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.39: wizard forms (`Wizard` and `Step` layouts: Back and Next checked step by step, steps shown for some answers, `afterValidation()`, a review step; create and edit pages, dialogs, action, bulk and custom page forms; 0.39.6: `MediaColumn::size()` for larger list thumbnails)
-- 0.40: Duplicate for any resource (`DuplicateAction`: the New form filled from a record, `except()`, `only()`, `fill()`, copied uploads, "Create and duplicate again", "Duplicated from" in the activity log)
+- 0.40: Duplicate for any resource (`DuplicateAction`: the New form filled from a record, `except()`, `only()`, `fill()`, copied uploads, "Create and duplicate again", "Duplicated from" in the activity log); 0.40.1: the login page keeps its styles while the website is offline
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
 ## Development
