@@ -139,3 +139,9 @@ test('on a phone the menu fits the screen', async ({ page }) => {
   expect(panel!.x).toBeGreaterThanOrEqual(0);
   expect(panel!.x + panel!.width).toBeLessThanOrEqual(390);
 });
+
+test('the bell sits next to the account menu (0.42.1)', async ({ page }) => {
+  await page.goto('/en/admin/dashboard');
+  const next = await page.locator('#fa-bell').evaluate((el) => el.nextElementSibling?.id ?? '');
+  expect(next).toBe('fa-user-menu');
+});

@@ -92,3 +92,22 @@ test('without JavaScript the period buttons and Refresh still work', async ({ br
   await expect(page.locator('.fa-period.is-current')).toHaveText('90 days');
   await context.close();
 });
+
+test('a chart legend stays clear of the header link (0.42.1)', async ({ page }) => {
+  await page.goto('/en/admin/dashboard');
+  const chart = card(page, 'Posts per day');
+  const link = await chart.locator('.fa-widget-more').boundingBox();
+  const legend = await chart.locator('.fa-chart-legend').boundingBox();
+  expect(legend!.y).toBeGreaterThanOrEqual(link!.y + link!.height - 1);
+});
+
+test('on a phone a records table scrolls sideways instead of squeezing (0.42.1)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/en/admin/dashboard');
+  const cell = card(page, 'Latest posts').locator('tbody tr').first().locator('td').first();
+  // Cells keep one line (the fixture's columns fit either way, so check the rule itself)
+  expect(await cell.evaluate((td) => getComputedStyle(td).whiteSpace)).toBe('nowrap');
+  const wrap = card(page, 'Latest posts').locator('.fa-widget-table');
+  expect(await wrap.evaluate((el) => getComputedStyle(el).overflowX)).toBe('auto');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

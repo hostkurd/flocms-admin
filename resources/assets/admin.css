@@ -3292,6 +3292,8 @@ button.fa-wizard-step:focus-visible{outline:2px solid var(--fa-focus);outline-of
 .fa-widget-stats:not(.fa-widget-stats-2):not(.fa-widget-stats-3):not(.fa-widget-stats-4) .fa-sparkline{position:static;width:100%;margin-block-start:4px}
 /* Charts */
 .fa-chart-legend{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px 16px;margin-block:-36px 18px;font-size:12.5px;color:var(--fa-muted)}
+/* 0.42.1: a widget with a header link keeps the legend below the header instead of over the link */
+.fa-widget:has(.fa-widget-more) .fa-chart-legend{margin-block-start:-4px}
 .fa-chart-legend span,.fa-donut-legend li{display:inline-flex;align-items:center;gap:7px}
 .fa-legend-key{display:inline-block;flex:none;width:10px;height:10px;border-radius:3px;background:var(--fa-chart)}
 .fa-legend-key.is-previous{background:var(--fa-chart-prev)}
@@ -3358,7 +3360,9 @@ path.fa-chart-line{fill:none}
   .fa-dash-actions{flex-wrap:nowrap;overflow-x:auto;padding-block-end:2px}.fa-dash-actions .fa-btn{flex:none}
   .fa-widget-stats-3,.fa-widget-stats-4{grid-template-columns:repeat(2,minmax(0,1fr))}.fa-widget-cards .fa-widget-stats{gap:10px}
   .fa-panel .fa-widget-stat.fa-card{padding:14px;min-height:0}.fa-widget-stat.fa-card .fa-stat-value{font-size:24px}.fa-widget-cards .fa-sparkline{display:none}
-  .fa-widget-type-records .fa-widget-table,.fa-widget-type-list .fa-list{margin-inline:-1rem;margin-block-end:-1rem}.fa-panel .fa-list-item{padding-inline:1rem}
+  .fa-widget-type-records .fa-widget-table,.fa-widget-type-list .fa-list{margin-inline:-1rem;margin-block-end:-1rem}
+  /* 0.42.1: a records table scrolls sideways on phones instead of squeezing its columns */
+  .fa-widget-type-records .fa-table th,.fa-widget-type-records .fa-table td{white-space:nowrap}.fa-panel .fa-list-item{padding-inline:1rem}
   .fa-chart-legend{margin-block:0 12px;justify-content:flex-start}
 }
 @media print{.fa-dash-tools,.fa-dash-actions{display:none}}
