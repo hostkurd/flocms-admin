@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.40.1';
+    public const VERSION = '0.41.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -265,6 +265,10 @@ final class Admin
         if ($controller === 'blocks-preview' && $config->pages()['enabled']) {
             return \FloCMS\Admin\Http\BlocksPreviewController::class;
         }
+        // The notification bell's page and links (0.41); a site resource with that slug keeps it.
+        if ($controller === 'notifications' && $config->notifications()['enabled']) {
+            return \FloCMS\Admin\Http\NotificationsController::class;
+        }
         // Ctrl+K search (0.20); a site resource with that slug keeps it.
         if ($controller === 'search' && $config->search()['enabled']) {
             return \FloCMS\Admin\Http\SearchController::class;
@@ -292,6 +296,7 @@ final class Admin
         self::$panelPages = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Blocks\BlockRegistry::reset();
+        \FloCMS\Admin\Notifications\Inbox::reset();
     }
 
     public static function config(): AdminConfig
@@ -342,6 +347,7 @@ final class Admin
         \FloCMS\Admin\Media\MediaLibrary::reset();
         \FloCMS\Admin\Trash\Trash::reset();
         \FloCMS\Admin\Activity\Activity::reset();
+        \FloCMS\Admin\Notifications\Inbox::reset();
         \FloCMS\Admin\Roles\Roles::reset();
         \FloCMS\Admin\Relations\RelationManager::reset();
         Languages::setRtl(self::$config->rtlLanguages());
@@ -382,6 +388,7 @@ final class Admin
         \FloCMS\Admin\Media\MediaLibrary::reset();
         \FloCMS\Admin\Trash\Trash::reset();
         \FloCMS\Admin\Activity\Activity::reset();
+        \FloCMS\Admin\Notifications\Inbox::reset();
         \FloCMS\Admin\Roles\Roles::reset();
         \FloCMS\Admin\Relations\RelationManager::reset();
         self::$problemsLogged = false;

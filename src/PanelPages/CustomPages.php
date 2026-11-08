@@ -78,6 +78,12 @@ final class CustomPages
             Log::error('Admin page ' . $page::class . ': badge() failed: ' . $error->getMessage());
             return null;
         }
+        return self::badgeText($badge);
+    }
+
+    /** A badge value as the sidebar shows it: null for null, 0 and ''; long text shortened. */
+    public static function badgeText(string|int|null $badge): ?string
+    {
         if ($badge === null) { return null; }
         $text = trim(is_int($badge) ? number_format($badge) : $badge);
         if ($text === '' || $text === '0') { return null; }

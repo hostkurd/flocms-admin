@@ -11,8 +11,9 @@ use FloCMS\Core\Session;
 /**
  * Small jobs done on panel pages, so sites without a cron job stay tidy:
  * at most once an hour, records older than the trash's days are deleted for
- * good and activity entries older than the log's days are removed
- * (php flo admin:trash-purge and admin:activity-purge do the same from cron).
+ * good, activity entries older than the log's days are removed, and so are
+ * notifications older than theirs (php flo admin:trash-purge,
+ * admin:activity-purge and admin:notifications-purge do the same from cron).
  *
  * @internal
  */
@@ -26,7 +27,8 @@ final class Housekeeping
     {
         try {
             $imports = \FloCMS\Admin\ImportExport\ImportStore::status() === 'ready';
-            if (!Trash::enabled() && !Activity::enabled() && !$imports) { return; }
+            $inbox = \FloCMS\Admin\Notifications\Inbox::enabled();
+            if (!Trash::enabled() && !Activity::enabled() && !$imports && !$inbox) { return; }
             $file = self::stampFile();
             $last = is_file($file) ? (int) @filemtime($file) : 0;
             if ($last > time() - self::INTERVAL) { return; }
@@ -34,6 +36,8 @@ final class Housekeeping
             if (@touch($file) === false) { return; }
             Trash::purgeExpired();
             Activity::purgeExpired();
+            // Notifications older than their days (0.41)
+            if ($inbox) { \FloCMS\Admin\Notifications\Inbox::purgeExpired(); }
             // Old import uploads and Undo snapshots (0.25)
             if ($imports) { \FloCMS\Admin\ImportExport\ImportStore::make()->purge(); }
         } catch (\Throwable $error) {

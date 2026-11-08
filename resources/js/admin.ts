@@ -24,6 +24,7 @@ import { initializeBuilders } from './builder';
 import { initializeCodeEditors } from './code-editor';
 import { initializePages } from './pages';
 import { initializeBlocksPreview } from './blocks-preview';
+import { initializeBell } from './bell';
 import './popovers';
 import './dialogs';
 import './search';
@@ -47,7 +48,7 @@ function internal(value: string): URL | undefined {
   if (url.origin !== location.origin || !url.pathname.startsWith(base.pathname + '/')) return;
   // Authentication/logout and application controllers keep ordinary navigation.
   const route = url.pathname.slice(base.pathname.length + 1).split('/')[0];
-  const known = new Set([...root.querySelectorAll<HTMLAnchorElement>('.fa-nav a, .fa-topbar-user')]
+  const known = new Set([...root.querySelectorAll<HTMLAnchorElement>('.fa-nav a, .fa-topbar-user, .fa-bell-all')]
     .map(a => new URL(a.href).pathname.slice(base.pathname.length + 1).split('/')[0]));
   if (!known.has(route)) return;
   return url;
@@ -88,6 +89,7 @@ function initialize(): void {
   initializeCells(root);
   initializeGroups(root);
   document.title = root.dataset.adminTitle || document.title;
+  initializeBell();
   document.documentElement.lang = root.lang;
   document.documentElement.dir = root.dir;
   updateMenu(false);

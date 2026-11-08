@@ -66,6 +66,7 @@
                 "FloCMS\\Admin\\Console\\MediaUsageCommand",
                 "FloCMS\\Admin\\Console\\TrashPurgeCommand",
                 "FloCMS\\Admin\\Console\\ActivityPurgeCommand",
+                "FloCMS\\Admin\\Console\\NotificationsPurgeCommand",
                 "FloCMS\\Admin\\Console\\RolesCommand",
                 "FloCMS\\Admin\\Console\\RolesResetCommand",
                 "FloCMS\\Admin\\Console\\ExportCommand",
@@ -79,7 +80,7 @@
             ]
         },
         "branch-alias": {
-            "dev-main": "0.40-dev"
+            "dev-main": "0.41-dev"
         }
     },
     "scripts": {

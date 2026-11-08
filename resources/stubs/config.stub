@@ -114,6 +114,11 @@ return [
     // 'logins' => true also records sign-ins; false switches the log off.
     'activity' => ['days' => 365, 'logins' => false],
 
+    // The notification bell (0.41): Notification::sendTo() stores notifications for people,
+    // the top bar counts their unread ones. 'days' => 0 keeps them; 'poll' => 0 reads the
+    // count only when a page opens; false switches the bell off. Needs php flo migrate.
+    'notifications' => ['days' => 90, 'poll' => 60],
+
     // The Roles page (/admin/roles; permission roles.manage, Super Admin by default):
     // roles and permissions edited in the panel, on top of config/config.php.
     // false switches it off and the config roles apply again. Name your own

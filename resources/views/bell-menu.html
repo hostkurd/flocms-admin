@@ -1,0 +1,31 @@
+<div class="fa-bell-head">
+    <p class="fa-bell-title">{{ $t('notifications.title') }}</p>
+    @if($count > 0)<span class="fa-bell-count">{{ $countText }}</span>
+    <form class="fa-bell-clear" method="post" action="{{ $clearUrl }}">
+        {!! $csrf !!}
+        <input type="hidden" name="_back" value="{{ $back }}" data-admin-bell-back>
+        <button type="submit" class="fa-bell-link">{!! $checksIcon !!}<span>{{ $t('notifications.mark_all_read') }}</span></button>
+    </form>@endif
+</div>
+@if(count($items) > 0)
+<ul class="fa-bell-list">
+    @foreach($items as $item)
+    <li><a class="fa-bell-item{{ $item['unread'] ? ' is-unread' : '' }} fa-bell-{{ $item['level'] }}" href="{{ $item['openUrl'] }}">
+        <span class="fa-bell-icon" aria-hidden="true">{!! $item['iconHtml'] !!}</span>
+        <span class="fa-bell-text">
+            <span class="fa-bell-item-title" dir="auto">{{ $item['title'] }}</span>
+            @if($item['body'] !== '')<span class="fa-bell-item-body" dir="auto">{{ $item['body'] }}</span>@endif
+            <time class="fa-bell-time" datetime="{{ $item['datetime'] }}" title="{{ $item['exact'] }}">{{ $item['time'] }}</time>
+        </span>
+        @if($item['unread'])<span class="fa-bell-dot"><span class="fa-sr">{{ $t('notifications.unread') }}</span></span>@endif
+    </a></li>
+    @endforeach
+</ul>
+@else
+<div class="fa-bell-empty">
+    <span class="fa-bell-empty-icon" aria-hidden="true">{!! $emptyIcon !!}</span>
+    <p class="fa-bell-empty-title">{{ $t('notifications.empty') }}</p>
+    <p class="fa-bell-empty-text">{{ $t('notifications.empty_text') }}</p>
+</div>
+@endif
+<a class="fa-bell-all" href="{{ $allUrl }}">{{ $t('notifications.see_all') }}</a>

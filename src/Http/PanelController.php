@@ -20,7 +20,11 @@ abstract class PanelController extends Controller
             $this->redirect($url);
         }
         \FloCMS\Admin\Support\Housekeeping::noteLogin();
-        if ($this->request->method() === 'GET') { \FloCMS\Admin\Support\Housekeeping::run(); }
+        if ($this->request->method() === 'GET') {
+            \FloCMS\Admin\Support\Housekeeping::run();
+            // A page someone was notified about counts as read once they open it, however they got there (0.41).
+            \FloCMS\Admin\Notifications\Inbox::markCurrentPageRead();
+        }
         $this->data = (new PanelView())->data($title, $html, $active);
 
         if ($this->request->header('X-Flo-Admin') === 'navigate') {

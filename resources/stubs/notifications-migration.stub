@@ -1,0 +1,43 @@
+<?php
+declare(strict_types=1);
+
+use FloCMS\CLI\Database\Migration;
+use FloCMS\Core\Database;
+
+/**
+ * Notifications of the admin bell (flocms-admin 0.41): one row per person who
+ * receives one. The title and body are a lang key or plain text with their
+ * :placeholders in `params` (JSON), so each person reads them in the panel's
+ * language. `url` is the panel page it opens. `read_at` is empty until read.
+ */
+return new class extends Migration
+{
+    public function up(Database $db): void
+    {
+        $db->query('CREATE TABLE IF NOT EXISTS `{{ table }}` (
+            ' . $this->id($db) . ',
+            `user_id` INTEGER NOT NULL,
+            `level` VARCHAR(16) NOT NULL,
+            `icon` VARCHAR(40) NULL,
+            `title` VARCHAR(512) NOT NULL,
+            `body` TEXT NULL,
+            `params` TEXT NULL,
+            `url` VARCHAR(1024) NULL,
+            `read_at` DATETIME NULL,
+            `created_at` DATETIME NOT NULL
+        )' . $this->tableOptions($db));
+
+        foreach ([
+            '{{ table }}_user_index' => '`{{ table }}` (`user_id`, `read_at`)',
+            '{{ table }}_latest_index' => '`{{ table }}` (`user_id`, `id`)',
+            '{{ table }}_created_index' => '`{{ table }}` (`created_at`)',
+        ] as $index => $on) {
+            try { $db->query('CREATE INDEX `' . $index . '` ON ' . $on); } catch (\PDOException) { /* already there */ }
+        }
+    }
+
+    public function down(Database $db): void
+    {
+        $db->query('DROP TABLE IF EXISTS `{{ table }}`');
+    }
+};

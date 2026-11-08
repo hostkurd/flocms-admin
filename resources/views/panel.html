@@ -11,7 +11,7 @@
             @if(count($nav) > 0 || $mediaUrl !== null || count($pageNav) > 0)
             <p class="fa-nav-heading">{{ $t('nav.resources') }}</p>
             @foreach($nav as $item)
-            <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span></a>
+            <a class="fa-nav-link{{ $item['active'] ? ' is-active' : '' }}" href="{{ $item['url'] }}"@if($item['active']) aria-current="page"@endif>{!! $item['icon'] !!}<span>{{ $item['label'] }}</span>@if($item['badge'] !== null)<span class="fa-nav-badge">{{ $item['badge'] }}</span>@endif</a>
             @endforeach
             @if($mediaUrl !== null)<a class="fa-nav-link{{ $mediaActive ? ' is-active' : '' }}" href="{{ $mediaUrl }}"@if($mediaActive) aria-current="page"@endif>{!! $mediaIcon !!}<span>{{ $t('media.title') }}</span></a>@endif
             @foreach($pageNav as $item)
@@ -76,6 +76,7 @@
             </form>
             @endif
             <span class="fa-topbar-spacer"></span>
+            {!! $bell !!}
             @if($siteUrl !== null)<a class="fa-topbar-action" href="{{ $siteUrl }}" target="_blank" rel="noopener" title="{{ $t('nav.view_site') }}">{!! $externalIcon !!}<span class="fa-topbar-action-label">{{ $t('nav.view_site') }}</span></a>@endif
             @if(count($languages) > 0)
             <details class="fa-topbar-menu" id="fa-language-menu" data-admin-popover>

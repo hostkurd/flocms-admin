@@ -1,0 +1,56 @@
+<div class="fa-page-head">
+    <div><h1 class="fa-page-title">{{ $title }}</h1><p class="fa-page-description">{{ $t('notifications.intro') }}</p></div>
+    @if($unread > 0)
+    <form method="post" action="{{ $clearUrl }}">
+        {!! $csrf !!}
+        <input type="hidden" name="_back" value="{{ $back }}">
+        <button type="submit" class="fa-btn">{!! $checksIcon !!}<span>{{ $t('notifications.mark_all_read') }}</span></button>
+    </form>
+    @endif
+</div>
+<div class="fa-card fa-inbox">
+    <nav class="fa-inbox-tabs" aria-label="{{ $t('notifications.title') }}">
+        @foreach($tabs as $tab)<a class="fa-inbox-tab{{ $tab['current'] ? ' is-current' : '' }}" href="{{ $tab['url'] }}"@if($tab['current']) aria-current="page"@endif>{{ $tab['label'] }}<span class="fa-inbox-tab-count">{{ $tab['count'] }}</span></a>@endforeach
+    </nav>
+    @if(count($items) > 0)
+    <ul class="fa-inbox-list">
+        @foreach($items as $item)
+        <li class="fa-inbox-row{{ $item['unread'] ? ' is-unread' : '' }} fa-bell-{{ $item['level'] }}">
+            <span class="fa-bell-dot{{ $item['unread'] ? '' : ' is-read' }}">@if($item['unread'])<span class="fa-sr">{{ $t('notifications.unread') }}</span>@endif</span>
+            <span class="fa-bell-icon" aria-hidden="true">{!! $item['iconHtml'] !!}</span>
+            <a class="fa-inbox-text" href="{{ $item['openUrl'] }}">
+                <span class="fa-bell-item-title" dir="auto">{{ $item['title'] }}</span>
+                @if($item['body'] !== '')<span class="fa-bell-item-body" dir="auto">{{ $item['body'] }}</span>@endif
+                <time class="fa-bell-time" datetime="{{ $item['datetime'] }}" title="{{ $item['exact'] }}">{{ $item['time'] }}</time>
+            </a>
+            <span class="fa-inbox-actions">
+                @if($item['unread'])
+                <form method="post" action="{{ $item['readUrl'] }}">{!! $csrf !!}<input type="hidden" name="_back" value="{{ $back }}"><button type="submit" class="fa-icon-btn fa-inbox-btn" aria-label="{{ $t('notifications.mark_read') }}" title="{{ $t('notifications.mark_read') }}">{!! $checkIcon !!}</button></form>
+                @endif
+                <form method="post" action="{{ $item['deleteUrl'] }}">{!! $csrf !!}<input type="hidden" name="_back" value="{{ $back }}"><button type="submit" class="fa-icon-btn fa-inbox-btn" aria-label="{{ $t('notifications.delete') }}" title="{{ $t('notifications.delete') }}">{!! $deleteIcon !!}</button></form>
+            </span>
+        </li>
+        @endforeach
+    </ul>
+    @else
+    <div class="fa-blank fa-inbox-empty">
+        <span class="fa-bell-empty-icon" aria-hidden="true">{!! $emptyIcon !!}</span>
+        <p>{{ $unreadOnly ? $t('notifications.empty_unread') : $t('notifications.empty_page') }}</p>
+    </div>
+    @endif
+    <div class="fa-table-foot">
+        <span class="fa-muted">{{ $kept }}</span>
+        <span class="fa-trash-pages">
+            @if($summary !== '')<span class="fa-muted fa-ltr">{{ $summary }}</span>@endif
+            @if(count($pages) > 0)
+            <nav class="fa-pagination" aria-label="{{ $t('table.pagination') }}">
+                @foreach($pages as $link)
+                @if($link['current'])<span class="fa-page-link is-current" aria-current="page">{{ $link['label'] }}</span>
+                @elseif($link['url'] !== null)<a class="fa-page-link" href="{{ $link['url'] }}">{{ $link['label'] }}</a>
+                @else<span class="fa-page-gap">…</span>@endif
+                @endforeach
+            </nav>
+            @endif
+        </span>
+    </div>
+</div>

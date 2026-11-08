@@ -3183,3 +3183,62 @@ button.fa-wizard-step:focus-visible{outline:2px solid var(--fa-focus);outline-of
   .fa-record:has(.fa-wizard) .fa-record-actions .fa-btn{flex:none}
 }
 @media print{.fa-wizard-panel[hidden]{display:block}.fa-wizard-nav,.fa-wizard-head{display:none}}
+
+/* The notification bell (0.41): the top-bar button, its menu and /admin/notifications */
+.fa-panel .fa-bell-button{position:relative;width:38px;justify-content:center;padding:0}
+.fa-bell-badge{position:absolute;inset-block-start:3px;inset-inline-start:calc(50% + 2px);min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:999px;background:var(--fa-danger-solid);color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--fa-surface);pointer-events:none}
+.fa-bell-badge[hidden]{display:none}
+.fa-panel .fa-bell-panel{display:block;width:min(400px,calc(100vw - 16px));min-width:0;padding:0;overflow:hidden;white-space:normal;border-radius:var(--fa-radius-lg)}
+.fa-bell-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 14px 10px;border-block-end:1px solid var(--fa-border)}
+.fa-bell-title{margin:0;font-size:14.5px;font-weight:650;color:var(--fa-text)}
+.fa-bell-count{padding:1px 8px;border-radius:999px;background:var(--fa-danger-soft);color:var(--fa-danger);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.fa-bell-clear{margin:0;margin-inline-start:auto}
+.fa-panel .fa-bell-link{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 6px;border:0;border-radius:var(--fa-radius-sm);background:transparent;color:var(--fa-primary-text);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.fa-panel .fa-bell-link:hover{background:var(--fa-primary-soft)}
+.fa-bell-list{list-style:none;margin:0;padding:0;max-height:min(440px,60vh);overflow-y:auto}
+.fa-bell-list li+li{border-block-start:1px solid var(--fa-border)}
+.fa-panel .fa-bell-item{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;color:var(--fa-text);text-decoration:none}
+.fa-panel .fa-bell-item:hover{background:var(--fa-surface-2);text-decoration:none}
+.fa-bell-item.is-unread,.fa-inbox-row.is-unread{background:color-mix(in srgb,var(--fa-primary-soft) 45%,var(--fa-surface))}
+.fa-panel .fa-bell-item.is-unread:hover{background:var(--fa-primary-soft)}
+.fa-bell-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:var(--fa-radius);background:var(--fa-primary-soft);color:var(--fa-primary-text)}
+.fa-bell-icon .fa-icon{width:17px;height:17px}
+.fa-bell-success .fa-bell-icon{background:var(--fa-success-soft);color:var(--fa-success)}
+.fa-bell-warning .fa-bell-icon{background:var(--fa-warning-soft);color:var(--fa-warning)}
+.fa-bell-danger .fa-bell-icon{background:var(--fa-danger-soft);color:var(--fa-danger)}
+.fa-bell-neutral .fa-bell-icon{background:var(--fa-neutral-soft);color:var(--fa-neutral)}
+.fa-bell-text,.fa-inbox-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fa-bell-item-title{font-size:13.5px;font-weight:600;line-height:1.35;color:var(--fa-text);overflow-wrap:anywhere}
+.fa-bell-item:not(.is-unread) .fa-bell-item-title,.fa-inbox-row:not(.is-unread) .fa-bell-item-title{font-weight:500;color:var(--fa-text-2)}
+.fa-bell-item-body{font-size:12.5px;line-height:1.4;color:var(--fa-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-bell-time{font-size:12px;color:var(--fa-faint)}
+.fa-bell-dot{flex:none;width:8px;height:8px;margin-block-start:6px;border-radius:50%;background:var(--fa-primary)}
+[data-theme="dark"] .fa-bell-dot{background:var(--fa-primary-text)}
+.fa-bell-dot.is-read{background:transparent}
+.fa-bell-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:32px 20px;text-align:center}
+.fa-bell-empty-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--fa-primary-soft);color:var(--fa-primary-text)}
+.fa-bell-empty-title{margin:4px 0 0;font-weight:600;color:var(--fa-text)}
+.fa-bell-empty-text{margin:0;font-size:13px;color:var(--fa-muted)}
+.fa-panel .fa-bell-all{display:block;padding:10px 14px;border-block-start:1px solid var(--fa-border);background:var(--fa-surface-2);color:var(--fa-primary-text);font-size:13.5px;font-weight:600;text-align:center;text-decoration:none}
+.fa-panel .fa-bell-all:hover{background:var(--fa-surface-3);text-decoration:none}
+.fa-inbox-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 12px;border-block-end:1px solid var(--fa-border)}
+.fa-panel .fa-inbox-tab{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:var(--fa-radius-sm);color:var(--fa-muted);font-size:13.5px;font-weight:600;text-decoration:none}
+.fa-panel .fa-inbox-tab:hover{background:var(--fa-surface-2);color:var(--fa-text);text-decoration:none}
+.fa-panel .fa-inbox-tab.is-current{background:var(--fa-surface-3);color:var(--fa-text)}
+.fa-inbox-tab-count{font-size:12px;color:var(--fa-muted);font-variant-numeric:tabular-nums}
+.fa-inbox-list{list-style:none;margin:0;padding:0}
+.fa-inbox-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-block-end:1px solid var(--fa-border)}
+.fa-panel .fa-inbox-text{color:inherit;text-decoration:none}
+.fa-panel .fa-inbox-text:hover .fa-bell-item-title{text-decoration:underline}
+.fa-inbox-text .fa-bell-item-title{font-size:14px}
+.fa-inbox-text .fa-bell-item-body{font-size:13px;white-space:normal}
+.fa-inbox-actions{flex:none;display:flex;gap:4px;margin-inline-start:auto}
+.fa-inbox-actions form{margin:0}
+.fa-panel .fa-inbox-btn{width:34px;height:34px;border:1px solid var(--fa-border);background:var(--fa-surface)}
+.fa-panel .fa-inbox-btn:hover{background:var(--fa-surface-2);color:var(--fa-text)}
+.fa-inbox-empty .fa-bell-empty-icon{width:48px;height:48px}
+@media (max-width:640px){
+  .fa-panel .fa-bell-panel{position:fixed;inset-inline:8px;inset-block-start:64px;width:auto}
+  .fa-inbox-row{padding:12px}
+}
+@media print{.fa-bell{display:none}}

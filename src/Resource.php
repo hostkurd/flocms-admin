@@ -487,6 +487,27 @@ abstract class Resource
         return static::$navigation;
     }
 
+    /**
+     * A number or short text beside the resource in the sidebar (0.41), such as
+     * how many inquiries are new. null, 0 and '' show nothing. It runs on every
+     * panel page, so keep it cheap: one COUNT, not a report.
+     *
+     *     public function navigationBadge(): int
+     *     {
+     *         return \FloCMS\Core\App::db()->table('inquiries')->where('status', '=', 'new')->count();
+     *     }
+     */
+    public function navigationBadge(): string|int|null
+    {
+        return null;
+    }
+
+    /** Whether this resource defines its own navigationBadge() (the default shows nothing). */
+    public static function hasNavigationBadge(): bool
+    {
+        return (new \ReflectionMethod(static::class, 'navigationBadge'))->getDeclaringClass()->getName() !== self::class;
+    }
+
     public static function isGloballySearchable(): bool
     {
         return static::$globallySearchable;

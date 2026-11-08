@@ -15,6 +15,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 - **Table filters and bulk Actions**: selects, toggles, date ranges and explicit, atomic multi-record workflows. [API guide](docs/tables-and-login.md).
 - **Optional Admin login design** with existing FloCMS authentication; see [upgrade instructions](UPGRADING.md).
 - **Actions and Notifications**: PHP-defined row/toolbar/page workflows, validated confirmation forms, and persistent localized feedback.
+- **Notification bell** (0.41): `Notification::sendTo()` stores a notification for the people who should know (by permission, role or id); a bell in the top bar counts the unread ones, its menu lists the latest, `/admin/notifications` keeps the rest. [Guide](docs/actions-and-notifications.md#stored-notifications-and-the-bell).
 - **Website settings**: settings pages declared in PHP, a page-level language switch, one image per language, and a cached `setting('site.title')` helper for templates. [Settings guide](docs/settings.md).
 - **Relationships**: `BelongsTo` (a city, an agent) and `BelongsToMany` (features, through a pivot table) with a searchable combobox, dependent choices, related titles in lists and relation filters. [Relationships guide](docs/relationships.md).
 - **Media library**: images and videos uploaded once, with titles and alt text per language, in folders, picked in forms and the rich text editor, with "used in" tracking, focal points, a duplicate check and responsive `<img>` output on the website. [Media guide](docs/media.md).
@@ -412,6 +413,8 @@ Then delete `config/admin.php` and `admin/` (your own code, so the package never
 
 Resources receive Create/Edit/Delete Actions by default. Define additional workflows with `Action::make()` in `Resource::headerActions()`, `Table::headerActions()` or `Table::actions()`. Each action declares its permission, record policy, confirmation/form and transactional callback. `Notification::make()->title(...)->success()->send()` delivers feedback that survives panel navigation.
 
+Since 0.41, `->sendTo(Recipients::permission('content.inquiries.view'))` stores the notification for other people instead: the bell in the top bar counts it until they open it. Run `php flo admin:install` and `php flo migrate` for its table.
+
 See the [Actions and Notifications guide](docs/actions-and-notifications.md) for the Publish/Unpublish example, API, concurrency rules, standard fallback and browser coverage.
 
 ## File and image fields
@@ -517,6 +520,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.39: wizard forms (`Wizard` and `Step` layouts: Back and Next checked step by step, steps shown for some answers, `afterValidation()`, a review step; create and edit pages, dialogs, action, bulk and custom page forms; 0.39.6: `MediaColumn::size()` for larger list thumbnails)
+- 0.41: the notification bell (`Notification::sendTo()`, `Recipients`, the top-bar bell with its unread count and menu, `/admin/notifications`, live count, `Resource::navigationBadge()`)
 - 0.40: Duplicate for any resource (`DuplicateAction`: the New form filled from a record, `except()`, `only()`, `fill()`, copied uploads, "Create and duplicate again", "Duplicated from" in the activity log); 0.40.1: the login page keeps its styles while the website is offline
 - 0.30: Pages (Site → Pages: blocks, HTML or rich text pages with addresses per language, SEO, scheduling, previews, the home page, `page_meta()`, `pages_menu()`, `/sitemap.xml`; flocms-core 2.6)
 
