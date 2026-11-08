@@ -380,6 +380,25 @@ if (str_starts_with($_SERVER['REQUEST_URI'], '/__test/')) {
             'roles' => App::$db->query('SELECT role, name, level, admin_access, permissions FROM admin_roles ORDER BY role')->fetchAll(PDO::FETCH_ASSOC),
             'users' => App::$db->query('SELECT full_name, role FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;
         case '/__test/history-off': App::$db->query('DROP TABLE IF EXISTS admin_trash'); App::$db->query('DROP TABLE IF EXISTS admin_activity'); break;
+        case '/__test/bell':
+            // The notification bell (0.41): off until a test asks; two unread notifications and a read one for Sara.
+            $file = ROOT . '/notifications-migration.php';
+            file_put_contents($file, \FloCMS\Admin\Console\Stub::render('notifications-migration', ['table' => 'admin_notifications']));
+            (require $file)->up(App::$db);
+            App::$db->query('DELETE FROM admin_notifications');
+            \FloCMS\Admin\Notifications\Inbox::reset();
+            \FloCMS\Admin\Notifications\Notification::make()->title('Import finished')->body('24 products added')->success()->icon('upload')->url('products')->sendTo([1]);
+            App::$db->query("UPDATE admin_notifications SET read_at = '2026-01-01 10:00:00', created_at = '" . date('Y-m-d H:i:s', time() - 3 * 86400) . "'");
+            \FloCMS\Admin\Notifications\Notification::make()->title('New inquiry from :name', ['name' => 'James Carter'])->body('Contact page · FH-2026-0142')->icon('mail')->url('posts/edit/2')->sendTo([1]);
+            App::$db->query("UPDATE admin_notifications SET created_at = '" . date('Y-m-d H:i:s', time() - 3600) . "' WHERE read_at IS NULL");
+            \FloCMS\Admin\Notifications\Notification::make()->title('New inquiry from :name', ['name' => 'Maria Papadopoulou'])->body('Property · Urban86 · FH-2026-0143')->icon('mail')->url('posts/edit/1')->sendTo([1]);
+            break;
+        case '/__test/bell-add':
+            \FloCMS\Admin\Notifications\Notification::make()->title('New inquiry from :name', ['name' => 'Elena Vasileiou'])->body('Saved list · 3 properties')->icon('mail')->url('/en/contact')->sendTo([1]);
+            break;
+        case '/__test/bell-off': App::$db->query('DROP TABLE IF EXISTS admin_notifications'); break;
+        case '/__test/bell-state': header('Content-Type: application/json'); echo json_encode(
+            App::$db->query('SELECT id, title, url, read_at FROM admin_notifications ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)); exit;
         case '/__test/trash': header('Content-Type: application/json'); echo json_encode([
             'trash' => App::$db->query('SELECT resource, record_id, batch FROM admin_trash ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
             'activity' => App::$db->query('SELECT action, resource, record_id FROM admin_activity ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]); exit;

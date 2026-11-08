@@ -166,3 +166,81 @@ Notification::make()->title('Report queued.')->body('It will be ready in a minut
 
 The button's form sends the CSRF token and `_back` (the page the person is on). See the [Trash and activity log guide](trash-and-activity.md).
 
+## Stored notifications and the bell
+
+Since 0.41 a notification can be **stored for other people**: a bell in the top bar counts their unread ones, its menu shows the latest eight, and `/admin/notifications` keeps the rest. `send()` stays what it was (a toast for the person on the page); `sendTo()` stores one row for each person it reaches and returns how many.
+
+Set up its table once:
+
+```sh
+php flo admin:install
+php flo migrate
+```
+
+Until the table exists there is no bell, and `sendTo()` stores nothing: it returns 0 and writes a line to the site log, so a form that notifies never fails because of it.
+
+```php
+use FloCMS\Admin\Notifications\{Notification, Recipients};
+
+// A website form, after saving the inquiry:
+Notification::make()
+    ->title('site.notify.new_inquiry', ['name' => $name])      // "New inquiry from :name"
+    ->body('site.notify.inquiry_body', ['ref' => $reference])
+    ->icon('mail')
+    ->url('inquiries/edit/' . $id)
+    ->sendTo(Recipients::permission('content.inquiries.view'));
+```
+
+**The text.** `title()` and `body()` take plain text or a key of the site's `lang/<code>.php`, and an optional array for its `:placeholders`. The key and the values are stored, not the translated text, so an Arabic user reads it in Arabic and an English user in English. Titles are cut at 512 bytes, bodies at 4,096; neither is ever read as HTML.
+
+**Who gets it.** `Recipients` picks active users whose role opens the panel (`admin_access_roles` in `config/config.php`; a site without that setting counts the roles that hold any permission):
+
+| | |
+| --- | --- |
+| `Recipients::permission('content.inquiries.view')` | everyone whose role grants that permission, as `Auth::can()` checks it |
+| `Recipients::role(2)` | one role, by its number |
+| `Recipients::users([4, 9])` | chosen people (`sendTo([4, 9])` and `sendTo(4)` are the same) |
+| `Recipients::everyone()` | everyone in the panel |
+
+Each person gets their own copy, at most 5,000 people a call. Suspended people and roles without panel access never get one.
+
+**Where it leads.** `url()` takes a panel path (`inquiries/edit/5`), a panel URL (`Admin::url('inquiries/edit/5')`, kept as its path, so each person opens it in their own panel language) or a path of this website (`/en/properties/villa-a1`). Another site, `//`, `javascript:` and paths with `..` throw an `InvalidArgumentException`. Without `url()` the notification opens the Notifications page.
+
+**The bell.** It sits in the top bar before View site. Its red count shows up to `99+` and sits on the bell's top corner; the button's name tells screen readers "Notifications, 3 unread". It is a `<details>` menu like the language menu, so it opens and closes without JavaScript. The menu has **Mark all as read**, the latest eight (unread ones tinted, with a dot) and **See all notifications**. Opening one goes through `/admin/notifications/open/<id>`, which marks it read and then opens its page.
+
+**Live count.** With JavaScript, an open panel asks `/admin/notifications/poll` every `poll` seconds (default 60) while the tab is visible, and right away when you come back to a tab after longer. The badge, the menu (if it isn't open) and the tab title ("(3) Inquiries") update. No sound and no pop-up.
+
+**The page.** `/admin/notifications` lists the person's own notifications, 25 a page, with All and Unread tabs, Mark as read and Delete on each row and Mark all as read at the top. Everyone signed in has it; there is no permission to give, and another person's notification answers 404. `read/<id>`, `delete/<id>` and `clear` (mark all as read) are POST requests with the CSRF token that go back to the page the person was on.
+
+**Opened another way.** A notification also counts as read when its person opens its panel page some other way, for example the record from its list: every panel page marks read that person's unread notifications that point to it (with or without the page's query). Your own code can do the same for another page:
+
+```php
+\FloCMS\Admin\Notifications\Inbox::markReadFor('inquiries/edit/' . $id, $userId);
+```
+
+**Settings** in `config/admin.php`:
+
+```php
+'notifications' => [
+    'days' => 90,    // removed after this many days; 0 keeps them
+    'poll' => 60,    // seconds between count checks in an open panel (at least 15); 0 = only when a page opens
+    'table' => 'admin_notifications',
+],
+// or 'notifications' => false to switch the bell off
+```
+
+Old notifications are removed by `php flo admin:notifications-purge` (for a daily cron) and by panel pages at most once an hour. `php flo admin:doctor` checks the table. A site whose own resource or controller is called `notifications` keeps `/admin/notifications`, and the bell then stays hidden.
+
+### A count beside a resource
+
+A resource can show a number or a short text beside its sidebar item, as panel pages can with `badge()`:
+
+```php
+public function navigationBadge(): int
+{
+    return \FloCMS\Core\App::db()->table('inquiries')->where('status', '=', 'new')->count();
+}
+```
+
+`null`, `0` and `''` show nothing; text longer than eight characters is shortened. It runs on every panel page, so keep it to one `COUNT`. A failing one is logged and left out. Resources that don't define it run no code.
+

@@ -212,6 +212,11 @@ final class CommandsTest extends TestCase
         self::assertStringContainsString('no sender address: set MAIL_FROM (or PRIMARY_EMAIL)', $display);
         self::assertStringContainsString('APP_URL in .env must be the full address', $display);
         (require $resets[0])->up(new \FloCMS\Core\Database($pdo));
+        // The notification bell (0.41): its table, reported until it exists
+        self::assertStringContainsString('Table "admin_notifications" not found', $display, 'the bell is on by default');
+        $notifications = glob($this->root . '/database/migrations/*_create_admin_notifications_table.php');
+        self::assertCount(1, $notifications);
+        (require $notifications[0])->up(new \FloCMS\Core\Database($pdo));
         $_ENV['PRIMARY_EMAIL'] = 'info@example.test';
         $_ENV['APP_URL'] = 'https://example.test';
         $_ENV['APP_KEY'] = str_repeat('k', 40);

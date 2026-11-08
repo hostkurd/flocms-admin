@@ -289,6 +289,30 @@ final class AdminConfig
     }
 
     /**
+     * The notification bell (0.41): notifications stored for each person, an
+     * unread count in the top bar and /admin/notifications. On unless
+     * 'notifications' => false; 'days' (default 90, 0 = forever) before old
+     * ones are removed, 'poll' (default 60 seconds, 0 = only when a page opens)
+     * between count checks while the panel is open, 'table' (default
+     * admin_notifications).
+     *
+     * @return array{enabled: bool, table: string, days: int, poll: int}
+     */
+    public function notifications(): array
+    {
+        $value = $this->values['notifications'] ?? true;
+        $options = is_array($value) ? $value : [];
+        $poll = is_int($options['poll'] ?? null) ? $options['poll'] : 60;
+        return [
+            'enabled' => $value !== false && ($options['enabled'] ?? true) !== false,
+            'table' => self::tableName($options['table'] ?? null, 'admin_notifications'),
+            'days' => is_int($options['days'] ?? null) ? max(0, min(36500, $options['days'])) : 90,
+            // At least 15 seconds between checks; 0 switches polling off.
+            'poll' => $poll <= 0 ? 0 : max(15, min(3600, $poll)),
+        ];
+    }
+
+    /**
      * The Roles page (0.21): roles and permissions edited in the panel and stored
      * in a table, on top of config/config.php. On unless 'roles' => false (the
      * emergency switch: the config roles apply again at once). 'table' (default

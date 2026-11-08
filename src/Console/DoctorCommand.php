@@ -126,6 +126,7 @@ final class DoctorCommand extends Command
         $this->checkSettings($config, $db);
         $this->checkLibrary($config, $db, $project);
         $this->checkHistory($config, $db, $project, $resources);
+        $this->checkNotifications($config, $db ?? null, $project);
         $this->checkRoles($config, $db, $project);
         $this->checkImports($config, $db, $project);
         $this->checkPasswordReset($config, $db, $project);
@@ -1077,6 +1078,34 @@ final class DoctorCommand extends Command
             if (Admin::registry()->find($page) !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass($page))) {
                 $this->caution('The URL /admin/' . $page . ' belongs to your site, so the panel\'s ' . ($page === 'trash' ? 'Trash' : 'Activity') . ' page is not shown. Rename that resource or controller to use it.');
             }
+        }
+    }
+
+    /** The notification bell (0.41): its table. */
+    private function checkNotifications(\FloCMS\Admin\AdminConfig $config, ?Database $db, \FloCMS\CLI\Project $project): void
+    {
+        $settings = $config->notifications();
+        if (!$settings['enabled']) { return; }
+        $this->section('Notifications  (the bell, /admin/notifications)');
+        if ($db === null) {
+            try { $db = $project->database(); $db->query('SELECT 1'); } catch (Throwable) { $this->caution('No database connection: the notifications table was not checked.'); return; }
+        }
+        $found = $this->columns($db, $settings['table']);
+        if ($found === null) {
+            $this->bad('Table "' . $settings['table'] . '" not found: run php flo admin:install, then php flo migrate. Until then there is no bell and Notification::sendTo() stores nothing.');
+            return;
+        }
+        $missing = array_values(array_diff(['id', 'user_id', 'level', 'icon', 'title', 'body', 'params', 'url', 'read_at', 'created_at'], array_keys($found)));
+        if ($missing !== []) {
+            $this->bad('Table "' . $settings['table'] . '" exists but is not the notifications table (missing ' . implode(', ', $missing) . '). Name it in config/admin.php: \'notifications\' => [\'table\' => \'site_notifications\'], then run php flo admin:install and php flo migrate.');
+            return;
+        }
+        $this->ok('Table "' . $settings['table'] . '" (notifications)');
+        $this->checkCharset($db, $settings['table']);
+        $this->line('  Notifications are kept ' . ($settings['days'] > 0 ? $settings['days'] . ' days' : 'forever') . '; php flo admin:notifications-purge deletes older ones (panel pages do it hourly). '
+            . ($settings['poll'] > 0 ? 'An open panel checks the count every ' . $settings['poll'] . ' seconds.' : 'The count is read when a page opens (\'poll\' => 0).'));
+        if (Admin::registry()->find('notifications') !== null || class_exists(\FloCMS\Admin\Support\Str::appControllerClass('notifications'))) {
+            $this->caution('The URL /admin/notifications belongs to your site, so the bell\'s links don\'t work. Rename that resource or controller to use the bell.');
         }
     }
 

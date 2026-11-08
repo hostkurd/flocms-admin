@@ -1,0 +1,4 @@
+<details class="fa-topbar-menu fa-bell" id="fa-bell" data-admin-popover data-admin-bell data-admin-bell-poll="{{ $poll }}" data-admin-bell-url="{{ $pollUrl }}">
+    <summary class="fa-topbar-action fa-bell-button" aria-label="{{ $label }}" title="{{ $t('notifications.title') }}" data-admin-bell-button>{!! $icon !!}<span class="fa-bell-badge" data-admin-bell-badge aria-hidden="true"@if($badge === '') hidden @endif>{{ $badge }}</span></summary>
+    <div class="fa-menu-panel fa-topbar-panel fa-bell-panel" data-admin-bell-menu>{!! $menu !!}</div>
+</details>

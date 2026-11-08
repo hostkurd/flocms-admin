@@ -1,3 +1,33 @@
+# Upgrading to Admin 0.41.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.41.0" -W`, then create the notifications table and reload open Admin pages (Ctrl+F5):
+
+```sh
+php flo admin:install
+php flo migrate
+```
+
+Until the table exists nothing changes: no bell, and `Notification::sendTo()` stores nothing (it returns 0 and logs a line). To turn the bell off instead, set `'notifications' => false` in `config/admin.php`.
+
+To notify people from your own code, for example when a website form is saved:
+
+```php
+use FloCMS\Admin\Notifications\{Notification, Recipients};
+
+Notification::make()
+    ->title('site.notify.new_inquiry', ['name' => $name])   // a key of lang/<code>.php, or plain text
+    ->icon('mail')
+    ->url('inquiries/edit/' . $id)                          // a panel path
+    ->sendTo(Recipients::permission('content.inquiries.view'));
+```
+
+- Add `php flo admin:notifications-purge` to the site's daily cron if you have one (panel pages also do it hourly).
+- A resource can show a count in the sidebar: `public function navigationBadge(): int { ... }` (keep it to one `COUNT`).
+- A site that already has a resource or controller named `notifications` keeps `/admin/notifications`; the bell then stays hidden (`admin:doctor` says so).
+- A site language file that overrides Admin words can add `admin.notifications.*`.
+
+---
+
 # Upgrading to Admin 0.40.1
 
 Update with `composer require "hostkurd/flocms-admin:^0.40.1" -W` and reload the Admin login page (Ctrl+F5). Nothing else to do. The login page now keeps its styles while the website is in offline mode: the panel's own stylesheet, script, brand colour and fonts load from `/<lang>/admin/flo-assets/asset/…` instead of `/flo-admin/asset/…`. A server rule or Content-Security-Policy that lists asset paths by hand should allow the new path too (same origin, so `'self'` already covers it).

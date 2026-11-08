@@ -42,6 +42,8 @@ final class PanelView
                 'url' => Admin::url($slug),
                 'active' => $slug === $activeSlug,
                 'icon' => Icons::svg($class::getIcon()),
+                // A number or short text beside the item (0.41: Resource::navigationBadge())
+                'badge' => self::resourceBadge($class),
             ];
         }
 
@@ -70,6 +72,8 @@ final class PanelView
             'pageNav' => $pageNav['content'],
             'navGroups' => $pageNav['groups'],
             'notifications' => \FloCMS\Admin\Notifications\NotificationView::pending(),
+            // The notification bell (0.41); '' when it is off or its table is missing
+            'bell' => \FloCMS\Admin\Notifications\Bell::html((string) ($_SERVER['REQUEST_URI'] ?? '')),
             'securityBanner' => \FloCMS\Admin\Auth\EmailVerification::banner(),
             'user' => $user,
             'dir' => self::direction($lang),
@@ -136,6 +140,24 @@ final class PanelView
             'externalIcon' => Icons::svg('external'),
             'profileIcon' => Icons::svg('user'),
         ];
+    }
+
+    /**
+     * The sidebar badge of a resource (0.41), or null; a failing navigationBadge()
+     * is logged and left out, like a panel page's badge().
+     *
+     * @param class-string<Resource> $class
+     */
+    private static function resourceBadge(string $class): ?string
+    {
+        if (!$class::hasNavigationBadge()) { return null; }
+        try {
+            $badge = (new $class())->navigationBadge();
+        } catch (\Throwable $error) {
+            \FloCMS\Admin\Support\Log::error('Resource ' . $class . ': navigationBadge() failed: ' . $error->getMessage());
+            return null;
+        }
+        return \FloCMS\Admin\PanelPages\CustomPages::badgeText($badge);
     }
 
     /** Texts of the media screens (resources/js/media), as media.<key>. */
