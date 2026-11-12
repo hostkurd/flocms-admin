@@ -41,6 +41,10 @@ final class SettingsRegistry
                 $registry->add($page);
             }
         }
+        // Settings pages from packages (Admin::extend(), 0.43)
+        foreach (\FloCMS\Admin\Admin::extension()->getSettings() as $page) {
+            $registry->add($page);
+        }
         if ($config->panelSettingsEnabled()) {
             $registry->add(PanelSettings::page(), true);
         }

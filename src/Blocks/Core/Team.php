@@ -55,7 +55,7 @@ final class Team extends Block
     public function title(array $fields): string
     {
         $heading = trim((string) ($fields['heading'] ?? ''));
-        return $heading !== '' ? mb_strimwidth($heading, 0, 80, '…') : self::label();
+        return $heading !== '' ? mb_strimwidth($heading, 0, 80, '…') : $this->blockLabel();
     }
 
     /** A link's icon and the name read out ("Sara on LinkedIn"). @return array{kind: string, name: string} */

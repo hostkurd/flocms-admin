@@ -49,6 +49,13 @@ final class ResourceRegistry
         foreach ($classes as $class) {
             $registry->add($class);
         }
+        // Resources from packages (Admin::extend(), 0.43); a slug the site already uses stays the site's
+        $listed = array_map(static fn (mixed $class): string => is_string($class) ? strtolower(ltrim($class, '\\')) : '', $classes);
+        foreach (\FloCMS\Admin\Admin::extension()->getResources() as $class) {
+            if (!in_array(strtolower($class), $listed, true)) {
+                $registry->add($class);
+            }
+        }
 
         if ($config->usersEnabled()) {
             $registry->add(\FloCMS\Admin\Users\UsersResource::class, true);

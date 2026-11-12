@@ -262,7 +262,7 @@ final class ValueRenderer
             foreach ($nodes as $node) {
                 $block = $field->block((string) $node['type']);
                 $status = (string) ($node['settings']['status'] ?? 'published');
-                $html .= '<li><span class="fa-view-block"><strong>' . Str::e($field->title($node)) . '</strong> <span class="fa-view-block-kind">' . Str::e($block !== null ? $block::label() : AdminLang::get('blocks.unknown_kind')) . '</span>'
+                $html .= '<li><span class="fa-view-block"><strong>' . Str::e($field->title($node)) . '</strong> <span class="fa-view-block-kind">' . Str::e($block !== null ? $block->blockLabel() : AdminLang::get('blocks.unknown_kind')) . '</span>'
                     . ($status === 'draft' ? ' <span class="fa-badge">' . Str::e(AdminLang::get('blocks.state_draft')) . '</span>' : '') . '</span>'
                     . (($node['children'] ?? []) !== [] ? '<ol class="fa-view-blocks">' . $walk($node['children']) . '</ol>' : '') . '</li>';
             }

@@ -173,8 +173,8 @@ final class BuilderRenderer
         $id = (string) $node['id'];
         $block = $field->block((string) $node['type']);
         $writable = $field->isWritable();
-        $title = $template ? ($block !== null ? $block::label() : '') : $field->title($node);
-        $kind = $block !== null ? $block::label() : self::t('unknown_kind');
+        $title = $template ? ($block !== null ? $block->blockLabel() : '') : $field->title($node);
+        $kind = $block !== null ? $block->blockLabel() : self::t('unknown_kind');
         $pane = $this->paneId($key, $id);
         $error = !$template && $this->hasErrors($field->getName() . '.' . $key . '.' . $id);
         $state = $template ? '' : $this->stateText($node['settings'] ?? []);
@@ -195,7 +195,7 @@ final class BuilderRenderer
             $html .= '<button type="button" class="fa-builder-fold" data-builder-action="fold" aria-expanded="true" aria-label="' . Str::e(self::t('fold', ['block' => $title])) . '"'
                 . ' title="' . Str::e(self::t('fold', ['block' => $title])) . '" data-builder-js hidden>' . Icons::svg('chevron-down') . '</button>';
         }
-        $html .= '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block !== null ? $block::icon() : 'square') . '</span>'
+        $html .= '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block !== null ? $block->blockIcon() : 'square') . '</span>'
             . '<a class="fa-builder-row-main" href="#' . Str::e($pane) . '" data-builder-select aria-controls="' . Str::e($pane) . '">'
             . '<strong class="fa-builder-row-title" data-builder-title>' . Str::e($title) . '</strong>'
             . '<span class="fa-builder-row-kind">' . Str::e($kind) . '</span>'
@@ -321,12 +321,12 @@ final class BuilderRenderer
         $writable = $field->isWritable();
         $base = $this->parent->nameOf($field->getName()) . '[' . $key . '][' . $id . ']';
         $paneId = $this->paneId($key, $id);
-        $title = $template ? ($block !== null ? $block::label() : '') : $field->title($node);
-        $kind = $block !== null ? $block::label() : self::t('unknown_kind');
+        $title = $template ? ($block !== null ? $block->blockLabel() : '') : $field->title($node);
+        $kind = $block !== null ? $block->blockLabel() : self::t('unknown_kind');
         $op = $field->getName() . ':block:';
 
         $html = '<section class="fa-builder-pane" id="' . Str::e($paneId) . '" data-builder-pane="' . Str::e($id) . '" data-type="' . Str::e($type) . '" aria-labelledby="' . Str::e($paneId) . '-title" tabindex="-1">';
-        $html .= '<header class="fa-builder-pane-head"><span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block !== null ? $block::icon() : 'square') . '</span>'
+        $html .= '<header class="fa-builder-pane-head"><span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block !== null ? $block->blockIcon() : 'square') . '</span>'
             . '<span class="fa-builder-pane-names"><span class="fa-builder-pane-kind">' . Str::e($kind) . '</span><h4 class="fa-builder-pane-title" id="' . Str::e($paneId) . '-title" data-builder-pane-title>' . Str::e($title) . '</h4></span>'
             . '<span class="fa-builder-pane-tools">';
         if ($writable) {
@@ -384,7 +384,7 @@ final class BuilderRenderer
     private function picker(string $key, string $parent, int $column, bool $full, string $class, ?Block $container = null): string
     {
         $field = $this->field;
-        $parentType = $container !== null ? $container::type() : '';
+        $parentType = $container !== null ? $container->blockType() : '';
         $inColumn = $parent !== '' && $container !== null && ($container instanceof Columns || $container->columnCount([]) > 1);
         $label = $parent === '' ? $field->getAddLabel() : ($inColumn ? self::t('add_to_column', ['number' => (string) ($column + 1)]) : self::t('add_inside'));
         $shown = $parent === '' ? $label : self::t('add');
@@ -393,14 +393,14 @@ final class BuilderRenderer
         if ($parent !== '') {
             $html .= '<div class="fa-builder-picker-list">';
             foreach ($this->choices($parentType) as $block) {
-                $html .= '<button type="submit" class="fa-builder-choice is-compact" name="_repeater" value="' . Str::e($field->getName() . ':block:add:' . $key . ':' . $block::type() . ':' . $parent . ':' . $column) . '" formnovalidate data-builder-choice="' . Str::e($block::type()) . '">'
-                    . '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block::icon()) . '</span><span class="fa-builder-choice-name">' . Str::e($block::label()) . '</span></button>';
+                $html .= '<button type="submit" class="fa-builder-choice is-compact" name="_repeater" value="' . Str::e($field->getName() . ':block:add:' . $key . ':' . $block->blockType() . ':' . $parent . ':' . $column) . '" formnovalidate data-builder-choice="' . Str::e($block->blockType()) . '">'
+                    . '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block->blockIcon()) . '</span><span class="fa-builder-choice-name">' . Str::e($block->blockLabel()) . '</span></button>';
             }
             return $html . '</div></details>';
         }
         // The main picker: categories, search and a description per kind.
         $categories = [];
-        foreach ($this->choices('') as $block) { $categories[$block::category()] = true; }
+        foreach ($this->choices('') as $block) { $categories[$block->blockCategory()] = true; }
         $all = $this->choices('', true);
         $html .= '<div class="fa-builder-picker" data-builder-picker role="group" aria-label="' . Str::e(self::t('add')) . '">'
             . '<div class="fa-builder-picker-search" data-builder-js hidden>' . Icons::svg('search', 'fa-icon') . '<input type="search" class="fa-input" data-builder-search placeholder="' . Str::e(self::t('search')) . '" aria-label="' . Str::e(self::t('search')) . '" autocomplete="off"></div>'
@@ -411,12 +411,12 @@ final class BuilderRenderer
         }
         $html .= '</div><div class="fa-builder-picker-list" data-builder-choices>';
         foreach ($all as $block) {
-            $html .= '<button type="submit" class="fa-builder-choice" name="_repeater" value="' . Str::e($field->getName() . ':block:add:' . $key . ':' . $block::type()) . '" formnovalidate'
-                . ' data-builder-choice="' . Str::e($block::type()) . '" data-category="' . Str::e($block::category()) . '" data-allowed="' . Str::e(implode(' ', $this->places($block))) . '"'
-                . ' data-search-text="' . Str::e(mb_strtolower($block::label() . ' ' . $block::description())) . '"' . ($block->allowedIn('') ? '' : ' hidden data-nested-only') . '>'
-                . '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block::icon()) . '</span>'
-                . '<span class="fa-builder-choice-text"><span class="fa-builder-choice-name">' . Str::e($block::label()) . '</span>'
-                . ($block::description() !== '' ? '<span class="fa-builder-choice-help">' . Str::e($block::description()) . '</span>' : '') . '</span></button>';
+            $html .= '<button type="submit" class="fa-builder-choice" name="_repeater" value="' . Str::e($field->getName() . ':block:add:' . $key . ':' . $block->blockType()) . '" formnovalidate'
+                . ' data-builder-choice="' . Str::e($block->blockType()) . '" data-category="' . Str::e($block->blockCategory()) . '" data-allowed="' . Str::e(implode(' ', $this->places($block))) . '"'
+                . ' data-search-text="' . Str::e(mb_strtolower($block->blockLabel() . ' ' . $block->blockDescription())) . '"' . ($block->allowedIn('') ? '' : ' hidden data-nested-only') . '>'
+                . '<span class="fa-builder-kind-icon" aria-hidden="true">' . Icons::svg($block->blockIcon()) . '</span>'
+                . '<span class="fa-builder-choice-text"><span class="fa-builder-choice-name">' . Str::e($block->blockLabel()) . '</span>'
+                . ($block->blockDescription() !== '' ? '<span class="fa-builder-choice-help">' . Str::e($block->blockDescription()) . '</span>' : '') . '</span></button>';
         }
         $html .= '<p class="fa-help" data-builder-no-match hidden>' . Str::e(self::t('no_match')) . '</p></div></div></div>';
         return $html . '</details>';
@@ -437,7 +437,7 @@ final class BuilderRenderer
     {
         $places = $block->allowedIn('') ? ['top'] : [];
         foreach ($this->field->available() as $other) {
-            if ($other->holdsBlocks() && $block->allowedIn($other::type())) { $places[] = $other::type(); }
+            if ($other->holdsBlocks() && $block->allowedIn($other->blockType())) { $places[] = $other->blockType(); }
         }
         return $places;
     }
@@ -448,7 +448,7 @@ final class BuilderRenderer
         $html = '';
         foreach ($this->choices('', true) as $block) {
             $node = $this->field->newNode($block, '__ID__');
-            $html .= '<template data-builder-template="' . Str::e($block::type()) . '"><ul>' . $this->row('__LANG__', $node, 0, 1, 1, true) . '</ul>'
+            $html .= '<template data-builder-template="' . Str::e($block->blockType()) . '"><ul>' . $this->row('__LANG__', $node, 0, 1, 1, true) . '</ul>'
                 . $this->pane('__LANG__', $node, '', 0, true) . '</template>';
         }
         return $html;

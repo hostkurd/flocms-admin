@@ -27,7 +27,7 @@
         "ext-json": "*",
         "ext-mbstring": "*",
         "ext-pdo": "*",
-        "hostkurd/flocms-core": "^2.7.0",
+        "hostkurd/flocms-core": "^2.10.0",
         "hostkurd/flocms-reactive": "^0.5.1",
         "hostkurd/flocms-uploader": "^1.2.1"
     },
@@ -40,6 +40,7 @@
             "FloCMS\\Admin\\": "src/"
         },
         "files": [
+            "src/Mail/aliases.php",
             "bootstrap.php",
             "src/helpers.php"
         ]
@@ -80,7 +81,7 @@
             ]
         },
         "branch-alias": {
-            "dev-main": "0.42-dev"
+            "dev-main": "0.43-dev"
         }
     },
     "scripts": {

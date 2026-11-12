@@ -6,9 +6,11 @@ namespace FloCMS\Admin\Blocks;
 use FloCMS\Admin\Admin;
 
 /**
- * The kinds of blocks there are (0.29): the core ones, and the site's own
- * from config/admin.php ('blocks' => [App\Blocks\LatestPosts::class]).
- * A Builder field offers all of them, or the ones it names.
+ * The kinds of blocks there are (0.29): the core ones, those packages add
+ * with Admin::extend() (0.43), and the site's own from config/admin.php
+ * ('blocks' => [App\Blocks\LatestPosts::class]); a later one of the same type
+ * replaces an earlier one. A Builder field offers all of them, or the ones it
+ * names.
  */
 final class BlockRegistry
 {
@@ -25,6 +27,9 @@ final class BlockRegistry
     /** @var array<string, Block>|null */
     private static ?array $all = null;
 
+    /** What a block's type must look like (as Block::type() checks the static $type). */
+    public const TYPE_PATTERN = '/^[a-z][a-z0-9_]{0,40}$/D';
+
     /**
      * Every kind of block, by type.
      *
@@ -33,14 +38,32 @@ final class BlockRegistry
     public static function all(): array
     {
         if (self::$all !== null) { return self::$all; }
-        $classes = self::CORE;
-        foreach (Admin::config()->blocks() as $class) { $classes[] = $class; }
         $blocks = [];
-        foreach ($classes as $class) {
+        foreach (self::CORE as $class) {
             $block = self::instance($class);
-            $type = $block::type();
-            // A site's block of the same type replaces the core one.
-            $blocks[$type] = $block;
+            $blocks[$block->blockType()] = $block;
+        }
+        // A package's block (Admin::extend(), 0.43) of the same type replaces the core one;
+        // one that can't be used is reported (admin:doctor) instead of breaking every Builder.
+        $extension = Admin::extension();
+        foreach ($extension->getBlocks() as $kind) {
+            $name = is_string($kind) ? $kind : get_class($kind);
+            try {
+                $block = $kind instanceof Block ? $kind : self::instance($kind);
+                $type = $block->blockType();
+                if (preg_match(self::TYPE_PATTERN, $type) !== 1) {
+                    $extension->problem('block ' . $name . ': type "' . $type . '" must be lower-case letters, digits and _, starting with a letter (at most 41)');
+                    continue;
+                }
+                $blocks[$type] = $block;
+            } catch (\Throwable $error) {
+                $extension->problem('block ' . $name . ': ' . $error->getMessage());
+            }
+        }
+        // The site's own (config/admin.php) come last and win.
+        foreach (Admin::config()->blocks() as $class) {
+            $block = self::instance($class);
+            $blocks[$block->blockType()] = $block;
         }
         return self::$all = $blocks;
     }
@@ -60,7 +83,7 @@ final class BlockRegistry
             if (isset($all[$name])) { $blocks[$name] = $all[$name]; continue; }
             if (is_a($name, Block::class, true)) {
                 $block = self::instance($name);
-                $blocks[$block::type()] = $all[$block::type()] ?? $block;
+                $blocks[$block->blockType()] = $all[$block->blockType()] ?? $block;
                 continue;
             }
             throw new \InvalidArgumentException('Unknown block "' . $name . '". Use a type such as "slider" or a class extending ' . Block::class . '.');

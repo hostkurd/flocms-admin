@@ -47,6 +47,13 @@ final class PanelPageRegistry
             }
             $registry->add($class, $resources, $config);
         }
+        // Pages from packages (Admin::extend(), 0.43)
+        $listed = array_map(static fn (mixed $class): string => is_string($class) ? strtolower(ltrim($class, '\\')) : '', $raw);
+        foreach (\FloCMS\Admin\Admin::extension()->getPages() as $class) {
+            if (!in_array(strtolower($class), $listed, true)) {
+                $registry->add($class, $resources, $config);
+            }
+        }
         return $registry;
     }
 

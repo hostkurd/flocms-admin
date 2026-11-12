@@ -17,7 +17,7 @@ use Throwable;
  */
 final class Admin
 {
-    public const VERSION = '0.42.1';
+    public const VERSION = '0.43.0';
 
     private static bool $booted = false;
     private static ?string $root = null;
@@ -26,6 +26,9 @@ final class Admin
     private static ?\FloCMS\Admin\Settings\SettingsRegistry $settings = null;
     private static ?\FloCMS\Admin\PanelPages\PanelPageRegistry $panelPages = null;
     private static bool $problemsLogged = false;
+    /** @var list<callable(Extension): void> */
+    private static array $extenders = [];
+    private static ?Extension $extension = null;
 
     /** Register the controller resolver (once). Called from bootstrap.php. */
     public static function boot(): void
@@ -294,6 +297,7 @@ final class Admin
         self::$registry = null;
         self::$settings = null;
         self::$panelPages = null;
+        self::$extension = null;
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Blocks\BlockRegistry::reset();
         \FloCMS\Admin\Notifications\Inbox::reset();
@@ -343,6 +347,9 @@ final class Admin
         self::$registry = null;
         self::$settings = null;
         self::$panelPages = null;
+        // The packages' functions run again with the new settings (Admin::extend(), 0.43)
+        self::$extension = null;
+        \FloCMS\Admin\Blocks\BlockRegistry::reset();
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Media\MediaLibrary::reset();
         \FloCMS\Admin\Trash\Trash::reset();
@@ -375,6 +382,52 @@ final class Admin
         return self::$settings ??= \FloCMS\Admin\Settings\SettingsRegistry::fromConfig(self::config());
     }
 
+    /**
+     * Let a package add blocks, resources, panel pages, settings pages and
+     * sitemap addresses (0.43), from its own bootstrap, without lines in
+     * config/admin.php. The function runs once, the first time the panel needs
+     * the list, and again after reset() or useConfig():
+     *
+     *     Admin::extend(static fn (Extension $panel) => $panel->blocks([...])->resources([...]));
+     *
+     * @param callable(Extension): void $setup
+     */
+    public static function extend(callable $setup): void
+    {
+        self::$extenders[] = $setup;
+        self::$extension = null;
+        \FloCMS\Admin\Blocks\BlockRegistry::reset();
+        self::$registry = null;
+        self::$settings = null;
+        self::$panelPages = null;
+    }
+
+    /** What the packages added (0.43). A function that throws is reported by admin:doctor. */
+    public static function extension(): Extension
+    {
+        if (self::$extension !== null) {
+            return self::$extension;
+        }
+        // Kept before the functions run, so one that asks the panel for its registries doesn't start over
+        $extension = self::$extension = new Extension();
+        foreach (self::$extenders as $setup) {
+            try {
+                $setup($extension);
+            } catch (\Throwable $error) {
+                $extension->problem('Admin::extend(): ' . $error->getMessage());
+            }
+        }
+        return $extension;
+    }
+
+    /** Forget every Admin::extend() function (tests). */
+    public static function clearExtensions(): void
+    {
+        self::$extenders = [];
+        self::$extension = null;
+        \FloCMS\Admin\Blocks\BlockRegistry::reset();
+    }
+
     /** Forget configuration and resources (tests). The resolver stays registered. */
     public static function reset(): void
     {
@@ -383,6 +436,8 @@ final class Admin
         self::$registry = null;
         self::$settings = null;
         self::$panelPages = null;
+        self::$extension = null;
+        \FloCMS\Admin\Blocks\BlockRegistry::reset();
         \FloCMS\Admin\Settings\Settings::reset();
         \FloCMS\Admin\Preferences\Preferences::reset();
         \FloCMS\Admin\Media\MediaLibrary::reset();

@@ -101,6 +101,36 @@ final class PasswordResetUnitTest extends TestCase
         exec('rm -rf ' . escapeshellarg($root));
     }
 
+    public function testThePanelUsesCoresMailer(): void
+    {
+        // Aliases loaded up front (Composer "files"): a catch block or type hint never autoloads
+        foreach (['Message', 'MailException', 'SmtpTransport'] as $name) {
+            self::assertTrue(class_exists('FloCMS\\Admin\\Mail\\' . $name, false), $name);
+            self::assertSame('FloCMS\\Core\\Mail\\' . $name, (new \ReflectionClass('FloCMS\\Admin\\Mail\\' . $name))->getName());
+        }
+
+        $root = sys_get_temp_dir() . '/flo-admin-mail-' . bin2hex(random_bytes(4));
+        Admin::useConfig(['brand' => 'Panel'], true, $root);
+        $_ENV['MAIL_TRANSPORT'] = 'log';
+        $_ENV['MAIL_FROM'] = 'panel@example.test';
+        $_ENV['MAIL_FROM_NAME'] = '';
+        try {
+            Mailer::send(new Message('sara@example.test', 'Brand', 'Body'));
+            self::assertStringContainsString("Subject: Brand\n", (string) file_get_contents($root . '/storage/logs/admin-mail.log'), 'still the panel\'s log file');
+            self::assertNull(\FloCMS\Core\Config::get('mail.log_path'), 'the panel\'s log file is not left behind for the site');
+
+            // A site that sends all its mail itself (core's mail.send) also gets the panel's
+            $sent = [];
+            \FloCMS\Core\Config::set('mail.send', static function (Message $message) use (&$sent): void { $sent[] = $message->subject . '|' . $message->fromName; });
+            Mailer::send(new Message('sara@example.test', 'Site sender', 'Body'));
+            self::assertSame(['Site sender|Panel'], $sent);
+            self::assertNull(Mailer::problem());
+        } finally {
+            unset(\FloCMS\Core\Config::$settings['mail.send'], $_ENV['MAIL_FROM_NAME'], $_ENV['MAIL_TRANSPORT'], $_ENV['MAIL_FROM']);
+            exec('rm -rf ' . escapeshellarg($root));
+        }
+    }
+
     public function testMailSettingsAndProblems(): void
     {
         Admin::useConfig(['brand' => 'Panel']);

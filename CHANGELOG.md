@@ -2,6 +2,17 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.43.0 - 2026-11-13
+
+**Packages can extend the panel.** Needs flocms-core 2.10. No new tables. See [Extending the panel from a package](docs/extending.md).
+
+- **`Admin::extend()`**: a package adds blocks, resources, panel pages, settings pages and sitemap addresses from its own bootstrap, without lines in `config/admin.php`. The function runs the first time the panel needs the list. The site's own config wins where both name the same block type or class. Mistakes in a package (a wrong item, a function that throws) are collected instead of stopping the panel, and `php flo admin:doctor` lists them under **Package:**.
+- **Blocks as objects**: the Builder, the website, the blocks preview and the styles ask a block object for its kind through new instance methods `blockType()`, `blockLabel()`, `blockIcon()`, `blockCategory()` and `blockDescription()`, which return the statics by default. One class can now stand for many kinds (a package's components). Blocks written for 0.42 work unchanged.
+- **`/sitemap.xml`** also lists the addresses packages add (`$panel->sitemap()`), with `lastmod` and language alternates; paths are joined to `SITE_URI`.
+- **Mail from core**: the panel's emails are sent by flocms-core 2.10's mailer (`FloCMS\Core\Mail`). `FloCMS\Admin\Mail\Message`, `MailException` and `SmtpTransport` are now aliases of core's classes, created when Composer's autoloader loads (so `catch` and type hints work, also with `composer dump-autoload -a`), and `FloCMS\Admin\Mail\Mailer` keeps its methods. Same `MAIL_*` settings, the panel's brand as the default sender name, `storage/logs/admin-mail.log` for `MAIL_TRANSPORT=log` (or core's `mail.log_path` when the site sets it) and `'mail' => ['send' => …]` in `config/admin.php`, as before. A site that sets core's `Config::set('mail.send', …)` now also sends the panel's emails with it.
+- The Builder keeps a form, settings and defaults per block **type** (before: per class), and the website's block cache also changes when the class of a site's or package's block changes.
+- `Admin::clearExtensions()` for tests.
+
 ## 0.42.1 - 2026-11-08
 
 - **Top bar**: the notification bell now sits next to the account menu (View site · language · bell · account), so the two personal items are together. In Arabic it mirrors as before.
