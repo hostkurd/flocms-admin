@@ -29,7 +29,47 @@ final class Sitemap
                 $xml .= "  </url>\n";
             }
         }
+        $xml .= self::extensionEntries($e);
         return $xml . '</urlset>' . "\n";
+    }
+
+    /** Addresses packages add with Admin::extend() (0.43); same-site paths become full URLs. */
+    private static function extensionEntries(callable $e): string
+    {
+        $xml = '';
+        foreach (\FloCMS\Admin\Admin::extension()->getSitemaps() as $entries) {
+            try {
+                foreach ($entries() as $entry) {
+                    $loc = self::absolute(is_array($entry) ? (string) ($entry['loc'] ?? '') : '');
+                    if ($loc === null) { continue; }
+                    $xml .= "  <url>\n    <loc>" . $e($loc) . "</loc>\n";
+                    $lastmod = $entry['lastmod'] ?? null;
+                    $time = is_int($lastmod) ? $lastmod : (is_string($lastmod) && $lastmod !== '' ? strtotime($lastmod) : false);
+                    if (is_int($time)) { $xml .= '    <lastmod>' . gmdate('Y-m-d', $time) . "</lastmod>\n"; }
+                    $alternates = is_array($entry['alternates'] ?? null) ? $entry['alternates'] : [];
+                    foreach ($alternates as $lang => $href) {
+                        $href = self::absolute((string) $href);
+                        if ($href !== null && preg_match('/^(?:[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*|x-default)$/D', (string) $lang) === 1) {
+                            $xml .= '    <xhtml:link rel="alternate" hreflang="' . $e((string) $lang) . '" href="' . $e($href) . '"/>' . "\n";
+                        }
+                    }
+                    $xml .= "  </url>\n";
+                }
+            } catch (\Throwable $error) {
+                \FloCMS\Admin\Support\Log::error('A sitemap function from Admin::extend() failed: ' . $error->getMessage());
+            }
+        }
+        return $xml;
+    }
+
+    /** A full http(s) URL as is; a path starting with / joined to the site's address; anything else is dropped. */
+    private static function absolute(string $url): ?string
+    {
+        // Valid UTF-8 without spaces or control characters (they would break the XML)
+        if (preg_match('#^https?://[^\x00-\x20\x7F<>"]+$#iDu', $url) === 1) { return $url; }
+        if (preg_match('#^/(?!/)[^\x00-\x20\x7F<>"]*$#Du', $url) !== 1) { return null; }
+        // The same base as the pages' own addresses
+        return (defined('SITE_URI') ? rtrim((string) constant('SITE_URI'), '/') : '') . $url;
     }
 
     public static function response(): Response

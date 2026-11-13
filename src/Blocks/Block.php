@@ -74,6 +74,27 @@ abstract class Block
         return static::$description !== null ? self::words(static::$description) : '';
     }
 
+    /**
+     * This object's kind (0.43). The panel reads blocks through these, so one
+     * class can stand for several kinds (a package's adapter for its own
+     * components, registered with Admin::extend()) by overriding them. By
+     * default they return the static $type, $label, $icon, $category and
+     * $description.
+     */
+    public function blockType(): string { return static::type(); }
+
+    public function blockLabel(): string
+    {
+        // From blockType(), so a component that only overrides the type still has a name
+        return static::$label !== null ? self::words(static::$label) : ucfirst(str_replace('_', ' ', $this->blockType()));
+    }
+
+    public function blockIcon(): string { return static::icon(); }
+
+    public function blockCategory(): string { return static::category(); }
+
+    public function blockDescription(): string { return static::description(); }
+
     /** The panel's own words for the core blocks ("blocks.slider"), else the site's (or the text itself). */
     protected static function words(string $text): string
     {
@@ -114,7 +135,7 @@ abstract class Block
                 return mb_strimwidth(preg_replace('/\s+/u', ' ', $text) ?? $text, 0, 80, '…');
             }
         }
-        return static::label();
+        return $this->blockLabel();
     }
 
     /**

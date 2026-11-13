@@ -59,7 +59,7 @@ final class BlockStyles
      */
     public static function for(Block $block): array
     {
-        $type = $block::type();
+        $type = $block->blockType();
         $styles = [];
         foreach ([self::configured('*'), self::$added['*'] ?? [], self::configured($type), self::$added[$type] ?? [], $block->styles()] as $list) {
             foreach ($list as $name => $label) {

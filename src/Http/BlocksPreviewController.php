@@ -51,7 +51,7 @@ final class BlocksPreviewController extends PanelController
 
         $options = '<option value="">' . Str::e($t('preview_all')) . '</option>';
         foreach ($kinds as $type => $block) {
-            $options .= '<option value="' . Str::e($type) . '"' . ($type === $kind ? ' selected' : '') . '>' . Str::e($block::label()) . '</option>';
+            $options .= '<option value="' . Str::e($type) . '"' . ($type === $kind ? ' selected' : '') . '>' . Str::e($block->blockLabel()) . '</option>';
         }
         $languages = '';
         if (count(Languages::all()) > 1) {
@@ -98,7 +98,7 @@ final class BlocksPreviewController extends PanelController
             $sample = $block->sample();
             $base = '.flo-block-' . str_replace('_', '-', $type);
             if ($sample === []) {
-                $nodes[] = self::label($block::label(), $base, ++$n, $t('preview_no_sample'));
+                $nodes[] = self::label($block->blockLabel(), $base, ++$n, $t('preview_no_sample'));
                 continue;
             }
             $looks = [[[], $t('preview_default'), $base]];
@@ -109,7 +109,7 @@ final class BlocksPreviewController extends PanelController
                 }
             }
             foreach ($looks as [$settings, $name, $selector]) {
-                $nodes[] = self::label($block::label() . ' · ' . $name, $selector, ++$n);
+                $nodes[] = self::label($block->blockLabel() . ' · ' . $name, $selector, ++$n);
                 $nodes[] = self::node($type, $sample, $settings, ++$n);
             }
         }

@@ -30,7 +30,7 @@ FloCMS provides the security (login, sessions, roles and permissions); flocms-ad
 ## Requirements
 
 - PHP 8.1+
-- `hostkurd/flocms-core` ^2.7.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
+- `hostkurd/flocms-core` ^2.10.0, `hostkurd/flocms-reactive` ^0.5.1 and `hostkurd/flocms-uploader` ^1.2.1 (installed by Composer)
 - A stable secret `APP_KEY` of at least 32 bytes for signed Reactive snapshots
 - MySQL 5.7+ or MariaDB 10.3+
 
@@ -487,6 +487,10 @@ Admin 0.10 adds `RichEditor`: a visual editor (Tiptap) with headings, lists, lin
 
 Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes, registered in `config/admin.php`. Build a dashboard with scoped resource counts/sums, recent records and accessible SVG bar/line charts. Widgets recheck permissions on every refresh and work without JavaScript. Empty widget configuration keeps the original resource-count cards. Since 0.42 the dashboard has a greeting, period buttons (`$context->period()`) and quick buttons (`'dashboard_actions'`); headline numbers take icons, trends and sparklines; charts show the previous period or a donut; and `BarListWidget`, `ProgressWidget`, `ListWidget` and the ready-made `ActivityWidget` complete it. Start one with `php flo make:admin-widget PostStats --resource=Post`. See the [Widgets guide](docs/widgets.md) for complete project examples, source permissions, read limits and layout configuration.
 
+## Extending the panel from a package
+
+Admin 0.43 adds **`Admin::extend()`**: a package adds blocks, resources, panel pages, settings pages and sitemap addresses from its own bootstrap, without lines in the site's `config/admin.php`; the site's own config wins where both name the same thing, and `admin:doctor` lists a package's mistakes. Blocks are asked as objects (`blockType()`, `blockLabel()` …), so one class can stand for many kinds. The panel's emails are sent by flocms-core 2.10's mailer. See [Extending the panel from a package](docs/extending.md).
+
 ## Roadmap
 
 - 0.3: Reactive resource dialogs and lists, shared form submission, panel navigation and browser coverage
@@ -520,6 +524,7 @@ Admin 0.8 adds optional `StatsWidget`, `RecordsWidget` and `ChartWidget` classes
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.39: wizard forms (`Wizard` and `Step` layouts: Back and Next checked step by step, steps shown for some answers, `afterValidation()`, a review step; create and edit pages, dialogs, action, bulk and custom page forms; 0.39.6: `MediaColumn::size()` for larger list thumbnails)
+- 0.43: packages extend the panel (`Admin::extend()`: blocks, resources, panel pages, settings pages and sitemap addresses; blocks as objects; mail from flocms-core 2.10)
 - 0.42: a professional dashboard (greeting, period buttons, quick buttons, headline numbers with trends and sparklines, previous-period and donut charts, bar, progress, list and activity widgets)
 - 0.41: the notification bell (`Notification::sendTo()`, `Recipients`, the top-bar bell with its unread count and menu, `/admin/notifications`, live count, `Resource::navigationBadge()`)
 - 0.40: Duplicate for any resource (`DuplicateAction`: the New form filled from a record, `except()`, `only()`, `fill()`, copied uploads, "Create and duplicate again", "Duplicated from" in the activity log); 0.40.1: the login page keeps its styles while the website is offline

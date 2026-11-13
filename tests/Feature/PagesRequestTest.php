@@ -118,6 +118,15 @@ final class PagesRequestTest extends RequestTestCase
         self::assertSame(404, self::visit('/sitemap.xml', ['admin_config' => ['pages' => ['sitemap' => false]]])['status']);
     }
 
+    public function testPackagesAddAddressesToTheSitemap(): void
+    {
+        $body = self::visit('/sitemap.xml', ['require' => dirname(__DIR__) . '/Fixtures/Extension/register.php'])['body'];
+        self::assertStringContainsString('<loc>https://example.test/en/about-us</loc>', $body, 'the pages stay');
+        self::assertStringContainsString("<loc>https://example.test/en/blog/first-post</loc>\n    <lastmod>2026-11-01</lastmod>", $body);
+        self::assertStringContainsString('<xhtml:link rel="alternate" hreflang="ar" href="https://example.test/ar/blog/first-post"/>', $body);
+        self::assertStringNotContainsString('javascript:', $body);
+    }
+
     public function testWithoutPagesNothingAnswers(): void
     {
         self::assertSame(404, self::request('GET', '/en/about-us', ['session' => []])['status']);

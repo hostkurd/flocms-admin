@@ -283,7 +283,7 @@ final class BlockRenderer
      */
     public static function withDefaults(Block $block, array $fields): array
     {
-        if (!isset(self::$defaults[$block::class])) {
+        if (!isset(self::$defaults[$block->blockType()])) {
             $builder = \FloCMS\Admin\Form\Fields\Builder::make('blocks');
             $defaults = [];
             foreach ($builder->blockForm($block)->fields() as $name => $field) {
@@ -292,9 +292,9 @@ final class BlockRenderer
                 if (is_string($value) && ($value[0] ?? '') === '[') { $value = json_decode($value, true) ?? []; }
                 $defaults[$name] = $value ?? '';
             }
-            self::$defaults[$block::class] = $defaults;
+            self::$defaults[$block->blockType()] = $defaults;
         }
-        $fields += self::$defaults[$block::class];
+        $fields += self::$defaults[$block->blockType()];
         $fields = self::safeLinks($fields);
         foreach ($fields as $name => $value) {
             if (is_bool($value)) { $fields[$name] = $value ? '1' : '0'; }
@@ -429,12 +429,21 @@ final class BlockRenderer
         $directory = Admin::root() . '/storage/cache/blocks';
         if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) { return null; }
         if (!is_writable($directory)) { return null; }
-        // The templates in use (the site's or the package's) and their versions are part of the key.
+        // The templates in use (the site's or the package's) and their versions are part of the key, and the classes of the site's and packages' kinds.
         $templates = [];
         $walk = static function (array $nodes) use (&$walk, &$templates): void {
             foreach ($nodes as $node) {
                 $type = (string) ($node['type'] ?? '');
-                if (!isset($templates[$type])) { $path = self::templatePath($type); $templates[$type] = $path === null ? '' : $path . '@' . (int) @filemtime($path); }
+                if (!isset($templates[$type])) {
+                    $path = self::templatePath($type);
+                    $templates[$type] = $path === null ? '' : $path . '@' . (int) @filemtime($path);
+                    // The class that prints the kind and its version (0.43): a package's render() changes with an update
+                    $block = BlockRegistry::find($type);
+                    if ($block !== null && !str_starts_with($block::class, __NAMESPACE__ . '\\Core\\')) {
+                        $file = (new \ReflectionClass($block))->getFileName();
+                        $templates[$type] .= '|' . $block::class . '@' . (is_string($file) ? (int) @filemtime($file) : 0);
+                    }
+                }
                 if (is_array($node['children'] ?? null)) { $walk($node['children']); }
             }
         };

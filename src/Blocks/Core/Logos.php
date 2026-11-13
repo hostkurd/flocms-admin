@@ -46,6 +46,6 @@ final class Logos extends Block
     public function title(array $fields): string
     {
         $heading = trim((string) ($fields['heading'] ?? ''));
-        return $heading !== '' ? mb_strimwidth($heading, 0, 80, '…') : self::label();
+        return $heading !== '' ? mb_strimwidth($heading, 0, 80, '…') : $this->blockLabel();
     }
 }

@@ -183,6 +183,8 @@ foreach (($options['config'] ?? []) as $key => $value) { Config::set($key, $valu
 if (isset($options['admin_config'])) {
     \FloCMS\Admin\Admin::useConfig($options['admin_config'], true, ROOT);
 }
+// A file that extends the panel as a package would (Admin::extend(), 0.43)
+if (isset($options['require'])) { require $options['require']; }
 
 $mysql = getenv('FLO_ADMIN_TEST_DB_NAME');
 $dsn = $mysql ? sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',

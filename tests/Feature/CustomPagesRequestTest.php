@@ -309,4 +309,13 @@ echo \FloCMS\Admin\Admin::homePath();');
         self::assertStringContainsString('ali@example.test', $f['body']);
         self::assertStringNotContainsString('root@example.test', $f['body']);
     }
+
+    public function testAPackagesPageNeedsNoLineInTheConfig(): void
+    {
+        $require = dirname(__DIR__) . '/Fixtures/Extension/register.php';
+        $response = self::request('GET', '/en/admin/getting-started', ['admin_config' => [], 'permissions' => self::PAGE_PERMISSIONS, 'session' => self::SUPER, 'require' => $require]);
+        self::assertSame(200, $response['status'], $response['body']);
+        self::assertStringContainsString('<li>Add your logo</li>', $response['body']);
+        self::assertSame(404, self::request('GET', '/en/admin/getting-started', ['admin_config' => [], 'permissions' => self::PAGE_PERMISSIONS, 'session' => self::SUPER])['status'], 'without the package');
+    }
 }

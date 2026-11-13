@@ -123,7 +123,7 @@ class Builder extends Field
     {
         $blocks = BlockRegistry::only($this->names);
         if ($this->categories !== []) {
-            $blocks = array_filter($blocks, fn (Block $block): bool => in_array($block::category(), $this->categories, true));
+            $blocks = array_filter($blocks, fn (Block $block): bool => in_array($block->blockCategory(), $this->categories, true));
         }
         return $blocks;
     }
@@ -154,7 +154,7 @@ class Builder extends Field
             foreach ($form->fields() as $item) { $item->disabled(); }
             return $form;
         }
-        return $this->forms[$block::class] ??= $this->makeBlockForm($block);
+        return $this->forms[$block->blockType()] ??= $this->makeBlockForm($block);
     }
 
     private function makeBlockForm(Block $block): Form
@@ -169,12 +169,12 @@ class Builder extends Field
         $tabs[] = Tab::make('settings')->label(AdminLang::get('blocks.tab_settings'))->columns(2)->schema(BlockSettings::fields($block));
         $form = (new Form())->columns(2)->schema([Tabs::make('block')->schema($tabs)]);
         foreach (self::fieldNames($own) as $name) {
-            if ($name === 'f' || str_starts_with($name, '_') && $name !== '_signed') { throw new \LogicException('Block "' . $block::type() . '": field names may not start with "_".'); }
+            if ($name === 'f' || str_starts_with($name, '_') && $name !== '_signed') { throw new \LogicException('Block "' . $block->blockType() . '": field names may not start with "_".'); }
         }
         foreach ($form->fields() as $field) {
-            if ($field->isTranslatable()) { throw new \LogicException('Block "' . $block::type() . '": "' . $field->getName() . '" cannot be translatable; use ->translatable() on the Builder for one list per language.'); }
+            if ($field->isTranslatable()) { throw new \LogicException('Block "' . $block->blockType() . '": "' . $field->getName() . '" cannot be translatable; use ->translatable() on the Builder for one list per language.'); }
             if ($field instanceof self || $field instanceof FileUpload || $field instanceof BelongsToMany) {
-                throw new \LogicException('Block "' . $block::type() . '": ' . (new \ReflectionClass($field))->getShortName() . ' fields cannot sit inside a block.');
+                throw new \LogicException('Block "' . $block->blockType() . '": ' . (new \ReflectionClass($field))->getShortName() . ' fields cannot sit inside a block.');
             }
         }
         return $form;
@@ -239,7 +239,7 @@ class Builder extends Field
             foreach ($form->fields() as $item) { $item->disabled(); }
             return $form;
         }
-        return $this->contentForms[$block::class] ??= $make();
+        return $this->contentForms[$block->blockType()] ??= $make();
     }
 
     /** @var array<string, Form> */
@@ -271,7 +271,7 @@ class Builder extends Field
             foreach ($form->fields() as $item) { $item->disabled(); }
             return $form;
         }
-        return $this->settingsForms[$block::class] ??= $make();
+        return $this->settingsForms[$block->blockType()] ??= $make();
     }
 
     /**
@@ -309,7 +309,7 @@ class Builder extends Field
     /** Whether a block has fields of its own (else it has nothing to edit in a dialog). */
     public function hasContent(Block $block): bool
     {
-        return $this->hasContent[$block::class] ??= array_filter($this->ownTabs($block), static fn (Tab $tab): bool => $tab->children() !== []) !== [];
+        return $this->hasContent[$block->blockType()] ??= array_filter($this->ownTabs($block), static fn (Tab $tab): bool => $tab->children() !== []) !== [];
     }
 
     /** @var array<string, list<string>> */
@@ -318,7 +318,7 @@ class Builder extends Field
     /** @return list<string> the names of a block's shared settings (a Section's own "width" is not one) */
     public function settingNames(Block $block): array
     {
-        return $this->settingNames[$block::class] ??= array_map(static fn ($field): string => $field->getName(), BlockSettings::fields($block));
+        return $this->settingNames[$block->blockType()] ??= array_map(static fn ($field): string => $field->getName(), BlockSettings::fields($block));
     }
 
     /* ---------------------------------------------------------------
@@ -403,14 +403,14 @@ class Builder extends Field
             }
             if ($block->holdsBlocks()) {
                 $children = is_array($entry['children'] ?? null) ? $entry['children'] : [];
-                $kids = $this->nodes($children, $block::type(), $isState, $count, $seen);
+                $kids = $this->nodes($children, $block->blockType(), $isState, $count, $seen);
                 // Blocks that may not sit here (a Section inside Columns) move out after their parent.
-                $node['children'] = array_values(array_filter($kids, fn (array $kid): bool => $this->fits($kid, $block::type())));
+                $node['children'] = array_values(array_filter($kids, fn (array $kid): bool => $this->fits($kid, $block->blockType())));
                 $max = $block->columnCount($node['data']) - 1;
                 foreach ($node['children'] as &$kid) { $kid['column'] = min($kid['column'], $max); }
                 unset($kid);
                 $nodes[] = $node;
-                foreach ($kids as $kid) { if (!$this->fits($kid, $block::type())) { $kid['column'] = 0; $nodes[] = $kid; } }
+                foreach ($kids as $kid) { if (!$this->fits($kid, $block->blockType())) { $kid['column'] = 0; $nodes[] = $kid; } }
                 continue;
             }
             $nodes[] = $node;
@@ -637,7 +637,7 @@ class Builder extends Field
         foreach ($flat as $id => $node) {
             $parent = $node['parent'];
             $parentBlock = $parent !== '' && isset($flat[$parent]) ? $this->block((string) $flat[$parent]['type']) : null;
-            $placed[$id] = $parentBlock !== null && $parentBlock->holdsBlocks() && $this->fits($node, $parentBlock::type()) && !self::reaches($flat, $parent, $id);
+            $placed[$id] = $parentBlock !== null && $parentBlock->holdsBlocks() && $this->fits($node, $parentBlock->blockType()) && !self::reaches($flat, $parent, $id);
             if ($placed[$id]) { $byParent[$parent][] = $id; }
         }
         // A block that may not sit where it was put goes to the top, after the top block it was in.
@@ -874,7 +874,7 @@ class Builder extends Field
         if (!array_key_exists($key, $lists)) { return $this->encodeState($lists); }
         if ($verb === 'add') {
             $block = $this->block($parts[4] ?? '');
-            if ($block === null || !$this->canAdd($block) || !isset($this->available()[$block::type()]) || self::count($lists[$key]) >= $this->maxBlocks) { return $this->encodeState($lists); }
+            if ($block === null || !$this->canAdd($block) || !isset($this->available()[$block->blockType()]) || self::count($lists[$key]) >= $this->maxBlocks) { return $this->encodeState($lists); }
             $node = $this->newNode($block);
             $parent = $parts[5] ?? '';
             $node['column'] = max(0, (int) ($parts[6] ?? 0));
@@ -920,7 +920,7 @@ class Builder extends Field
     /** @return array<string, mixed> a new block of this kind with its defaults */
     public function newNode(Block $block, ?string $id = null): array
     {
-        $node = ['id' => $id ?? self::newId(), 'type' => $block::type(), 'column' => 0, 'data' => [], 'settings' => [], 'children' => []];
+        $node = ['id' => $id ?? self::newId(), 'type' => $block->blockType(), 'column' => 0, 'data' => [], 'settings' => [], 'children' => []];
         foreach ($this->blockForm($block)->fields() as $name => $field) {
             $value = $field->stateFromRecord(null, Languages::default());
             if (in_array($name, $this->settingNames($block), true)) { $node['settings'][$name] = is_string($value) ? $value : ''; } else { $node['data'][$name] = is_string($value) ? $value : ''; }
@@ -1010,7 +1010,7 @@ class Builder extends Field
         // An editor's name for the block comes first (0.31).
         $label = trim((string) ($node['settings']['_label'] ?? ''));
         if ($label !== '') { return mb_substr($label, 0, 80); }
-        try { return $block->title($node['data'] ?? []); } catch (\Throwable) { return $block::label(); }
+        try { return $block->title($node['data'] ?? []); } catch (\Throwable) { return $block->blockLabel(); }
     }
 
     /** The rendering of the field's own control: never called (the renderer draws the editor). */

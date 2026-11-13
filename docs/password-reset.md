@@ -54,7 +54,7 @@ MAIL_FROM_NAME="My site"         # default: the panel's brand
 - **cPanel**: `mail()` usually works as it is. If messages land in spam, create a mailbox in cPanel and use its SMTP settings.
 - **`log`** writes the messages to `storage/logs/admin-mail.log` instead of sending them: for a computer without mail (XAMPP). Never on a live site: the log holds the links. `admin:doctor` warns when `APP_ENV=production`.
 - **`APP_URL`** must be the site's full address (`https://example.com`): it starts the link.
-- **Your own mailer** (PHPMailer, an email API): set `'mail' => ['send' => fn (\FloCMS\Admin\Mail\Message $message) => …]` in `config/admin.php`. The message has `to`, `toName`, `subject`, `text` and `html`.
+- **Your own mailer** (PHPMailer, an email API): set `'mail' => ['send' => fn (\FloCMS\Admin\Mail\Message $message) => …]` in `config/admin.php` for the panel's emails, or core's `Config::set('mail.send', …)` for all the site's mail, the panel's included (0.43). The message has `to`, `toName`, `subject`, `text` and `html`. Since 0.43 the panel's mail is sent by flocms-core's mailer (`FloCMS\Core\Mail`); the panel's class names are aliases of core's.
 
 ## What the person sees
 

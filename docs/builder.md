@@ -235,6 +235,7 @@ final class LatestProjects extends Block
 - A field's `->shownWhen('height', 'fixed')` (0.32) shows it only while another field of the block has one of those values, in the browser, without reloading the dialog. Unlike `visibleWhen()`, it is always sent and its rules always apply, so give it a valid default.
 - `title(array $fields)` names the block in the structure (by default its first heading, name, text…; an editor's Name comes first), `nameField()` a field of its own shown as the panel's Name (Section, Columns and Slider return `'name'`), `defaultWidth()` (`'boxed'` or `'full'`), `allowedIn(string $parentType)` where it may sit, `assets()` the files in `public/assets/flo-blocks/` it needs, `cacheable()`, and `render(array $vars): ?string` to build the HTML in PHP instead of a template.
 - A block with the type of one of the panel's replaces it everywhere.
+- Since 0.43 the panel asks block **objects** for their kind (`blockType()`, `blockLabel()`, `blockIcon()`, `blockCategory()`, `blockDescription()`, by default the statics), so one class can stand for many kinds; packages add blocks with `Admin::extend()` without a line in `'blocks'`. See [Extending the panel from a package](extending.md).
 - `BlockRenderer::rendering(fn (array $vars, Block $block): ?array => …)` runs before each block is printed, for sites that add data.
 - `php flo admin:doctor` checks the classes in `'blocks'` and the Builder columns' types.
 

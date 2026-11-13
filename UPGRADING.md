@@ -1,3 +1,17 @@
+# Upgrading to Admin 0.43.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.43.0" -W` (this also brings flocms-core 2.10) and reload open Admin pages (Ctrl+F5). No migration.
+
+What changes by itself: nothing you should see. The panel's emails are sent by core's mailer with the same `MAIL_*` settings, sender name and log file (if the site sets core's `mail.log_path`, the panel's messages go there too); `FloCMS\Admin\Mail\Message`, `MailException` and `SmtpTransport` are aliases of `FloCMS\Core\Mail\…`, so `instanceof` and `catch` keep working.
+
+Check your own code for two things:
+- **Your own blocks**: new instance methods `blockType()`, `blockLabel()`, `blockIcon()`, `blockCategory()` and `blockDescription()` on `Block`. PHP stops with an error if one of your blocks already declares a method of that name in another way. Code that read a block's kind with `$block::type()` or `$class::label()` still works for classes, but use `$block->blockType()` and `$block->blockLabel()` for objects from `BlockRegistry`, so package components show their own names.
+- **A site-wide mail sender**: if the site sets core's `Config::set('mail.send', …)`, the panel's emails now go through it too (unless `config/admin.php` has its own `'mail' => ['send' => …]`).
+
+Packages can now add to the panel with `Admin::extend()`: see [Extending the panel from a package](docs/extending.md).
+
+---
+
 # Upgrading to Admin 0.42.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.42.0" -W` and reload open Admin pages (Ctrl+F5). No migration.

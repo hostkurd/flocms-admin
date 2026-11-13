@@ -83,6 +83,7 @@ final class DoctorCommand extends Command
             if (!is_file($login) || !str_contains((string) file_get_contents($login), 'auth.login_view')) { $this->caution('Login theme enabled: add the auth.login_view presentation hook from skeleton 1.8.3 to views/users/admin_login.html (see UPGRADING.md).'); }
         }
         $this->checkPackagePages($config->usersEnabled());
+        $this->checkExtensions();
 
         $registry = Admin::registry();
         foreach ($registry->problems() as $problem) {
@@ -617,6 +618,33 @@ final class DoctorCommand extends Command
         }
 
         $this->bad('No layouts/admin.html in templates/' . $template . '/ or templates/default/');
+    }
+
+    /** What packages added with Admin::extend() (0.43), and what went wrong there. */
+    private function checkExtensions(): void
+    {
+        $extension = Admin::extension();
+        // The registry checks each package block (type, class) and adds what fails to the problems.
+        $registered = \FloCMS\Admin\Blocks\BlockRegistry::all();
+        $count = 0;
+        foreach ($extension->getBlocks() as $block) {
+            $type = null;
+            try { $type = is_string($block) ? (new $block())->blockType() : $block->blockType(); } catch (\Throwable) { continue; }
+            $object = $registered[$type] ?? null;
+            if ($object === null || $object::class !== (is_string($block) ? ltrim($block, '\\') : $block::class)) { continue; }
+            try {
+                \FloCMS\Admin\Form\Fields\Builder::make('doctor')->blockForm($object);
+                $count++;
+            } catch (\Throwable $e) { $this->bad('Package block "' . $type . '" (' . $object::class . '): ' . $e->getMessage()); }
+        }
+        foreach ($extension->getProblems() as $problem) { $this->bad('Package: ' . $problem); }
+        $parts = array_filter([
+            'block(s)' => $count, 'resource(s)' => count($extension->getResources()), 'panel page(s)' => count($extension->getPages()),
+            'settings page(s)' => count($extension->getSettings()), 'sitemap list(s)' => count($extension->getSitemaps()),
+        ]);
+        if ($parts !== []) {
+            $this->ok('Packages add ' . implode(', ', array_map(static fn (string $what, int $n): string => $n . ' ' . $what, array_keys($parts), $parts)));
+        }
     }
 
     /** Rich text uploads go to a public folder: it must be writable and reachable by the web server. */
