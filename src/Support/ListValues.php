@@ -73,6 +73,45 @@ final class ListValues
         return $items === [] ? '' : json_encode($items, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    /**
+     * Lists per language (0.44: translatable tags), {"en":[...],"ar":[...]}, as
+     * an array of lists; null when the value is not such an object.
+     *
+     * @return array<string, list<string>>|null
+     */
+    public static function languageMap(mixed $value): ?array
+    {
+        if (is_string($value)) {
+            $text = trim($value);
+            if ($text === '' || $text[0] !== '{') { return null; }
+            $value = json_decode($text, true);
+        }
+        if (!is_array($value) || $value === [] || array_is_list($value)) { return null; }
+        $map = [];
+        foreach ($value as $lang => $items) {
+            if (!is_string($lang) || preg_match('/^[a-z]{2,3}(?:[-_][a-z0-9]{2,8})?$/iD', $lang) !== 1) { return null; }
+            if (!is_array($items) && !is_string($items) && $items !== null) { return null; }
+            $map[strtolower($lang)] = self::decode($items);
+        }
+        return $map;
+    }
+
+    /**
+     * One language's items (0.44): from a per-language object the language's
+     * list, else the default language's (else none); a plain list or text is
+     * the same in every language.
+     *
+     * @return list<string>
+     */
+    public static function forLanguage(mixed $value, ?string $lang = null): array
+    {
+        $map = self::languageMap($value);
+        if ($map === null) { return self::decode($value); }
+        $lang ??= AdminLang::language();
+        $default = \FloCMS\Admin\Translation\Languages::default();
+        return ($map[$lang] ?? []) !== [] ? $map[$lang] : ($map[$default] ?? []);
+    }
+
     /** Lower-case text for comparing tags ("Sea View" = "sea view"), in any script. */
     public static function fold(string $value): string
     {

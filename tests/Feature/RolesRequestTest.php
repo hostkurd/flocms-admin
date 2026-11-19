@@ -114,6 +114,22 @@ final class RolesRequestTest extends RequestTestCase
         self::assertEqualsCanonicalizing(['content.posts.update', 'content.posts.view', 'taxonomy.tags.create', 'taxonomy.tags.view'], self::stored(1)['permissions']);
     }
 
+    public function testAResourcesOwnAbilityHasItsColumn(): void
+    {
+        $options = self::as(self::SUPER, ['admin_config' => ['resources' => [\FloCMS\Admin\Tests\Fixtures\Choices\JournalResource::class, \FloCMS\Admin\Tests\Fixtures\Resources\PostResource::class]]]);
+        self::assertSame(['publish' => 'Publish', 'feature' => 'Feature'], \FloCMS\Admin\Tests\Fixtures\Choices\JournalResource::abilities(), 'built-in, "edit" and badly named ones are left out; a name alone gets a label');
+        $page = self::request('GET', '/en/admin/roles/edit/1', $options);
+        self::assertSame(200, $page['status'], (string) $page['error']);
+        self::assertMatchesRegularExpression('~<th scope="col">Import</th><th scope="col">Publish</th><th scope="col">Feature</th></tr>~', $page['body']);
+        self::assertStringContainsString('value="content.journal.publish" data-role-ability="publish" aria-label="Journal: Publish"', $page['body']);
+        self::assertStringContainsString('<td class="fa-role-none"><span class="fa-muted" aria-hidden="true">&ndash;</span></td>', $page['body'], 'Posts have no Publish');
+        self::assertStringNotContainsString('content.posts.publish', $page['body']);
+
+        self::post('/en/admin/roles/edit/1', ['name' => ['en' => 'Editor'], 'level' => '1', 'admin_access' => '1',
+            'perm' => ['content.journal.publish']], $options);
+        self::assertEqualsCanonicalizing(['content.journal.publish', 'content.journal.view'], self::stored(1)['permissions'], 'it also gives View');
+    }
+
     public function testGroupSwitchKeepsOnlyTheWildcard(): void
     {
         self::post('/en/admin/roles/edit/1', ['name' => ['en' => 'Writer', 'ar' => 'كاتب'], 'level' => '1', 'admin_access' => '1',

@@ -263,6 +263,11 @@ class Repeater extends Field
         $stored = $this->storesKeys() ? ['_key' => $item['_key']] : [];
         foreach ($this->schema as $name => $field) {
             $value = $item[$name] ?? '';
+            if ($field instanceof TagsInput && $field->isTranslatable()) {
+                $lists = $field->languageLists(is_array($value) ? $value : [], Languages::default());
+                if ($lists !== []) { $stored[$name] = $lists; }
+                continue;
+            }
             if ($field->isTranslatable()) {
                 $clean = array_filter(is_array($value) ? $value : [], static fn ($part): bool => is_string($part) && $part !== '');
                 if ($clean !== []) { $stored[$name] = $clean; }
@@ -366,8 +371,11 @@ class Repeater extends Field
     {
         if ($this->itemLabel !== null && isset($this->schema[$this->itemLabel])) {
             $value = $item[$this->itemLabel] ?? '';
-            $text = is_array($value) ? Translations::get($value, Languages::default()) : (string) $value;
             $field = $this->schema[$this->itemLabel];
+            $text = $field instanceof ListField
+                // A list (tags per language too, 0.44): its items, in the default language
+                ? implode(', ', $field->readable($field->values(is_array($value) ? ($value[Languages::default()] ?? '') : $value)))
+                : (is_array($value) ? Translations::get($value, Languages::default()) : (string) $value);
             if ($field instanceof Select && $text !== '') { $text = (string) ($field->getOptions()[$text] ?? $text); }
             if (trim($text) !== '') { return mb_strimwidth(trim($text), 0, 80, '…'); }
         }

@@ -34,23 +34,34 @@ final class PermissionCatalogue
         $groups = [];
         $prefix = Admin::config()->permissionPrefix();
 
-        // Content: one row per resource
+        // Content: one row per resource; a column per ability, the resources' own (0.44) after the built-in ones
+        $own = [];
+        foreach (Admin::registry()->all() as $class) {
+            foreach ($class::abilities() as $ability => $label) { $own[$ability] ??= $label; }
+        }
+        $labels = [];
+        foreach (self::CONTENT_ABILITIES as $ability) { $labels[$ability] = AdminLang::get('roles.ability.' . $ability); }
+        $labels += $own;
         $rows = [];
         foreach (Admin::registry()->all() as $class) {
             /** @var class-string<Resource> $class */
+            $has = $class::abilities();
+            $cells = [];
+            foreach ($labels as $ability => $label) {
+                // A column the resource doesn't have: an empty cell (name '')
+                $known = in_array($ability, self::CONTENT_ABILITIES, true) || isset($has[$ability]);
+                $cells[] = ['name' => $known ? $class::permission($ability) : '', 'ability' => $ability, 'label' => $has[$ability] ?? $label];
+            }
             $rows[] = [
                 'label' => $class::getPluralLabel(),
-                'sub' => self::common(array_map(static fn (string $ability): string => $class::permission($ability), self::CONTENT_ABILITIES)),
-                'cells' => array_map(static fn (string $ability): array => [
-                    'name' => $class::permission($ability), 'ability' => $ability,
-                    'label' => AdminLang::get('roles.ability.' . $ability),
-                ], self::CONTENT_ABILITIES),
+                'sub' => self::common(array_values(array_filter(array_column($cells, 'name')))),
+                'cells' => $cells,
             ];
         }
         if ($rows !== []) {
             $groups[] = self::group('content', AdminLang::get('roles.group.content'), AdminLang::get('roles.group.content_help'),
                 $prefix . '.*', AdminLang::get('roles.all_content'), AdminLang::get('roles.all_content_help'),
-                self::abilityLabels(), $rows, []);
+                array_values($labels), $rows, []);
         }
 
         // Media library
@@ -167,7 +178,7 @@ final class PermissionCatalogue
     {
         $names = [];
         foreach ($groups ?? self::groups() as $group) {
-            foreach ($group['rows'] as $row) { foreach ($row['cells'] as $cell) { $names[$cell['name']] = true; } }
+            foreach ($group['rows'] as $row) { foreach ($row['cells'] as $cell) { if ($cell['name'] !== '') { $names[$cell['name']] = true; } } }
             foreach ($group['items'] as $item) { $names[$item['name']] = true; }
         }
         return $names;
@@ -204,12 +215,6 @@ final class PermissionCatalogue
             }
         }
         return $name;
-    }
-
-    /** @return list<string> */
-    private static function abilityLabels(): array
-    {
-        return array_map(static fn (string $ability): string => AdminLang::get('roles.ability.' . $ability), self::CONTENT_ABILITIES);
     }
 
     /** "content.posts.*" when the names share a prefix, else ''. */

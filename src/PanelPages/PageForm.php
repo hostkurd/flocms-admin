@@ -183,6 +183,12 @@ final class PageForm
      */
     public static function value(Field $field, string|array $state): mixed
     {
+        if ($field instanceof \FloCMS\Admin\Form\Fields\TagsInput && $field->isTranslatable()) {
+            $lists = $field->languageLists(is_array($state) ? $state : [], Languages::default());
+            $values = [];
+            foreach (Languages::all() as $lang) { $values[$lang] = $lists[$lang] ?? []; }
+            return $values;
+        }
         if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) {
             return $field->values(is_string($state) ? $state : '');
         }

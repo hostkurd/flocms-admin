@@ -43,9 +43,16 @@ final class ListMatch
             $legacy = "CONCAT(',', REPLACE(REPLACE(REPLACE(LOWER(CONVERT({$col} USING utf8mb4)), '،', ','), ', ', ','), ' ,', ','), ',') COLLATE utf8mb4_bin";
         }
         $json = self::like(json_encode($item, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $sql = "({$text} LIKE ? ESCAPE '!' OR {$text} LIKE ? ESCAPE '!' OR {$text} LIKE ? ESCAPE '!'"
-            . " OR ({$col} NOT LIKE '[%' AND {$legacy} LIKE ? ESCAPE '!'))";
-        return [$sql, ['%[' . $json . '%', '%,' . $json . '%', '%, ' . $json . '%', '%,' . self::like($item) . ',%']];
+        // An item of a JSON list: after "[" or "," and before "," or "]", so a key of a
+        // per-language object ({"en":[…],"ar":[…]}, 0.44) is never taken for a tag
+        $bindings = [];
+        foreach (['[', ',', ', '] as $before) {
+            foreach ([',', ']'] as $after) { $bindings[] = '%' . $before . $json . $after . '%'; }
+        }
+        $sql = '(' . implode(' OR ', array_fill(0, count($bindings), "{$text} LIKE ? ESCAPE '!'"))
+            . " OR ({$col} NOT LIKE '[%' AND {$col} NOT LIKE '{%' AND {$legacy} LIKE ? ESCAPE '!'))";
+        $bindings[] = '%,' . self::like($item) . ',%';
+        return [$sql, $bindings];
     }
 
     /**

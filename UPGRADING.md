@@ -1,3 +1,15 @@
+# Upgrading to Admin 0.44.0
+
+Update with `composer require "hostkurd/flocms-admin:^0.44.0" -W` and reload open Admin pages (Ctrl+F5). No migration, and nothing changes by itself.
+
+New, if you want them:
+- **Tags per language**: `TagsInput::make('tags')->translatable()`. An existing tags column keeps working: its list is read as the default language's and stored per language from the next save. On the website, `list_values($row->tags)` reads both: the page's language's tags (or the default language's), and an old single list as it was. `list_values()` takes an optional language, `list_values($row->tags, 'ar')`.
+- **A resource's own abilities**: `protected static array $abilities = ['publish' => 'Publish'];` adds a column on the Roles page. Your resource checks it with `Auth::can(static::permission('publish'))`.
+
+Check your own code for one thing: if one of your resources already declares a static `$abilities` property or an `abilities()` method of its own, rename it. PHP stops with an error if the declaration doesn't match the new one on `Resource`.
+
+---
+
 # Upgrading to Admin 0.43.0
 
 Update with `composer require "hostkurd/flocms-admin:^0.43.0" -W` (this also brings flocms-core 2.10) and reload open Admin pages (Ctrl+F5). No migration.

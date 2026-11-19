@@ -198,6 +198,11 @@ final class SettingsEditor
             }
             return is_string($state) && $state !== '' && $state !== SettingsUploads::PENDING ? $state : null;
         }
+        if ($field instanceof \FloCMS\Admin\Form\Fields\TagsInput && $field->isTranslatable()) {
+            // Per language (0.44): setting('site.tags') is ['en' => [...], 'ar' => [...]]
+            $lists = $field->languageLists(is_array($state) ? $state : [], Languages::default());
+            return $lists === [] ? null : $lists;
+        }
         if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) {
             // Stored as the list itself (0.37), so setting('site.tags') is an array.
             $list = $field->values(is_string($state) ? $state : '');

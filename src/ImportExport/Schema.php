@@ -69,6 +69,16 @@ final class Schema
         $languages = Languages::all();
         foreach ($this->exportFields($export) as $name => $field) {
             $label = strip_tags($field->getLabel());
+            if ($field->isTranslatable() && $field instanceof Fields\TagsInput) {
+                // Tags per language (0.44): "stone | courtyard"
+                foreach ($languages as $lang) {
+                    $columns[] = [
+                        'heading' => $name . '.' . $lang, 'label' => $label . ' (' . Languages::name($lang) . ')',
+                        'cell' => static fn (object $row, ExportBatch $batch): string => implode(' | ', $field->languageLists($row->{$name} ?? null, Languages::default())[$lang] ?? []),
+                    ];
+                }
+                continue;
+            }
             if ($field->isTranslatable()) {
                 foreach ($languages as $lang) {
                     $columns[] = [

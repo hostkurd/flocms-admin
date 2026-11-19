@@ -2,6 +2,22 @@
 
 All notable changes to `hostkurd/flocms-admin` are documented here.
 
+## 0.44.0 - 2026-11-19
+
+**Tags per language, and a resource's own abilities on the Roles page.** No new tables. These are what flocms-frontend 0.3's collections need: per-language tags for blog posts, and **Publish** per collection.
+
+- **`TagsInput` can be translatable** (`->translatable()`), with one list per language. It is stored as `{"en":["stone"],"ar":["حجر"]}`. A column that held one list is read as the default language's and rewritten on save. The form shows one box of chips per language, and limits and errors apply per language. Elsewhere:
+  - `TagsColumn` shows the panel language's tags, falling back to the default language's.
+  - `TagsFilter` matches a tag in any language.
+  - Export and import use one column per language.
+  - The activity log names the language.
+  - Settings pages, custom page forms and repeater items get `['en' => [...], 'ar' => [...]]`.
+  - `list_values($value, $lang)` and `repeater_items()` on the website give one language's tags.
+  - New: `TagsInput::languageLists()`, `ListValues::forLanguage()` and `ListValues::languageMap()`.
+  - Tag filters no longer match a language code of the stored object (a tag named "ar").
+  See [Tags per language](docs/choice-fields.md#tags-per-language-044).
+- **`Resource::$abilities`**: a resource names abilities beyond view, create, edit and delete, such as `['publish' => 'Publish']`. Each one is a column in the Roles page's Content grid, with the permission `<prefix>.<slug>.<ability>` (or `$permissions[...]`). A dash shows for resources without that ability. Ticking one also gives View. `Resource::abilities()` lists them. See [Roles](docs/roles.md#a-resources-own-abilities-044).
+
 ## 0.43.0 - 2026-11-13
 
 **Packages can extend the panel.** Needs flocms-core 2.10. No new tables. See [Extending the panel from a package](docs/extending.md).

@@ -56,6 +56,15 @@ class TagsColumn extends Column
         return $this->resolved;
     }
 
+    public function value(object $record): mixed
+    {
+        if (!$this->isTranslatable()) {
+            return property_exists($record, $this->getName()) ? $record->{$this->getName()} : null;
+        }
+        // Tags per language (0.44): {"en":[...],"ar":[...]}
+        return ListValues::forLanguage(property_exists($record, $this->getName()) ? $record->{$this->getName()} : null);
+    }
+
     protected function renderValue(mixed $value): string
     {
         $items = ListValues::decode($value);

@@ -240,7 +240,11 @@ final class RolesController extends PanelController
             $rows = [];
             foreach ($group['rows'] as $row) {
                 $cells = [];
-                foreach ($row['cells'] as $c) { $cells[] = $cell($c['name'], $row['label'] . ': ' . $c['label']) + ['ability' => $c['ability'], 'short' => $c['label']]; }
+                foreach ($row['cells'] as $c) {
+                    // A column this resource doesn't have (0.44)
+                    if ($c['name'] === '') { $cells[] = ['none' => true, 'ability' => $c['ability']]; continue; }
+                    $cells[] = $cell($c['name'], $row['label'] . ': ' . $c['label']) + ['ability' => $c['ability'], 'short' => $c['label'], 'none' => false];
+                }
                 $rows[] = ['label' => $row['label'], 'sub' => $row['sub'], 'cells' => $cells];
             }
             $items = [];

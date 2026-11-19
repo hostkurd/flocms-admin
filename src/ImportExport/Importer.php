@@ -587,6 +587,7 @@ final class Importer
                 foreach (is_array($value) ? $value : [$default => (string) $value] as $lang => $text) {
                     if (!in_array($lang, Languages::all(), true)) { continue; }
                     $text = $field instanceof Fields\RichEditor ? Values::richText((string) $text) : (string) $text;
+                    if ($field instanceof Fields\TagsInput) { $text = \FloCMS\Admin\Support\ListValues::encode(Values::listCells($text)); }
                     if ($record !== null && self::blank($field, $text) && !self::blank($field, (string) ($merged[$lang] ?? ''))) { $emptied++; }
                     $merged[$lang] = $text;
                 }

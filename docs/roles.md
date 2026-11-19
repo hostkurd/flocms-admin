@@ -40,7 +40,7 @@ The page has the permission grid on the left and the role's details on the right
 
 | Group | Rows | Group switch |
 | --- | --- | --- |
-| Content | One row per resource: View, Create, Edit, Delete (its own `$permissionPrefix` or `$permissions` are respected) | **All content** = `content.*` (your `permission_prefix`) |
+| Content | One row per resource: View, Create, Edit, Delete, Export, Import, and the resource's own abilities (0.44) as more columns (its own `$permissionPrefix` or `$permissions` are respected) | **All content** = `content.*` (your `permission_prefix`) |
 | Media | The media library: View, Upload, Edit, Delete (`content.media.*`) | covered by All content |
 | Settings | One box per settings page (pages that share a permission share a box) | **All settings pages** = `settings.*` |
 | Users | Manage users, Assign roles, Manage users of any level | |
@@ -64,6 +64,30 @@ The page has the permission grid on the left and the role's details on the right
     ],
 ],
 ```
+
+## A resource's own abilities (0.44)
+
+A resource can have abilities beyond the built-in ones (view, create, update, which the page calls Edit, delete, export and import), such as publishing. Each one becomes a column on the Roles page:
+
+```php
+final class PostResource extends Resource
+{
+    protected static array $abilities = ['publish' => 'Publish'];   // ability => label (words or a lang key)
+
+    public function canPublish(): bool
+    {
+        return Auth::can(static::permission('publish'));           // "content.posts.publish"
+    }
+}
+```
+
+- The permission is `<prefix>.<slug>.<ability>`, or the name in `$permissions['publish']`.
+- **All content** (`content.*`) includes it.
+- Resources without that ability show a dash in the column.
+- Ticking the ability also ticks **View**, as Create and Edit do.
+- Names are lower case letters, digits and `_`. Other names are ignored, and so are the built-in abilities and `edit` (the built-in one is `update`). `['publish']` without a label is shown as "Publish".
+- When two resources declare the same ability with different labels, the column takes the first one's label.
+- The panel itself doesn't check the ability. Your resource decides what it allows: hide a field, refuse a save in `validate()`, or show an action with `->permission(static::permission('publish'))`.
 
 ## Safety rules
 
