@@ -204,7 +204,8 @@ final class GlobalSearch
             if ($name === $title) { continue; }
             $value = $row->{$name} ?? null;
             if ($value === null || is_array($value) || is_object($value)) { continue; }
-            $text = $column->isTranslatable() ? Translations::get($value, AdminLang::language()) : (string) $value;
+            $text = $column instanceof \FloCMS\Admin\Table\Columns\TagsColumn ? implode(', ', \FloCMS\Admin\Support\ListValues::forLanguage($value))
+                : ($column->isTranslatable() ? Translations::get($value, AdminLang::language()) : (string) $value);
             $text = SearchResult::clean($text, 120);
             if ($text !== '') { return $text; }
         }

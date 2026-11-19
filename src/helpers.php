@@ -127,6 +127,8 @@ if (!function_exists('list_values')) {
     /**
      * The items of a CheckboxList or TagsInput column (0.37) as a list of
      * strings: the stored JSON list, or plain "a, b" text left from before.
+     * Translatable tags (0.44, {"en":[...],"ar":[...]}) give the page's
+     * language's (or $lang's), else the default language's.
      *
      *     @foreach(list_values($listing->keywords) as $tag)
      *         <span class="tag">{{ $tag }}</span>
@@ -134,9 +136,9 @@ if (!function_exists('list_values')) {
      *
      * @return list<string>
      */
-    function list_values(mixed $value): array
+    function list_values(mixed $value, ?string $lang = null): array
     {
-        return \FloCMS\Admin\Support\ListValues::decode($value);
+        return \FloCMS\Admin\Support\ListValues::forLanguage($value, $lang);
     }
 }
 
@@ -186,8 +188,11 @@ if (!function_exists('repeater_items')) {
             if (!is_array($entry)) { continue; }
             unset($entry['_key']);
             foreach ($entry as $name => $part) {
-                // {"en": …, "ar": …} is a translation; a list (several media ids) stays a list.
-                if (is_array($part) && !array_is_list($part)) { $entry[$name] = Translations::get($part, $lang); }
+                // {"en": …, "ar": …} is a translation (tags per language: a list, 0.44); a list (several media ids) stays a list.
+                if (is_array($part) && !array_is_list($part)) {
+                    $lists = $part !== [] && count(array_filter($part, 'is_array')) === count($part) ? \FloCMS\Admin\Support\ListValues::forLanguage($part, $lang) : null;
+                    $entry[$name] = $lists ?? Translations::get($part, $lang);
+                }
             }
             $items[] = $entry;
         }

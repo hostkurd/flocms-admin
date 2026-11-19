@@ -8,6 +8,7 @@ use FloCMS\Admin\Form\Field;
 use FloCMS\Admin\Support\AdminLang;
 use FloCMS\Admin\Support\ListValues;
 use FloCMS\Admin\Support\Str;
+use FloCMS\Admin\Translation\Languages;
 use InvalidArgumentException;
 
 /**
@@ -19,6 +20,10 @@ use InvalidArgumentException;
  * On save tags are trimmed, inner spaces collapsed, empty ones dropped and
  * duplicates removed regardless of capitals (the first spelling is kept).
  * Without JavaScript it is one text box ("villa, sea view").
+ *
+ * ->translatable() (0.44): a list per language, stored as one JSON object,
+ * {"en":["stone","courtyard"],"ar":["حجر"]}; a column that held one list
+ * before is read as the default language's.
  */
 class TagsInput extends Field implements ListField
 {
@@ -106,9 +111,66 @@ class TagsInput extends Field implements ListField
      * Values
      * ------------------------------------------------------------- */
 
+    public function supportsTranslation(): bool
+    {
+        return true;
+    }
+
     public function values(mixed $state): array
     {
+        if (is_array($state) && $state !== [] && !array_is_list($state)) {
+            // A translatable state (language => list): every language's tags, once each
+            $all = [];
+            foreach ($state as $value) { $all = array_merge($all, $this->parse($value)); }
+            return $this->clean($all);
+        }
         return $this->parse($state);
+    }
+
+    /**
+     * The tags of a stored translatable value, per language (0.44): a JSON
+     * object of lists (or of texts), or one list, which is read as the default
+     * language's. Languages without tags are left out.
+     *
+     * @return array<string, list<string>>
+     */
+    public function languageLists(mixed $raw, string $defaultLang): array
+    {
+        if (is_string($raw)) {
+            $text = trim($raw);
+            if ($text === '') { return []; }
+            if ($text[0] === '{') {
+                $decoded = json_decode($text, true);
+                $raw = is_array($decoded) ? $decoded : [];
+            } else {
+                $raw = [$defaultLang => $text];
+            }
+        }
+        if (!is_array($raw)) { return []; }
+        if (array_is_list($raw)) { $raw = $raw === [] ? [] : [$defaultLang => $raw]; }
+        $lists = [];
+        foreach ($raw as $lang => $value) {
+            $lang = strtolower(trim((string) $lang));
+            if (!Languages::isValid($lang)) { continue; }
+            $tags = $this->clean($this->parse($value));
+            if ($tags !== []) { $lists[$lang] = $tags; }
+        }
+        return $lists;
+    }
+
+    protected function defaultState(string $defaultLang): string|array
+    {
+        if (!$this->isTranslatable()) { return parent::defaultState($defaultLang); }
+        $default = $this->default instanceof Closure ? ($this->default)() : $this->default;
+        return array_map([ListValues::class, 'encode'], $this->languageLists($default, $defaultLang));
+    }
+
+    public function stateFromRecord(?object $record, string $defaultLang): string|array
+    {
+        if (!$this->isTranslatable() || $record === null || !property_exists($record, $this->name)) {
+            return parent::stateFromRecord($record, $defaultLang);
+        }
+        return array_map([ListValues::class, 'encode'], $this->languageLists($record->{$this->name}, $defaultLang));
     }
 
     /**
@@ -179,12 +241,30 @@ class TagsInput extends Field implements ListField
 
     public function stateFromInput(array $input, array $languages): string|array
     {
+        if ($this->isTranslatable()) {
+            $submitted = $input[$this->name] ?? [];
+            if (!is_array($submitted) || array_is_list($submitted)) {
+                // A list or text (a repeater item or draft from before ->translatable()): the default language's
+                $submitted = [Languages::default() => is_array($submitted) || is_string($submitted) ? $submitted : ''];
+            }
+            $state = [];
+            foreach ($languages as $lang) {
+                $tags = $this->clean($this->parse($submitted[$lang] ?? null));
+                $state[$lang] = ListValues::encode($this->onlySuggestions ? $this->spelled($tags) : $tags);
+            }
+            return $state;
+        }
         $tags = $this->clean($this->parse($input[$this->name] ?? null));
         return ListValues::encode($this->onlySuggestions ? $this->spelled($tags) : $tags);
     }
 
     public function dehydrate(string|array $state): mixed
     {
+        if ($this->isTranslatable()) {
+            $lists = $this->languageLists(is_array($state) ? $state : [], Languages::default());
+            if ($lists === []) { return $this->isNullable() ? null : '{}'; }
+            return json_encode($lists, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
         $tags = is_string($state) ? $this->clean($this->parse($state)) : [];
         if ($tags === []) { return $this->isNullable() ? null : '[]'; }
         return ListValues::encode($tags);

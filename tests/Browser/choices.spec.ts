@@ -208,3 +208,26 @@ test.describe('without JavaScript', () => {
     expect(row.opens_at).toBe('08:15:00');
   });
 });
+
+/* Tags per language (0.44): tests/Fixtures/Choices/JournalResource, reset by /__test/journal. */
+test('tags are kept per language', async ({ page }) => {
+  await page.request.post('/__test/journal');
+  await page.goto('/en/admin/journal/edit/1');
+  const field = page.locator('[data-field="tags"]');
+  const pane = (lang: string) => field.locator(`.fa-lang-pane[data-lang="${lang}"]`);
+  await expect(pane('en').locator('.fa-tag-chip > span')).toHaveText(['stone']);
+  await pane('en').locator('.fa-tags-input').fill('courtyard');
+  await pane('en').locator('.fa-tags-input').press('Enter');
+  await expect(pane('en').locator('.fa-tag-chip > span')).toHaveText(['stone', 'courtyard']);
+
+  // The Arabic version has its own tags
+  await page.locator('.fa-lang-switch [data-lang="ar"]').click();
+  await expect(pane('ar')).toBeVisible();
+  await expect(pane('ar').locator('.fa-tag-chip > span')).toHaveText(['حجر']);
+  await pane('ar').locator('.fa-tags-input').fill('فناء');
+  await pane('ar').locator('.fa-tags-input').press('Enter');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.fa-toast, [role="status"]').first()).toBeVisible();
+  const rows = (await (await page.request.post('/__test/journal-state')).json()) as Array<Record<string, string>>;
+  expect(JSON.parse(rows[0].tags)).toEqual({ en: ['stone', 'courtyard'], ar: ['حجر', 'فناء'] });
+});

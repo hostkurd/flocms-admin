@@ -118,7 +118,15 @@ final class TranslationsColumn extends Column
         $default = Languages::default();
         $counts = array_fill_keys(Languages::all(), 0);
         foreach ($this->countedFields() as $field) {
-            $values = Translations::store()->decode(property_exists($record, $field) ? $record->{$field} : null, $default);
+            $raw = property_exists($record, $field) ? $record->{$field} : null;
+            // Tags per language (0.44): a language counts when it has tags
+            $decoded = is_string($raw) && str_starts_with(ltrim($raw), '{') ? json_decode($raw, true) : $raw;
+            $lists = is_array($decoded) && $decoded !== [] && count(array_filter($decoded, 'is_array')) === count($decoded) ? \FloCMS\Admin\Support\ListValues::languageMap($decoded) : null;
+            if ($lists !== null) {
+                foreach (array_keys($counts) as $lang) { if (($lists[$lang] ?? []) !== []) { $counts[$lang]++; } }
+                continue;
+            }
+            $values = Translations::store()->decode($raw, $default);
             $rich = in_array($field, $this->rich, true);
             foreach (array_keys($counts) as $lang) {
                 $value = (string) ($values[$lang] ?? '');

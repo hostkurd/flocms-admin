@@ -12,7 +12,7 @@ use FloCMS\Admin\ImportExport\Values;
 use FloCMS\Admin\PanelPages\PageForm;
 use FloCMS\Admin\Settings\SettingsEditor;
 use FloCMS\Admin\Support\{Dates, ListValues};
-use FloCMS\Admin\Table\Columns\{TagsColumn, TimeColumn};
+use FloCMS\Admin\Table\Columns\{TagsColumn, TimeColumn, TranslationsColumn};
 use FloCMS\Admin\Table\Filters\{CheckboxListFilter, TagsFilter, TimeRangeFilter};
 use FloCMS\Admin\Table\{FilterSet, Table};
 use FloCMS\Admin\Tests\TestCase;
@@ -303,6 +303,63 @@ final class ChoiceFieldsTest extends TestCase
         } finally {
             \FloCMS\Admin\Blocks\BlockRegistry::reset();
         }
+    }
+
+    public function testTagsCanBeTranslatable(): void
+    {
+        $field = TagsInput::make('tags')->translatable();
+        self::assertTrue($field->isTranslatable(), '0.44');
+        $state = $field->stateFromInput(['tags' => ['en' => 'stone, Stone, courtyard', 'ar' => 'حجر، فناء', 'ku' => '']], ['en', 'ar', 'ku']);
+        self::assertSame(['en' => '["stone","courtyard"]', 'ar' => '["حجر","فناء"]', 'ku' => ''], $state);
+        self::assertSame('{"en":["stone","courtyard"],"ar":["حجر","فناء"]}', $field->dehydrate($state), 'one list per language, in one JSON object');
+        self::assertNull($field->dehydrate(['en' => '', 'ar' => '']));
+        self::assertSame(['en' => '["stone"]', 'ar' => '["حجر"]'], $field->stateFromRecord((object) ['tags' => '{"en":["stone"],"ar":["حجر"],"":["no"]}'], 'en'));
+        self::assertSame(['en' => '["stone","lime"]'], $field->stateFromRecord((object) ['tags' => '["stone","lime"]'], 'en'), 'a list from before the field was translatable is the default language\'s');
+        self::assertSame(['en' => '["a","b"]'], $field->stateFromRecord((object) ['tags' => 'a, b'], 'en'), 'and so is old text');
+        self::assertSame(['stone', 'courtyard', 'حجر'], $field->values(['en' => '["stone","courtyard"]', 'ar' => '["حجر","stone"]']), 'every language\'s tags, for checks that need them all');
+        self::assertSame(['en' => ['a'], 'ar' => ['ب']], $field->languageLists(['en' => ['a'], 'ar' => 'ب', 'ku' => []], 'en'));
+
+        // Checked per language
+        $form = (new Form())->schema([TagsInput::make('tags')->translatable()->max(1)]);
+        self::assertSame(['tags.ar' => 'Tags can have at most 1 tags.'], array_map('strip_tags', self::errors($form, ['tags' => ['en' => '["a"]', 'ar' => '["ب","ج"]', 'ku' => '']])));
+
+        // Settings, page forms and repeater items keep a list per language
+        self::assertSame(['en' => ['a'], 'ar' => ['ب']], SettingsEditor::storable($field, ['en' => '["a"]', 'ar' => '["ب"]', 'ku' => '']));
+        self::assertSame(['en' => ['a'], 'ar' => [], 'ku' => []], PageForm::value($field, ['en' => '["a"]']));
+        $repeater = Repeater::make('rows')->schema([TextInput::make('name'), TagsInput::make('tags')->translatable()]);
+        $stored = $repeater->dehydrate($repeater->stateFromInput(['rows' => [['name' => 'x', 'tags' => ['en' => 'a, b', 'ar' => 'ب']]]], ['en', 'ar']));
+        self::assertStringContainsString('"tags":{"en":["a","b"],"ar":["ب"]}', (string) $stored);
+        self::assertStringContainsString('"tags":{"en":["a","b"],"ar":["ب"]}', (string) $repeater->dehydrate($repeater->stateFromRecord((object) ['rows' => $stored], 'en')), 'and read back the same');
+
+        // The list shows the page's language (the default language's when it has none)
+        $column = TagsColumn::make('tags')->translatable();
+        self::assertStringContainsString('<span class="fa-tag">stone</span>', $column->render((object) ['tags' => '{"en":["stone"],"ar":["حجر"]}']));
+
+        // Before ->translatable(): a list in a repeater item or draft is the default language's
+        self::assertSame(['en' => '["a","b"]', 'ar' => ''], $field->stateFromInput(['tags' => ['a', 'b']], ['en', 'ar']));
+        self::assertSame(['en' => '["a"]', 'ar' => ''], $field->stateFromInput(['tags' => 'a'], ['en', 'ar']));
+        self::assertStringContainsString('"tags":{"en":["a","b"]}', (string) $repeater->dehydrate($repeater->stateFromRecord((object) ['rows' => '[{"name":"x","tags":["a","b"]}]'], 'en')));
+        // Defaults
+        self::assertSame(['en' => '["stone"]'], TagsInput::make('t')->translatable()->default(['stone'])->stateFromRecord(null, 'en'));
+        self::assertSame(['ar' => '["حجر"]'], TagsInput::make('t')->translatable()->default(['ar' => ['حجر']])->stateFromRecord(null, 'en'));
+
+        // On the website
+        self::assertSame(['حجر'], list_values('{"en":["stone"],"ar":["حجر"]}', 'ar'));
+        self::assertSame(['stone'], list_values('{"en":["stone"],"ar":[]}', 'ar'), 'the default language\'s when that one has none');
+        self::assertSame(['stone', 'lime'], list_values('["stone","lime"]', 'ar'), 'one list is the same in every language');
+        self::assertSame([['name' => 'x', 'tags' => ['ب']]], repeater_items('[{"_key":"k1","name":"x","tags":{"en":["a"],"ar":["ب"]}}]', 'ar'));
+
+        // The translations column counts a language with tags
+        $counts = TranslationsColumn::make('translations')->fields(['tags'])->counts((object) ['tags' => '{"en":["a"],"ar":["ب"]}']);
+        self::assertSame(['en' => 1, 'ar' => 1, 'ku' => 0], $counts);
+
+        // The activity log names the language
+        $form = (new Form())->schema([TagsInput::make('tags')->translatable()]);
+        $changes = ActivityChanges::diff($form, ['tags' => ['en' => '["a"]', 'ar' => '["ب"]']], ['tags' => ['en' => '["a"]', 'ar' => '["ج"]']], [], null);
+        self::assertSame([
+            ['field' => 'tags', 'label' => 'Tags', 'lang' => 'ar', 'type' => 'item', 'before' => 'ب', 'after' => ''],
+            ['field' => 'tags', 'label' => 'Tags', 'lang' => 'ar', 'type' => 'item', 'before' => '', 'after' => 'ج'],
+        ], $changes);
     }
 
     public function testSettingsAndPageFormsGetLists(): void

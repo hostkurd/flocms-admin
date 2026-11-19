@@ -89,6 +89,15 @@ final class ActivityChanges
 
             // A list in one column (0.37): "Features · Added: Parking", "Features · Removed: Fireplace".
             if ($field instanceof \FloCMS\Admin\Form\Fields\ListField) {
+                if (is_array($old) || is_array($new)) {
+                    // Translatable tags (0.44): "Tags (Arabic) · Added: حجر"
+                    $old = is_array($old) ? $old : [];
+                    $new = is_array($new) ? $new : [];
+                    foreach (array_values(array_unique(array_merge(array_keys($old), array_keys($new)))) as $language) {
+                        array_push($changes, ...self::listChanges($field, $name, $label, $secret, (string) ($old[$language] ?? ''), (string) ($new[$language] ?? ''), (string) $language));
+                    }
+                    continue;
+                }
                 array_push($changes, ...self::listChanges($field, $name, $label, $secret, $old, $new));
                 continue;
             }
@@ -183,17 +192,17 @@ final class ActivityChanges
      *
      * @return list<array{field: string, label: string, lang: ?string, type: string, before: string, after: string}>
      */
-    private static function listChanges(\FloCMS\Admin\Form\Fields\ListField $field, string $name, string $label, bool $secret, mixed $old, mixed $new): array
+    private static function listChanges(\FloCMS\Admin\Form\Fields\ListField $field, string $name, string $label, bool $secret, mixed $old, mixed $new, ?string $lang = null): array
     {
         $before = $field->values(is_array($old) ? '' : $old);
         $after = $field->values(is_array($new) ? '' : $new);
         $removed = array_values(array_diff($before, $after));
         $added = array_values(array_diff($after, $before));
         if ($removed === [] && $added === []) { return []; }
-        if ($secret) { return [['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'hidden', 'before' => '', 'after' => '']]; }
+        if ($secret) { return [['field' => $name, 'label' => $label, 'lang' => $lang, 'type' => 'hidden', 'before' => '', 'after' => '']]; }
         $changes = [];
-        foreach ($field->readable($removed) as $item) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'item', 'before' => self::clip($item), 'after' => '']; }
-        foreach ($field->readable($added) as $item) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => null, 'type' => 'item', 'before' => '', 'after' => self::clip($item)]; }
+        foreach ($field->readable($removed) as $item) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => $lang, 'type' => 'item', 'before' => self::clip($item), 'after' => '']; }
+        foreach ($field->readable($added) as $item) { $changes[] = ['field' => $name, 'label' => $label, 'lang' => $lang, 'type' => 'item', 'before' => '', 'after' => self::clip($item)]; }
         return $changes;
     }
 

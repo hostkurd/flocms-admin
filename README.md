@@ -169,6 +169,7 @@ Files named `*Resource.php` in `admin/Resources/` are loaded automatically (the 
 | `$formMode` | `'page'` | How Create and Edit open: `'page'` (full page with an optional sidebar), `'modal'` (dialog) or `'slide-over'` (panel from the side). See [Forms](docs/forms.md#pages-dialogs-and-slide-overs-012) |
 | `$permissionPrefix` | `'<permission_prefix>.<slug>'` | See [Permissions](#permissions) |
 | `$permissions` | `[]` | Per-ability overrides: `['delete' => 'settings.delete']` |
+| `$abilities` | `[]` | The resource's own abilities, each a column on the Roles page: `['publish' => 'Publish']` → `content.posts.publish` (0.44). See [Roles](docs/roles.md#a-resources-own-abilities-044) |
 | `$exportable`, `$importable` | `true` | `false` hides the Export menu or the Import button for this resource (0.25) |
 
 Optional methods:
@@ -524,6 +525,7 @@ Admin 0.43 adds **`Admin::extend()`**: a package adds blocks, resources, panel p
 - 0.37: `CheckboxList`, `TagsInput` and `TimePicker` fields with `TagsColumn`, `TimeColumn`, `CheckboxListFilter`, `TagsFilter` and `TimeRangeFilter`; `list_values()` and `option_labels()` on the website
 - 0.38: editable cells (`ToggleColumn`, `SelectColumn`, `TextInputColumn`), column totals (`summarize()`: this page and all rows) and grouped lists (`groups()`, Group by menu, subtotals)
 - 0.39: wizard forms (`Wizard` and `Step` layouts: Back and Next checked step by step, steps shown for some answers, `afterValidation()`, a review step; create and edit pages, dialogs, action, bulk and custom page forms; 0.39.6: `MediaColumn::size()` for larger list thumbnails)
+- 0.44: tags per language (`TagsInput::make('tags')->translatable()`) and a resource's own abilities on the Roles page (`$abilities`, e.g. Publish)
 - 0.43: packages extend the panel (`Admin::extend()`: blocks, resources, panel pages, settings pages and sitemap addresses; blocks as objects; mail from flocms-core 2.10)
 - 0.42: a professional dashboard (greeting, period buttons, quick buttons, headline numbers with trends and sparklines, previous-period and donut charts, bar, progress, list and activity widgets)
 - 0.41: the notification bell (`Notification::sendTo()`, `Recipients`, the top-bar bell with its unread count and menu, `/admin/notifications`, live count, `Resource::navigationBadge()`)

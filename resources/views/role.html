@@ -43,7 +43,8 @@
                         <tr data-role-row>
                             <th scope="row" class="fa-role-rh">{{ $row['label'] }}@if($row['sub'] !== '')<small><bdi>{{ $row['sub'] }}</bdi></small>@endif</th>
                             @foreach($row['cells'] as $cell)
-                            <td>@if($cell['keep'])<input type="hidden" name="perm[]" value="{{ $cell['name'] }}" data-role-keep>@endif<label class="fa-role-cellbox"><input type="checkbox" class="fa-role-check{{ $cell['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $cell['name'] }}" data-role-ability="{{ $cell['ability'] }}" aria-label="{{ $cell['label'] }}"@if($cell['fixed']) data-role-fixed @endif@if($cell['notHeld']) title="{{ $t('roles.not_held') }}" @endif@if($cell['checked']) checked @endif@if($cell['disabled']) disabled @endif><span class="fa-role-short" aria-hidden="true">{{ $cell['short'] }}</span></label></td>
+                            @if($cell['none'])<td class="fa-role-none"><span class="fa-muted" aria-hidden="true">&ndash;</span></td>@else
+                            <td>@if($cell['keep'])<input type="hidden" name="perm[]" value="{{ $cell['name'] }}" data-role-keep>@endif<label class="fa-role-cellbox"><input type="checkbox" class="fa-role-check{{ $cell['covered'] ? ' is-covered' : '' }}" name="perm[]" value="{{ $cell['name'] }}" data-role-ability="{{ $cell['ability'] }}" aria-label="{{ $cell['label'] }}"@if($cell['fixed']) data-role-fixed @endif@if($cell['notHeld']) title="{{ $t('roles.not_held') }}" @endif@if($cell['checked']) checked @endif@if($cell['disabled']) disabled @endif><span class="fa-role-short" aria-hidden="true">{{ $cell['short'] }}</span></label></td>@endif
                             @endforeach
                         </tr>
                         @endforeach

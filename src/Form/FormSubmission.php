@@ -71,7 +71,9 @@ final class FormSubmission
             if (in_array($name, $skip, true) || !$field->storesInColumn() || $field instanceof \FloCMS\Admin\Form\Fields\FileUpload) { continue; }
             $value = $state[$name];
             if ($record !== null && $field->isTranslatable()) {
-                $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
+                // Languages not edited here keep what they have (tags per language read as lists, 0.44)
+                $stored = $field instanceof \FloCMS\Admin\Form\Fields\TagsInput ? (array) $field->stateFromRecord($record, Languages::default())
+                    : Translations::store()->decode($record->{$name} ?? null, Languages::default());
                 $editable = array_fill_keys(Languages::all(), '');
                 $value = array_replace($stored, $editable, array_intersect_key(is_array($value) ? $value : [], $editable));
             }
@@ -108,7 +110,9 @@ final class FormSubmission
                 if (in_array($name, $skip, true) || !$field->storesInColumn()) { continue; }
                 $value = $state[$name];
                 if ($record !== null && $field->isTranslatable()) {
-                    $stored = Translations::store()->decode($record->{$name} ?? null, Languages::default());
+                    // Languages not edited here keep what they have (tags per language read as lists, 0.44)
+                $stored = $field instanceof \FloCMS\Admin\Form\Fields\TagsInput ? (array) $field->stateFromRecord($record, Languages::default())
+                    : Translations::store()->decode($record->{$name} ?? null, Languages::default());
                     $editable = array_fill_keys(Languages::all(), '');
                     $value = array_replace($stored, $editable, array_intersect_key(is_array($value) ? $value : [], $editable));
                 }

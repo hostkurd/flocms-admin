@@ -70,7 +70,23 @@ On save, tags are trimmed, runs of spaces become one, empty ones are dropped, an
 
 The keyboard: **Backspace** in the empty box selects the last tag, and Backspace again removes it. **←** and **→** move between tags (the other way round on right-to-left pages), **Delete** removes the tag you are on, and **Escape** goes back to typing. **↓** and **↑** move through the suggestions, and Enter picks one.
 
-Tags are not translatable in 0.37: a tag per language would break filtering ("sea view" and "إطلالة بحرية" would be different tags). For a known set with translated labels, use a CheckboxList.
+### Tags per language (0.44)
+
+`->translatable()` gives each language its own tags. An Arabic post gets Arabic tags:
+
+```php
+TagsInput::make('tags')->translatable()->suggestions(['stone', 'courtyard'])->max(10)
+```
+
+- **Stored** as one JSON object of lists: `{"en":["stone","courtyard"],"ar":["حجر"]}`. A column that held one list before is read as the default language's, and rewritten on the next save, so no migration is needed.
+- **The form**: one box of chips per language, edited one language at a time like any translatable field. `max()`, `maxLength()` and `onlySuggestions()` apply to each language, and errors name it. Suggestions are the same in every language.
+- **The list**: `TagsColumn` shows the tags in the panel's language, or the default language's when that language has none. `TagsFilter` finds a tag in any language.
+- **Export** writes one column per language (`tags.en`, `tags.ar`), and **import** reads them back the same way. The **activity log** names the language ("Tags (Arabic) · Added: حجر").
+- **Settings pages and custom page forms**: the value is `['en' => [...], 'ar' => [...]]`. A **repeater item** stores it the same way; tags saved in an item before the field became translatable are read as the default language's.
+- **On the website**: `list_values($post->tags)` gives the page's language's tags, or the default language's when that language has none. `list_values($post->tags, 'ar')` gives one language's. A row saved before the field became translatable still holds one list, which `list_values()` gives in every language. `repeater_items()` gives an item's tags the same way.
+- `->default([...])` takes a list (the default language's) or `['en' => [...], 'ar' => [...]]`.
+
+Tags in different languages are different tags: filtering for "stone" doesn't find "حجر". For a known set with translated labels, use a CheckboxList.
 
 ## TimePicker
 

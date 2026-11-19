@@ -77,6 +77,17 @@ abstract class Resource
     protected static array $permissions = [];
 
     /**
+     * Abilities of this resource beyond view, create, update and delete (0.44),
+     * shown as their own column on the Roles page: ability => label (words or
+     * a lang key), e.g. ['publish' => 'Publish']. The permission is
+     * permission('publish') ("content.posts.publish", or $permissions['publish']);
+     * check it with Auth::can(static::permission('publish')).
+     *
+     * @var array<string, string>
+     */
+    protected static array $abilities = [];
+
+    /**
      * Deleting a record puts it in the trash (0.19), where it can be restored for
      * the configured number of days. false deletes this resource's records at once.
      */
@@ -598,7 +609,27 @@ abstract class Resource
         return static::$navigationSort;
     }
 
-    /** The permission an ability needs: view, create, update or delete. */
+    /**
+     * The resource's own abilities (0.44): ability => label. Names are lower
+     * case letters, digits and _; the built-in ones (and "edit", which is
+     * "update") are left out. A name without a label (['publish']) gets one
+     * from its name ("Publish").
+     *
+     * @return array<string, string>
+     */
+    public static function abilities(): array
+    {
+        $abilities = [];
+        foreach (static::$abilities as $ability => $label) {
+            if (is_int($ability) && is_string($label)) { [$ability, $label] = [$label, ucfirst(str_replace('_', ' ', $label))]; }
+            $ability = (string) $ability;
+            if (preg_match('/^[a-z][a-z0-9_]{0,40}$/D', $ability) !== 1 || in_array($ability, [...\FloCMS\Admin\Roles\PermissionCatalogue::CONTENT_ABILITIES, 'edit'], true)) { continue; }
+            $abilities[$ability] = \FloCMS\Admin\Support\AdminLang::label((string) $label);
+        }
+        return $abilities;
+    }
+
+    /** The permission an ability needs: view, create, update, delete, export, import or one of abilities(). */
     public static function permission(string $ability): string
     {
         if (isset(static::$permissions[$ability])) {
